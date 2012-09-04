@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+
+unless $:.include?(File.dirname(__FILE__) + '/../lib')
+  $:.unshift(File.dirname(__FILE__) + '/../lib')
+end
+
+require 'trollop'
+require 'foundry'
+
+opts = Trollop::options do
+  version "Foundry Ruby Interpreter/Compiler #{Foundry::VERSION}"
+  banner <<-EOS
+Usage: foundry [options] filename...
+
+  EOS
+
+  opt :target,  "Target environment",         :default => 'dummy'
+  opt :warn,    "Enable or disable warnings", :type => :strings
+  opt :feature, "Enable or disable features", :type => :strings
+end
+
+Trollop::die "no input files" unless ARGV.any?
+
+toplevel = Foundry::VM::Object.allocate
+
+ARGV.each do |input|
+  if input == '-'
+    ast = Melbourne::Parser.parse_string(STDIN.read, '(stdin)')
+  else
+    ast = Melbourne::Parser.parse_file(input)
+  end
+
+  script = Foundry::Script.new(ast)
+  const_scope = Foundry::ConstantScope.new([ Foundry::VM::Object ])
+  scope = Foundry::VariableScope.new(script, toplevel, nil, const_scope, [], nil)
+
+  script.execute(scope)
+end
