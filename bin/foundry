@@ -21,7 +21,7 @@ end
 
 Trollop::die "no input files" unless ARGV.any?
 
-toplevel = Foundry::VM::Object.allocate
+toplevel = Foundry::VI::Object.allocate
 
 ARGV.each do |input|
   if input == '-'
@@ -31,7 +31,7 @@ ARGV.each do |input|
   end
 
   script = Foundry::Script.new(ast)
-  const_scope = Foundry::ConstantScope.new([ Foundry::VM::Object ])
+  const_scope = Foundry::ConstantScope.new([ Foundry::VI::Object ])
   scope = Foundry::VariableScope.new(script, toplevel, nil, const_scope, [], nil)
 
   script.execute(scope)

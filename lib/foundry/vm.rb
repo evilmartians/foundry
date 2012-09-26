@@ -1,12 +1,31 @@
 module Foundry
   class VMImmediate < ::BasicObject
+    def nil?
+      false
+    end
+
+    def vm_nil?
+      false
+    end
+
+    def vm_true?
+      true
+    end
   end
 
   class ConstantScope < VMImmediate
     attr_reader :nesting
 
     def initialize(nesting)
-      @nesting = VM::Tuple.allocate(nesting.to_ary)
+      @nesting = VI::Tuple.allocate(nesting.to_ary)
+    end
+
+    def find_const(name)
+      @nesting.to_a.find { |klass| klass.const_get(name) }
+    end
+
+    def nest(klass)
+      ConstantScope.new([ klass ] + @nesting)
     end
   end
 
@@ -22,7 +41,7 @@ module Foundry
 
     def initialize(method, module_, parent, const_scope, arguments, block)
       @method, @module, @parent, @const_scope = method, module_, parent, const_scope
-      @arguments, @block = VM::Tuple.allocate(arguments.to_ary), block
+      @arguments, @block = VI::Tuple.allocate(arguments.to_ary), block
       @locals = {}
     end
   end
@@ -48,7 +67,7 @@ module Foundry
     end
 
     def execute(scope)
-      interp = Interpreter.new(self, scope)
+      interp = Interpreter.new(scope)
       interp.evaluate
     end
   end
@@ -57,6 +76,16 @@ module Foundry
   end
 
   class Method < Executable
+    attr_reader :parameters
+
+    def initialize(ast, parameters)
+      super(ast)
+      @parameters = parameters
+    end
+
+    def call(arguments, block)
+      raise
+    end
   end
 
   class VMObject < VMImmediate
@@ -65,6 +94,10 @@ module Foundry
     def initialize(klass)
       @class      = klass
       @ivar_table = {}
+    end
+
+    def is_a?(klass)
+      @class.ancestors.include
     end
 
     def instance_variables
@@ -97,32 +130,72 @@ module Foundry
       @upperclass = VMIncludedModule.new(module_, @upperclass)
     end
 
-    def constants
-      @const_table.keys
+    def ancestors
+      [ self ] + @upperclass.ancestors
     end
 
-    def const_defined?(const)
-      @const_table.key?(const)
+    def constants(search_parent=true)
+      if @upperclass
+        (@const_table.keys + @upperclass.constants).uniq
+      else
+        @const_table.keys
+      end
+    end
+
+    def const_defined?(const, search_parent=true)
+      if exists = @const_table.key?(const)
+        exists
+      elsif search_parent && @upperclass
+        @upperclass.const_defined? const
+      else
+        false
+      end
     end
 
     def const_set(const, value)
       @const_table[const] = value
     end
 
-    def const_get(const)
-      @const_table[const]
+    def const_get(const, search_parent=true)
+      if value = @const_table[const]
+        value
+      elsif search_parent && @upperclass
+        @upperclass.const_get const
+      else
+        false
+      end
     end
 
-    def instance_methods
-      @method_table.keys
+    def instance_methods(search_parent=true)
+      if @upperclass
+        (@method_table.keys + @upperclass.instance_methods).uniq
+      else
+        @method_table.keys
+      end
     end
 
-    def method_defined?(method)
-      @method_table.key?(method)
+    def method_defined?(method, search_parent=true)
+      if exists = @method_table.key?(method)
+        exists
+      elsif search_parent && @upperclass
+        @upperclass.method_defined?(method)
+      else
+        false
+      end
     end
 
-    def instance_method(method)
-      @method_table[method]
+    def define_method(method, value)
+      @method_table[method] = value
+    end
+
+    def instance_method(method, search_parent=true)
+      if value = @method_table[method]
+        value
+      elsif search_parent && @upperclass
+        @upperclass.instance_method(method)
+      else
+        false
+      end
     end
   end
 
@@ -138,6 +211,10 @@ module Foundry
       @const_table  = module_.const_table
       @method_table = module_.method_table
     end
+
+    def ancestors
+      [ @module ] + @upperclass.ancestors
+    end
   end
 
   class VMClass < VMModule
@@ -151,7 +228,11 @@ module Foundry
     end
 
     def allocate(*args)
-      @vm_class.new(self, *args)
+      unless @vm_class.ancestors.include? VMObject
+        ::Kernel.send :raise, ::Exception, "cannot allocate VMClass instance for VMImmediate"
+      else
+        @vm_class.new(self, *args)
+      end
     end
   end
 
@@ -175,11 +256,20 @@ module Foundry
     def to_a
       @storage
     end
+    alias to_ary to_a
   end
 
   class VMNilClass < VMImmediate
     def class
       VM::NilClass
+    end
+
+    def vm_nil?
+      true
+    end
+
+    def vm_true?
+      false
     end
   end
 
@@ -192,6 +282,10 @@ module Foundry
   class VMFalseClass < VMImmediate
     def class
       VM::FalseClass
+    end
+
+    def vm_true?
+      false
     end
   end
 
@@ -230,7 +324,7 @@ module Foundry
     end
   end
 
-  module VM
+  module VI
     BasicObject = VMClass.new(nil, nil,         :BasicObject, VMObject)
     Object      = VMClass.new(nil, BasicObject, :Object,      VMObject)
     Module      = VMClass.new(nil, Object,      :Module,      VMModule)
@@ -258,8 +352,15 @@ module Foundry
 
     Foundry     = Module.allocate(:Foundry)
 
-    IncludedModule = VMClass.new(Class, Module, :"Foundry::IncludedModule", VMIncludedModule)
-    Tuple          = VMClass.new(Class, Object, :"Foundry::Tuple", VMTuple)
+    IncludedModule = Class.allocate(Module, :"Foundry::IncludedModule", VMIncludedModule)
+    Tuple          = Class.allocate(Object, :"Foundry::Tuple", VMTuple)
+
+    ConstantScope    = Class.allocate(Object, :"Foundry::ConstantScope", ConstantScope)
+    VariableScope    = Class.allocate(Object, :"Foundry::VariableScope", VariableScope)
+    BlockEnvironment = Class.allocate(Object, :"Foundry::BlockEnvironment", BlockEnvironment)
+    Executable       = Class.allocate(Object, :"Foundry::Executable", Executable)
+    Script           = Class.allocate(Executable, :"Foundry::Script", Script)
+    Method           = Class.allocate(Executable, :"Foundry::Method", Method)
 
     BasicObject.const_set :BasicObject, BasicObject
 
@@ -281,5 +382,12 @@ module Foundry
 
     Foundry.const_set :IncludedModule, IncludedModule
     Foundry.const_set :Tuple,          Tuple
+
+    Foundry.const_set :ConstantScope,    ConstantScope
+    Foundry.const_set :VariableScope,    VariableScope
+    Foundry.const_set :BlockEnvironment, BlockEnvironment
+    Foundry.const_set :Executable,       Executable
+    Foundry.const_set :Script,           Script
+    Foundry.const_set :Method,           Method
   end
 end
