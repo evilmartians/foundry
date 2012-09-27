@@ -21,6 +21,12 @@ end
 
 Trollop::die "no input files" unless ARGV.any?
 
+class << Foundry::VI::Kernel
+  def _trace(scope)
+    ::Kernel.p scope.arguments
+  end
+end
+
 toplevel = Foundry::VI::Object.allocate
 
 ARGV.each do |input|
@@ -30,9 +36,9 @@ ARGV.each do |input|
     ast = Melbourne::Parser.parse_file(input)
   end
 
-  script = Foundry::Script.new(ast)
+  script = Foundry::ScriptBody.new(ast)
   const_scope = Foundry::ConstantScope.new([ Foundry::VI::Object ])
-  scope = Foundry::VariableScope.new(script, toplevel, nil, const_scope, [], nil)
+  scope = Foundry::VariableScope.new(toplevel, toplevel, nil, const_scope, [], nil)
 
   script.execute(scope)
 end
