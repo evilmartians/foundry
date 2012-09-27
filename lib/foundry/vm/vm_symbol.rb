@@ -11,7 +11,7 @@ module Foundry
     end
 
     def inspect
-      "{:#{@value}}"
+      "{#{@value.inspect}}"
     end
   end
 end

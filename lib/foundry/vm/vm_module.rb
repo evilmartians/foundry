@@ -59,7 +59,7 @@ module Foundry
       elsif search_parent && @upperclass
         @upperclass.const_get const
       else
-        false
+        VI::UNDEF
       end
     end
 
@@ -91,7 +91,7 @@ module Foundry
       elsif search_parent && @upperclass
         @upperclass.instance_method(method)
       else
-        false
+        nil
       end
     end
 

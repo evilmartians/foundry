@@ -4,10 +4,6 @@ module Foundry
       VI::FalseClass
     end
 
-    def vm_true?
-      false
-    end
-
     def inspect
       "{false}"
     end

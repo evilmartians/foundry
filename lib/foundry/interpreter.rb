@@ -120,7 +120,8 @@ module Foundry
         outer_module = visit(name_node.parent)
       end
 
-      if modulus = outer_module.const_get(name)
+      modulus = outer_module.const_get(name)
+      unless modulus == VI::UNDEF
         unless modulus.is_a? VI::Module
           raise InterpreterError, "#{name} is not a module"
         end
@@ -134,7 +135,7 @@ module Foundry
 
     def process_class(name_node, superclass_node, body_node)
       superclass = visit(superclass_node)
-      superclass = VI::Object if superclass.vm_nil?
+      superclass = VI::Object if superclass.nil?
 
       name = name_node.name
       if name_node.is_a? AST::ClassName
@@ -143,7 +144,8 @@ module Foundry
         outer_module = visit(name_node.parent)
       end
 
-      if klass = outer_module.const_get(name)
+      klass = outer_module.const_get(name)
+      unless klass == VI::UNDEF
         unless klass.is_a? VI::Class
           raise InterpreterError, "#{name} is not a class"
         end

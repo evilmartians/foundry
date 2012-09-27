@@ -4,12 +4,8 @@ module Foundry
       VI::NilClass
     end
 
-    def vm_nil?
+    def nil?
       true
-    end
-
-    def vm_true?
-      false
     end
 
     def inspect

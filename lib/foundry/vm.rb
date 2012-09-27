@@ -45,6 +45,7 @@ module Foundry
     TrueClass   = Class.allocate(Object, :TrueClass,  VMTrueClass)
     FalseClass  = Class.allocate(Object, :FalseClass, VMFalseClass)
 
+    UNDEF       = :undefined
     NIL         = VMNilClass.new
     TRUE        = VMTrueClass.new
     FALSE       = VMFalseClass.new
