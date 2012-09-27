@@ -6,6 +6,7 @@ end
 
 require 'trollop'
 require 'foundry'
+require 'pp'
 
 opts = Trollop::options do
   version "Foundry Ruby Interpreter/Compiler #{Foundry::VERSION}"
@@ -19,26 +20,42 @@ Usage: foundry [options] filename...
   opt :feature, "Enable or disable features", :type => :strings
 end
 
-Trollop::die "no input files" unless ARGV.any?
-
 class << Foundry::VI::Kernel
   def _trace(scope)
-    ::Kernel.p scope.arguments
+    scope.arguments.each do |arg|
+      ::Kernel.p arg
+    end
   end
 end
 
-toplevel = Foundry::VI::Object.allocate
-
-ARGV.each do |input|
-  if input == '-'
-    ast = Melbourne::Parser.parse_string(STDIN.read, '(stdin)')
-  else
-    ast = Melbourne::Parser.parse_file(input)
+class SyntaxError
+  def self.from(*args)
+    raise SyntaxError, args.inspect
   end
+end
 
-  script = Foundry::ScriptBody.new(ast)
-  const_scope = Foundry::ConstantScope.new([ Foundry::VI::Object ])
-  scope = Foundry::VariableScope.new(toplevel, toplevel, nil, const_scope, [], nil)
+runtime = Foundry::Runtime.new
+runtime.bootstrap File.join(File.dirname(__FILE__), '../vm')
 
-  script.execute(scope)
+if ARGV.any?
+  ARGV.each do |input|
+    if input == '-'
+      runtime.eval STDIN.read, '(stdin)'
+    else
+      runtime.load input
+    end
+  end
+else
+  require 'readline'
+
+  puts "Interactive Foundry."
+
+  scope = runtime.create_toplevel_scope
+  scope.eval_scope = true
+
+  line  = 1
+  while string = Readline.readline("f! ", true)
+    p runtime.eval(string, '(if:#{line})', scope)
+    line += 1
+  end
 end

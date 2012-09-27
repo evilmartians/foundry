@@ -82,10 +82,6 @@ module Foundry
     Object.const_set :TrueClass,  TrueClass
     Object.const_set :FalseClass, FalseClass
 
-    Object.const_set :NIL,   NIL
-    Object.const_set :TRUE,  TRUE
-    Object.const_set :FALSE, FALSE
-
     Object.const_set :Symbol,  Symbol
     Object.const_set :String,  String
 

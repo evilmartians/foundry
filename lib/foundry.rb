@@ -1,9 +1,7 @@
-require "foundry/version"
+require 'foundry/version'
 
-require "melbourne"
+require 'melbourne'
 
-require "foundry/vm"
-require "foundry/interpreter"
-
-module Foundry
-end
+require 'foundry/vm'
+require 'foundry/interpreter'
+require 'foundry/runtime'

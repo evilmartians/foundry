@@ -1,0 +1,8 @@
+nil.rb
+true.rb
+false.rb
+class.rb
+module.rb
+basicobject.rb
+kernel.rb
+object.rb

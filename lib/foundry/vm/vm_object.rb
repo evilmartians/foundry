@@ -7,10 +7,6 @@ module Foundry
       @ivar_table = {}
     end
 
-    def is_a?(klass)
-      @class.ancestors.include? klass
-    end
-
     def instance_variables
       @ivar_table.keys
     end
@@ -21,14 +17,6 @@ module Foundry
 
     def instance_variable_get(ivar)
       @ivar_table[ivar]
-    end
-
-    def respond_to?(method)
-      @class.method_defined? method
-    end
-
-    def method(method)
-      @class.instance_method(method)
     end
 
     def inspect

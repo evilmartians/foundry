@@ -2,7 +2,7 @@ module Foundry
   class VMSymbol < VMImmediate
     attr_reader :value
 
-    def initialize(klass, value)
+    def initialize(value)
       @value = value.to_sym
     end
 

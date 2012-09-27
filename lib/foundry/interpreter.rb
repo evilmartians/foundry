@@ -1,5 +1,3 @@
-require 'pp'
-
 module Foundry
   class InterpreterError < StandardError
   end
@@ -24,7 +22,9 @@ module Foundry
     protected :with_scope
 
     def evaluate
-      visit @executable.ast
+      if @executable.ast
+        visit @executable.ast
+      end
     end
 
     def visit(node)
@@ -36,6 +36,10 @@ module Foundry
       when AST::False
         VI::FALSE
 
+      when AST::SymbolLiteral
+        VMSymbol.new(node.value)
+      when AST::FixnumLiteral
+        VI::Integer.allocate(node.value)
       when AST::StringLiteral
         VI::String.allocate(node.string)
 
@@ -46,6 +50,9 @@ module Foundry
         process_const_find(node.name)
       when AST::ConstAccess
         process_const_access(node.name, node.parent)
+      when AST::ConstSet
+        _value = node.instance_variable_get(:@value) # MELBOURNE fuckup
+        process_const_set(node.name, _value)
 
       when AST::Block
         process_block(node.array)
@@ -56,6 +63,8 @@ module Foundry
         process_class(node.name, node.superclass, node.body)
       when AST::Define
         process_define(node.name, node.arguments, node.body)
+      when AST::Alias
+        process_alias(node.from, node.to)
 
       when AST::LocalVariableAccess
         @scope.locals[node.name]
@@ -89,6 +98,17 @@ module Foundry
         const
       else
         raise InterpreterError, "uninitialized constant #{name}"
+      end
+    end
+
+    def process_const_set(name_node, value_node)
+      modulus = @scope.const_scope.nesting.first
+      value   = visit(value_node)
+
+      if modulus.const_defined?(name_node.name)
+        raise InterpreterError, "already initialized constant #{name}"
+      else
+        modulus.const_set(name_node.name, value_node)
       end
     end
 
@@ -181,6 +201,20 @@ module Foundry
       method = MethodBody.new(body_node, @scope.module, arguments_node, primitive)
 
       @scope.module.define_method(name, method)
+
+      nil
+    end
+
+    def process_alias(from_node, to_node)
+      method = @scope.module.instance_method(from_node.value)
+
+      if method == VI::UNDEF
+        raise InterpreterError, "undefined method #{name} for #{receiver.class.name}"
+      end
+
+      @scope.module.define_method(to_node.value, method)
+
+      nil
     end
 
     def create_proc_from_block(block_node)
@@ -198,7 +232,10 @@ module Foundry
 
     def process_send(receiver_node, name, arguments_node,
               block_node, check_for_local, privately)
-      if check_for_local && @scope.locals.has_key?(name)
+      # MELBOURNE should emit check_for_local, but it doesn't
+      if @scope.eval_scope &&
+            arguments_node.nil? &&
+            @scope.locals.has_key?(name)
         return @scope.locals[name]
       end
 
@@ -223,7 +260,7 @@ module Foundry
 
         method.execute(scope)
       else
-        raise InterpreterError, "[TODO] undefined method #{name} for #{receiver.class.name}"
+        raise InterpreterError, "undefined method #{name} for #{receiver.class.name}"
       end
     end
   end

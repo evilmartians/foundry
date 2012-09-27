@@ -72,9 +72,10 @@ module Foundry
     end
 
     def method_defined?(method, search_parent=true)
-      if exists = @method_table.key?(method)
-        exists
-      elsif search_parent && @upperclass
+      if @method_table.key?(method) &&
+            !((undefined = @method_table[method]) == VI::UNDEF)
+        true
+      elsif !undefined && search_parent && @upperclass
         @upperclass.method_defined?(method)
       else
         false
@@ -91,7 +92,7 @@ module Foundry
       elsif search_parent && @upperclass
         @upperclass.instance_method(method)
       else
-        nil
+        VI::UNDEF
       end
     end
 
