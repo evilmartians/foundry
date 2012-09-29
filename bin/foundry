@@ -22,7 +22,7 @@ end
 
 class << Foundry::VI::Kernel
   def _repl(interp, scope)
-    repl = ::Foundry::REPL.new($runtime, interp.innermost_scope)
+    repl = ::Foundry::REPL.new($runtime, interp)
     repl.invoke!
 
     NIL

@@ -6,11 +6,13 @@ module Foundry
 
     attr_accessor :interleave_backtraces
 
-    def initialize(runtime, scope)
+    def initialize(runtime, interp)
       self.class.initialize_readline!
 
       @runtime   = runtime
-      @scope     = scope
+      @interp    = interp
+      @scope     = interp.innermost_scope
+
       @terminate = false
 
       @interleave_backtraces = false
@@ -59,14 +61,22 @@ module Foundry
       boolean_command 'graph_ast', cmdline, @runtime, :graph_ast
     end
 
-    command 'host_backtrace', ":bool", "Include host information in backtraces"
-    def host_backtrace(cmdline)
-      boolean_command 'host_backtrace', cmdline, self, :interleave_backtraces
+    command 'include_host', ":bool", "Include host information in backtraces"
+    def include_host(cmdline)
+      boolean_command 'include_host', cmdline, self, :interleave_backtraces
+    end
+
+    command 'bt', nil, "Print backtrace leading to this REPL", :backtrace
+    def backtrace(cmdline)
+      @interp.collect_backtrace.flatten.each do |line|
+        show_backtrace_line line, false
+      end
     end
 
     command 'ls', ":expr", "Evaluate expression and describe result"
     def ls(cmdline)
-      if cmdline.nil?
+      cmdline = (cmdline || "").strip
+      if cmdline.empty?
         describe @scope.self
       else
         object = safe_eval(cmdline, '(ls-eval)')
