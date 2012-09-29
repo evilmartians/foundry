@@ -17,5 +17,6 @@ Gem::Specification.new do |gem|
   gem.version       = Foundry::VERSION
 
   gem.add_dependency "trollop"
-  gem.add_dependency "melbourne"
+  gem.add_dependency "melbourne", '>= 2.0.0.beta1'
+  gem.add_dependency "ansi"
 end

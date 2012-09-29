@@ -22,18 +22,16 @@ module Foundry
     protected :with_scope
 
     def evaluate
-      if @executable.ast
-        visit @executable.ast
-      end
+      visit @executable.ast
     end
 
     def visit(node)
       case node
-      when AST::Nil
+      when AST::NilLiteral
         VI::NIL
-      when AST::True
+      when AST::TrueLiteral
         VI::TRUE
-      when AST::False
+      when AST::FalseLiteral
         VI::FALSE
 
       when AST::SymbolLiteral
@@ -46,16 +44,18 @@ module Foundry
       when AST::Self
         @scope.self
 
-      when AST::ConstFind
-        process_const_find(node.name)
-      when AST::ConstAccess
-        process_const_access(node.name, node.parent)
-      when AST::ConstSet
-        _value = node.instance_variable_get(:@value) # MELBOURNE fuckup
-        process_const_set(node.name, _value)
+      when AST::ConstantAccess
+        process_constant_access(node.name)
+      when AST::ScopedConstant
+        process_scoped_constant(node.name, node.parent)
+      when AST::ConstantAssignment
+        process_constant_assignment(node.constant, node.value)
 
       when AST::Block
         process_block(node.array)
+
+      when AST::Begin
+        process_begin(node.rescue)
 
       when AST::Module
         process_module(node.name, node.body)
@@ -83,7 +83,7 @@ module Foundry
       end
     end
 
-    def process_const_find(name)
+    def process_constant_access(name)
       if const = @scope.const_scope.find_const(name)
         const
       else
@@ -91,7 +91,7 @@ module Foundry
       end
     end
 
-    def process_const_access(name, parent_node)
+    def process_scoped_constant(name, parent_node)
       modulus = visit(parent_node)
 
       if const = modulus.const_get(name)
@@ -101,20 +101,25 @@ module Foundry
       end
     end
 
-    def process_const_set(name_node, value_node)
-      modulus = @scope.const_scope.nesting.first
-      value   = visit(value_node)
-
-      if modulus.const_defined?(name_node.name)
-        raise InterpreterError, "already initialized constant #{name}"
+    def process_constant_assignment(constant_node, value_node)
+      if constant_node.is_a? AST::ScopedConstant
+        modulus = visit(constant_node.parent)
       else
-        modulus.const_set(name_node.name, value_node)
+        modulus = @scope.const_scope.nesting.first
+      end
+
+      value = visit(value_node)
+
+      if modulus.const_defined?(constant_node.name)
+        raise InterpreterError, "already initialized constant #{constant_node.name}"
+      else
+        modulus.const_set(constant_node.name, value_node)
       end
     end
 
     def process_block(code)
       result = VI::NIL
-      code.each do |statement|
+      code.compact.each do |statement|
         result = visit statement
       end
       result
@@ -180,7 +185,7 @@ module Foundry
     def extract_primitive_node(body_node)
       first_statement = body_node.array.first
       if first_statement.is_a?(AST::SendWithArguments) &&
-            first_statement.receiver.is_a?(AST::ConstFind) &&
+            first_statement.receiver.is_a?(AST::ConstantAccess) &&
             first_statement.receiver.name == :Foundry &&
             first_statement.name == :primitive &&
             first_statement.arguments.array.length == 1
@@ -202,7 +207,7 @@ module Foundry
 
       @scope.module.define_method(name, method)
 
-      nil
+      VI::NIL
     end
 
     def process_alias(from_node, to_node)
@@ -214,7 +219,7 @@ module Foundry
 
       @scope.module.define_method(to_node.value, method)
 
-      nil
+      VI::NIL
     end
 
     def create_proc_from_block(block_node)
@@ -262,6 +267,13 @@ module Foundry
       else
         raise InterpreterError, "undefined method #{name} for #{receiver.class.name}"
       end
+    end
+
+    def process_begin(rescue_node)
+      # Ignore for now
+      raise NotImplementedError if rescue_node
+
+      VI::NIL
     end
   end
 end

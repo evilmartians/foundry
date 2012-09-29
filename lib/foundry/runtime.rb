@@ -1,7 +1,10 @@
 module Foundry
   class Runtime
+    attr_accessor :graph_ast
+
     def initialize
-      @toplevel = Foundry::VI::Object.allocate
+      @graph_ast = false
+      @toplevel  = Foundry::VI::Object.allocate
     end
 
     def bootstrap(vm_root)
@@ -9,11 +12,11 @@ module Foundry
     end
 
     def load(filename)
-      eval_ast Melbourne::Parser.parse_file(filename), create_toplevel_scope
+      eval_ast Melbourne::Parser19.parse_file(filename), create_toplevel_scope
     end
 
     def eval(string, name, scope=create_toplevel_scope)
-      eval_ast Melbourne::Parser.parse_string(string, name), scope
+      eval_ast Melbourne::Parser19.parse_string(string, name), scope
     end
 
     def create_toplevel_scope
@@ -24,6 +27,10 @@ module Foundry
     protected
 
     def eval_ast(ast, scope)
+      if @graph_ast
+        ast.ascii_graph
+      end
+
       script = Foundry::ScriptBody.new(ast)
       script.execute(scope)
     end
