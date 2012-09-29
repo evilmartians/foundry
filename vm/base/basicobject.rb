@@ -9,14 +9,13 @@ class BasicObject
 
   alias == equal?
 
-  # Stupid Melbourne.
-  #def !
-  #  self.equal?(false) || self.equal?(nil) ? true : false
-  #end
+  def !
+    self.equal?(false) || self.equal?(nil) ? true : false
+  end
 
-  #def !=(other)
-  #  (self == other) ? false : true
-  #end
+  def !=(other)
+    (self == other) ? false : true
+  end
 
   def singleton_method_added(name)
   end
