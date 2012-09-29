@@ -7,7 +7,7 @@ module Foundry
     end
 
     def class
-      VM::Symbol
+      VI::Symbol
     end
 
     def inspect

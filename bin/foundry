@@ -160,7 +160,7 @@ else
           while klass
             if klass.instance_methods(false).any?
               properties["#{klass.name}#methods:"] = \
-                klass.instance_methods(false).join("  ")
+                klass.instance_methods(false).sort.join("  ")
             end
             klass = klass.upperclass
           end
