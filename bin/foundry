@@ -19,8 +19,6 @@ Usage: foundry [options] filename...
   opt :target,  "Target environment",         :default => 'dummy'
   opt :warn,    "Enable or disable warnings", :type => :strings
   opt :feature, "Enable or disable features", :type => :strings
-
-  opt :graph_ast, "Draw AST graphs before executing code", :default => false
 end
 
 class << Foundry::VI::Kernel
@@ -28,19 +26,13 @@ class << Foundry::VI::Kernel
     scope.arguments.each do |arg|
       ::Kernel.p arg
     end
-  end
-end
 
-class SyntaxError
-  def self.from(*args)
-    raise SyntaxError, args.inspect
+    NIL
   end
 end
 
 runtime = Foundry::Runtime.new
 runtime.bootstrap File.join(File.dirname(__FILE__), '../vm')
-
-runtime.graph_ast = opts[:graph_ast]
 
 if ARGV.any?
   ARGV.each do |input|
@@ -53,13 +45,80 @@ if ARGV.any?
 else
   require 'readline'
 
-  puts "Interactive Foundry."
+  puts "Interactive Foundry. Help: \\?."
+
+  host_backtraces = false
+
+  COMMANDS = {
+    '\\?' => [
+      :help,    "Display this screen"
+    ],
+    '\\graph_ast' => [
+      :boolean, "Draw AST graphs after parsing code",
+      ->    { runtime.graph_ast },
+      ->(v) { runtime.graph_ast = v }
+    ],
+    '\\host_backtraces' => [
+      :boolean, "Include host information in backtraces",
+      ->    { host_backtraces },
+      ->(v) { host_backtraces = v }
+    ]
+  }
+
+  Readline.basic_word_break_characters = ' '
+  Readline.completion_append_character = ' '
+  Readline.completion_proc = proc { |s| COMMANDS.keys.grep(/#{Regexp.escape(s)}/) }
 
   scope = runtime.create_toplevel_scope
   scope.eval_scope = true
 
   line  = 1
-  while string = Readline.readline(ANSI.green { "f! " }, true)
+  loop do
+    begin
+      prompt = "\001#{ANSI.green}\002f! \001#{ANSI.reset}\002"
+      string = Readline.readline(prompt, true)
+    rescue Interrupt
+      puts "^C"
+      next
+    end
+
+    if string.start_with? '\\'
+      command, *args = string.split
+
+      unless COMMANDS.key? command
+        puts "Unknown internal command #{command}."
+        next
+      end
+
+      type, info, *actions = COMMANDS[command]
+      case type
+      when :help
+        puts "Command list:"
+        COMMANDS.each do |command, (type, info, *)|
+          puts "%20s %s" % [command, info]
+        end
+
+      when :boolean
+        getter, setter = actions
+
+        state     = getter.()
+        new_state = {
+          'true' => true, 'false' => false,
+          '1'    => true, '0'     => false,
+          '+'    => true, '-'     => false
+        }[args.first]
+
+        unless new_state.nil?
+          setter.(new_state)
+          state = new_state
+        end
+
+        puts "#{command}: #{state}"
+      end
+
+      next
+    end
+
     begin
       p runtime.eval(string, "(repl:#{line})", scope)
     rescue Melbourne::SyntaxError => e
@@ -67,8 +126,23 @@ else
       puts e.code
       puts "#{"~" * (e.column - 1)}^"
     rescue Foundry::InterpreterError => e
+      root_path = File.expand_path('../..', __FILE__)
+
+      puts e.inner_exception.inspect
+      e.interleave_backtraces do |line, is_target|
+        line = line.to_s.sub root_path, 'FOUNDRY'
+
+        if is_target
+          puts "  ! #{line}"
+        else
+          puts "  . #{line}" if host_backtraces
+        end
+      end
+    rescue Exception => e
       puts "#{e.class}: #{e.message}"
-      puts e.backtrace.map { |line| "  " + line }
+      e.backtrace.each do |line|
+        puts "  . #{line}"
+      end
     end
 
     line += 1
