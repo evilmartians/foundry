@@ -268,7 +268,13 @@ module Foundry
     end
 
     def extract_primitive_node(body_node)
-      first_statement = body_node.array.first
+      # TODO underp
+      first_statement = body_node.array[0]
+
+      if first_statement.is_a?(AST::Begin)
+        first_statement = body_node.array[1]
+      end
+
       if first_statement.is_a?(AST::SendWithArguments) &&
             first_statement.receiver.is_a?(AST::ConstantAccess) &&
             first_statement.receiver.name == :Foundry &&
