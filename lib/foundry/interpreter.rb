@@ -1,11 +1,72 @@
 module Foundry
+  class BacktraceItem
+    attr_reader :file, :line, :function
+
+    def initialize(file, line, function)
+      @file, @line, @function = file, line, function
+    end
+
+    def to_s
+      "#{@file}:#{@line}:in `#{@function}'"
+    end
+  end
+
   class InterpreterError < StandardError
+    attr_reader :inner_exception
+    attr_reader :nested_inner_backtrace
+
+    def initialize(interpreter, inner_exception)
+      @interpreter     = interpreter
+      @inner_exception = inner_exception
+      @nested_inner_backtrace = interpreter.collect_backtrace
+    end
+
+    def inner_backtrace
+      @nested_inner_backtrace.flatten
+    end
+
+    def interleave_backtraces(&block)
+      host_index = 0
+
+      @nested_inner_backtrace.each do |nested_parts|
+        nested_parts.each do |target_line|
+          while host_index < backtrace.size
+            host_line = backtrace[host_index]
+            host_index += 1
+
+            yield host_line, false
+
+            if [ 'with_scope', 'evaluate' ].find \
+                  { |target| match_method?(host_line, target) }
+              break
+            end
+          end
+
+          yield target_line, true
+        end
+      end
+
+      while host_index < backtrace.size
+        yield backtrace[host_index]
+        host_index += 1
+      end
+    end
+
+    protected
+
+    def match_method?(line, method)
+      interp_path = File.expand_path('../interpreter.rb', __FILE__)
+      line =~ /#{interp_path}:\d+:in `#{method}'/
+    end
   end
 
   class Interpreter
     AST = Melbourne::AST
 
-    def initialize(executable, scope)
+    attr_reader :outer
+
+    def initialize(outer, executable, scope)
+      @outer       = outer
       @executable  = executable
       @scope       = scope
       @scope_stack = []
@@ -25,7 +86,23 @@ module Foundry
       visit @executable.ast
     end
 
+    def collect_backtrace_part
+      ([ @scope ] + @scope_stack).map do |scope|
+        BacktraceItem.new(@executable.file, scope.line, scope.function).freeze
+      end.freeze
+    end
+
+    def collect_backtrace
+      if @outer
+        ([ collect_backtrace_part ] + @outer.collect_backtrace).freeze
+      else
+        [ collect_backtrace_part ].freeze
+      end
+    end
+
     def visit(node)
+      @scope.line = node.line
+
       case node
       when AST::NilLiteral
         VI::NIL
@@ -79,7 +156,7 @@ module Foundry
                 node.check_for_local, node.privately)
 
       else
-        raise ::Exception, "unknown node #{node.class} on #{node.pretty_inspect}"
+        raise "unknown node #{node.class} on #{node.pretty_inspect}"
       end
     end
 
@@ -87,7 +164,7 @@ module Foundry
       if const = @scope.const_scope.find_const(name)
         const
       else
-        raise InterpreterError, "uninitialized constant #{name}"
+        raise InterpreterError.new(self, "uninitialized constant #{name}")
       end
     end
 
@@ -97,7 +174,7 @@ module Foundry
       if const = modulus.const_get(name)
         const
       else
-        raise InterpreterError, "uninitialized constant #{name}"
+        raise InterpreterError.new(self, "uninitialized constant #{name}")
       end
     end
 
@@ -111,7 +188,7 @@ module Foundry
       value = visit(value_node)
 
       if modulus.const_defined?(constant_node.name)
-        raise InterpreterError, "already initialized constant #{constant_node.name}"
+        raise InterpreterError.new(self, "already initialized constant #{constant_node.name}")
       else
         modulus.const_set(constant_node.name, value_node)
       end
@@ -129,6 +206,12 @@ module Foundry
       unless body_node.is_a? AST::EmptyBody
         const_scope = @scope.const_scope.nest(modulus)
         scope = VariableScope.new(modulus, modulus, nil, const_scope, [], nil)
+
+        if modulus.is_a? VI::Class
+          scope.function = modulus.name || '(anonymous class)'
+        else
+          scope.function = modulus.name || '(anonymous module)'
+        end
 
         with_scope(scope) do
           visit body_node.body
@@ -148,7 +231,7 @@ module Foundry
       modulus = outer_module.const_get(name)
       unless modulus == VI::UNDEF
         unless modulus.is_a? VI::Module
-          raise InterpreterError, "#{name} is not a module"
+          raise InterpreterError.new(self, "#{name} is not a module")
         end
       else
         modulus = VI::Module.allocate(name)
@@ -172,7 +255,7 @@ module Foundry
       klass = outer_module.const_get(name)
       unless klass == VI::UNDEF
         unless klass.is_a? VI::Class
-          raise InterpreterError, "#{name} is not a class"
+          raise InterpreterError.new(self, "#{name} is not a class")
         end
       else
         klass = VI::Class.allocate(superclass, name)
@@ -203,7 +286,7 @@ module Foundry
 
     def process_define(name, arguments_node, body_node)
       primitive = extract_primitive_node(body_node)
-      method = MethodBody.new(body_node, @scope.module, arguments_node, primitive)
+      method = MethodBody.new(body_node, @executable.file, @scope.module, arguments_node, primitive)
 
       @scope.module.define_method(name, method)
 
@@ -214,7 +297,7 @@ module Foundry
       method = @scope.module.instance_method(from_node.value)
 
       if method == VI::UNDEF
-        raise InterpreterError, "undefined method #{name} for #{receiver.class.name}"
+        raise InterpreterError.new(self, "undefined method #{name} for #{receiver.class.name}")
       end
 
       @scope.module.define_method(to_node.value, method)
@@ -223,7 +306,8 @@ module Foundry
     end
 
     def create_proc_from_block(block_node)
-      body = ClosureBody.new(block_node)
+      body = ClosureBody.new(block_node, @executable.file)
+
       BlockEnvironment.new(@scope, body, true)
     end
     protected :create_proc_from_block
@@ -237,10 +321,7 @@ module Foundry
 
     def process_send(receiver_node, name, arguments_node,
               block_node, check_for_local, privately)
-      # MELBOURNE should emit check_for_local, but it doesn't
-      if @scope.eval_scope &&
-            arguments_node.nil? &&
-            @scope.locals.has_key?(name)
+      if check_for_local && @scope.locals.key?(name)
         return @scope.locals[name]
       end
 
@@ -262,10 +343,11 @@ module Foundry
         const_scope = ConstantScope.new([ method.module ])
         scope = VariableScope.new(receiver, method.module, nil,
                   const_scope, arguments, block)
+        scope.function = name.to_s
 
-        method.execute(scope)
+        method.execute(self, scope)
       else
-        raise InterpreterError, "undefined method #{name} for #{receiver.class.name}"
+        raise InterpreterError.new(self, "undefined method #{name} for #{receiver.class.name}")
       end
     end
 

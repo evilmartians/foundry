@@ -12,27 +12,29 @@ module Foundry
     end
 
     def load(filename)
-      eval_ast Melbourne::Parser19.parse_file(filename), create_toplevel_scope
+      eval_ast Melbourne::Parser19.parse_file(filename), filename, create_toplevel_scope
     end
 
     def eval(string, name, scope=create_toplevel_scope)
-      eval_ast Melbourne::Parser19.parse_string(string, name), scope
+      eval_ast Melbourne::Parser19.parse_string(string, name), name, scope
     end
 
     def create_toplevel_scope
       const_scope = Foundry::ConstantScope.new([ Foundry::VI::Object ])
-      Foundry::VariableScope.new(@toplevel, Foundry::VI::Object, nil, const_scope, [], nil)
+      scope = Foundry::VariableScope.new(@toplevel, Foundry::VI::Object, nil, const_scope, [], nil)
+      scope.function = '(toplevel)'
+      scope
     end
 
     protected
 
-    def eval_ast(ast, scope)
+    def eval_ast(ast, file, scope)
       if @graph_ast
         ast.ascii_graph
       end
 
-      script = Foundry::ScriptBody.new(ast)
-      script.execute(scope)
+      script = Foundry::ScriptBody.new(ast, file)
+      script.execute(nil, scope)
     end
 
     def load_package(directory)

@@ -1,13 +1,14 @@
 module Foundry
   class Executable < VMImmediate
-    attr_reader :ast
+    attr_reader :ast, :file
 
-    def initialize(ast)
-      @ast = ast
+    def initialize(ast, file)
+      @ast  = ast
+      @file = file
     end
 
-    def execute(scope)
-      interp = Interpreter.new(self, scope)
+    def execute(outer, scope)
+      interp = Interpreter.new(outer, self, scope)
       interp.evaluate
     end
   end

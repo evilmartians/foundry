@@ -3,14 +3,14 @@ module Foundry
     attr_reader :module
     attr_reader :parameters
 
-    def initialize(ast, modulus, parameters, primitive)
-      super(ast)
+    def initialize(ast, file, modulus, parameters, primitive)
+      super(ast, file)
       @module     = modulus
       @parameters = parameters
       @primitive  = primitive
     end
 
-    def execute(scope)
+    def execute(outer, scope)
       if @primitive
         if value = @module.__send__(:"_#{@primitive}", scope)
           return value
