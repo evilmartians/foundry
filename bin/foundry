@@ -6,7 +6,6 @@ end
 
 require 'trollop'
 require 'foundry'
-require 'ansi/code'
 require 'pp'
 
 opts = Trollop::options do
@@ -22,7 +21,14 @@ Usage: foundry [options] filename...
 end
 
 class << Foundry::VI::Kernel
-  def _trace(scope)
+  def _repl(interp, scope)
+    repl = ::Foundry::REPL.new($runtime, interp.innermost_scope)
+    repl.invoke!
+
+    NIL
+  end
+
+  def _trace(interp, scope)
     scope.arguments.each do |arg|
       ::Kernel.p arg
     end
@@ -31,180 +37,25 @@ class << Foundry::VI::Kernel
   end
 end
 
-runtime = Foundry::Runtime.new
-runtime.bootstrap File.join(File.dirname(__FILE__), '../vm')
+$runtime = Foundry::Runtime.new
+$runtime.bootstrap File.join(File.dirname(__FILE__), '../vm')
+
+$runtime.eval <<-REPL, '(prelude)'
+module Kernel
+  def repl!
+    Foundry.primitive :repl
+  end
+end
+REPL
 
 if ARGV.any?
   ARGV.each do |input|
     if input == '-'
-      runtime.eval STDIN.read, '(stdin)'
+      $runtime.eval STDIN.read, '(stdin)'
     else
-      runtime.load input
+      $runtime.load input
     end
   end
 else
-  require 'readline'
-
-  puts "Interactive Foundry. Help: \\?."
-
-  host_backtraces = false
-
-  COMMANDS = {
-    '\\?' => [
-      :help,    ["", "Display this screen"]
-    ],
-    '\\return' => [
-      :return,  ["", "(or ^D) Return from innermost REPL"]
-    ],
-    '\\quit' => [
-      :quit,    ["", "Terminate interpreter"]
-    ],
-    '\\graph_ast' => [
-      :boolean, [":bool", "Draw AST graphs after parsing code"],
-      ->    { runtime.graph_ast },
-      ->(v) { runtime.graph_ast = v }
-    ],
-    '\\host_backtrace' => [
-      :boolean, [":bool", "Include host information in backtraces"],
-      ->    { host_backtraces },
-      ->(v) { host_backtraces = v }
-    ],
-    '\\ls' => [
-      :ls_expr, [":expr", "Evaluate expression and describe result"]
-    ],
-    '\\ls-id' => [
-      :ls_id,   [":id", "Describe object by id"]
-    ]
-  }
-
-  Readline.basic_word_break_characters = ' '
-  Readline.completion_append_character = ' '
-  Readline.completion_proc = proc { |s| COMMANDS.keys.grep(/#{Regexp.escape(s)}/) }
-
-  scope = runtime.create_toplevel_scope
-  scope.eval_scope = true
-
-  line  = 1
-  loop do
-    begin
-      prompt = "\001#{ANSI.green}\002f! \001#{ANSI.reset}\002"
-      string = Readline.readline(prompt, true)
-    rescue Interrupt
-      puts "^C"
-      next
-    end
-
-    break if string.nil?
-
-    begin
-      if string.start_with? '\\'
-        command, arg_line = string.split(/\s/, 2)
-
-        arg_line ||= ''
-        args       = arg_line.split
-
-        unless COMMANDS.key? command
-          puts "Unknown internal command #{command}."
-          next
-        end
-
-        type, info, *actions = COMMANDS[command]
-        case type
-        when :help
-          puts "Command list:"
-          COMMANDS.each do |command, (type, (params, help), *)|
-            puts "%20s %-8s %s" % [command, params, help]
-          end
-
-        when :boolean
-          getter, setter = actions
-
-          state     = getter.()
-          new_state = {
-            'true' => true, 'false' => false,
-            '1'    => true, '0'     => false,
-            '+'    => true, '-'     => false
-          }[args.first]
-
-          unless new_state.nil?
-            setter.(new_state)
-            state = new_state
-          end
-
-          puts "#{command}: #{state}"
-
-        when :ls_expr, :ls_id
-          if type == :ls_expr
-            object = runtime.eval(arg_line, "(ls-expr)", scope)
-          else
-            object = ObjectSpace._id2ref(args.first.to_i)
-          end
-
-          unless object.__vm_object?
-            puts "Not a VM object."
-            next
-          end
-
-          properties = {
-            "instance of" => object.class.name,
-          }
-
-          if object.instance_variables.any?
-            properties["instance variables"] = \
-              object.instance_variables.map do |ivar|
-                "@#{ivar}=#{object.instance_variable_get(ivar).inspect}"
-              end
-          end
-
-          klass = object.class
-          while klass
-            if klass.instance_methods(false).any?
-              properties["#{klass.name}#methods:"] = \
-                klass.instance_methods(false).sort.join("  ")
-            end
-            klass = klass.upperclass
-          end
-
-          puts "Object #{object.__id__}:"
-          properties.each do |property, value|
-            print "  ", ANSI.bright, ANSI.white, property,
-                        ANSI.reset, " ", value, "\n"
-          end
-
-        when :return, :quit
-          exit!
-        end
-
-        next
-      end
-
-      p runtime.eval(string, "(repl:#{line})", scope)
-    rescue Melbourne::SyntaxError => e
-      puts e.message
-      puts e.code
-      puts "#{"~" * (e.column - 1)}^"
-    rescue Foundry::InterpreterError => e
-      root_path = File.expand_path('../..', __FILE__)
-
-      puts e.inner_exception.inspect
-      e.interleave_backtraces do |line, is_target|
-        line = line.to_s
-        line = line.sub root_path + '/lib/foundry', 'FOUNDRY_LIB'
-        line = line.sub root_path + '/bin',         'FOUNDRY_BIN'
-
-        if is_target
-          puts "  ! #{line}"
-        else
-          puts "  . #{line}" if host_backtraces
-        end
-      end
-    rescue Exception => e
-      puts "#{e.class}: #{e.message}"
-      e.backtrace.each do |line|
-        puts "  . #{line}"
-      end
-    end
-
-    line += 1
-  end
+  $runtime.eval 'repl!', '(prelude)'
 end

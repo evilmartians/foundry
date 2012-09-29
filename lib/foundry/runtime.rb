@@ -7,8 +7,10 @@ module Foundry
       @toplevel  = Foundry::VI::Object.allocate
     end
 
+    VM_ROOT = File.expand_path('../../../vm/', __FILE__)
+
     def bootstrap(vm_root)
-      load_package(File.join(vm_root, 'base'))
+      load_package(File.join(VM_ROOT, 'base'))
     end
 
     def load(filename)

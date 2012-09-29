@@ -1,65 +1,4 @@
 module Foundry
-  class BacktraceItem
-    attr_reader :file, :line, :function
-
-    def initialize(file, line, function)
-      @file, @line, @function = file, line, function
-    end
-
-    def to_s
-      "#{@file}:#{@line}:in `#{@function}'"
-    end
-  end
-
-  class InterpreterError < StandardError
-    attr_reader :inner_exception
-    attr_reader :nested_inner_backtrace
-
-    def initialize(interpreter, inner_exception)
-      @interpreter     = interpreter
-      @inner_exception = inner_exception
-      @nested_inner_backtrace = interpreter.collect_backtrace
-    end
-
-    def inner_backtrace
-      @nested_inner_backtrace.flatten
-    end
-
-    def interleave_backtraces(&block)
-      host_index = 0
-
-      @nested_inner_backtrace.each do |nested_parts|
-        nested_parts.each do |target_line|
-          while host_index < backtrace.size
-            host_line = backtrace[host_index]
-            host_index += 1
-
-            yield host_line, false
-
-            if [ 'with_scope', 'evaluate' ].find \
-                  { |target| match_method?(host_line, target) }
-              break
-            end
-          end
-
-          yield target_line, true
-        end
-      end
-
-      while host_index < backtrace.size
-        yield backtrace[host_index]
-        host_index += 1
-      end
-    end
-
-    protected
-
-    def match_method?(line, method)
-      interp_path = File.expand_path('../interpreter.rb', __FILE__)
-      line =~ /#{interp_path}:\d+:in `#{method}'/
-    end
-  end
-
   class Interpreter
     AST = Melbourne::AST
 
@@ -82,8 +21,8 @@ module Foundry
     end
     protected :with_scope
 
-    def evaluate
-      visit @executable.ast
+    def innermost_scope
+      @scope
     end
 
     def collect_backtrace_part
@@ -98,6 +37,10 @@ module Foundry
       else
         [ collect_backtrace_part ].freeze
       end
+    end
+
+    def evaluate
+      visit @executable.ast
     end
 
     def visit(node)
