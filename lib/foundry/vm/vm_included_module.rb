@@ -7,6 +7,7 @@ module Foundry
       super(klass)
 
       @module       = module_
+      @name         = module_.name
       @upperclass   = upperclass
       @const_table  = module_.const_table
       @method_table = module_.method_table

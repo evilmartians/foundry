@@ -54,7 +54,7 @@ module Foundry
     String      = Class.allocate(Object, :String, VMString)
 
     Numeric     = Class.allocate(Object, :Numeric,  VMNumeric)
-    Integer     = Class.allocate(Integer, :Integer, VMInteger)
+    Integer     = Class.allocate(Numeric, :Integer, VMInteger)
 
     Foundry     = Module.allocate(:Foundry)
 

@@ -23,7 +23,11 @@ module Foundry
     end
 
     def inspect
-      "{Class #{@name} < #{@superclass.name}}"
+      if @superclass
+        "{Class #{@name} < #{@superclass.name}}"
+      else
+        "{Class #{@name}"
+      end
     end
   end
 end

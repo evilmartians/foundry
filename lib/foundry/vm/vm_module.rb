@@ -64,7 +64,7 @@ module Foundry
     end
 
     def instance_methods(search_parent=true)
-      if @upperclass
+      if search_parent && @upperclass
         (@method_table.keys + @upperclass.instance_methods).uniq
       else
         @method_table.keys

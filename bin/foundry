@@ -51,17 +51,23 @@ else
 
   COMMANDS = {
     '\\?' => [
-      :help,    "Display this screen"
+      :help,    ["", "Display this screen"]
     ],
     '\\graph_ast' => [
-      :boolean, "Draw AST graphs after parsing code",
+      :boolean, [":bool", "Draw AST graphs after parsing code"],
       ->    { runtime.graph_ast },
       ->(v) { runtime.graph_ast = v }
     ],
     '\\host_backtraces' => [
-      :boolean, "Include host information in backtraces",
+      :boolean, [":bool", "Include host information in backtraces"],
       ->    { host_backtraces },
       ->(v) { host_backtraces = v }
+    ],
+    '\\ls' => [
+      :ls_expr, [":expr", "Evaluate expression and describe result"]
+    ],
+    '\\ls-id' => [
+      :ls_id,   [":id", "Describe object by id"]
     ]
   }
 
@@ -82,44 +88,87 @@ else
       next
     end
 
-    if string.start_with? '\\'
-      command, *args = string.split
+    break if string.nil?
 
-      unless COMMANDS.key? command
-        puts "Unknown internal command #{command}."
+    begin
+      if string.start_with? '\\'
+        command, arg_line = string.split(/\s/, 2)
+
+        arg_line ||= ''
+        args       = arg_line.split
+
+        unless COMMANDS.key? command
+          puts "Unknown internal command #{command}."
+          next
+        end
+
+        type, info, *actions = COMMANDS[command]
+        case type
+        when :help
+          puts "Command list:"
+          COMMANDS.each do |command, (type, (params, help), *)|
+            puts "%20s %-10s %s" % [command, params, help]
+          end
+
+        when :boolean
+          getter, setter = actions
+
+          state     = getter.()
+          new_state = {
+            'true' => true, 'false' => false,
+            '1'    => true, '0'     => false,
+            '+'    => true, '-'     => false
+          }[args.first]
+
+          unless new_state.nil?
+            setter.(new_state)
+            state = new_state
+          end
+
+          puts "#{command}: #{state}"
+
+        when :ls_expr, :ls_id
+          if type == :ls_expr
+            object = runtime.eval(arg_line, "(ls-expr)", scope)
+          else
+            object = ObjectSpace._id2ref(args.first.to_i)
+          end
+
+          unless object.__vm_object?
+            puts "Not a VM object."
+            next
+          end
+
+          properties = {
+            "instance of" => object.class.name,
+          }
+
+          if object.instance_variables.any?
+            properties["instance variables"] = \
+              object.instance_variables.map do |ivar|
+                "@#{ivar}=#{object.instance_variable_get(ivar).inspect}"
+              end
+          end
+
+          klass = object.class
+          while klass
+            if klass.instance_methods(false).any?
+              properties["#{klass.name}#methods:"] = \
+                klass.instance_methods(false).join("  ")
+            end
+            klass = klass.upperclass
+          end
+
+          puts "Object #{object.__id__}:"
+          properties.each do |property, value|
+            print "  ", ANSI.bright, ANSI.white, property,
+                        ANSI.reset, " ", value, "\n"
+          end
+        end
+
         next
       end
 
-      type, info, *actions = COMMANDS[command]
-      case type
-      when :help
-        puts "Command list:"
-        COMMANDS.each do |command, (type, info, *)|
-          puts "%20s %s" % [command, info]
-        end
-
-      when :boolean
-        getter, setter = actions
-
-        state     = getter.()
-        new_state = {
-          'true' => true, 'false' => false,
-          '1'    => true, '0'     => false,
-          '+'    => true, '-'     => false
-        }[args.first]
-
-        unless new_state.nil?
-          setter.(new_state)
-          state = new_state
-        end
-
-        puts "#{command}: #{state}"
-      end
-
-      next
-    end
-
-    begin
       p runtime.eval(string, "(repl:#{line})", scope)
     rescue Melbourne::SyntaxError => e
       puts e.message
@@ -130,7 +179,9 @@ else
 
       puts e.inner_exception.inspect
       e.interleave_backtraces do |line, is_target|
-        line = line.to_s.sub root_path, 'FOUNDRY'
+        line = line.to_s
+        line = line.sub root_path + '/lib/foundry', 'FOUNDRY_LIB'
+        line = line.sub root_path + '/bin',         'FOUNDRY_BIN'
 
         if is_target
           puts "  ! #{line}"
