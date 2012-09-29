@@ -3,6 +3,10 @@ class NilClass
     false
   end
 
+  def |(other)
+    other
+  end
+
   def ^(other)
     !!other
   end
