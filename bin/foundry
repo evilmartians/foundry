@@ -53,12 +53,18 @@ else
     '\\?' => [
       :help,    ["", "Display this screen"]
     ],
+    '\\return' => [
+      :return,  ["", "(or ^D) Return from innermost REPL"]
+    ],
+    '\\quit' => [
+      :quit,    ["", "Terminate interpreter"]
+    ],
     '\\graph_ast' => [
       :boolean, [":bool", "Draw AST graphs after parsing code"],
       ->    { runtime.graph_ast },
       ->(v) { runtime.graph_ast = v }
     ],
-    '\\host_backtraces' => [
+    '\\host_backtrace' => [
       :boolean, [":bool", "Include host information in backtraces"],
       ->    { host_backtraces },
       ->(v) { host_backtraces = v }
@@ -107,7 +113,7 @@ else
         when :help
           puts "Command list:"
           COMMANDS.each do |command, (type, (params, help), *)|
-            puts "%20s %-10s %s" % [command, params, help]
+            puts "%20s %-8s %s" % [command, params, help]
           end
 
         when :boolean
@@ -164,6 +170,9 @@ else
             print "  ", ANSI.bright, ANSI.white, property,
                         ANSI.reset, " ", value, "\n"
           end
+
+        when :return, :quit
+          exit!
         end
 
         next

@@ -3,6 +3,6 @@ true.rb
 false.rb
 class.rb
 module.rb
-basicobject.rb
+basic_object.rb
 kernel.rb
 object.rb

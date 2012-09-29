@@ -9,6 +9,7 @@ require_relative 'vm/script_body'
 require_relative 'vm/method_body'
 require_relative 'vm/closure_body'
 
+require_relative 'vm/vm_basic_object'
 require_relative 'vm/vm_object'
 
 require_relative 'vm/vm_module'
@@ -28,7 +29,7 @@ require_relative 'vm/vm_integer'
 
 module Foundry
   module VI
-    BasicObject = VMClass.new(nil, nil,         :BasicObject, VMObject)
+    BasicObject = VMClass.new(nil, nil,         :BasicObject, VMBasicObject)
     Object      = VMClass.new(nil, BasicObject, :Object,      VMObject)
     Module      = VMClass.new(nil, Object,      :Module,      VMModule)
     Class       = VMClass.new(nil, Module,      :Class,       VMClass)

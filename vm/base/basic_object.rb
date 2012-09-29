@@ -9,6 +9,14 @@ class BasicObject
 
   alias == equal?
 
+  def __id__
+    raise NotImplementedError, "Foundry does not implement object_id"
+  end
+
+  def __send__(method, *args, &block)
+    Foundry.primitive :send
+  end
+
   def !
     self.equal?(false) || self.equal?(nil) ? true : false
   end

@@ -1,4 +1,4 @@
-class Class
+class Class < Module
   def allocate
     Foundry.primitive :allocate
   end

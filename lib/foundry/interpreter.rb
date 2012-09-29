@@ -161,7 +161,8 @@ module Foundry
     end
 
     def process_constant_access(name)
-      if const = @scope.const_scope.find_const(name)
+      const = @scope.const_scope.find_const(name)
+      unless const == VI::UNDEF
         const
       else
         raise InterpreterError.new(self, "uninitialized constant #{name}")
@@ -171,7 +172,8 @@ module Foundry
     def process_scoped_constant(name, parent_node)
       modulus = visit(parent_node)
 
-      if const = modulus.const_get(name)
+      const = modulus.const_get(name)
+      unless const == VI::UNDEF
         const
       else
         raise InterpreterError.new(self, "uninitialized constant #{name}")
@@ -190,7 +192,7 @@ module Foundry
       if modulus.const_defined?(constant_node.name)
         raise InterpreterError.new(self, "already initialized constant #{constant_node.name}")
       else
-        modulus.const_set(constant_node.name, value_node)
+        modulus.const_set(constant_node.name, value)
       end
     end
 

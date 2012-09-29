@@ -31,3 +31,5 @@ class NilClass
     0
   end
 end
+
+NIL = nil

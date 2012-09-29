@@ -37,5 +37,20 @@ module Foundry
     def instance_variable_set(ivar, value)
       VI::NIL
     end
+
+    def _equal?(interp, scope)
+      other = scope.arguments.first
+      equal?(other) ? VI::TRUE : VI::FALSE
+    end
+
+    def _send(interp, scope)
+      method_name = scope.arguments.first.value # TODO
+      method = scope.self.method(method_name)
+
+      scope = VariableScope.new(scope.self, scope.module, nil,
+            scope.const_scope, scope.arguments[1..-1], scope.block)
+      scope.function = method_name.to_s
+      method.execute(interp, scope)
+    end
   end
 end

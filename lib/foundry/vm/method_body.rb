@@ -12,7 +12,7 @@ module Foundry
 
     def execute(outer, scope)
       if @primitive
-        if value = @module.__send__(:"_#{@primitive}", scope)
+        if value = @module.__send__(:"_#{@primitive}", outer, scope)
           return value
         end
       end

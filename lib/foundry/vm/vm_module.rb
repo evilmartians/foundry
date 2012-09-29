@@ -19,7 +19,7 @@ module Foundry
       @upperclass = VI::Foundry_IncludedModule.allocate(modulus, @upperclass)
     end
 
-    def _include(scope)
+    def _include(interp, scope)
       scope.self.include(*scope.arguments)
     end
 
