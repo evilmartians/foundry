@@ -1,5 +1,7 @@
 module Foundry
   class Runtime
+    attr_reader   :toplevel
+
     attr_accessor :graph_ast
 
     def initialize
