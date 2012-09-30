@@ -3,6 +3,7 @@ module Foundry
     attr_reader   :toplevel
 
     attr_accessor :graph_ast
+    attr_accessor :graph_ir
 
     def initialize
       @graph_ast = false

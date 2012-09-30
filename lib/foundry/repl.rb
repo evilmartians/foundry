@@ -56,9 +56,14 @@ module Foundry
       exit!
     end
 
-    command 'graph_ast', ":bool", "Draw AST graphs after parsing code"
+    command 'graph_ast', ":bool", "Draw Melbourne AST graphs after parsing code"
     def graph_ast(cmdline)
       boolean_command 'graph_ast', cmdline, @runtime, :graph_ast
+    end
+
+    command 'graph_ir', ":bool", "Display IR after parsing code"
+    def graph_ir(cmdline)
+      boolean_command 'graph_ir', cmdline, @runtime, :graph_ir
     end
 
     command 'include_host', ":bool", "Include host information in backtraces"
