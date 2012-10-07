@@ -247,8 +247,12 @@ module Foundry
     def process_alias(from_node, to_node)
       method = @scope.module.instance_method(from_node.value)
 
+      if method == VI::UNDEF && @scope.module.is_a?(VI::Module)
+        method = @scope.module.method(from_node.value)
+      end
+
       if method == VI::UNDEF
-        raise InterpreterError.new(self, "undefined method #{from_node.value} for #{@scope.self.class.name}")
+        raise InterpreterError.new(self, "undefined method #{from_node.value} for #{@scope.module.name}")
       end
 
       @scope.module.define_method(to_node.value, method)
