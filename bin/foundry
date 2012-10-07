@@ -37,8 +37,15 @@ class << Foundry::VI::Kernel
   end
 end
 
-$runtime = Foundry::Runtime.new
-$runtime.bootstrap File.join(File.dirname(__FILE__), '../vm')
+begin
+  $runtime = Foundry::Runtime.new
+  $runtime.bootstrap File.join(File.dirname(__FILE__), '../vm')
+rescue Foundry::InterpreterError => e
+  puts "Bootstrap error:"
+  puts e.inner_exception.inspect
+  puts e.inner_backtrace
+  exit!
+end
 
 $runtime.eval <<-REPL, '(prelude)'
 module Kernel

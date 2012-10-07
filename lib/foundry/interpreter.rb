@@ -93,10 +93,10 @@ module Foundry
 
       when AST::SendWithArguments
         process_send(node.receiver, node.name, node.arguments, node.block,
-                node.check_for_local, node.privately)
+                node.vcall_style, node.privately)
       when AST::Send
         process_send(node.receiver, node.name, nil, node.block,
-                node.check_for_local, node.privately)
+                node.vcall_style, node.privately)
 
       else
         raise "unknown node #{node.class} on #{node.pretty_inspect}"
@@ -248,7 +248,7 @@ module Foundry
       method = @scope.module.instance_method(from_node.value)
 
       if method == VI::UNDEF
-        raise InterpreterError.new(self, "undefined method #{name} for #{receiver.class.name}")
+        raise InterpreterError.new(self, "undefined method #{from_node.value} for #{@scope.self.class.name}")
       end
 
       @scope.module.define_method(to_node.value, method)
@@ -271,8 +271,8 @@ module Foundry
     protected :expand_arguments
 
     def process_send(receiver_node, name, arguments_node,
-              block_node, check_for_local, privately)
-      if check_for_local && @scope.locals.key?(name)
+              block_node, vcall_style, privately)
+      if vcall_style && @scope.locals.key?(name)
         return @scope.locals[name]
       end
 
