@@ -13,6 +13,7 @@ module Foundry
       @interp    = interp
       @scope     = interp.innermost_scope
 
+      @buffer    = ""
       @terminate = false
 
       @interleave_backtraces = false
@@ -149,15 +150,22 @@ module Foundry
       end
     end
 
-    PROMPT = "\001#{ANSI.green}\002f! \001#{ANSI.reset}\002"
+    INITIAL_PROMPT  = "\001#{ANSI.green}\002f! \001#{ANSI.reset}\002"
+    CONTINUE_PROMPT = "\001#{ANSI.bold}#{ANSI.white}\002 > \001#{ANSI.reset}\002"
 
     def invoke!
       puts "Foundry REPL. Type \\? to view command reference."
       puts "Self: #{@scope.self.inspect}"
 
       until @terminate
+        if @buffer.empty?
+          prompt = INITIAL_PROMPT
+        else
+          prompt = CONTINUE_PROMPT
+        end
+
         begin
-          string = Readline.readline(PROMPT, true)
+          string = Readline.readline(prompt, true)
         rescue Interrupt
           puts "^C"
           next
@@ -165,14 +173,26 @@ module Foundry
 
         if string.nil?
           puts "^D"
-          break
+
+          if @buffer.empty?
+            break
+          else
+            @buffer = ""
+            next
+          end
         end
 
-        execute(string)
+        unless execute_as_command(string)
+          @buffer << string << "\n"
+
+          if execute_as_code(@buffer)
+            @buffer = ""
+          end
+        end
       end
     end
 
-    def execute(string)
+    def execute_as_command(string)
       if string.start_with? '\\'
         command, arg_line = string.split(/\s/, 2)
 
@@ -182,9 +202,21 @@ module Foundry
         end
 
         send COMMANDS[command][:callback], arg_line
+
+        true
       else
+        false
+      end
+    end
+
+    def execute_as_code(string)
+      unless Multiline.multiline? string
         result = safe_eval(string)
         p result if result.__vm_object?
+
+        true
+      else
+        false
       end
     end
 
