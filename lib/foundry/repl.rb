@@ -112,16 +112,21 @@ module Foundry
           end
       end
 
-      klass = object.class
+      if object.is_a? VI::Module
+        klass = object
+      else
+        klass = object.class
+      end
+
       while klass
         if klass.instance_methods(false).any?
           properties["#{klass.name}#methods:"] = \
             klass.instance_methods(false).sort.join("  ")
         end
-        klass = klass.upperclass
+        klass = (klass.upperclass unless object.is_a? VI::Module)
       end
 
-      puts "Object #{object.__id__}:"
+      puts "Object #{object.__id__}: #{object.inspect}"
       properties.each do |property, value|
         print "  ", ANSI.bright, ANSI.white, property,
                     ANSI.reset, " ", value, "\n"
