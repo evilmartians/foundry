@@ -15,9 +15,10 @@ Usage: foundry [options] filename...
 
   EOS
 
-  opt :target,  "Target environment",         :default => 'dummy'
-  opt :warn,    "Enable or disable warnings", :type => :strings
-  opt :feature, "Enable or disable features", :type => :strings
+  opt :target,   "Target environment",         :default => 'dummy'
+  opt :warn,     "Enable or disable warnings", :type => :strings
+  opt :feature,  "Enable or disable features", :type => :strings
+  opt :evaluate, "Evaluate code",              :type => :strings
 end
 
 class << Foundry::VI::Kernel
@@ -55,7 +56,13 @@ module Kernel
 end
 REPL
 
-if ARGV.any?
+if opts[:evaluate]
+  opts[:evaluate].each do |value|
+    $runtime.eval value, '(-e)'
+  end
+end
+
+if ARGV.any? || opts[:evaluate]
   ARGV.each do |input|
     if input == '-'
       $runtime.eval STDIN.read, '(stdin)'

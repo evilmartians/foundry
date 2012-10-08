@@ -7,6 +7,7 @@ module Foundry
 
     def initialize
       @graph_ast = false
+      @graph_ir  = true
       @toplevel  = Foundry::VI::Object.allocate
     end
 
@@ -33,12 +34,20 @@ module Foundry
 
     protected
 
-    def eval_ast(ast, file, scope)
+    def eval_ast(melbourne_ast, file, scope)
+      ast = AST::Node.from_sexp(melbourne_ast.to_sexp)
+
       if @graph_ast
-        ast.ascii_graph
+        p ast
       end
 
-      script = Foundry::ScriptBody.new(ast, file)
+      ir, = AST::Prepare::Melbourne.new.transform(ast)
+
+      if @graph_ir
+        p ir
+      end
+
+      script = Foundry::ScriptBody.new(melbourne_ast, file)
       script.execute(nil, scope)
     end
 

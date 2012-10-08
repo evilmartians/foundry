@@ -106,7 +106,7 @@ module Foundry
       }
 
       if object.instance_variables.any?
-        properties["instance variables"] = \
+        properties["instance variables:"] = \
           object.instance_variables.map do |ivar|
             "@#{ivar}=#{object.instance_variable_get(ivar).inspect}"
           end
@@ -203,10 +203,9 @@ module Foundry
 
         unless COMMANDS.key? command
           puts "Unknown internal command #{command}."
-          return
+        else
+          send COMMANDS[command][:callback], arg_line
         end
-
-        send COMMANDS[command][:callback], arg_line
 
         true
       else

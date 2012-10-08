@@ -18,6 +18,7 @@ Gem::Specification.new do |gem|
 
   gem.add_dependency "trollop"
   gem.add_dependency "melbourne", '>= 2.0.0.beta1'
+  gem.add_dependency "furnace", '= 0.2.6'
   gem.add_dependency "ansi"
 
   gem.add_development_dependency "rake"
