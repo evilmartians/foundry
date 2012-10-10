@@ -14,7 +14,7 @@ module Foundry
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
     def bootstrap(vm_root)
-      load_package(File.join(VM_ROOT, 'base'))
+      load_package(File.join(VM_ROOT, 'common'))
     end
 
     def load(filename)
@@ -54,8 +54,10 @@ module Foundry
 
     def load_package(directory)
       package = File.read(File.join(directory, 'load_order.txt'))
+
       package.lines.each do |entry|
         puts "Loading #{entry}"
+
         entry_path = File.join(directory, entry.rstrip)
         if File.directory?(entry_path)
           load_package(entry_path)
