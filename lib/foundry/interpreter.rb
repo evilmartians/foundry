@@ -270,5 +270,12 @@ module Foundry
       end
     end
 
+    def on_primitive(node)
+      name, arguments_node = node.children
+      arguments = visit(arguments_node)
+
+      Primitives.eval(name, self, @scope, arguments)
+    end
+
   end
 end

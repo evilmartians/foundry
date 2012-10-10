@@ -21,55 +21,57 @@ Usage: foundry [options] filename...
   opt :evaluate, "Evaluate code",              :type => :strings
 end
 
-class << Foundry::VI::Kernel
-  def _repl(interp, scope)
-    repl = ::Foundry::REPL.new($runtime, interp)
+module StandalonePrimitives
+  include Foundry::Primitives
+
+  def self.eval_repl(interp, scope, args)
+    repl = Foundry::REPL.new($runtime, interp)
     repl.invoke!
 
-    NIL
+    Foundry::VI::NIL
   end
 
-  def _trace(interp, scope)
+  def self.eval_trace(interp, scope, args)
     scope.arguments.each do |arg|
       ::Kernel.p arg
     end
 
-    NIL
+    Foundry::VI::NIL
   end
 end
 
 begin
   $runtime = Foundry::Runtime.new
   $runtime.bootstrap File.join(File.dirname(__FILE__), '../vm')
+
+  $runtime.eval <<-REPL, '(prelude)'
+  module Kernel
+    def repl!
+      Foundry.primitive :repl
+    end
+  end
+  REPL
+
+  if opts[:evaluate]
+    opts[:evaluate].each do |value|
+      $runtime.eval value, '(-e)'
+    end
+  end
+
+  if ARGV.any? || opts[:evaluate]
+    ARGV.each do |input|
+      if input == '-'
+        $runtime.eval STDIN.read, '(stdin)'
+      else
+        $runtime.load input
+      end
+    end
+  else
+    $runtime.eval 'repl!', '(prelude)'
+  end
 rescue Foundry::InterpreterError => e
-  puts "Bootstrap error:"
+  puts "Unhandled exception:"
   puts e.inner_exception.inspect
   puts e.inner_backtrace
   exit!
-end
-
-$runtime.eval <<-REPL, '(prelude)'
-module Kernel
-  def repl!
-    Foundry.primitive :repl
-  end
-end
-REPL
-
-if opts[:evaluate]
-  opts[:evaluate].each do |value|
-    $runtime.eval value, '(-e)'
-  end
-end
-
-if ARGV.any? || opts[:evaluate]
-  ARGV.each do |input|
-    if input == '-'
-      $runtime.eval STDIN.read, '(stdin)'
-    else
-      $runtime.load input
-    end
-  end
-else
-  $runtime.eval 'repl!', '(prelude)'
 end

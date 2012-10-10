@@ -19,10 +19,6 @@ module Foundry
       @upperclass = VI::Foundry_IncludedModule.allocate(modulus, @upperclass)
     end
 
-    def _include(interp, scope)
-      scope.self.include(*scope.arguments)
-    end
-
     def ancestors
       if @upperclass
         [ self ] + @upperclass.ancestors

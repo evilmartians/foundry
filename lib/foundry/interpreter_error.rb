@@ -1,4 +1,4 @@
-require_relative 'interpreter_error'
+require_relative 'backtrace_item'
 
 module Foundry
   class InterpreterError < StandardError

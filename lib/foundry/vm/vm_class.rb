@@ -18,10 +18,6 @@ module Foundry
       end
     end
 
-    def _allocate(interp, scope)
-      scope.self.allocate
-    end
-
     def inspect
       if @superclass
         "{Class #{@name} < #{@superclass.name}}"
