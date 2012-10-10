@@ -1,6 +1,6 @@
 module Foundry
   class Interpreter
-    AST = Melbourne::AST
+    include Furnace::AST::StrictVisitor
 
     attr_reader :outer
 
@@ -43,112 +43,46 @@ module Foundry
       visit @executable.ast
     end
 
+    #
+    # Visitor
+    #
+
     def visit(node)
       @scope.line = node.line
-
-      case node
-      when AST::NilLiteral
-        VI::NIL
-      when AST::TrueLiteral
-        VI::TRUE
-      when AST::FalseLiteral
-        VI::FALSE
-
-      when AST::SymbolLiteral
-        VMSymbol.new(node.value)
-      when AST::FixnumLiteral
-        VI::Integer.allocate(node.value)
-      when AST::StringLiteral
-        VI::String.allocate(node.string)
-
-      when AST::Self
-        @scope.self
-
-      when AST::ConstantAccess
-        process_constant_access(node.name)
-      when AST::ScopedConstant
-        process_scoped_constant(node.name, node.parent)
-      when AST::ConstantAssignment
-        process_constant_assignment(node.constant, node.value)
-
-      when AST::Block
-        process_block(node.array)
-
-      when AST::Begin
-        process_begin(node.rescue)
-
-      when AST::Module
-        process_module(node.name, node.body)
-      when AST::Class
-        process_class(node.name, node.superclass, node.body)
-      when AST::Define
-        process_define(node.name, node.arguments, node.body)
-      when AST::Alias
-        process_alias(node.from, node.to)
-
-      when AST::LocalVariableAccess
-        @scope.locals[node.name]
-      when AST::LocalVariableAssignment
-        @scope.locals[node.name] = visit(node.value)
-
-      when AST::SendWithArguments
-        process_send(node.receiver, node.name, node.arguments, node.block,
-                node.vcall_style, node.privately)
-      when AST::Send
-        process_send(node.receiver, node.name, nil, node.block,
-                node.vcall_style, node.privately)
-
-      else
-        raise "unknown node #{node.class} on #{node.pretty_inspect}"
-      end
+      super
     end
 
-    def process_constant_access(name)
-      const = @scope.const_scope.find_const(name)
-      unless const == VI::UNDEF
-        const
-      else
-        raise InterpreterError.new(self, "uninitialized constant #{name}")
-      end
+    def handler_missing(node)
+      raise "Missing handler for node #{node.inspect}"
     end
 
-    def process_scoped_constant(name, parent_node)
-      modulus = visit(parent_node)
+    #
+    # Literals
+    #
 
-      const = modulus.const_get(name)
-      unless const == VI::UNDEF
-        const
-      else
-        raise InterpreterError.new(self, "uninitialized constant #{name}")
-      end
+    def on_nil(node)
+      VI::NIL
     end
 
-    def process_constant_assignment(constant_node, value_node)
-      if constant_node.is_a? AST::ScopedConstant
-        modulus = visit(constant_node.parent)
-      else
-        modulus = @scope.const_scope.nesting.first
-      end
-
-      value = visit(value_node)
-
-      if modulus.const_defined?(constant_node.name)
-        raise InterpreterError.new(self, "already initialized constant #{constant_node.name}")
-      else
-        modulus.const_set(constant_node.name, value)
-      end
+    def on_false(node)
+      VI::FALSE
     end
 
-    def process_block(code)
-      result = VI::NIL
-      code.compact.each do |statement|
-        result = visit statement
-      end
-      result
+    def on_true(node)
+      VI::TRUE
     end
+
+    def on_lit_symbol(node)
+      value, = node.children
+      VMSymbol.new(value)
+    end
+
+    #
+    # Constants
+    #
 
     def push_cref_and_process_body(modulus, body_node)
-      unless body_node.is_a? AST::EmptyBody
+      if body_node
         const_scope = @scope.const_scope.nest(modulus)
         scope = VariableScope.new(modulus, modulus, nil, const_scope, [], nil)
 
@@ -159,19 +93,72 @@ module Foundry
         end
 
         with_scope(scope) do
-          visit body_node.body
+          visit body_node
         end
+      else
+        VI::NIL
       end
     end
     protected :push_cref_and_process_body
 
-    def process_module(name_node, body_node)
-      name = name_node.name
-      if name_node.is_a? AST::ModuleName
+    def parse_scoped_const(name_node)
+      if name_node.is_a? Symbol
         outer_module = @scope.const_scope.nesting.first
-      elsif name_node.is_a? AST::ScopedModuleName
-        outer_module = visit(name_node.parent)
+        name         = name_node
+      elsif name_node.type == :colon2
+        outer_node, name = name_node.children
+        outer_module = visit(outer_node)
       end
+
+      [ outer_module, name ]
+    end
+    protected :parse_scoped_const
+
+    def on_const(node)
+      name, = node.children
+
+      const = @scope.const_scope.find_const(name)
+      unless const == VI::UNDEF
+        const
+      else
+        raise InterpreterError.new(self, "uninitialized constant #{name}")
+      end
+    end
+
+    def on_colon2(node)
+      parent_node, name = node.children
+
+      modulus = visit(parent_node)
+
+      const = modulus.const_get(name)
+      unless const == VI::UNDEF
+        const
+      else
+        raise InterpreterError.new(self, "uninitialized constant #{name} for #{modulus.name}")
+      end
+    end
+
+    def on_cdecl(node)
+      name_node, value_node = node.children
+
+      outer_module, name = parse_scoped_const(name_node)
+      value = visit(value_node)
+
+      if outer_module.const_defined?(name)
+        raise InterpreterError.new(self, "already initialized constant #{name}")
+      else
+        outer_module.const_set(name, value)
+      end
+    end
+
+    #
+    # Classes and modules
+    #
+
+    def on_module(node)
+      name_node, body_node = node.children
+
+      outer_module, name = parse_scoped_const(name_node)
 
       modulus = outer_module.const_get(name)
       unless modulus == VI::UNDEF
@@ -186,16 +173,16 @@ module Foundry
       push_cref_and_process_body(modulus, body_node)
     end
 
-    def process_class(name_node, superclass_node, body_node)
-      superclass = visit(superclass_node)
-      superclass = VI::Object if superclass.nil?
+    def on_class(node)
+      name_node, superclass_node, body_node = node.children
 
-      name = name_node.name
-      if name_node.is_a? AST::ClassName
-        outer_module = @scope.const_scope.nesting.first
-      elsif name_node.is_a? AST::ScopedClassName
-        outer_module = visit(name_node.parent)
+      if superclass_node.nil?
+        superclass = VI::Object
+      else
+        superclass = visit(superclass_node)
       end
+
+      outer_module, name = parse_scoped_const(name_node)
 
       klass = outer_module.const_get(name)
       unless klass == VI::UNDEF
@@ -210,33 +197,10 @@ module Foundry
       push_cref_and_process_body(klass, body_node)
     end
 
-    def extract_primitive_node(body_node)
-      # TODO underp
-      first_statement = body_node.array[0]
+    def on_defn(node)
+      name, arguments_node, body_node = node.children
 
-      if first_statement.is_a?(AST::Begin)
-        first_statement = body_node.array[1]
-      end
-
-      if first_statement.is_a?(AST::SendWithArguments) &&
-            first_statement.receiver.is_a?(AST::ConstantAccess) &&
-            first_statement.receiver.name == :Foundry &&
-            first_statement.name == :primitive &&
-            first_statement.arguments.array.length == 1
-
-        first_argument = first_statement.arguments.array.first
-
-        if first_argument.is_a?(AST::SymbolLiteral)
-          body_node.array.delete first_statement
-
-          first_argument.value
-        end
-      end
-    end
-    protected :extract_primitive_node
-
-    def process_define(name, arguments_node, body_node)
-      primitive = extract_primitive_node(body_node)
+      primitive = nil # extract_primitive_node(body_node)
       method = MethodBody.new(body_node, @executable.file, @scope.module, arguments_node, primitive)
 
       @scope.module.define_method(name, method)
@@ -244,60 +208,59 @@ module Foundry
       VI::NIL
     end
 
-    def process_alias(from_node, to_node)
-      method = @scope.module.instance_method(from_node.value)
+    def on_alias(node)
+      (to_name, ), (from_name, ) = node.children.map(&:children)
+
+      method = @scope.module.instance_method(from_name)
 
       if method == VI::UNDEF && @scope.module.is_a?(VI::Module)
-        method = @scope.module.method(from_node.value)
+        method = @scope.module.method(from_name)
       end
 
       if method == VI::UNDEF
-        raise InterpreterError.new(self, "undefined method #{from_node.value} for #{@scope.module.name}")
+        raise InterpreterError.new(self, "undefined method #{from_name} for #{@scope.module.name}")
       end
 
-      @scope.module.define_method(to_node.value, method)
+      @scope.module.define_method(to_name, method)
 
       VI::NIL
     end
 
-    def create_proc_from_block(block_node)
-      body = ClosureBody.new(block_node, @executable.file)
+    #
+    # Calls
+    #
 
-      BlockEnvironment.new(@scope, body, true)
+    def on_block(node)
+      visit_all(node.children).last || VI::NIL
     end
-    protected :create_proc_from_block
 
-    def expand_arguments(arguments_node)
-      arguments_node.array.map do |elem|
+    def on_arglist(node)
+      node.children.map do |elem|
         visit elem
       end
     end
-    protected :expand_arguments
 
-    def process_send(receiver_node, name, arguments_node,
-              block_node, vcall_style, privately)
-      if vcall_style && @scope.locals.key?(name)
-        return @scope.locals[name]
-      end
-
-      if block_node
-        block = create_proc_from_block(block_node)
-      end
+    def on_call(node)
+      receiver_node, name, arguments_node = node.children
 
       if arguments_node
-        arguments = expand_arguments(arguments_node)
+        arguments = visit(arguments_node)
       else
         arguments = []
       end
 
-      receiver = visit(receiver_node)
+      if receiver_node
+        receiver = visit(receiver_node)
+      else
+        receiver = @scope.self
+      end
 
       if receiver.respond_to? name
         method = receiver.method(name)
 
         const_scope = ConstantScope.new([ method.module ])
         scope = VariableScope.new(receiver, method.module, nil,
-                  const_scope, arguments, block)
+                  const_scope, arguments, nil)
         scope.function = name.to_s
 
         method.execute(self, scope)
@@ -306,11 +269,5 @@ module Foundry
       end
     end
 
-    def process_begin(rescue_node)
-      # Ignore for now
-      raise NotImplementedError if rescue_node
-
-      VI::NIL
-    end
   end
 end

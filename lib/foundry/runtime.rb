@@ -47,7 +47,7 @@ module Foundry
         p ir
       end
 
-      script = Foundry::ScriptBody.new(melbourne_ast, file)
+      script = Foundry::ScriptBody.new(ir, file)
       script.execute(nil, scope)
     end
 

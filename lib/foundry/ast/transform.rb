@@ -22,5 +22,18 @@ module Foundry::AST
     def on_block(node)
       node.update(:block, visit_all(node.children))
     end
+
+    def on_call(node)
+      receiver, name, args = node.children
+      node.update(:call, [ visit(receiver), name, visit(args) ])
+    end
+
+    def on_arglist(node)
+      node.update(:arglist, visit_all(node.children))
+    end
+
+    def on_alias(node)
+      node.update(:alias, visit_all(node.children))
+    end
   end
 end
