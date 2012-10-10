@@ -22,6 +22,10 @@ module Foundry::AST
           node
         end
       end
+
+      def on_str(node)
+        node.update(:lit_string)
+      end
     end
   end
 end

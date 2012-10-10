@@ -79,6 +79,16 @@ module Foundry
       VMSymbol.new(value)
     end
 
+    def on_lit_integer(node)
+      value, = node.children
+      VI::Integer.allocate(value)
+    end
+
+    def on_lit_string(node)
+      value, = node.children
+      VI::String.allocate(value)
+    end
+
     #
     # Constants
     #
