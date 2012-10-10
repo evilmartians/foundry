@@ -1,3 +1,5 @@
+require_relative 'interpreter_error'
+
 module Foundry
   class InterpreterError < StandardError
     attr_reader :inner_exception

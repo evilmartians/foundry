@@ -34,18 +34,19 @@ module Foundry
 
     protected
 
+    def pipeline
+      Furnace::Transform::Pipeline.new([
+        AST::Prepare::Melbourne.new,
+        AST::Prepare::ExpandPrimitives.new,
+      ])
+    end
+
     def eval_ast(melbourne_ast, file, scope)
       ast = AST::Node.from_sexp(melbourne_ast.to_sexp)
+      p ast if @graph_ast
 
-      if @graph_ast
-        p ast
-      end
-
-      ir, = AST::Prepare::Melbourne.new.transform(ast)
-
-      if @graph_ir
-        p ir
-      end
+      ir = pipeline.run(ast)
+      p ir if @graph_ir
 
       script = Foundry::ScriptBody.new(ir, file)
       script.execute(nil, scope)

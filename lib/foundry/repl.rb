@@ -1,4 +1,5 @@
 require 'ansi/code'
+require_relative 'repl_multiline'
 
 module Foundry
   class REPL
@@ -214,7 +215,7 @@ module Foundry
     end
 
     def execute_as_code(string)
-      unless Multiline.multiline? string
+      unless REPLMultiline.multiline? string
         result = safe_eval(string)
         p result if result.__vm_object?
 

@@ -1,3 +1,5 @@
+require_relative 'interpreter_error'
+
 module Foundry
   class Interpreter
     include Furnace::AST::StrictVisitor
@@ -200,8 +202,7 @@ module Foundry
     def on_defn(node)
       name, arguments_node, body_node = node.children
 
-      primitive = nil # extract_primitive_node(body_node)
-      method = MethodBody.new(body_node, @executable.file, @scope.module, arguments_node, primitive)
+      method = MethodBody.new(body_node, @executable.file, @scope.module, arguments_node)
 
       @scope.module.define_method(name, method)
 
