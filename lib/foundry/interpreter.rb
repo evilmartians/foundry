@@ -274,7 +274,7 @@ module Foundry
       name, arguments_node = node.children
       arguments = visit(arguments_node)
 
-      Primitives.eval(name, self, @scope, arguments)
+      Primitives.eval(name, self, arguments)
     end
 
   end

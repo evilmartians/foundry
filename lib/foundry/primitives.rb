@@ -10,11 +10,12 @@ module Foundry
       @modules << modulus
     end
 
-    def self.eval(name, interp, scope, args)
+    def self.eval(name, interp, args)
       method = :"eval_#{name}"
 
       Primitives.modules.each do |modulus|
         if modulus.respond_to? method
+          scope = interp.innermost_scope
           return modulus.send method, interp, scope, args
         end
       end

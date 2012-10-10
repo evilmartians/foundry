@@ -25,7 +25,7 @@ module StandalonePrimitives
   include Foundry::Primitives
 
   def self.eval_repl(interp, scope, args)
-    repl = Foundry::REPL.new($runtime, interp)
+    repl = Foundry::REPL.new($runtime, interp.outer)
     repl.invoke!
 
     Foundry::VI::NIL

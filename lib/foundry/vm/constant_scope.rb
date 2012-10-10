@@ -16,5 +16,9 @@ module Foundry
     def nest(klass)
       ConstantScope.new([ klass ] + @nesting)
     end
+
+    def inspect
+      "{ConstantScope #{@nesting}}"
+    end
   end
 end
