@@ -19,6 +19,7 @@ end
 require 'foundry'
 
 VI          = Foundry::VI
+AST         = Foundry::AST
 REPL        = Foundry::REPL
 Interpreter = Foundry::Interpreter
 

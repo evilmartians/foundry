@@ -21,41 +21,6 @@ module Foundry
       load_package(File.join(VM_ROOT, 'common'))
     end
 
-    def load(filename)
-      eval_ast Melbourne::Parser19.parse_file(filename), filename, create_toplevel_scope
-    end
-
-    def eval(string, name='(eval)', scope=create_toplevel_scope)
-      eval_ast Melbourne::Parser19.parse_string(string, name), name, scope
-    end
-
-    def create_toplevel_scope
-      const_scope = ConstantScope.new([ VI::Object ])
-      scope = VariableScope.new(@toplevel, VI::Object, nil, const_scope, [], nil)
-      scope.function = '(toplevel)'
-      scope
-    end
-
-    protected
-
-    def pipeline
-      Furnace::Transform::Pipeline.new([
-        AST::Prepare::Melbourne.new,
-        AST::Prepare::ExpandPrimitives.new,
-      ])
-    end
-
-    def eval_ast(melbourne_ast, file, scope)
-      ast = AST::Node.from_sexp(melbourne_ast.to_sexp)
-      p ast if @graph_ast
-
-      ir = pipeline.run(ast)
-      p ir if @graph_ir
-
-      script = ScriptBody.new(ir, file)
-      script.execute(nil, scope)
-    end
-
     def load_package(directory)
       package = File.read(File.join(directory, 'load_order.txt'))
 
@@ -67,6 +32,53 @@ module Foundry
           load(entry_path)
         end
       end
+    end
+
+    def load(filename)
+      ir = prepare_ast(parse_file(filename))
+      eval_ir ir, filename, create_toplevel_scope
+    end
+
+    def eval(string, name='(eval)', scope=create_toplevel_scope)
+      ir = prepare_ast(parse_string(string, name))
+      eval_ir ir, name, scope
+    end
+
+    def create_toplevel_scope
+      const_scope = ConstantScope.new([ VI::Object ])
+      scope = VariableScope.new(@toplevel, VI::Object, nil, const_scope, [], nil)
+      scope.function = '(toplevel)'
+      scope
+    end
+
+    def default_pipeline
+      Furnace::Transform::Pipeline.new([
+        AST::Prepare::Melbourne.new,
+        AST::Prepare::ExpandPrimitives.new,
+      ])
+    end
+
+    def parse_file(filename)
+      input = Melbourne::Parser19.parse_file(filename)
+    end
+
+    def parse_string(string, name='(eval)')
+      input = Melbourne::Parser19.parse_string(string, name)
+    end
+
+    def prepare_ast(input, pipeline=default_pipeline)
+      ast = AST::Node.from_sexp(input.to_sexp)
+      p ast if @graph_ast
+
+      ir = pipeline.run(ast)
+      p ir if @graph_ir
+
+      ir
+    end
+
+    def eval_ir(ir, name='(unknown script)', scope=create_toplevel_scope)
+      script = ScriptBody.new(ir, name)
+      script.execute(nil, scope)
     end
   end
 end

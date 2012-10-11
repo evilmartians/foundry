@@ -71,7 +71,7 @@ begin
   else
     $runtime.eval 'repl!', '(prelude)'
   end
-rescue Foundry::Interpreter::VMError => e
+rescue Foundry::Interpreter::Error => e
   puts "Unhandled exception:"
   puts e.inner_exception.inspect
   puts e.inner_backtrace
