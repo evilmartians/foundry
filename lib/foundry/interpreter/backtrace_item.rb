@@ -1,5 +1,5 @@
 module Foundry
-  class BacktraceItem
+  class Interpreter::BacktraceItem
     attr_reader :file, :line, :function
 
     def initialize(file, line, function)

@@ -5,7 +5,7 @@ require 'stringio'
 # distributed under MIT license.
 
 module Foundry
-  module REPLMultiline
+  module REPL::Multiline
     class << self
       attr_reader :scanner
     end

@@ -1,5 +1,5 @@
-module Foundry::AST
-  class Transform
+module Foundry
+  class AST::Transform
     include Furnace::AST::StrictVisitor
 
     alias transform visit
@@ -34,6 +34,11 @@ module Foundry::AST
 
     def on_alias(node)
       node.update(:alias, visit_all(node.children))
+    end
+
+    def on_lasgn(node)
+      name, value = node.children
+      node.update(:lasgn, [ name, visit(value) ])
     end
   end
 end

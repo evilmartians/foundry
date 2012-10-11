@@ -1,6 +1,6 @@
-module Foundry::AST
-  module Prepare
-    class Melbourne < Transform
+module Foundry
+  module AST::Prepare
+    class Melbourne < AST::Transform
       def on_scope(node)
         block, = node.children
         if block

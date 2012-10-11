@@ -6,6 +6,6 @@ module Kernel
   alias send __send__
 
   def trace(str)
-    Foundry.primitive :trace
+    Foundry.primitive :trace, str
   end
 end

@@ -21,24 +21,24 @@ Usage: foundry [options] filename...
   opt :evaluate, "Evaluate code",              :type => :strings
 end
 
-module StandalonePrimitives
-  include Foundry::Primitives
-
-  def self.eval_repl(interp, scope, args)
-    repl = Foundry::REPL.new($runtime, interp.outer)
+class StandaloneInterpreter < Foundry::Interpreter::Ruby
+  def on_repl(args)
+    repl = Foundry::REPL::Shell.new($runtime, self.outer)
     repl.invoke!
 
     Foundry::VI::NIL
   end
 
-  def self.eval_trace(interp, scope, args)
-    scope.arguments.each do |arg|
-      ::Kernel.p arg
+  def on_trace(args)
+    visit_all(args).each do |arg|
+      p arg
     end
 
     Foundry::VI::NIL
   end
 end
+
+Foundry::Runtime.interpreter = StandaloneInterpreter
 
 begin
   $runtime = Foundry::Runtime.new
@@ -69,7 +69,7 @@ begin
   else
     $runtime.eval 'repl!', '(prelude)'
   end
-rescue Foundry::InterpreterError => e
+rescue Foundry::Interpreter::VMError => e
   puts "Unhandled exception:"
   puts e.inner_exception.inspect
   puts e.inner_backtrace

@@ -1,5 +1,9 @@
 module Foundry
   class Runtime
+    class << self
+      attr_accessor :interpreter
+    end
+
     attr_reader   :toplevel
 
     attr_accessor :graph_ast
@@ -26,8 +30,8 @@ module Foundry
     end
 
     def create_toplevel_scope
-      const_scope = Foundry::ConstantScope.new([ Foundry::VI::Object ])
-      scope = Foundry::VariableScope.new(@toplevel, Foundry::VI::Object, nil, const_scope, [], nil)
+      const_scope = ConstantScope.new([ VI::Object ])
+      scope = VariableScope.new(@toplevel, VI::Object, nil, const_scope, [], nil)
       scope.function = '(toplevel)'
       scope
     end
@@ -48,7 +52,7 @@ module Foundry
       ir = pipeline.run(ast)
       p ir if @graph_ir
 
-      script = Foundry::ScriptBody.new(ir, file)
+      script = ScriptBody.new(ir, file)
       script.execute(nil, scope)
     end
 

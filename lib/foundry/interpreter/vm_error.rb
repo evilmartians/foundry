@@ -1,7 +1,5 @@
-require_relative 'backtrace_item'
-
 module Foundry
-  class InterpreterError < StandardError
+  class Interpreter::Error < StandardError
     attr_reader :inner_exception
     attr_reader :nested_inner_backtrace
 

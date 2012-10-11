@@ -8,7 +8,7 @@ module Foundry
     end
 
     def execute(outer, scope)
-      interp = Interpreter.new(outer, self, scope)
+      interp = ::Foundry::Runtime.interpreter.new(outer, self, scope)
       interp.evaluate
     end
   end
