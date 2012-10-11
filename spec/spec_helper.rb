@@ -15,3 +15,26 @@ RSpec.configure do |config|
   #     --seed 1234
   config.order = 'random'
 end
+
+require 'foundry'
+
+VI          = Foundry::VI
+REPL        = Foundry::REPL
+Interpreter = Foundry::Interpreter
+
+class SpecInterpreter < Foundry::Interpreter::Ruby
+  def on_repl(args)
+    repl = Foundry::REPL::Shell.new($runtime, self.outer)
+    repl.invoke!
+
+    Foundry::VI::NIL
+  end
+end
+
+Foundry::Runtime.interpreter = SpecInterpreter
+
+Dir[File.expand_path('../helpers/*', __FILE__)].each do |helper|
+  require helper
+end
+
+reload_vm!

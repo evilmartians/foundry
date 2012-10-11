@@ -36,6 +36,11 @@ module Foundry
       node.update(:alias, visit_all(node.children))
     end
 
+    def on_cdecl(node)
+      name, value = node.children
+      node.update(:cdecl, [ name, visit(value) ])
+    end
+
     def on_lasgn(node)
       name, value = node.children
       node.update(:lasgn, [ name, visit(value) ])

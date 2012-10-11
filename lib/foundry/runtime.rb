@@ -11,13 +11,13 @@ module Foundry
 
     def initialize
       @graph_ast = false
-      @graph_ir  = true
+      @graph_ir  = false
       @toplevel  = Foundry::VI::Object.allocate
     end
 
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
-    def bootstrap(vm_root)
+    def bootstrap
       load_package(File.join(VM_ROOT, 'common'))
     end
 
@@ -25,7 +25,7 @@ module Foundry
       eval_ast Melbourne::Parser19.parse_file(filename), filename, create_toplevel_scope
     end
 
-    def eval(string, name, scope=create_toplevel_scope)
+    def eval(string, name='(eval)', scope=create_toplevel_scope)
       eval_ast Melbourne::Parser19.parse_string(string, name), name, scope
     end
 
@@ -60,8 +60,6 @@ module Foundry
       package = File.read(File.join(directory, 'load_order.txt'))
 
       package.lines.each do |entry|
-        puts "Loading #{entry}"
-
         entry_path = File.join(directory, entry.rstrip)
         if File.directory?(entry_path)
           load_package(entry_path)

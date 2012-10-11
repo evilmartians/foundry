@@ -102,8 +102,4 @@ module Foundry
     Foundry.const_set :MethodBody,       Foundry_MethodBody
     Foundry.const_set :ClosureBody,      Foundry_ClosureBody
   end
-
-  class VMImmediate
-    include VI
-  end
 end

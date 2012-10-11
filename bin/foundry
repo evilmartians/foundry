@@ -42,7 +42,7 @@ Foundry::Runtime.interpreter = StandaloneInterpreter
 
 begin
   $runtime = Foundry::Runtime.new
-  $runtime.bootstrap File.join(File.dirname(__FILE__), '../vm')
+  $runtime.bootstrap
 
   $runtime.eval <<-REPL, '(prelude)'
   module Kernel
@@ -51,6 +51,8 @@ begin
     end
   end
   REPL
+
+  $runtime.graph_ir = true
 
   if opts[:evaluate]
     opts[:evaluate].each do |value|
