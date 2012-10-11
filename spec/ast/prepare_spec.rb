@@ -1,29 +1,53 @@
 require 'spec_helper'
 
 describe "AST transformations" do
-  def eval_with_pipeline(pipeline, string)
+  def process(pipeline, string)
     ir = $f.prepare_ast($f.parse_string(string), pipeline)
   end
 
-  let(:transform) {
-    CountingTransform.new
-  }
-
-  let(:pipeline) {
-    Furnace::Transform::Pipeline.new([
+  it "should visit nodes with nested nodes" do
+    transform = CountingTransform.new
+    pipeline  = Furnace::Transform::Pipeline.new([
       AST::Prepare::Melbourne.new,
       AST::Prepare::ExpandPrimitives.new,
       transform,
     ])
-  }
 
-  it "should visit nodes with nested nodes" do
     lambda {
-      eval_with_pipeline(pipeline, 'A = 42')
+      process(pipeline, 'A = 42')
     }.should change(transform, :count).by(1)
 
     lambda {
-      eval_with_pipeline(pipeline, %Q|class A < HHGG; 42; end|)
+      process(pipeline, %Q|class A < HHGG; 42; end|)
     }.should change(transform, :count).by(2)
+
+    lambda {
+      process(pipeline, %Q|module A; 42; end|)
+    }.should change(transform, :count).by(1)
+
+    lambda {
+      # "x = 42" shound _not_ be visited,
+      # as args are interpreted in a special way
+      process(pipeline, %Q|def f(x = 42); 42; end|)
+    }.should change(transform, :count).by(1)
+
+    lambda {
+      process(pipeline, %Q|42.marvin(42, 42)|)
+    }.should change(transform, :count).by(3)
+
+    lambda {
+      process(pipeline, %Q|a = 42|)
+    }.should change(transform, :count).by(1)
+
+    lambda {
+      process(pipeline, %Q|42; 42|)
+    }.should change(transform, :count).by(2)
+
+    lambda {
+      process(pipeline, %Q|alias marvin marvin; alias :marvin :marvin|)
+    }.should change(transform, :count).by(4)
+  end
+
+  it "expands primitives" do
   end
 end

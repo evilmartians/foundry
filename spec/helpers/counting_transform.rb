@@ -12,6 +12,13 @@ class CountingTransform < AST::Transform
     nil
   end
 
+  def on_lit_symbol(node)
+    value, = node.children
+    @count += 1 if value == :marvin
+
+    nil
+  end
+
   def on_const(node)
     name, value = node.children
     @count += 1 if name == :HHGG
