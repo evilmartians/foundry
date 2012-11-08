@@ -278,12 +278,6 @@ module Foundry
     def on_call(node)
       receiver_node, name, arguments_node = node.children
 
-      # Melbourne-specific snippet emulating NODE_VCALL
-      if receiver_node.nil? && arguments_node.nil? &&
-            @scope.locals.has_key?(name)
-        return @scope.locals[name]
-      end
-
       if arguments_node
         arguments = process(arguments_node)
       else

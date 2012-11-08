@@ -40,7 +40,7 @@ module Foundry
     end
 
     def eval(string, name='(eval)', scope=create_toplevel_scope)
-      ir = prepare_ast(parse_string(string, name))
+      ir = prepare_ast(parse_string(string, name, scope))
       eval_ir ir, name, scope
     end
 
@@ -59,11 +59,19 @@ module Foundry
     end
 
     def parse_file(filename)
-      input = RubyParser.new.parse(File.read(filename), filename)
+      parser = Ruby19Parser.new
+      parser.parse(File.read(filename), filename)
     end
 
-    def parse_string(string, name='(eval)')
-      input = RubyParser.new.parse(string, name)
+    def parse_string(string, name='(eval)', scope=nil)
+      parser = Ruby19Parser.new
+      if scope
+        scope.locals.each do |name, |
+          parser.env[name] = :lvar
+        end
+      end
+
+      parser.parse(string, name)
     end
 
     def prepare_ast(input, pipeline=default_pipeline)
