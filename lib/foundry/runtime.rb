@@ -53,21 +53,21 @@ module Foundry
 
     def default_pipeline
       Furnace::Transform::Pipeline.new([
-        AST::Prepare::Melbourne.new,
+        AST::Prepare::RubyParser.new,
         AST::Prepare::ExpandPrimitives.new,
       ])
     end
 
     def parse_file(filename)
-      input = Melbourne::Parser19.parse_file(filename)
+      input = RubyParser.new.parse(File.read(filename), filename)
     end
 
     def parse_string(string, name='(eval)')
-      input = Melbourne::Parser19.parse_string(string, name)
+      input = RubyParser.new.parse(string, name)
     end
 
     def prepare_ast(input, pipeline=default_pipeline)
-      ast = AST::Node.from_sexp(input.to_sexp)
+      ast = AST::Node.from_sexp(input)
       p ast if @graph_ast
 
       ir = pipeline.run(ast)

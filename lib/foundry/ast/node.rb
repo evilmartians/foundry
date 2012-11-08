@@ -1,30 +1,30 @@
-require 'furnace/ast'
-
 module Foundry
   class AST::Node < Furnace::AST::Node
-    attr_reader :line
+    attr_reader :file, :line
 
     def self.from_sexp(node)
-      (line, ), type, *children = node
+      type, *children = node
 
       AST::Node.new(type,
         children.map do |child|
-          if child.is_a? Array
+          if child.is_a? Sexp
             from_sexp(child)
           else
             child
           end
         end,
-        line: line)
+        file: node.file.freeze,
+        line: node.line)
     end
 
-    def self.from_sexp_without_location(node)
+    # Used in tests.
+    def self.from_simple_sexp(node)
       type, *children = node
 
       AST::Node.new(type,
         children.map do |child|
           if child.is_a? Array
-            from_sexp_without_location(child)
+            from_simple_sexp(child)
           else
             child
           end

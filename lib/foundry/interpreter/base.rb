@@ -1,6 +1,6 @@
 module Foundry
   class Interpreter::Base
-    include Furnace::AST::StrictVisitor
+    include Furnace::AST::Processor
 
     attr_reader :outer
 
@@ -40,14 +40,14 @@ module Foundry
     end
 
     def evaluate
-      visit @executable.ast
+      process @executable.ast
     end
 
     #
-    # Visitor
+    # Processor
     #
 
-    def visit(node)
+    def process(node)
       @scope.line = node.line
       super
     end
@@ -72,17 +72,17 @@ module Foundry
       VI::TRUE
     end
 
-    def on_lit_symbol(node)
+    def on_symbol(node)
       value, = node.children
       VMSymbol.new(value)
     end
 
-    def on_lit_integer(node)
+    def on_integer(node)
       value, = node.children
       VI::Integer.allocate(value)
     end
 
-    def on_lit_string(node)
+    def on_string(node)
       value, = node.children
       VI::String.allocate(value)
     end
@@ -103,7 +103,7 @@ module Foundry
         end
 
         with_scope(scope) do
-          visit body_node
+          process body_node
         end
       else
         VI::NIL
@@ -117,7 +117,7 @@ module Foundry
         name         = name_node
       elsif name_node.type == :colon2
         outer_node, name = name_node.children
-        outer_module = visit(outer_node)
+        outer_module = process(outer_node)
       end
 
       [ outer_module, name ]
@@ -138,7 +138,7 @@ module Foundry
     def on_colon2(node)
       parent_node, name = node.children
 
-      modulus = visit(parent_node)
+      modulus = process(parent_node)
 
       const = modulus.const_get(name)
       unless const == VI::UNDEF
@@ -152,7 +152,7 @@ module Foundry
       name_node, value_node = node.children
 
       outer_module, name = parse_scoped_const(name_node)
-      value = visit(value_node)
+      value = process(value_node)
 
       if outer_module.const_defined?(name)
         raise Interpreter::Error.new(self, "already initialized constant #{name}")
@@ -189,7 +189,7 @@ module Foundry
       if superclass_node.nil?
         superclass = VI::Object
       else
-        superclass = visit(superclass_node)
+        superclass = process(superclass_node)
       end
 
       outer_module, name = parse_scoped_const(name_node)
@@ -246,7 +246,15 @@ module Foundry
 
     def on_lasgn(node)
       var, value = node.children
-      @scope.locals[var] = visit(value)
+      @scope.locals[var] = process(value)
+    end
+
+    #
+    # Tuples and de/composition
+    #
+
+    def on_array(node)
+      process_all(node.children)
     end
 
     #
@@ -254,13 +262,7 @@ module Foundry
     #
 
     def on_block(node)
-      visit_all(node.children).last || VI::NIL
-    end
-
-    def on_arglist(node)
-      node.children.map do |elem|
-        visit elem
-      end
+      process_all(node.children).last || VI::NIL
     end
 
     def on_call(node)
@@ -273,13 +275,13 @@ module Foundry
       end
 
       if arguments_node
-        arguments = visit(arguments_node)
+        arguments = process(arguments_node)
       else
         arguments = []
       end
 
       if receiver_node
-        receiver = visit(receiver_node)
+        receiver = process(receiver_node)
       else
         receiver = @scope.self
       end

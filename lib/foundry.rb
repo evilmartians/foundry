@@ -1,4 +1,5 @@
-require 'melbourne'
+require 'ruby_parser'
+require 'furnace'
 
 require 'foundry/version'
 

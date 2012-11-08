@@ -5,14 +5,14 @@ class CountingTransform < AST::Transform
     @count = 0
   end
 
-  def on_lit_integer(node)
+  def on_integer(node)
     value, = node.children
     @count += 1 if value == 42
 
     nil
   end
 
-  def on_lit_symbol(node)
+  def on_symbol(node)
     value, = node.children
     @count += 1 if value == :marvin
 

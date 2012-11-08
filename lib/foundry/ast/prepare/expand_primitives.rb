@@ -8,7 +8,7 @@ module Foundry
             receiver.children.first == :Foundry
 
           primitive, *primitive_args = arguments.children
-          node.update(primitive.children.first,
+          node.updated(primitive.children.first,
             primitive_args)
         end
       end

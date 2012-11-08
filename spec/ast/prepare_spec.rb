@@ -8,7 +8,7 @@ describe "AST transformations" do
   it "should visit nodes with nested nodes" do
     transform = CountingTransform.new
     pipeline  = Furnace::Transform::Pipeline.new([
-      AST::Prepare::Melbourne.new,
+      AST::Prepare::RubyParser.new,
       AST::Prepare::ExpandPrimitives.new,
       transform,
     ])
@@ -40,7 +40,7 @@ describe "AST transformations" do
     }.should change(transform, :count).by(1)
 
     lambda {
-      process(pipeline, %Q|42; 42|)
+      process(pipeline, %Q|0 + 42; 1 + 42|)
     }.should change(transform, :count).by(2)
 
     lambda {
