@@ -22,7 +22,7 @@ module Foundry
       if @superclass
         "{Class #{@name} < #{@superclass.name}}"
       else
-        "{Class #{@name}"
+        "{Class #{@name}}"
       end
     end
   end

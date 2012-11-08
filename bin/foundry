@@ -22,15 +22,15 @@ Usage: foundry [options] filename...
 end
 
 class StandaloneInterpreter < Foundry::Interpreter::Ruby
-  def on_repl(args)
+  def on_repl(node)
     repl = Foundry::REPL::Shell.new($runtime, self.outer)
     repl.invoke!
 
     Foundry::VI::NIL
   end
 
-  def on_trace(args)
-    visit_all(args).each do |arg|
+  def on_trace(node)
+    process_all(node.children).each do |arg|
       p arg
     end
 

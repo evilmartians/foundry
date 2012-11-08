@@ -57,7 +57,7 @@ module Foundry
       exit!
     end
 
-    command 'graph_ast', ":bool", "Draw Melbourne AST graphs after parsing code"
+    command 'graph_ast', ":bool", "Draw RubyParser AST graphs after parsing code"
     def graph_ast(cmdline)
       boolean_command 'graph_ast', cmdline, @runtime, :graph_ast
     end
@@ -136,10 +136,11 @@ module Foundry
     def safe_eval(string, name='(repl)')
       @runtime.eval(string, name, @scope)
 
-    rescue Melbourne::SyntaxError => e
-      puts e.message
-      puts e.code
-      puts "#{"~" * (e.column - 1)}^"
+    rescue Racc::ParseError => e
+      # TODO: better error handling
+      puts "Syntax error. See $stderr."
+      #puts e.code
+      #puts "#{"~" * (e.column - 1)}^"
 
     rescue Foundry::Interpreter::Error => e
       puts e.inner_exception.inspect

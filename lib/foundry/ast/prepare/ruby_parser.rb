@@ -1,9 +1,17 @@
 module Foundry
   module AST::Prepare
     class RubyParser < AST::Transform
+      def on_module(node)
+        name, *code = node.children
+        node.updated(nil, [
+          name,
+          process(node.updated(:block, code))
+        ])
+      end
+
       def on_class(node)
         name, superclass, *code = node.children
-        node.updated(:class, [
+        node.updated(nil, [
           name, process(superclass),
           process(node.updated(:block, code))
         ])
@@ -11,7 +19,7 @@ module Foundry
 
       def on_defn(node)
         name, args, *code = node.children
-        node.updated(:defn, [
+        node.updated(nil, [
           name, process(args),
           process(node.updated(:block, code))
         ])
@@ -19,7 +27,7 @@ module Foundry
 
       def on_call(node)
         receiver, name, *args = node.children
-        node.updated(:call, [
+        node.updated(nil, [
           process(receiver), name,
           process(node.updated(:array, args))
         ])

@@ -254,7 +254,17 @@ module Foundry
     #
 
     def on_array(node)
-      process_all(node.children)
+      result = []
+
+      node.children.map do |child|
+        if child.type == :splat
+          result += process_all(child.children)
+        else
+          result << process(child)
+        end
+      end
+
+      result
     end
 
     #
