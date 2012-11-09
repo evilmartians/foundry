@@ -6,9 +6,3 @@ gemspec
 group :development do
   gem 'pry'
 end
-
-group :test do
-  gem 'guard'
-  gem 'guard-rspec'
-  gem 'rb-inotify'
-end

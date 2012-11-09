@@ -1,6 +1,35 @@
 require 'spec_helper'
 
 describe "AST transformations" do
+  class CountingTransform < AST::Transform
+    attr_reader :count
+
+    def initialize
+      @count = 0
+    end
+
+    def on_integer(node)
+      value, = node.children
+      @count += 1 if value == 42
+
+      nil
+    end
+
+    def on_symbol(node)
+      value, = node.children
+      @count += 1 if value == :marvin
+
+      nil
+    end
+
+    def on_const(node)
+      name, value = node.children
+      @count += 1 if name == :HHGG
+
+      nil
+    end
+  end
+
   def process(pipeline, string)
     ir = $f.prepare_ast($f.parse_string(string), pipeline)
   end
