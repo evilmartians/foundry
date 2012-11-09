@@ -78,5 +78,12 @@ describe "AST transformations" do
   end
 
   it "expands primitives" do
+    pipeline  = Furnace::Transform::Pipeline.new([
+      AST::Prepare::RubyParser.new,
+      AST::Prepare::ExpandPrimitives.new,
+    ])
+
+    process(pipeline, %Q|Foundry.primitive :send, :foo, "bar"|).should ==
+        s[:send, [:symbol, :foo], [:string, "bar"]]
   end
 end
