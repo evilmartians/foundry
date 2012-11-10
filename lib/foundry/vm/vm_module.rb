@@ -9,7 +9,7 @@ module Foundry
     def initialize(klass, name=nil)
       super(klass)
 
-      @name         = name
+      @name         = name.freeze
       @upperclass   = nil
       @const_table  = {}
       @method_table = {}

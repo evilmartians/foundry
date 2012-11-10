@@ -29,10 +29,10 @@ require_relative 'vm/vm_integer'
 
 module Foundry
   module VI
-    BasicObject = VMClass.new(nil, nil,         :BasicObject, VMBasicObject)
-    Object      = VMClass.new(nil, BasicObject, :Object,      VMObject)
-    Module      = VMClass.new(nil, Object,      :Module,      VMModule)
-    Class       = VMClass.new(nil, Module,      :Class,       VMClass)
+    BasicObject = VMClass.new(nil, nil,         'BasicObject', VMBasicObject)
+    Object      = VMClass.new(nil, BasicObject, 'Object',      VMObject)
+    Module      = VMClass.new(nil, Object,      'Module',      VMModule)
+    Class       = VMClass.new(nil, Module,      'Class',       VMClass)
 
     [BasicObject, Object, Module, Class].each do |klass|
       klass.instance_exec do
@@ -40,36 +40,36 @@ module Foundry
       end
     end
 
-    Kernel      = Module.allocate(:Kernel)
+    Kernel      = Module.allocate('Kernel')
 
-    NilClass    = Class.allocate(Object, :NilClass,   VMNilClass)
-    TrueClass   = Class.allocate(Object, :TrueClass,  VMTrueClass)
-    FalseClass  = Class.allocate(Object, :FalseClass, VMFalseClass)
+    NilClass    = Class.allocate(Object, 'NilClass',   VMNilClass)
+    TrueClass   = Class.allocate(Object, 'TrueClass',  VMTrueClass)
+    FalseClass  = Class.allocate(Object, 'FalseClass', VMFalseClass)
 
     UNDEF       = :undefined
     NIL         = VMNilClass.new
     TRUE        = VMTrueClass.new
     FALSE       = VMFalseClass.new
 
-    Symbol      = Class.allocate(Object, :Symbol, VMSymbol)
-    String      = Class.allocate(Object, :String, VMString)
+    Symbol      = Class.allocate(Object, 'Symbol', VMSymbol)
+    String      = Class.allocate(Object, 'String', VMString)
 
-    Numeric     = Class.allocate(Object, :Numeric,  VMNumeric)
-    Integer     = Class.allocate(Numeric, :Integer, VMInteger)
+    Numeric     = Class.allocate(Object, 'Numeric',  VMNumeric)
+    Integer     = Class.allocate(Numeric, 'Integer', VMInteger)
 
-    Foundry     = Module.allocate(:Foundry)
+    Foundry     = Module.allocate('Foundry')
 
-    Foundry_IncludedModule   = Class.allocate(Module, :"Foundry::IncludedModule", VMIncludedModule)
-    Foundry_Tuple            = Class.allocate(Object, :"Foundry::Tuple", VMTuple)
+    Foundry_IncludedModule   = Class.allocate(Module, 'Foundry::IncludedModule', VMIncludedModule)
+    Foundry_Tuple            = Class.allocate(Object, 'Foundry::Tuple', VMTuple)
 
-    Foundry_ConstantScope    = Class.allocate(Object, :"Foundry::ConstantScope", ConstantScope)
-    Foundry_VariableScope    = Class.allocate(Object, :"Foundry::VariableScope", VariableScope)
-    Foundry_BlockEnvironment = Class.allocate(Object, :"Foundry::BlockEnvironment", BlockEnvironment)
+    Foundry_ConstantScope    = Class.allocate(Object, 'Foundry::ConstantScope', ConstantScope)
+    Foundry_VariableScope    = Class.allocate(Object, 'Foundry::VariableScope', VariableScope)
+    Foundry_BlockEnvironment = Class.allocate(Object, 'Foundry::BlockEnvironment', BlockEnvironment)
 
-    Foundry_Executable       = Class.allocate(Object, :"Foundry::Executable", Executable)
-    Foundry_ScriptBody       = Class.allocate(Executable, :"Foundry::ScriptBody", ScriptBody)
-    Foundry_MethodBody       = Class.allocate(Executable, :"Foundry::MethodBody", MethodBody)
-    Foundry_ClosureBody      = Class.allocate(Executable, :"Foundry::ClosureBody", ClosureBody)
+    Foundry_Executable       = Class.allocate(Object, 'Foundry::Executable', Executable)
+    Foundry_ScriptBody       = Class.allocate(Executable, 'Foundry::ScriptBody', ScriptBody)
+    Foundry_MethodBody       = Class.allocate(Executable, 'Foundry::MethodBody', MethodBody)
+    Foundry_ClosureBody      = Class.allocate(Executable, 'Foundry::ClosureBody', ClosureBody)
 
     BasicObject.const_set :BasicObject, BasicObject
 
