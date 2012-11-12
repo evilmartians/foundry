@@ -112,10 +112,10 @@ module Foundry
     protected :push_cref_and_process_body
 
     def parse_scoped_const(name_node)
-      if name_node.is_a? Symbol
+      if name_node.type == :const_lookup
+        name,        = name_node.children
         outer_module = @scope.const_scope.nesting.first
-        name         = name_node
-      elsif name_node.type == :colon2
+      elsif name_node.type == :const_access
         outer_node, name = name_node.children
         outer_module = process(outer_node)
       end
@@ -124,7 +124,7 @@ module Foundry
     end
     protected :parse_scoped_const
 
-    def on_const(node)
+    def on_const_lookup(node)
       name, = node.children
 
       const = @scope.const_scope.find_const(name)
@@ -135,7 +135,7 @@ module Foundry
       end
     end
 
-    def on_colon2(node)
+    def on_const_access(node)
       parent_node, name = node.children
 
       modulus = process(parent_node)
@@ -148,7 +148,7 @@ module Foundry
       end
     end
 
-    def on_cdecl(node)
+    def on_const_declare(node)
       name_node, value_node = node.children
 
       outer_module, name = parse_scoped_const(name_node)

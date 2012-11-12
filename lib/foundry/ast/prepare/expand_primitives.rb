@@ -4,7 +4,7 @@ module Foundry
       def on_call(node)
         receiver, name, arguments = node.children
         if name == :primitive &&
-            receiver.type == :const &&
+            receiver.type == :const_lookup &&
             receiver.children.first == :Foundry
 
           primitive, *primitive_args = arguments.children

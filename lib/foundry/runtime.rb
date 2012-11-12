@@ -11,7 +11,7 @@ module Foundry
 
     def initialize
       @graph_ast = false
-      @graph_ir  = false
+      @graph_ir  = true
       @toplevel  = Foundry::VI::Object.allocate
     end
 

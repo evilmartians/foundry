@@ -10,11 +10,11 @@ class BasicObject
   alias == equal?
 
   def __id__
-    Kernel.raise NotImplementedError, "Foundry does not implement object_id"
+    ::Kernel.raise ::NotImplementedError, "Foundry does not implement object_id"
   end
 
   def __send__(method, *args, &block)
-    Foundry.primitive :send, method.to_sym, args, block
+    Foundry.primitive :call, self, method.to_sym, args, &block
   end
 
   def !

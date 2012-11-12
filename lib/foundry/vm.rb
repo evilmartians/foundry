@@ -60,6 +60,7 @@ module Foundry
     Foundry     = Module.allocate('Foundry')
 
     Foundry_IncludedModule   = Class.allocate(Module, 'Foundry::IncludedModule', VMIncludedModule)
+    Foundry_SingletonClass   = Class.allocate(Class,  'Foundry::SingletonClass', VMClass)
     Foundry_Tuple            = Class.allocate(Object, 'Foundry::Tuple', VMTuple)
 
     Foundry_ConstantScope    = Class.allocate(Object, 'Foundry::ConstantScope', ConstantScope)
