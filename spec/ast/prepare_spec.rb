@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe "AST transformations" do
-  class CountingTransform < AST::Transform
+  class CountingTransform < AST::Processor
     attr_reader :count
 
     def initialize
@@ -22,7 +22,7 @@ describe "AST transformations" do
       nil
     end
 
-    def on_const(node)
+    def on_const_ref(node)
       name, value = node.children
       @count += 1 if name == :HHGG
 

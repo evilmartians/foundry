@@ -1,9 +1,9 @@
 module Foundry
   module AST::Prepare
-    class RubyParser < AST::Transform
+    class RubyParser < AST::Processor
       def process_const_name(name)
         if name.is_a? Symbol
-          AST::Node.new(:const_lookup, [ name ])
+          AST::Node.new(:const_ref, [ name ])
         else
           name
         end
@@ -27,11 +27,11 @@ module Foundry
       end
 
       def on_const(node)
-        node.updated(:const_lookup)
+        node.updated(:const_ref)
       end
 
       def on_colon2(node)
-        node.updated(:const_access)
+        node.updated(:const_fetch)
       end
 
       def on_colon3(node)

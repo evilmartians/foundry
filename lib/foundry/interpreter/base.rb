@@ -1,7 +1,5 @@
 module Foundry
-  class Interpreter::Base
-    include Furnace::AST::Processor
-
+  class Interpreter::Base < Furnace::AST::Processor
     attr_reader :outer
 
     def initialize(outer, executable, scope)
@@ -112,10 +110,10 @@ module Foundry
     protected :push_cref_and_process_body
 
     def parse_scoped_const(name_node)
-      if name_node.type == :const_lookup
+      if name_node.type == :const_ref
         name,        = name_node.children
         outer_module = @scope.const_scope.nesting.first
-      elsif name_node.type == :const_access
+      elsif name_node.type == :const_fetch
         outer_node, name = name_node.children
         outer_module = process(outer_node)
       end
@@ -124,7 +122,7 @@ module Foundry
     end
     protected :parse_scoped_const
 
-    def on_const_lookup(node)
+    def on_const_ref(node)
       name, = node.children
 
       const = @scope.const_scope.find_const(name)
@@ -135,7 +133,7 @@ module Foundry
       end
     end
 
-    def on_const_access(node)
+    def on_const_fetch(node)
       parent_node, name = node.children
 
       modulus = process(parent_node)

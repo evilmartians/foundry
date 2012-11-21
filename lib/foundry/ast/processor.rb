@@ -1,7 +1,5 @@
 module Foundry
-  class AST::Transform
-    include Furnace::AST::Processor
-
+  class AST::Processor < Furnace::AST::Processor
     alias transform process
 
     def on_class(node)
@@ -36,7 +34,7 @@ module Foundry
       node.updated(nil, process_all(node.children))
     end
 
-    def on_cdecl(node)
+    def on_const_declare(node)
       name, value = node.children
       node.updated(nil, [ name, process(value) ])
     end

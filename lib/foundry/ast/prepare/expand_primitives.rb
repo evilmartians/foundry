@@ -1,10 +1,10 @@
 module Foundry
   module AST::Prepare
-    class ExpandPrimitives < AST::Transform
+    class ExpandPrimitives < AST::Processor
       def on_call(node)
         receiver, name, arguments = node.children
         if name == :primitive &&
-            receiver.type == :const_lookup &&
+            receiver.type == :const_ref &&
             receiver.children.first == :Foundry
 
           primitive, *primitive_args = arguments.children
