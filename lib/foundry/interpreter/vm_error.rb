@@ -1,5 +1,5 @@
-module Foundry
-  class Interpreter::Error < StandardError
+module Foundry::Interpreter
+  class Error < StandardError
     attr_reader :inner_exception
     attr_reader :nested_inner_backtrace
 

@@ -1,11 +1,31 @@
 module Foundry
   module AST::Prepare
     class RubyParser < AST::Processor
+      def initialize(is_eval)
+        @is_eval = is_eval
+      end
+
+      def transform(ast)
+        if ast.type == :block
+          code = ast.children
+        else
+          code = [ ast ]
+        end
+
+        if @is_eval
+          ast.updated(:eval_block,
+            process_all(code))
+        else
+          ast.updated(:toplevel_block,
+            process_all(code))
+        end
+      end
+
       def process_const_name(name)
         if name.is_a? Symbol
-          AST::Node.new(:const_ref, [ name ])
+          Node(:const_ref, [ name ])
         else
-          name
+          process(name)
         end
       end
 
@@ -13,7 +33,7 @@ module Foundry
         name, *code = node.children
         node.updated(nil, [
           process_const_name(name),
-          process(node.updated(:block, code))
+          *process_all(code)
         ])
       end
 
@@ -22,7 +42,7 @@ module Foundry
 
         node.updated(nil, [
           process_const_name(name), process(superclass),
-          process(node.updated(:block, code))
+          *process_all(code)
         ])
       end
 
@@ -31,7 +51,11 @@ module Foundry
       end
 
       def on_colon2(node)
-        node.updated(:const_fetch)
+        scope, name = node.children
+
+        node.updated(:const_fetch, [
+          process(scope), name
+        ])
       end
 
       def on_colon3(node)

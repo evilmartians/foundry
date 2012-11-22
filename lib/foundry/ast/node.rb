@@ -1,6 +1,6 @@
 module Foundry
   class AST::Node < Furnace::AST::Node
-    attr_reader :file, :line
+    attr_reader :file, :line, :function
 
     def self.from_sexp(node)
       type, *children = node

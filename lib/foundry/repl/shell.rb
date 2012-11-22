@@ -11,7 +11,6 @@ module Foundry
 
       @runtime   = runtime
       @interp    = interp
-      @scope     = interp.innermost_scope
 
       @buffer    = ""
       @terminate = false
@@ -83,7 +82,7 @@ module Foundry
     def ls(cmdline)
       cmdline = (cmdline || "").strip
       if cmdline.empty?
-        describe @scope.self
+        describe @interp.env.apply(:Self)
       else
         object = safe_eval(cmdline, '(ls-eval)')
         describe object unless object.equal? nil
@@ -134,7 +133,7 @@ module Foundry
     end
 
     def safe_eval(string, name='(repl)')
-      @runtime.eval(string, name, @scope)
+      @runtime.eval(string, name, @interp)
 
     rescue Racc::ParseError => e
       # TODO: better error handling
@@ -161,7 +160,7 @@ module Foundry
 
     def invoke!
       puts "Foundry REPL. Type \\? to view command reference."
-      puts "Self: #{@scope.self.inspect}"
+      puts "Self: #{@interp.env.apply(:Self).inspect}"
 
       until @terminate
         if @buffer.empty?

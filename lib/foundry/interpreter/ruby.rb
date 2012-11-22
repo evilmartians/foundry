@@ -1,11 +1,11 @@
-module Foundry
-  class Interpreter::Ruby < Interpreter::Base
+module Foundry::Interpreter
+  class Ruby < Base
     #
     # Objects
     #
 
     def on_equal?(node)
-      self_ = @scope.self
+      self_ = apply_env(:Self)
       other = visit(node.arguments.first)
 
       if self_.is_a? VI::Symbol
@@ -30,12 +30,12 @@ module Foundry
     #
 
     def on_allocate(node)
-      @scope.self.allocate
+      apply_env(:Self).allocate
     end
 
     def on_include(node)
-      @scope.self.include(@scope.arguments.first) # TODO
-      #@scope.self.include(visit(node.children.first))
+      modulus, = process_all(node.children)
+      apply_env(:Self).include(modulus)
     end
 
   end

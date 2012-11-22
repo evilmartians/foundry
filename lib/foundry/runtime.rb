@@ -18,7 +18,7 @@ module Foundry
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
     def bootstrap
-      load_package(File.join(VM_ROOT, 'common'))
+      #load_package(File.join(VM_ROOT, 'common'))
     end
 
     def load_package(directory)
@@ -35,46 +35,53 @@ module Foundry
     end
 
     def load(filename)
-      ir = prepare_ast(parse_file(filename))
-      eval_ir ir, filename, create_toplevel_scope
+      parser = Ruby19Parser.new
+
+      ir = prepare_ast(parser.parse(File.read(filename), filename))
+
+      Runtime.interpreter.
+          new(ir, @toplevel).
+          evaluate
     end
 
-    def eval(string, name='(eval)', scope=create_toplevel_scope)
-      ir = prepare_ast(parse_string(string, name, scope))
-      eval_ir ir, name, scope
+    def eval(string, name='(eval)', outer=nil)
+      parser = Ruby19Parser.new
+
+      if outer
+        locals = []
+        outer.env.each do |name|
+          locals << name
+          parser.env[name] = :lvar
+        end
+
+        pipeline = make_pipeline(true, locals)
+      else
+        pipeline = make_pipeline(false)
+      end
+
+      ir = prepare_ast(parser.parse(string, name), pipeline)
+
+      if outer
+        Runtime.interpreter.
+            new(ir, nil, nil, outer.env, outer).
+            evaluate
+      else
+        Runtime.interpreter.
+            new(ir, @toplevel).
+            evaluate
+      end
     end
 
-    def create_toplevel_scope
-      const_scope = ConstantScope.new([ VI::Object ])
-      scope = VariableScope.new(@toplevel, VI::Object, nil, const_scope, [], nil)
-      scope.function = '(toplevel)'
-      scope
-    end
-
-    def default_pipeline
+    def make_pipeline(is_eval=false, locals=nil)
       Furnace::Transform::Pipeline.new([
-        AST::Prepare::RubyParser.new,
+        AST::Prepare::RubyParser.new(is_eval),
         AST::Prepare::ExpandPrimitives.new,
+        AST::Prepare::ExpandImplicitContexts.new,
+        AST::Prepare::TraceVariables.new(locals),
       ])
     end
 
-    def parse_file(filename)
-      parser = Ruby19Parser.new
-      parser.parse(File.read(filename), filename)
-    end
-
-    def parse_string(string, name='(eval)', scope=nil)
-      parser = Ruby19Parser.new
-      if scope
-        scope.locals.each do |name, |
-          parser.env[name] = :lvar
-        end
-      end
-
-      parser.parse(string, name)
-    end
-
-    def prepare_ast(input, pipeline=default_pipeline)
+    def prepare_ast(input, pipeline=make_pipeline)
       ast = AST::Node.from_sexp(input)
       p ast if @graph_ast
 
@@ -82,11 +89,6 @@ module Foundry
       p ir if @graph_ir
 
       ir
-    end
-
-    def eval_ir(ir, name='(unknown script)', scope=create_toplevel_scope)
-      script = ScriptBody.new(ir, name)
-      script.execute(nil, scope)
     end
   end
 end

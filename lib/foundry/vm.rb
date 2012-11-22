@@ -1,14 +1,5 @@
 require_relative 'vm/vm_immediate'
 
-require_relative 'vm/constant_scope'
-require_relative 'vm/variable_scope'
-require_relative 'vm/block_environment'
-
-require_relative 'vm/executable'
-require_relative 'vm/script_body'
-require_relative 'vm/method_body'
-require_relative 'vm/closure_body'
-
 require_relative 'vm/vm_basic_object'
 require_relative 'vm/vm_object'
 
@@ -63,15 +54,6 @@ module Foundry
     Foundry_SingletonClass   = Class.allocate(Class,  'Foundry::SingletonClass', VMClass)
     Foundry_Tuple            = Class.allocate(Object, 'Foundry::Tuple', VMTuple)
 
-    Foundry_ConstantScope    = Class.allocate(Object, 'Foundry::ConstantScope', ConstantScope)
-    Foundry_VariableScope    = Class.allocate(Object, 'Foundry::VariableScope', VariableScope)
-    Foundry_BlockEnvironment = Class.allocate(Object, 'Foundry::BlockEnvironment', BlockEnvironment)
-
-    Foundry_Executable       = Class.allocate(Object, 'Foundry::Executable', Executable)
-    Foundry_ScriptBody       = Class.allocate(Executable, 'Foundry::ScriptBody', ScriptBody)
-    Foundry_MethodBody       = Class.allocate(Executable, 'Foundry::MethodBody', MethodBody)
-    Foundry_ClosureBody      = Class.allocate(Executable, 'Foundry::ClosureBody', ClosureBody)
-
     BasicObject.const_set :BasicObject, BasicObject
 
     Object.const_set :Object, Object
@@ -93,14 +75,7 @@ module Foundry
     Object.const_set :Foundry, Foundry
 
     Foundry.const_set :IncludedModule,   Foundry_IncludedModule
+    Foundry.const_set :SingletonClass,   Foundry_SingletonClass
     Foundry.const_set :Tuple,            Foundry_Tuple
-
-    Foundry.const_set :ConstantScope,    Foundry_ConstantScope
-    Foundry.const_set :VariableScope,    Foundry_VariableScope
-    Foundry.const_set :BlockEnvironment, Foundry_BlockEnvironment
-    Foundry.const_set :Executable,       Foundry_Executable
-    Foundry.const_set :ScriptBody,       Foundry_ScriptBody
-    Foundry.const_set :MethodBody,       Foundry_MethodBody
-    Foundry.const_set :ClosureBody,      Foundry_ClosureBody
   end
 end

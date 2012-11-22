@@ -45,7 +45,7 @@ begin
   $runtime.bootstrap
 
   $runtime.eval <<-REPL, '(prelude)'
-  module Kernel
+  class Object # replace with module Kernel
     def repl!
       Foundry.primitive :repl
     end

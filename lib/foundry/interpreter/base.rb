@@ -1,57 +1,174 @@
-module Foundry
-  class Interpreter::Base < Furnace::AST::Processor
-    attr_reader :outer
+module Foundry::Interpreter
+  class Base < Furnace::AST::Processor
+    attr_reader :env, :outer
 
-    def initialize(outer, executable, scope)
-      @outer       = outer
-      @executable  = executable
-      @scope       = scope
-      @scope_stack = []
-    end
+    def initialize(ast, self_=nil, args=nil, env=nil, outer=nil)
+      @ast          = ast
+      @self, @args  = self_, args
+      @env          = env
+      @outer        = outer
 
-    def with_scope(scope)
-      @scope_stack.push @scope
-      @scope = scope
-
-      yield
-    ensure
-      @scope = @scope_stack.pop
-    end
-    protected :with_scope
-
-    def innermost_scope
-      @scope
-    end
-
-    def collect_backtrace_part
-      ([ @scope ] + @scope_stack).map do |scope|
-        Interpreter::BacktraceItem.new(@executable.file, scope.line, scope.function).freeze
-      end.freeze
-    end
-
-    def collect_backtrace
-      if @outer
-        ([ collect_backtrace_part ] + @outer.collect_backtrace).freeze
-      else
-        [ collect_backtrace_part ].freeze
-      end
-    end
-
-    def evaluate
-      process @executable.ast
+      @current_insn = nil
+      @scope_stack  = []
     end
 
     #
-    # Processor
+    # Processing
     #
 
     def process(node)
-      @scope.line = node.line
+      @current_insn = node
       super
     end
 
     def handler_missing(node)
-      raise "Missing handler for node #{node.inspect}"
+      raise "Missing handler for node\n#{node.inspect}"
+    end
+
+    #
+    # Stack traces
+    #
+
+    def collect_backtrace_part(include_current)
+      last_function = nil
+
+      if include_current
+        stack = @scope_stack + [ @current_insn ]
+      else
+        stack = @scope_stack
+      end
+
+      stack.reverse.map do |insn|
+        if insn.function
+          last_function = insn.function
+        end
+
+        BacktraceItem.new(insn.file, insn.line, last_function).freeze
+      end.freeze
+    end
+
+    def collect_backtrace(include_current=true)
+      if @outer
+        ([ collect_backtrace_part(include_current) ] + @outer.collect_backtrace(false)).freeze
+      else
+        [ collect_backtrace_part(include_current) ].freeze
+      end
+    end
+
+    def evaluate
+      process @ast
+    end
+
+    #
+    # Initial contexts
+    #
+
+    def on_self(node)
+      @self
+    end
+
+    def on_const_base(node)
+      VI::Object
+    end
+
+    #
+    # Variables
+    #
+
+    def process_let(node, flush_env)
+      vars, *body = node.children
+
+      if flush_env
+        new_env = Environment.new
+
+        if @env
+          new_env.define(:Cref, @env.apply(:Cref))
+        end
+      else
+        new_env = @env.extend
+      end
+
+      begin
+        old_env = @env
+        @env = new_env
+
+        vars.each do |name, value|
+          new_env.define name, process(value)
+        end
+
+        @scope_stack.push(node)
+
+        process_all(body).last
+      ensure
+        @env = old_env
+        @scope_stack.pop
+      end
+    end
+
+    def on_let_new(node)
+      process_let(node, true)
+    end
+
+    def on_let(node)
+      process_let(node, false)
+    end
+
+    def on_var(node)
+      var, = node.children
+
+      @env.apply(var)
+    end
+
+    def on_mut!(node)
+      var, value = node.children
+
+      @env.mutate(var, process(value))
+    end
+
+    def on_eval_mut!(node)
+      var, value = node.children
+
+      if @env.defined?(var)
+        @env.mutate(var, process(value))
+      else
+        @env.define(var, process(value))
+      end
+    end
+
+    #
+    # Control flow
+    #
+
+    def on_block(node)
+      @scope_stack.push node
+
+      process_all(node.children).last || VI::NIL
+    ensure
+      @scope_stack.pop
+    end
+
+    #
+    # Tuples and de/composition
+    #
+
+    def on_array(node)
+      result = []
+
+      node.children.map do |child|
+        if child.type == :splat
+          result += process_all(child.children)
+        else
+          result << process(child)
+        end
+      end
+
+      result
+    end
+
+    def on_array_unshift(node)
+      array, value = process_all(node.children)
+
+      [ value ] + array
     end
 
     #
@@ -89,30 +206,10 @@ module Foundry
     # Constants
     #
 
-    def push_cref_and_process_body(modulus, body_node)
-      if body_node
-        const_scope = @scope.const_scope.nest(modulus)
-        scope = VariableScope.new(modulus, modulus, nil, const_scope, [], nil)
-
-        if modulus.is_a? VI::Class
-          scope.function = "<class #{modulus.name}>" || '(anonymous class)'
-        else
-          scope.function = "<module #{modulus.name}>" || '(anonymous module)'
-        end
-
-        with_scope(scope) do
-          process body_node
-        end
-      else
-        VI::NIL
-      end
-    end
-    protected :push_cref_and_process_body
-
     def parse_scoped_const(name_node)
       if name_node.type == :const_ref
         name,        = name_node.children
-        outer_module = @scope.const_scope.nesting.first
+        outer_module = @env.apply(:Cref).first || VI::Object
       elsif name_node.type == :const_fetch
         outer_node, name = name_node.children
         outer_module = process(outer_node)
@@ -122,14 +219,28 @@ module Foundry
     end
     protected :parse_scoped_const
 
+    def find_const_in(scopes, name)
+      scopes.each do |scope|
+        if scope.const_defined?(name)
+          return scope.const_get(name)
+        end
+      end
+
+      return VI::UNDEF
+    end
+
     def on_const_ref(node)
       name, = node.children
 
-      const = @scope.const_scope.find_const(name)
+      const = find_const_in(@env.apply(:Cref), name)
+      if const == VI::UNDEF
+        const = find_const_in(@env.apply(:Cref).first.ancestors, name)
+      end
+
       unless const == VI::UNDEF
         const
       else
-        raise Interpreter::Error.new(self, "uninitialized constant #{name}")
+        raise Error.new(self, "uninitialized constant #{name}")
       end
     end
 
@@ -138,11 +249,16 @@ module Foundry
 
       modulus = process(parent_node)
 
-      const = modulus.const_get(name)
-      unless const == VI::UNDEF
-        const
+      if !modulus.is_a? VI::Module
+        raise Error.new(self, "#{modulus.inspect}:#{modulus.class.name} is not a class/module")
       else
-        raise Interpreter::Error.new(self, "uninitialized constant #{name} for #{modulus.name}")
+        const = modulus.const_get(name)
+
+        if const == VI::UNDEF
+          raise Error.new(self, "uninitialized constant #{name} for #{modulus.name}")
+        else
+          const
+        end
       end
     end
 
@@ -153,7 +269,7 @@ module Foundry
       value = process(value_node)
 
       if outer_module.const_defined?(name)
-        raise Interpreter::Error.new(self, "already initialized constant #{name}")
+        raise Error.new(self, "already initialized constant #{name}")
       else
         outer_module.const_set(name, value)
       end
@@ -163,26 +279,26 @@ module Foundry
     # Classes and modules
     #
 
-    def on_module(node)
-      name_node, body_node = node.children
+    def on_define_module(node)
+      name_node, = node.children
 
       outer_module, name = parse_scoped_const(name_node)
 
       modulus = outer_module.const_get(name)
       unless modulus == VI::UNDEF
         unless modulus.is_a? VI::Module
-          raise Interpreter::Error.new(self, "#{name} is not a module")
+          raise Error.new(self, "#{name} is not a module")
         end
       else
         modulus = VI::Module.allocate(name)
         outer_module.const_set name, modulus
       end
 
-      push_cref_and_process_body(modulus, body_node)
+      modulus
     end
 
-    def on_class(node)
-      name_node, superclass_node, body_node = node.children
+    def on_define_class(node)
+      name_node, superclass_node = node.children
 
       if superclass_node.nil?
         superclass = VI::Object
@@ -195,83 +311,46 @@ module Foundry
       klass = outer_module.const_get(name)
       unless klass == VI::UNDEF
         unless klass.is_a? VI::Class
-          raise Interpreter::Error.new(self, "#{name} is not a class")
+          raise Error.new(self, "#{name} is not a class")
         end
       else
         klass = VI::Class.allocate(superclass, name)
         outer_module.const_set name, klass
       end
 
-      push_cref_and_process_body(klass, body_node)
+      klass
     end
 
     def on_defn(node)
       name, arguments_node, body_node = node.children
 
-      method = MethodBody.new(body_node, @executable.file, @scope.module, arguments_node)
-
-      @scope.module.define_method(name, method)
+      @env.apply(:Defn).define_method(name, body_node)
 
       VI::NIL
     end
 
     def on_alias(node)
       (to_name, ), (from_name, ) = node.children.map(&:children)
+      definee = @env.apply(:Defn)
 
-      method = @scope.module.instance_method(from_name)
+      method = definee.instance_method(from_name)
 
-      if method == VI::UNDEF && @scope.module.is_a?(VI::Module)
-        method = @scope.module.method(from_name)
+      if method == VI::UNDEF && @env.apply(:Defn).is_a?(VI::Module)
+        method = definee.method(from_name)
       end
 
       if method == VI::UNDEF
-        raise Interpreter::Error.new(self, "undefined method #{from_name} for #{@scope.module.name}")
+        raise Error.new(self, "undefined method #{from_name} for #{definee.name}")
       end
 
-      @scope.module.define_method(to_name, method)
+      definee.define_method(to_name, method)
 
       VI::NIL
     end
 
     #
-    # Variables
-    #
-
-    def on_lvar(node)
-      var, = node.children
-      @scope.locals[var]
-    end
-
-    def on_lasgn(node)
-      var, value = node.children
-      @scope.locals[var] = process(value)
-    end
-
-    #
-    # Tuples and de/composition
-    #
-
-    def on_array(node)
-      result = []
-
-      node.children.map do |child|
-        if child.type == :splat
-          result += process_all(child.children)
-        else
-          result << process(child)
-        end
-      end
-
-      result
-    end
-
-    #
     # Calls
     #
-
-    def on_block(node)
-      process_all(node.children).last || VI::NIL
-    end
 
     def on_call(node)
       receiver_node, name, arguments_node = node.children
@@ -285,22 +364,18 @@ module Foundry
       if receiver_node
         receiver = process(receiver_node)
       else
-        receiver = @scope.self
+        receiver = @env.apply(:Self)
       end
 
       if receiver.respond_to? name
         method = receiver.method(name)
 
-        const_scope = ConstantScope.new([ method.module ])
-        scope = VariableScope.new(receiver, method.module, nil,
-                  const_scope, arguments, nil)
-        scope.function = name.to_s
-
-        method.execute(self, scope)
+        Foundry::Runtime.interpreter.
+          new(method, self, arguments, nil, self).
+          evaluate
       else
-        raise Interpreter::Error.new(self, "undefined method #{name} for #{receiver.class.name}")
+        raise Error.new(self, "undefined method #{name} for #{receiver.class.name}")
       end
     end
-
   end
 end
