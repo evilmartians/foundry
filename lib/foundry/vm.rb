@@ -18,12 +18,15 @@ require_relative 'vm/vm_string'
 require_relative 'vm/vm_numeric'
 require_relative 'vm/vm_integer'
 
+require_relative 'vm/vm_binding'
+require_relative 'vm/vm_proc'
+
 module Foundry
   module VI
-    BasicObject = VMClass.new(nil, nil,         'BasicObject', VMBasicObject)
-    Object      = VMClass.new(nil, BasicObject, 'Object',      VMObject)
-    Module      = VMClass.new(nil, Object,      'Module',      VMModule)
-    Class       = VMClass.new(nil, Module,      'Class',       VMClass)
+    BasicObject   = VMClass.new(nil, nil,         'BasicObject', VMBasicObject)
+    Object        = VMClass.new(nil, BasicObject, 'Object',      VMObject)
+    Module        = VMClass.new(nil, Object,      'Module',      VMModule)
+    Class         = VMClass.new(nil, Module,      'Class',       VMClass)
 
     [BasicObject, Object, Module, Class].each do |klass|
       klass.instance_exec do
@@ -31,24 +34,27 @@ module Foundry
       end
     end
 
-    Kernel      = Module.allocate('Kernel')
+    Kernel        = Module.allocate('Kernel')
 
-    NilClass    = Class.allocate(Object, 'NilClass',   VMNilClass)
-    TrueClass   = Class.allocate(Object, 'TrueClass',  VMTrueClass)
-    FalseClass  = Class.allocate(Object, 'FalseClass', VMFalseClass)
+    NilClass      = Class.allocate(Object, 'NilClass',   VMNilClass)
+    TrueClass     = Class.allocate(Object, 'TrueClass',  VMTrueClass)
+    FalseClass    = Class.allocate(Object, 'FalseClass', VMFalseClass)
 
-    UNDEF       = :undefined
-    NIL         = VMNilClass.new
-    TRUE        = VMTrueClass.new
-    FALSE       = VMFalseClass.new
+    UNDEF         = :undefined
+    NIL           = VMNilClass.new
+    TRUE          = VMTrueClass.new
+    FALSE         = VMFalseClass.new
 
-    Symbol      = Class.allocate(Object, 'Symbol', VMSymbol)
-    String      = Class.allocate(Object, 'String', VMString)
+    Symbol        = Class.allocate(Object, 'Symbol', VMSymbol)
+    String        = Class.allocate(Object, 'String', VMString)
 
-    Numeric     = Class.allocate(Object, 'Numeric',  VMNumeric)
-    Integer     = Class.allocate(Numeric, 'Integer', VMInteger)
+    Numeric       = Class.allocate(Object, 'Numeric',  VMNumeric)
+    Integer       = Class.allocate(Numeric, 'Integer', VMInteger)
 
-    Foundry     = Module.allocate('Foundry')
+    Binding       = Class.allocate(Object, 'Binding', VMBinding)
+    Proc          = Class.allocate(Object, 'Proc', VMProc)
+
+    Foundry       = Module.allocate('Foundry')
 
     Foundry_IncludedModule   = Class.allocate(Module, 'Foundry::IncludedModule', VMIncludedModule)
     Foundry_SingletonClass   = Class.allocate(Class,  'Foundry::SingletonClass', VMClass)
@@ -71,6 +77,9 @@ module Foundry
 
     Object.const_set :Integer, Integer
     Object.const_set :Numeric, Numeric
+
+    Object.const_set :Binding, Binding
+    Object.const_set :Proc,    Proc
 
     Object.const_set :Foundry, Foundry
 

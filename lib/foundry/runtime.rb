@@ -63,7 +63,7 @@ module Foundry
 
       if outer
         Runtime.interpreter.
-            new(ir, nil, nil, outer.env, outer).
+            new(ir, nil, nil, nil, outer.env, outer).
             evaluate
       else
         Runtime.interpreter.

@@ -1,6 +1,8 @@
-module Foundry::Interpreter
-  class Environment
-    def initialize(next_=nil)
+module Foundry
+  class VMBinding < VMObject
+    def initialize(klass, next_=nil)
+      super(klass)
+
       @next = next_
       @vars = {}
     end
@@ -42,8 +44,12 @@ module Foundry::Interpreter
       end
     end
 
-    def extend
+    def chain
       Environment.new(self)
+    end
+
+    def inspect
+      "{Binding}"
     end
   end
 end

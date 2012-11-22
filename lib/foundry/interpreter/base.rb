@@ -2,11 +2,11 @@ module Foundry::Interpreter
   class Base < Furnace::AST::Processor
     attr_reader :env, :outer
 
-    def initialize(ast, self_=nil, args=nil, env=nil, outer=nil)
-      @ast          = ast
+    def initialize(code, self_=nil, args=nil, block=nil, env=nil, outer=nil)
+      @code         = code
       @self, @args  = self_, args
-      @env          = env
-      @outer        = outer
+      @block        = block
+      @env, @outer  = env, outer
 
       @current_insn = nil
       @scope_stack  = []
@@ -56,7 +56,7 @@ module Foundry::Interpreter
     end
 
     def evaluate
-      process @ast
+      process @code
     end
 
     #
@@ -79,13 +79,13 @@ module Foundry::Interpreter
       vars, *body = node.children
 
       if flush_env
-        new_env = Environment.new
+        new_env = VI::Binding.allocate
 
         if @env
           new_env.define(:Cref, @env.apply(:Cref))
         end
       else
-        new_env = @env.extend
+        new_env = @env.chain
       end
 
       begin
@@ -342,10 +342,13 @@ module Foundry::Interpreter
       klass
     end
 
-    def on_defn(node)
-      name, arguments_node, body_node = node.children
+    def on_def(node)
+      target_node, name, arguments_node, body_node = node.children
 
-      @env.apply(:Defn).define_method(name, body_node)
+      proc = VI::Proc.allocate(@env, body_node)
+
+      target = process(target_node)
+      target.define_method(name, proc)
 
       VI::NIL
     end
@@ -374,26 +377,15 @@ module Foundry::Interpreter
     #
 
     def on_call(node)
-      receiver_node, name, arguments_node = node.children
+      receiver_node, name, arguments_node, block_node = node.children
 
-      if arguments_node
-        arguments = process(arguments_node)
-      else
-        arguments = []
-      end
-
-      if receiver_node
-        receiver = process(receiver_node)
-      else
-        receiver = @env.apply(:Self)
-      end
+      arguments = process(arguments_node)
+      receiver  = process(receiver_node)
+      block     = process(block_node)
 
       if receiver.respond_to? name
         method = receiver.method(name)
-
-        Foundry::Runtime.interpreter.
-          new(method, self, arguments, nil, self).
-          evaluate
+        method.call(receiver, arguments, block, self)
       else
         raise Error.new(self, "undefined method #{name} for #{receiver.class.name}")
       end

@@ -72,8 +72,43 @@ module Foundry
         name, = node.children
 
         node.updated(:const_fetch, [
-          node.updated(:const_base, []),
+          Node(:const_base),
           name
+        ])
+      end
+
+      def on_defn(node)
+        name, args, *code = node.children
+
+        node.updated(:def, [
+          Node(:var, [ :Defn ]),
+          name, args,
+          *process_all(code)
+        ])
+      end
+
+      def on_defs(node)
+        target, name, args, *code = node.children
+
+        node.updated(:def, [
+          Node(:singleton_class_of, [
+            target
+          ]),
+          name, args,
+          *process_all(code)
+        ])
+      end
+
+      def on_call(node)
+        receiver, name, args = node.children
+
+        if receiver.nil?
+          receiver = Node(:var, [ :Self ])
+        end
+
+        node.updated(nil, [
+          process(receiver), name,
+          process(args)
         ])
       end
 

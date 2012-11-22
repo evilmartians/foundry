@@ -86,8 +86,8 @@ module Foundry
       def on_defn(node)
         name, args, *code = node.children
         node.updated(nil, [
-          name, process(args),
-          process(node.updated(:block, code))
+           name, process(args),
+          *process_all(code)
         ])
       end
 
