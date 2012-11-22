@@ -21,18 +21,30 @@ module Foundry
         end
       end
 
-      def process_const_name(name)
-        if name.is_a? Symbol
-          Node(:const_ref, [ name ])
-        else
-          process(name)
+      def process_const_name(what)
+        if what.is_a? Symbol
+          scope = Node(:array_ref, [
+            Node(:var, [ :Cref ]), Node(:integer, [ 0 ])
+          ])
+          name  = what
+
+        elsif what.type == :colon2
+          scope, name = what.children
+          scope = process(scope)
+
+        elsif what.type == :colon3
+          name, = what.children
+          scope = Node(:const_base)
+
         end
+
+        [ scope, name ]
       end
 
       def on_module(node)
         name, *code = node.children
         node.updated(nil, [
-          process_const_name(name),
+          *process_const_name(name),
           *process_all(code)
         ])
       end
@@ -41,7 +53,8 @@ module Foundry
         name, superclass, *code = node.children
 
         node.updated(nil, [
-          process_const_name(name), process(superclass),
+          *process_const_name(name),
+           process(superclass),
           *process_all(code)
         ])
       end
@@ -65,8 +78,8 @@ module Foundry
       def on_cdecl(node)
         name, value = node.children
         node.updated(:const_declare, [
-          process_const_name(name),
-          process(value)
+          *process_const_name(name),
+           process(value)
         ])
       end
 

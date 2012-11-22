@@ -2,11 +2,12 @@ module Foundry
   class VMTuple < VMObject
     def initialize(klass, value)
       super(klass)
+
       @storage = value.to_ary.freeze
     end
 
     def [](index)
-      @storage[index.to_int]
+      @storage[index.to_int] || VI::NIL
     end
 
     def length

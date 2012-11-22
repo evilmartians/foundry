@@ -7,18 +7,24 @@ module Foundry
     end
 
     def on_class(node)
-      name, superclass, *code = node.children
-      node.updated(nil, [ name, process(superclass) ] + process_all(code))
+      scope, name, superclass, *code = node.children
+      node.updated(nil, [
+        process(scope), name, process(superclass),
+        *process_all(code)
+      ])
     end
 
     def on_module(node)
-      name, *code = node.children
-      node.updated(nil, [ name ] + process_all(code))
+      scope, name, *code = node.children
+      node.updated(nil, [
+        process(scope), name,
+        *process_all(code)
+      ])
     end
 
     def on_defn(node)
       name, args, *code = node.children
-      node.updated(nil, [ name, process(args) ] + process_all(code))
+      node.updated(nil, [ name, process(args), *process_all(code) ])
     end
 
     def on_block(node)
@@ -40,9 +46,14 @@ module Foundry
       node.updated(nil, process_all(node.children))
     end
 
+    def on_const_fetch(node)
+      scope, name = node.children
+      node.updated(nil, [ process(scope), name ])
+    end
+
     def on_const_declare(node)
-      name, value = node.children
-      node.updated(nil, [ name, process(value) ])
+      scope, name, value = node.children
+      node.updated(nil, [ process(scope), name, process(value) ])
     end
 
     def process_let(node, flush_env)

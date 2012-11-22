@@ -5,9 +5,9 @@ module Foundry
         node.updated(:let_new, [
           {
             :Self  => Node(:self),
+            :Block => Node(:nil),
             :Defn  => Node(:const_base),
             :Cref  => Node(:array),
-            :Block => Node(:nil),
           },
           *process_all(node.children),
         ], function: '(toplevel)')
@@ -26,40 +26,53 @@ module Foundry
             :Scope  => new_scope,
 
             :Self   => Node(:var, [ :Scope ]),
+            :Block  => Node(:nil),
             :Defn   => Node(:var, [ :Scope ]),
             :Cref   => Node(:array_unshift, [
                          Node(:var, [ :Cref  ]),
                          Node(:var, [ :Scope ])
                        ]),
-            :Block  => Node(:nil),
           },
           *process_all(body)
         ], function: function)
       end
 
       def on_class(node)
-        name, superclass, *body = node.children
+        scope, name, superclass, *body = node.children
 
         process_scope(node,
-          node.updated(:define_class, [ name, superclass ]),
+          node.updated(:define_class, [
+            process(scope), name, process(superclass)
+          ]),
           body,
           '<class definition>')
       end
 
       def on_module(node)
-        name, *body = node.children
+        scope, name, *body = node.children
 
         process_scope(node,
-          node.updated(:define_module, [ name ]),
+          node.updated(:define_module, [
+            process(scope), name
+          ]),
           body,
           '<module definition>')
+      end
+
+      def on_const_ref(node)
+        name, = node.children
+
+        node.updated(:const_ref_in, [
+          Node(:var, [ :Cref ]),
+          name
+        ])
       end
 
       def on_const_toplevel(node)
         name, = node.children
 
         node.updated(:const_fetch, [
-          node.updated(:const_base),
+          node.updated(:const_base, []),
           name
         ])
       end

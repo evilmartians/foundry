@@ -98,7 +98,7 @@ module Foundry::Interpreter
 
         @scope_stack.push(node)
 
-        process_all(body).last
+        process_all(body).last || VI::NIL
       ensure
         @env = old_env
         @scope_stack.pop
@@ -162,13 +162,36 @@ module Foundry::Interpreter
         end
       end
 
-      result
+      VI::Foundry_Tuple.allocate(result)
+    end
+
+    def on_array_ref(node)
+      array, index = process_all(node.children)
+
+      array[index]
+    end
+
+    def on_array_fetch(node)
+      array_node, index_node, default_node = node.children
+      array, index = process(array), process(index)
+
+      if index >= array.length || index < -array.length
+        process(default_node)
+      else
+        array[index]
+      end
     end
 
     def on_array_unshift(node)
       array, value = process_all(node.children)
 
-      [ value ] + array
+      VI::Foundry_Tuple.allocate([ value ] + array.to_a)
+    end
+
+    def on_array_push(node)
+      array, value = process_all(node.children)
+
+      VI::Foundry_Tuple.allocate([ value ] + array.to_a)
     end
 
     #
@@ -206,35 +229,33 @@ module Foundry::Interpreter
     # Constants
     #
 
-    def parse_scoped_const(name_node)
-      if name_node.type == :const_ref
-        name,        = name_node.children
-        outer_module = @env.apply(:Cref).first || VI::Object
-      elsif name_node.type == :const_fetch
-        outer_node, name = name_node.children
-        outer_module = process(outer_node)
-      end
+    def prepare_cref(cref_node)
+      cref = process(cref_node)
 
-      [ outer_module, name ]
+      if cref.length == 0
+        cref = VI::Foundry_Tuple.allocate([ VI::Object ])
+      else
+        cref
+      end
     end
-    protected :parse_scoped_const
 
     def find_const_in(scopes, name)
       scopes.each do |scope|
-        if scope.const_defined?(name)
-          return scope.const_get(name)
+        if scope.const_defined?(name, false)
+          return scope.const_get(name, false)
         end
       end
 
-      return VI::UNDEF
+      VI::UNDEF
     end
 
-    def on_const_ref(node)
-      name, = node.children
+    def on_const_ref_in(node)
+      cref_node, name = node.children
+      cref = prepare_cref(cref_node)
 
-      const = find_const_in(@env.apply(:Cref), name)
+      const = find_const_in(cref, name)
       if const == VI::UNDEF
-        const = find_const_in(@env.apply(:Cref).first.ancestors, name)
+        const = find_const_in(cref[0].ancestors, name)
       end
 
       unless const == VI::UNDEF
@@ -263,15 +284,17 @@ module Foundry::Interpreter
     end
 
     def on_const_declare(node)
-      name_node, value_node = node.children
+      scope_node, name, value_node = node.children
 
-      outer_module, name = parse_scoped_const(name_node)
+      scope = process(scope_node)
+      scope = VI::Object if scope.nil?
+
       value = process(value_node)
 
-      if outer_module.const_defined?(name)
+      if scope.const_defined?(name, false)
         raise Error.new(self, "already initialized constant #{name}")
       else
-        outer_module.const_set(name, value)
+        scope.const_set(name, value)
       end
     end
 
@@ -280,25 +303,27 @@ module Foundry::Interpreter
     #
 
     def on_define_module(node)
-      name_node, = node.children
+      scope_node, name = node.children
 
-      outer_module, name = parse_scoped_const(name_node)
+      scope = process(scope_node)
+      scope = VI::Object if scope.nil?
 
-      modulus = outer_module.const_get(name)
+      modulus = scope.const_get(name)
+
       unless modulus == VI::UNDEF
         unless modulus.is_a? VI::Module
           raise Error.new(self, "#{name} is not a module")
         end
       else
         modulus = VI::Module.allocate(name)
-        outer_module.const_set name, modulus
+        scope.const_set name, modulus
       end
 
       modulus
     end
 
     def on_define_class(node)
-      name_node, superclass_node = node.children
+      scope_node, name, superclass_node = node.children
 
       if superclass_node.nil?
         superclass = VI::Object
@@ -306,16 +331,18 @@ module Foundry::Interpreter
         superclass = process(superclass_node)
       end
 
-      outer_module, name = parse_scoped_const(name_node)
+      scope = process(scope_node)
+      scope = VI::Object if scope.nil?
 
-      klass = outer_module.const_get(name)
+      klass = scope.const_get(name)
+
       unless klass == VI::UNDEF
         unless klass.is_a? VI::Class
           raise Error.new(self, "#{name} is not a class")
         end
       else
         klass = VI::Class.allocate(superclass, name)
-        outer_module.const_set name, klass
+        scope.const_set name, klass
       end
 
       klass
