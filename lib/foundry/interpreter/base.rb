@@ -229,16 +229,6 @@ module Foundry::Interpreter
     # Constants
     #
 
-    def prepare_cref(cref_node)
-      cref = process(cref_node)
-
-      if cref.length == 0
-        cref = VI::Foundry_Tuple.allocate([ VI::Object ])
-      else
-        cref
-      end
-    end
-
     def find_const_in(scopes, name)
       scopes.each do |scope|
         if scope.const_defined?(name, false)
@@ -251,7 +241,11 @@ module Foundry::Interpreter
 
     def on_const_ref_in(node)
       cref_node, name = node.children
-      cref = prepare_cref(cref_node)
+
+      cref = process(cref_node)
+      if cref.length == 0
+        cref = VI::Foundry_Tuple.allocate([ VI::Object ])
+      end
 
       const = find_const_in(cref, name)
       if const == VI::UNDEF
