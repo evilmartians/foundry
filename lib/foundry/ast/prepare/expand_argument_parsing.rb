@@ -1,7 +1,7 @@
 module Foundry
   module AST::Prepare
     class ExpandArgumentParsing < AST::Processor
-      def expand(node, args, body, is_proc)
+      def expand(node, args, body, is_proc, function_name)
         if is_proc
           vars = {}
         else
@@ -121,7 +121,7 @@ module Foundry
           vars,
           *unpacker,
           *body
-        ])
+        ], function: function_name)
       end
 
       def on_def(node)
@@ -129,7 +129,7 @@ module Foundry
 
         node.updated(nil, [
           process(target), name,
-          expand(node, args, body, false)
+          expand(node, args, body, false, name)
         ])
       end
 
@@ -137,7 +137,7 @@ module Foundry
         args, *body = node.children
 
         node.updated(nil, [
-          expand(node, args, body, true)
+          expand(node, args, body, true, '<closure>')
         ])
       end
     end

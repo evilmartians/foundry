@@ -38,13 +38,13 @@ module Foundry::Interpreter
         stack = @scope_stack
       end
 
-      stack.reverse.map do |insn|
+      stack.map do |insn|
         if insn.function
           last_function = insn.function
         end
 
         BacktraceItem.new(insn.file, insn.line, last_function).freeze
-      end.freeze
+      end.reverse.freeze
     end
 
     def collect_backtrace(include_current=true)
