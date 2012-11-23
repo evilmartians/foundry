@@ -92,11 +92,20 @@ module Foundry
         ])
       end
 
+      def on_defs(node)
+        scope, name, args, *code = node.children
+        node.updated(nil, [
+           process(scope),
+           name, process(args),
+          *process_all(code)
+        ])
+      end
+
       def on_iter(node)
         call, block_args, *block_body = node.children
 
         block = node.updated(:proc, [
-          process(block_args), *block_body
+          block_args, *block_body
         ])
 
         receiver, name, args = process(call).children
@@ -114,6 +123,8 @@ module Foundry
              args.last.type == :block_pass
           block, = args.last.children
           args   = args[0..-2]
+        else
+          block  = s(:nil)
         end
 
         node.updated(nil, [

@@ -110,7 +110,15 @@ module Foundry
       end
 
       def on_self(node)
-        node.updated(:var, :Self)
+        node.updated(:var, [ :Self ])
+      end
+
+      def on_yield(node)
+        node.updated(:proc_call, [
+          s(:check_block, s(:var, :Block)),
+          node.updated(:args),
+          s(:nil)
+        ])
       end
     end
   end

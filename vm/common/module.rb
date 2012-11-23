@@ -14,6 +14,6 @@ class Module
   private :public, :private, :protected
 
   def include(modulus)
-    Foundry.primitive :include, modulus
+    Foundry.primitive :include, self, modulus
   end
 end

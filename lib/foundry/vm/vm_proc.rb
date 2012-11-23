@@ -9,9 +9,9 @@ module Foundry
       @code    = code
     end
 
-    def call(receiver, arguments, block, outer)
+    def call(self_, arguments, block, outer)
       Runtime.interpreter.
-        new(@code, receiver, arguments, block, @binding, outer).
+        new(@code, self_, arguments, block, @binding, outer).
         evaluate
     end
 

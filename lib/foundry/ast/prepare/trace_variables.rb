@@ -19,7 +19,7 @@ module Foundry
         vars, *body = node.children
 
         @let_vars   = vars.dup
-        @static_env = @static_env.merge(@let_vars.keys)
+        @static_env = @static_env.dup.merge(@let_vars.keys)
 
         node.updated(nil, [
           @let_vars, *process_all(body)

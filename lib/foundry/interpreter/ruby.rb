@@ -5,24 +5,15 @@ module Foundry::Interpreter
     #
 
     def on_equal?(node)
-      self_ = apply_env(:Self)
-      other = visit(node.arguments.first)
+      self_, other = process_all(node.children)
 
-      if self_.is_a? VI::Symbol
-        (self_.value == other.value) ? VI::TRUE : VI::FALSE
+      if self_.class == other.class &&
+            (self_.class == VI::Integer ||
+             other.class == VI::Symbol)
+        self_.value == other.value ? VI::TRUE : VI::FALSE
       else
-        self_.equal? other
+        self_.equal?(other) ? VI::TRUE : VI::FALSE
       end
-    end
-
-    def on_send(node)
-      method_name = visit(node.children.first).value # TODO to_sym
-      method      = @scope.self.method(method_name)
-
-      scope = VariableScope.new(@scope.self, @scope.module, nil,
-            @scope.const_scope, visit_all(node.children.drop(1)), @scope.block)
-      scope.function = method_name.to_s
-      method.execute(interp, scope)
     end
 
     #
@@ -30,13 +21,41 @@ module Foundry::Interpreter
     #
 
     def on_allocate(node)
-      apply_env(:Self).allocate
+      self_, = process_all(node.children)
+      self_.allocate
     end
 
     def on_include(node)
-      modulus, = process_all(node.children)
-      apply_env(:Self).include(modulus)
+      klass, modulus = process_all(node.children)
+      klass.include(modulus)
     end
 
+    #
+    # Integers
+    #
+
+    {
+      :+  => :add,
+      :-  => :sub,
+      :*  => :mul,
+      :/  => :div,
+    }.each do |op, node|
+      define_method(:"on_int_#{node}") do |node|
+        self_, other = process_all(node.children)
+        VI::Integer.allocate(self_.value.send(op, other.value))
+      end
+    end
+
+    {
+      :<  => :lt,
+      :<= => :lte,
+      :>  => :gt,
+      :>= => :gte,
+    }.each do |op, node|
+      define_method(:"on_int_#{node}") do |node|
+        self_, other = process_all(node.children)
+        self_.value.send(op, other.value) ? VI::TRUE : VI::FALSE
+      end
+    end
   end
 end

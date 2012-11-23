@@ -4,7 +4,7 @@ class BasicObject
   private :initialize
 
   def equal?(other)
-    Foundry.primitive :equal?, other
+    Foundry.primitive :equal?, self, other
   end
 
   alias == equal?

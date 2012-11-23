@@ -18,7 +18,7 @@ module Foundry
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
     def bootstrap
-      #load_package(File.join(VM_ROOT, 'common'))
+      load_package(File.join(VM_ROOT, 'common'))
     end
 
     def load_package(directory)
@@ -37,7 +37,10 @@ module Foundry
     def load(filename)
       parser = Ruby19Parser.new
 
-      ir = prepare_ast(parser.parse(File.read(filename), filename))
+      ast = parser.parse(File.read(filename), filename)
+      return if ast.nil?
+
+      ir  = prepare_ast(ast)
 
       Runtime.interpreter.
           new(ir, @toplevel).
@@ -77,8 +80,8 @@ module Foundry
         AST::Prepare::RubyParser.new(is_eval),
         AST::Prepare::ExpandImplicitContexts.new,
         AST::Prepare::ExpandArgumentParsing.new,
-        AST::Prepare::ExpandPrimitives.new,
         AST::Prepare::TraceVariables.new(locals),
+        AST::Prepare::ExpandPrimitives.new,
       ])
     end
 

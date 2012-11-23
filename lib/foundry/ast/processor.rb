@@ -42,6 +42,11 @@ module Foundry
       node.updated(nil, process_all(node.children))
     end
 
+    def on_splat(node)
+      value, = node.children
+      node.updated(nil, [ process(value) ])
+    end
+
     def on_alias(node)
       from, to = node.children
       node.updated(nil, [ process(from), process(to) ])
@@ -62,6 +67,13 @@ module Foundry
       node.updated(nil, [
         process(cond),
         process(true_branch), process(false_branch)
+      ])
+    end
+
+    def on_while(node)
+      cond, body = node.children
+      node.updated(nil, [
+        process(cond), process(body)
       ])
     end
   end

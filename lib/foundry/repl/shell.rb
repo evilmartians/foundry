@@ -142,7 +142,7 @@ module Foundry
       #puts "#{"~" * (e.column - 1)}^"
 
     rescue Foundry::Interpreter::Error => e
-      puts e.inner_exception.inspect
+      puts e.inner_exception
       e.interleave_backtraces(caller.length) do |line, is_host|
         next if is_host && !@interleave_backtraces
         show_backtrace_line line, is_host

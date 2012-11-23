@@ -6,3 +6,6 @@ module.rb
 basic_object.rb
 kernel.rb
 object.rb
+proc.rb
+comparable.rb
+integer.rb

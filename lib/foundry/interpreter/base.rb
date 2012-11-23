@@ -19,6 +19,10 @@ module Foundry::Interpreter
     def process(node)
       @current_insn = node if node
       super
+    rescue Error
+      raise
+    rescue Exception => e
+      raise Error.new(self, "#{e.class}: #{e}")
     end
 
     def handler_missing(node)
@@ -129,6 +133,18 @@ module Foundry::Interpreter
       @env.mutate(var, process(value))
     end
 
+    def on_if_defined(node)
+      expr_node, value_node = node.children
+
+      expr = process(expr_node)
+
+      if expr.equal? VI::UNDEF
+        process(value_node)
+      else
+        expr
+      end
+    end
+
     #
     # Control flow
     #
@@ -148,11 +164,12 @@ module Foundry::Interpreter
     def on_array(node)
       result = []
 
-      node.children.map do |child|
-        if child.type == :splat
-          result += process_all(child.children)
+      node.children.map do |elem|
+        if elem.type == :splat
+          value, = elem.children
+          result += process(value).to_ary
         else
-          result << process(child)
+          result << process(elem)
         end
       end
 
@@ -221,7 +238,7 @@ module Foundry::Interpreter
 
     def on_symbol(node)
       value, = node.children
-      VMSymbol.new(value)
+      Foundry::VMSymbol.new(value)
     end
 
     def on_integer(node)
@@ -409,6 +426,16 @@ module Foundry::Interpreter
       end
     end
 
+    def on_proc_call(node)
+      closure_node, arguments_node, block_node = node.children
+
+      closure   = process(closure_node)
+      arguments = process(arguments_node)
+      block     = process(block_node)
+
+      closure.call(closure.binding.apply(:Self), arguments, block, self)
+    end
+
     def on_check_arity(node)
       args_node, from, to = node.children
       args = process(args_node)
@@ -421,6 +448,26 @@ module Foundry::Interpreter
           raise Error.new(self, "wrong number of arguments (#{args.length} for #{from})")
         end
       end
+
+      VI::NIL
+    end
+
+    def on_check_block(node)
+      block_node, = node.children
+      block = process(block_node)
+
+      if block.equal? VI::NIL
+        raise Error.new(self, "no block given")
+      end
+
+      block
+    end
+
+    def on_of_caller_env(node)
+      var_node, = node.children
+      var = process(var_node)
+
+      @outer.env.apply(var)
     end
 
     #
@@ -439,6 +486,31 @@ module Foundry::Interpreter
       else
         process(true_branch)
       end
+    end
+
+    def process_loop(node, break_on)
+      cond_node, body_node = node.children
+
+      while true
+        cond_value = process(cond_node)
+
+        if cond_value.equal?(VI::NIL) ||
+              cond_value.equal?(VI::FALSE)
+          break VI::NIL if break_on == false
+        else
+          break VI::NIL if break_on == true
+        end
+
+        process(body_node)
+      end
+    end
+
+    def on_while(node)
+      process_loop(node, false)
+    end
+
+    def on_until(node)
+      process_loop(node, true)
     end
   end
 end
