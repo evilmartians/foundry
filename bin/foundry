@@ -52,7 +52,7 @@ begin
   end
   REPL
 
-  $runtime.graph_ir = true
+  #$runtime.graph_ir = true
 
   if opts[:evaluate]
     opts[:evaluate].each do |value|

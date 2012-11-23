@@ -35,25 +35,31 @@ module Foundry
       end
     end
 
-    def const_defined?(const, search_parent=true)
-      if exists = @const_table.key?(const)
+    def const_defined?(name, search_parent=true)
+      name = name.to_sym
+
+      if exists = @const_table.key?(name)
         exists
       elsif search_parent && @upperclass
-        @upperclass.const_defined? const
+        @upperclass.const_defined? name
       else
         false
       end
     end
 
-    def const_set(const, value)
-      @const_table[const] = value
+    def const_set(name, value)
+      name = name.to_sym
+
+      @const_table[name] = value
     end
 
-    def const_get(const, search_parent=true)
-      if value = @const_table[const]
+    def const_get(name, search_parent=true)
+      name = name.to_sym
+
+      if value = @const_table[name]
         value
       elsif search_parent && @upperclass
-        @upperclass.const_get const
+        @upperclass.const_get name
       else
         VI::UNDEF
       end
@@ -67,26 +73,32 @@ module Foundry
       end
     end
 
-    def method_defined?(method, search_parent=true)
-      if @method_table.key?(method) &&
-            !((undefined = @method_table[method]) == VI::UNDEF)
+    def method_defined?(name, search_parent=true)
+      name = name.to_sym
+
+      if @method_table.key?(name) &&
+            !((undefined = @method_table[name]) == VI::UNDEF)
         true
       elsif !undefined && search_parent && @upperclass
-        @upperclass.method_defined?(method)
+        @upperclass.method_defined?(name)
       else
         false
       end
     end
 
-    def define_method(method, value)
-      @method_table[method] = value
+    def define_method(name, value)
+      name = name.to_sym
+
+      @method_table[name] = value
     end
 
-    def instance_method(method, search_parent=true)
-      if value = @method_table[method]
+    def instance_method(name, search_parent=true)
+      name = name.to_sym
+
+      if value = @method_table[name]
         value
       elsif search_parent && @upperclass
-        @upperclass.instance_method(method)
+        @upperclass.instance_method(name)
       else
         VI::UNDEF
       end

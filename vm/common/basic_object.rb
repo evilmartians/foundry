@@ -14,7 +14,7 @@ class BasicObject
   end
 
   def __send__(method, *args, &block)
-    Foundry.primitive :call, self, method.to_sym, args, &block
+    Foundry.primitive :call, self, method.to_sym, args, block
   end
 
   def !

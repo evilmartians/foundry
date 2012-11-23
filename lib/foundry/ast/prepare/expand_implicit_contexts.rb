@@ -2,12 +2,12 @@ module Foundry
   module AST::Prepare
     class ExpandImplicitContexts < AST::Processor
       def on_toplevel_block(node)
-        node.updated(:let_new, [
+        node.updated(:let, [
           {
-            :Self  => Node(:self),
-            :Block => Node(:nil),
-            :Defn  => Node(:const_base),
-            :Cref  => Node(:array),
+            :Self  => s(:self),
+            :Block => s(:nil),
+            :Defn  => s(:const_base),
+            :Cref  => s(:array),
           },
           *process_all(node.children),
         ], function: '(toplevel)')
@@ -20,18 +20,16 @@ module Foundry
       end
 
       def process_scope(node, new_scope, body, function)
-        node.updated(:let_new, [
+        node.updated(:let, [
           {
-            # Intermediate
             :Scope  => new_scope,
 
-            :Self   => Node(:var, [ :Scope ]),
-            :Block  => Node(:nil),
-            :Defn   => Node(:var, [ :Scope ]),
-            :Cref   => Node(:array_unshift, [
-                         Node(:var, [ :Cref  ]),
-                         Node(:var, [ :Scope ])
-                       ]),
+            :Self   => s(:var, :Scope),
+            :Block  => s(:nil),
+            :Defn   => s(:var, :Scope),
+            :Cref   => s(:array_unshift,
+                         s(:var, :Cref),
+                         s(:var, :Scope)),
           },
           *process_all(body)
         ], function: function)
@@ -63,7 +61,7 @@ module Foundry
         name, = node.children
 
         node.updated(:const_ref_in, [
-          Node(:var, [ :Cref ]),
+          s(:var, :Cref),
           name
         ])
       end
@@ -72,7 +70,7 @@ module Foundry
         name, = node.children
 
         node.updated(:const_fetch, [
-          Node(:const_base),
+          s(:const_base),
           name
         ])
       end
@@ -81,7 +79,7 @@ module Foundry
         name, args, *code = node.children
 
         node.updated(:def, [
-          Node(:var, [ :Defn ]),
+          s(:var, :Defn),
           name, args,
           *process_all(code)
         ])
@@ -91,29 +89,28 @@ module Foundry
         target, name, args, *code = node.children
 
         node.updated(:def, [
-          Node(:singleton_class_of, [
-            target
-          ]),
+          s(:singleton_class_of, target),
           name, args,
           *process_all(code)
         ])
       end
 
       def on_call(node)
-        receiver, name, args = node.children
+        receiver, name, args, block = node.children
 
         if receiver.nil?
-          receiver = Node(:var, [ :Self ])
+          receiver = s(:var, :Self)
         end
 
         node.updated(nil, [
           process(receiver), name,
-          process(args)
+          process(args),
+          process(block)
         ])
       end
 
       def on_self(node)
-        node.updated(:var, [ :Self ])
+        node.updated(:var, :Self)
       end
     end
   end

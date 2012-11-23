@@ -3,13 +3,15 @@ module Foundry
     class ExpandPrimitives < AST::Processor
       def on_call(node)
         receiver, name, arguments = node.children
+
         if name == :primitive &&
-            receiver.type == :const_ref &&
-            receiver.children.first == :Foundry
+            receiver.type == :const_ref_in &&
+            receiver.children.last == :Foundry
 
           primitive, *primitive_args = arguments.children
-          node.updated(primitive.children.first,
-            primitive_args)
+          primitive_name, = primitive.children
+
+          node.updated(primitive_name, primitive_args)
         end
       end
     end

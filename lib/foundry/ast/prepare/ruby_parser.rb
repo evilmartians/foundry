@@ -23,9 +23,9 @@ module Foundry
 
       def process_const_name(what)
         if what.is_a? Symbol
-          scope = Node(:array_ref, [
-            Node(:var, [ :Cref ]), Node(:integer, [ 0 ])
-          ])
+          scope =
+            s(:array_ref,
+              s(:var, :Cref), 0)
           name  = what
 
         elsif what.type == :colon2
@@ -34,7 +34,8 @@ module Foundry
 
         elsif what.type == :colon3
           name, = what.children
-          scope = Node(:const_base)
+          scope =
+            s(:const_base)
 
         end
 
@@ -91,12 +92,59 @@ module Foundry
         ])
       end
 
+      def on_iter(node)
+        call, block_args, *block_body = node.children
+
+        block = node.updated(:proc, [
+          process(block_args), *block_body
+        ])
+
+        receiver, name, args = process(call).children
+
+        call.updated(nil, [
+          receiver, name, args,
+          process(block)
+        ])
+      end
+
       def on_call(node)
         receiver, name, *args = node.children
+
+        if args.length > 0 &&
+             args.last.type == :block_pass
+          block, = args.last.children
+          args   = args[0..-2]
+        end
+
         node.updated(nil, [
           process(receiver), name,
-          process(node.updated(:array, args))
+          process(node.updated(:array, args)),
+          process(block)
         ])
+      end
+
+      def on_args(node)
+        args = node.children.map do |arg|
+          if arg.is_a? Symbol
+            if arg == :*
+              s(:splat_arg)
+            elsif arg[0] == '*'
+              s(:splat_arg, arg[1..-1].to_sym)
+            elsif arg[0] == '&'
+              s(:block_arg, arg[1..-1].to_sym)
+            else
+              s(:arg, arg)
+            end
+          else
+            name, default_value = arg.children
+
+            arg.updated(:optional_arg, [
+              name, process(default_value)
+            ])
+          end
+        end
+
+        node.updated(nil, args)
       end
 
       def on_lit(node)

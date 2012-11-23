@@ -11,7 +11,7 @@ module Foundry
 
     def initialize
       @graph_ast = false
-      @graph_ir  = true
+      @graph_ir  = false
       @toplevel  = Foundry::VI::Object.allocate
     end
 
@@ -75,8 +75,9 @@ module Foundry
     def make_pipeline(is_eval=false, locals=nil)
       Furnace::Transform::Pipeline.new([
         AST::Prepare::RubyParser.new(is_eval),
-        AST::Prepare::ExpandPrimitives.new,
         AST::Prepare::ExpandImplicitContexts.new,
+        AST::Prepare::ExpandArgumentParsing.new,
+        AST::Prepare::ExpandPrimitives.new,
         AST::Prepare::TraceVariables.new(locals),
       ])
     end

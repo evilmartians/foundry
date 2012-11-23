@@ -26,7 +26,7 @@ module Foundry
       elsif @next
         @next.apply(name)
       else
-        raise "Undefined variable #{name.inspect}"
+        ::Kernel.raise "Undefined variable #{name.inspect}"
       end
     end
 
@@ -40,12 +40,12 @@ module Foundry
       elsif @next
         @next.mutate(name, value)
       else
-        raise "Undefined variable #{name.inspect}"
+        ::Kernel.raise "Undefined variable #{name.inspect}"
       end
     end
 
     def chain
-      Environment.new(self)
+      VI::Binding.allocate(self)
     end
 
     def inspect

@@ -12,43 +12,43 @@ module Foundry
         process root
       end
 
-      def process_let(node, flush_env)
+      def on_let(node)
         upper_static_env = @static_env
         upper_let_vars   = @let_vars
 
         vars, *body = node.children
 
-        @let_vars = vars
-
-        if flush_env
-          @static_env = Set.new(vars.keys)
-        else
-          @static_env = upper_static_env.merge(vars.keys)
-        end
+        @let_vars   = vars.dup
+        @static_env = @static_env.merge(@let_vars.keys)
 
         node.updated(nil, [
-          vars, *process_all(body)
+          @let_vars, *process_all(body)
         ])
+
       ensure
         @static_env = upper_static_env
         @let_vars   = upper_let_vars
       end
 
       def on_lasgn(node)
-        name, = node.children
+        name, value = node.children
 
         unless @static_env.include? name
           @static_env.add name
 
           if @let_vars
-            @let_vars[name] = Node(:nil)
+            @let_vars[name] = s(:nil)
           else
             # TODO: document this eval-related hack
-            return node.updated(:eval_mut!)
+            return node.updated(:eval_mut!, [
+              name, process(value)
+            ])
           end
         end
 
-        node.updated(:mut!)
+        node.updated(:mut!, [
+          name, process(value)
+        ])
       end
 
       def on_lvar(node)

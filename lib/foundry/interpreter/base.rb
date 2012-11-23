@@ -17,7 +17,7 @@ module Foundry::Interpreter
     #
 
     def process(node)
-      @current_insn = node
+      @current_insn = node if node
       super
     end
 
@@ -67,6 +67,14 @@ module Foundry::Interpreter
       @self
     end
 
+    def on_args(node)
+      @args
+    end
+
+    def on_proc_ref(node)
+      @block
+    end
+
     def on_const_base(node)
       VI::Object
     end
@@ -75,42 +83,28 @@ module Foundry::Interpreter
     # Variables
     #
 
-    def process_let(node, flush_env)
+    def on_let(node)
       vars, *body = node.children
 
-      if flush_env
-        new_env = VI::Binding.allocate
+      old_env = @env
 
-        if @env
-          new_env.define(:Cref, @env.apply(:Cref))
-        end
+      if @env
+        @env = @env.chain
       else
-        new_env = @env.chain
+        @env = VI::Binding.allocate
       end
 
-      begin
-        old_env = @env
-        @env = new_env
-
-        vars.each do |name, value|
-          new_env.define name, process(value)
-        end
-
-        @scope_stack.push(node)
-
-        process_all(body).last || VI::NIL
-      ensure
-        @env = old_env
-        @scope_stack.pop
+      vars.each do |name, value|
+        @env.define name, process(value)
       end
-    end
 
-    def on_let_new(node)
-      process_let(node, true)
-    end
+      @scope_stack.push(node)
 
-    def on_let(node)
-      process_let(node, false)
+      process_all(body).last || VI::NIL
+    ensure
+      @scope_stack.pop
+
+      @env = old_env
     end
 
     def on_var(node)
@@ -128,11 +122,11 @@ module Foundry::Interpreter
     def on_eval_mut!(node)
       var, value = node.children
 
-      if @env.defined?(var)
-        @env.mutate(var, process(value))
-      else
-        @env.define(var, process(value))
+      unless @env.defined?(var)
+        @env.define(var, VI::NIL)
       end
+
+      @env.mutate(var, process(value))
     end
 
     #
@@ -166,20 +160,35 @@ module Foundry::Interpreter
     end
 
     def on_array_ref(node)
-      array, index = process_all(node.children)
+      array_node, index = node.children
+      array = process(array_node)
 
       array[index]
     end
 
     def on_array_fetch(node)
-      array_node, index_node, default_node = node.children
-      array, index = process(array), process(index)
+      array_node, index, default_node = node.children
+      array = process(array)
 
       if index >= array.length || index < -array.length
         process(default_node)
       else
         array[index]
       end
+    end
+
+    def on_array_slice(node)
+      array_node, from, to = node.children
+      array = process(array_node)
+
+      VI::Foundry_Tuple.allocate(array.to_ary[from..to])
+    end
+
+    def on_array_bigger_than(node)
+      array_node, length = node.children
+      array = process(array_node)
+
+      array.length > length ? VI::TRUE : VI::FALSE
     end
 
     def on_array_unshift(node)
@@ -342,8 +351,12 @@ module Foundry::Interpreter
       klass
     end
 
+    #
+    # Methods and closures
+    #
+
     def on_def(node)
-      target_node, name, arguments_node, body_node = node.children
+      target_node, name, body_node = node.children
 
       proc = VI::Proc.allocate(@env, body_node)
 
@@ -351,6 +364,12 @@ module Foundry::Interpreter
       target.define_method(name, proc)
 
       VI::NIL
+    end
+
+    def on_proc(node)
+      body_node, = node.children
+
+      VI::Proc.allocate(@env, body_node)
     end
 
     def on_alias(node)
@@ -379,15 +398,46 @@ module Foundry::Interpreter
     def on_call(node)
       receiver_node, name, arguments_node, block_node = node.children
 
-      arguments = process(arguments_node)
       receiver  = process(receiver_node)
+      arguments = process(arguments_node)
       block     = process(block_node)
 
       if receiver.respond_to? name
-        method = receiver.method(name)
-        method.call(receiver, arguments, block, self)
+        receiver.method(name).call(receiver, arguments, block, self)
       else
         raise Error.new(self, "undefined method #{name} for #{receiver.class.name}")
+      end
+    end
+
+    def on_check_arity(node)
+      args_node, from, to = node.children
+      args = process(args_node)
+
+      if args.length < from || (!to.nil? && args.length > to)
+        if from != to
+          to = '.' if to.nil?
+          raise Error.new(self, "wrong number of arguments (#{args.length} for #{from}..#{to})")
+        else
+          raise Error.new(self, "wrong number of arguments (#{args.length} for #{from})")
+        end
+      end
+    end
+
+    #
+    # Control flow
+    #
+
+    def on_if(node)
+      cond_node, true_branch, false_branch = node.children
+
+      cond_value = process(cond_node)
+
+      if cond_value.equal?(VI::NIL) ||
+           cond_value.equal?(VI::FALSE)
+
+        process(false_branch)
+      else
+        process(true_branch)
       end
     end
   end
