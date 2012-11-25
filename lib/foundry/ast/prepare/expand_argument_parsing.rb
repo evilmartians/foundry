@@ -48,7 +48,7 @@ module Foundry
         if has_splat
           arity_to = nil
         else
-          arity_to = arity_from
+          arity_to = arity_from + var_args.count
         end
 
         unpacker = []
