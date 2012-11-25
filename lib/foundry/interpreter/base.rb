@@ -391,9 +391,12 @@ module Foundry::Interpreter
     #
 
     def on_def(node)
-      target_node, name, body_node = node.children
+      target_node, name_node, body_node = node.children
 
-      proc = VI::Proc.allocate(@env, body_node)
+      name = process(name_node).value
+
+      proc = VI::Proc.allocate(@env,
+        body_node.updated(nil, nil, function: name))
 
       target = process(target_node)
       target.define_method(name, proc)
@@ -404,7 +407,8 @@ module Foundry::Interpreter
     def on_proc(node)
       body_node, = node.children
 
-      VI::Proc.allocate(@env, body_node)
+      VI::Proc.allocate(@env,
+        body_node.updated(nil, nil, function: '<closure>'))
     end
 
     def on_alias(node)
