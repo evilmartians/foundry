@@ -3,12 +3,13 @@ module Foundry
     attr_reader :name
     attr_reader :upperclass
 
+    define_mapped_ivars :name, :upperclass,
+                        :const_table, :method_table
+
     attr_reader :const_table, :method_table
     protected   :const_table, :method_table
 
-    def initialize(klass, name=nil)
-      super(klass)
-
+    def vm_initialize(name)
       @name         = name.freeze
       @upperclass   = nil
       @const_table  = {}
@@ -16,7 +17,7 @@ module Foundry
     end
 
     def include(modulus)
-      @upperclass = VI::Foundry_IncludedModule.allocate(modulus, @upperclass)
+      @upperclass = VI::Foundry_IncludedModule.vm_new(modulus, @upperclass)
     end
 
     def ancestors

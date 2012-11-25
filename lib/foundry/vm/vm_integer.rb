@@ -1,14 +1,12 @@
 module Foundry
-  class VMInteger < VMNumeric
+  class VMInteger < VMObject
     attr_reader :value
 
-    def initialize(klass, value)
-      super(klass)
-
+    def vm_initialize(value)
       @value = value.to_int
     end
 
-    alias to_int value
+    alias to_i value
 
     def inspect
       "{#{@value}}"

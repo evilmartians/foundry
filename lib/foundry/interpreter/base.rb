@@ -19,10 +19,6 @@ module Foundry::Interpreter
     def process(node)
       @current_insn = node if node
       super
-    rescue Error
-      raise
-    rescue Exception => e
-      raise Error.new(self, "#{e.class}: #{e}")
     end
 
     def handler_missing(node)
@@ -95,7 +91,7 @@ module Foundry::Interpreter
       if @env
         @env = @env.chain
       else
-        @env = VI::Binding.allocate
+        @env = VI.new_binding
       end
 
       vars.each do |name, value|
@@ -173,7 +169,7 @@ module Foundry::Interpreter
         end
       end
 
-      VI::Foundry_Tuple.allocate(result)
+      VI.new_tuple(result)
     end
 
     def on_array_ref(node)
@@ -198,7 +194,7 @@ module Foundry::Interpreter
       array_node, from, to = node.children
       array = process(array_node)
 
-      VI::Foundry_Tuple.allocate(array.to_ary[from..to])
+      VI.new_tuple(array.to_ary[from..to])
     end
 
     def on_array_bigger_than(node)
@@ -211,13 +207,13 @@ module Foundry::Interpreter
     def on_array_unshift(node)
       array, value = process_all(node.children)
 
-      VI::Foundry_Tuple.allocate([ value ] + array.to_a)
+      VI.new_tuple([ value ] + array.to_a)
     end
 
     def on_array_push(node)
       array, value = process_all(node.children)
 
-      VI::Foundry_Tuple.allocate([ value ] + array.to_a)
+      VI.new_tuple([ value ] + array.to_a)
     end
 
     #
@@ -238,17 +234,17 @@ module Foundry::Interpreter
 
     def on_symbol(node)
       value, = node.children
-      Foundry::VMSymbol.new(value)
+      VI.new_symbol(value)
     end
 
     def on_integer(node)
       value, = node.children
-      VI::Integer.allocate(value)
+      VI.new_integer(value)
     end
 
     def on_string(node)
       value, = node.children
-      VI::String.allocate(value)
+      VI.new_string(value)
     end
 
     #
@@ -270,7 +266,7 @@ module Foundry::Interpreter
 
       cref = process(cref_node)
       if cref.length == 0
-        cref = VI::Foundry_Tuple.allocate([ VI::Object ])
+        cref = VI.new_tuple([ VI::Object ])
       end
 
       const = find_const_in(cref, name)
@@ -335,7 +331,7 @@ module Foundry::Interpreter
           raise Error.new(self, "#{name} is not a module")
         end
       else
-        modulus = VI::Module.allocate(name)
+        modulus = VI.new_module(name)
         scope.const_set name, modulus
       end
 
@@ -361,7 +357,7 @@ module Foundry::Interpreter
           raise Error.new(self, "#{name} is not a class")
         end
       else
-        klass = VI::Class.allocate(superclass, name)
+        klass = VI.new_class(superclass, name)
         scope.const_set name, klass
       end
 
@@ -395,7 +391,7 @@ module Foundry::Interpreter
 
       name = process(name_node).value
 
-      proc = VI::Proc.allocate(@env,
+      proc = VI.new_proc(@env,
         body_node.updated(nil, nil, function: name))
 
       target = process(target_node)
@@ -407,7 +403,7 @@ module Foundry::Interpreter
     def on_proc(node)
       body_node, = node.children
 
-      VI::Proc.allocate(@env,
+      VI.new_proc(@env,
         body_node.updated(nil, nil, function: '<closure>'))
     end
 

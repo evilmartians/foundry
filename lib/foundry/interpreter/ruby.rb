@@ -42,7 +42,7 @@ module Foundry::Interpreter
     }.each do |op, node|
       define_method(:"on_int_#{node}") do |node|
         self_, other = process_all(node.children)
-        VI::Integer.allocate(self_.value.send(op, other.value))
+        VI.new_integer(self_.value.send(op, other.value))
       end
     end
 

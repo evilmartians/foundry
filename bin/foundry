@@ -74,5 +74,6 @@ rescue Foundry::Interpreter::Error => e
   puts "Unhandled exception:"
   puts e.inner_exception.inspect
   puts e.inner_backtrace
+  puts e.backtrace
   exit!
 end

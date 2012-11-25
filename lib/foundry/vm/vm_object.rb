@@ -7,6 +7,9 @@ module Foundry
       @ivar_table = {}
     end
 
+    def vm_initialize
+    end
+
     def instance_variables
       @ivar_table.keys
     end
@@ -58,7 +61,7 @@ module Foundry
       if @ivar_table.any?
         ivs = " "
         @ivar_table.each do |key, value|
-          ivs << "#{key}=#{value}.inspect"
+          ivs << "#{key}=#{value.inspect}"
         end
       end
 

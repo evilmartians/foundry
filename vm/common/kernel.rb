@@ -13,6 +13,10 @@ module Kernel
   alias ==   equal?
   alias ===  equal?
 
+  def inspect
+    to_s
+  end
+
   def proc(&prc)
     raise ArgumentError, "block required" if prc.nil?
     prc

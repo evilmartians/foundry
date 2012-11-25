@@ -1,10 +1,14 @@
 module Foundry
   class VMBinding < VMObject
-    def initialize(klass, next_=nil)
-      super(klass)
+    def initialize(klass)
+      super
 
-      @next = next_
       @vars = {}
+      @next = nil
+    end
+
+    def vm_initialize(next_)
+      @next = next_
     end
 
     def each(&block)
@@ -45,7 +49,7 @@ module Foundry
     end
 
     def chain
-      VI::Binding.allocate(self)
+      VI::Binding.vm_new(self)
     end
 
     def inspect

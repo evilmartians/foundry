@@ -1,14 +1,12 @@
 module Foundry
-  class VMSymbol < VMImmediate
+  class VMSymbol < VMObject
     attr_reader :value
 
-    def initialize(value)
+    def vm_initialize(value)
       @value = value.to_sym
     end
 
-    def class
-      VI::Symbol
-    end
+    alias to_sym value
 
     def inspect
       "{#{@value.inspect}}"

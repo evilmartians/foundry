@@ -106,8 +106,8 @@ module Foundry
       if object.instance_variables.any?
         properties["instance variables:"] = \
           object.instance_variables.map do |ivar|
-            "@#{ivar}=#{object.instance_variable_get(ivar).inspect}"
-          end
+            "#{ivar}=#{object.instance_variable_get(ivar).inspect}"
+          end.join("  ")
       end
 
       if object.is_a? VI::Module
@@ -124,7 +124,7 @@ module Foundry
         klass = (klass.upperclass unless object.is_a? VI::Module)
       end
 
-      puts "Object #{object.__id__}: #{object.inspect}"
+      puts "Object #{object.__id__}"
       properties.each do |property, value|
         print "  ", ANSI.bright, ANSI.white, property,
                     ANSI.reset, " ", value, "\n"

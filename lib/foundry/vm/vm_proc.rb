@@ -4,9 +4,7 @@ module Foundry
 
     define_mapped_ivars :binding
 
-    def initialize(klass, binding, code)
-      super(klass)
-
+    def vm_initialize(binding, code)
       @binding = binding
       @code    = code
     end

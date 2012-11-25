@@ -3,14 +3,12 @@ module Foundry
     attr_reader :module
     attr_reader :upperclass
 
-    def initialize(klass, module_, upperclass)
-      super(klass)
-
-      @module       = module_
-      @name         = module_.name
+    def vm_initialize(modulus, upperclass)
+      @module       = modulus
+      @name         = modulus.name
       @upperclass   = upperclass
-      @const_table  = module_.const_table
-      @method_table = module_.method_table
+      @const_table  = modulus.const_table
+      @method_table = modulus.method_table
     end
 
     def ancestors

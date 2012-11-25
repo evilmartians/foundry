@@ -1,4 +1,8 @@
 class Integer
+  def to_i
+    self
+  end
+
   def +@
     self
   end
@@ -21,6 +25,10 @@ class Integer
 
   def /(other)
     FoundryRt.int_div self, other
+  end
+
+  def %(other)
+    FoundryRt.int_mod self, other
   end
 
   def <(other)

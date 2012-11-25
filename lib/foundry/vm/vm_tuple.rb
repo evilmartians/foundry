@@ -1,8 +1,6 @@
 module Foundry
   class VMTuple < VMObject
-    def initialize(klass, value)
-      super(klass)
-
+    def vm_initialize(value)
       @storage = value.to_ary.freeze
     end
 

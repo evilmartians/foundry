@@ -2,19 +2,21 @@ module Foundry
   class VMClass < VMModule
     attr_reader :superclass
 
-    def initialize(klass, superclass, name=nil, vm_class=VMObject)
-      super(klass, name)
+    def vm_initialize(superclass, name, vm_class)
+      super(name)
 
       @vm_class   = vm_class
       @superclass = superclass
       @upperclass = superclass
     end
 
-    def allocate(*args)
-      unless @vm_class.ancestors.include? VMObject
-        ::Kernel.send :raise, ::Exception, "cannot allocate VM object instance for VMImmediate"
+    def vm_new(*args)
+      if @vm_class.ancestors.include? VMObject
+        instance = @vm_class.new(self)
+        instance.vm_initialize(*args)
+        instance
       else
-        @vm_class.new(self, *args)
+        ::Kernel.send :raise, ::Exception, "cannot allocate VM object instance for VMImmediate"
       end
     end
 
