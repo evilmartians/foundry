@@ -1,6 +1,6 @@
 class Class < Module
   def allocate
-    Foundry.primitive :allocate, self
+    FoundryRt.allocate self
   end
 
   def new(*args)

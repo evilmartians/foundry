@@ -6,7 +6,7 @@ class Proc
 
   def self.new(&block)
     unless block
-      block = Foundry.primitive :of_caller_env, :Block
+      block = FoundryRt.of_caller_env :Block
 
       unless block
         raise ArgumentError, "tried to create a Proc object without a block"
@@ -17,7 +17,7 @@ class Proc
   end
 =end
   def call(*args, &block)
-    Foundry.primitive :proc_call, self, args, block
+    FoundryRt.proc_call self, args, block
   end
 
   def binding

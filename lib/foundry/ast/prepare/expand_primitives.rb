@@ -4,14 +4,10 @@ module Foundry
       def on_call(node)
         receiver, name, arguments = node.children
 
-        if name == :primitive &&
-            receiver.type == :const_ref_in &&
-            receiver.children.last == :Foundry
+        if receiver.type == :const_ref_in &&
+             receiver.children.last == :FoundryRt
 
-          primitive, *primitive_args = arguments.children
-          primitive_name, = primitive.children
-
-          node.updated(primitive_name, primitive_args)
+          node.updated(name, arguments.children)
         end
       end
     end

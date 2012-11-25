@@ -4,7 +4,7 @@ class BasicObject
   private :initialize
 
   def equal?(other)
-    Foundry.primitive :equal?, self, other
+    FoundryRt.equal? self, other
   end
 
   alias == equal?
@@ -14,7 +14,7 @@ class BasicObject
   end
 
   def __send__(method, *args, &block)
-    Foundry.primitive :call, self, method.to_sym, args, block
+    FoundryRt.call self, method.to_sym, args, block
   end
 
   def !

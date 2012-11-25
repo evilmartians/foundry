@@ -8,35 +8,35 @@ class Integer
   end
 
   def +(other)
-    Foundry.primitive :int_add, self, other
+    FoundryRt.int_add self, other
   end
 
   def -(other)
-    Foundry.primitive :int_sub, self, other
+    FoundryRt.int_sub self, other
   end
 
   def *(other)
-    Foundry.primitive :int_mul, self, other
+    FoundryRt.int_mul self, other
   end
 
   def /(other)
-    Foundry.primitive :int_div, self, other
+    FoundryRt.int_div self, other
   end
 
   def <(other)
-    Foundry.primitive :int_lt, self, other
+    FoundryRt.int_lt self, other
   end
 
   def <=(other)
-    Foundry.primitive :int_lte, self, other
+    FoundryRt.int_lte self, other
   end
 
   def >(other)
-    Foundry.primitive :int_gt, self, other
+    FoundryRt.int_gt self, other
   end
 
   def >=(other)
-    Foundry.primitive :int_gte, self, other
+    FoundryRt.int_gte self, other
   end
 
   def times

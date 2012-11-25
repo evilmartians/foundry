@@ -46,7 +46,7 @@ begin
   Foundry::Runtime.eval <<-REPL, '(prelude)'
   module Kernel
     def repl!
-      Foundry.primitive :repl
+      FoundryRt.repl
     end
   end
   REPL

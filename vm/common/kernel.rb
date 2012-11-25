@@ -6,7 +6,7 @@ module Kernel
   alias send __send__
 
   def equal?(other)
-    Foundry.primitive :equal?, self, other
+    FoundryRt.equal? self, other
   end
 
   alias eql? equal?
@@ -25,6 +25,6 @@ module Kernel
   end
 
   def trace(obj)
-    Foundry.primitive :trace, obj
+    FoundryRt.trace obj
   end
 end
