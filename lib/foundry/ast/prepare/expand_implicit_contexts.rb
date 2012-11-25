@@ -120,6 +120,24 @@ module Foundry
           s(:nil)
         ])
       end
+
+      def on_ivar(node)
+        name, = node.children
+
+        node.updated(nil, [
+          s(:var, :Self),
+          name
+        ])
+      end
+
+      def on_iasgn(node)
+        name, value = node.children
+
+        node.updated(nil, [
+          s(:var, :Self),
+          name, process(value)
+        ])
+      end
     end
   end
 end

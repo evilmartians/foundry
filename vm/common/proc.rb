@@ -20,6 +20,10 @@ class Proc
     Foundry.primitive :proc_call, self, args, block
   end
 
+  def binding
+    @binding
+  end
+
   def lambda_style!
     @lambda = true
   end

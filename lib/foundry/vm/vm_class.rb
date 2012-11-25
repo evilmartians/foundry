@@ -5,10 +5,9 @@ module Foundry
     def initialize(klass, superclass, name=nil, vm_class=VMObject)
       super(klass, name)
 
-      @vm_class        = vm_class
-      @superclass      = superclass
-      @upperclass      = superclass
-      @singleton_class = nil
+      @vm_class   = vm_class
+      @superclass = superclass
+      @upperclass = superclass
     end
 
     def allocate(*args)

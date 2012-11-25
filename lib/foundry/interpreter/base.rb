@@ -369,6 +369,24 @@ module Foundry::Interpreter
     end
 
     #
+    # Instance variables
+    #
+
+    def on_ivar(node)
+      target_node, name_node = node.children
+
+      process(target_node).
+        instance_variable_get(process(name_node).value)
+    end
+
+    def on_iasgn(node)
+      target_node, name_node, value_node = node.children
+
+      process(target_node).
+        instance_variable_set(process(name_node).value, process(value_node))
+    end
+
+    #
     # Methods and closures
     #
 

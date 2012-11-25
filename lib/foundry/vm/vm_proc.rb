@@ -2,6 +2,8 @@ module Foundry
   class VMProc < VMObject
     attr_reader :binding, :code
 
+    define_mapped_ivars :binding
+
     def initialize(klass, binding, code)
       super(klass)
 

@@ -176,6 +176,23 @@ module Foundry
       def on_str(node)
         node.updated(:string)
       end
+
+      def on_ivar(node)
+        name, = node.children
+
+        node.updated(nil, [
+          s(:symbol, name)
+        ])
+      end
+
+      def on_iasgn(node)
+        name, value = node.children
+
+        node.updated(nil, [
+          s(:symbol, name),
+          process(value)
+        ])
+      end
     end
   end
 end
