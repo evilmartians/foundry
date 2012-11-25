@@ -2,26 +2,23 @@ module Foundry
   class Runtime
     class << self
       attr_accessor :interpreter
+
+      attr_accessor :graph_ast
+      attr_accessor :graph_ir
     end
 
-    attr_reader   :toplevel
-
-    attr_accessor :graph_ast
-    attr_accessor :graph_ir
-
-    def initialize
+    def self.initialize
       @graph_ast = false
       @graph_ir  = false
-      @toplevel  = Foundry::VI::Object.allocate
     end
 
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
-    def bootstrap
+    def self.bootstrap
       load_package(File.join(VM_ROOT, 'common'))
     end
 
-    def load_package(directory)
+    def self.load_package(directory)
       package = File.read(File.join(directory, 'load_order.txt'))
 
       package.lines.each do |entry|
@@ -34,7 +31,7 @@ module Foundry
       end
     end
 
-    def load(filename)
+    def self.load(filename)
       parser = Ruby19Parser.new
 
       ast = parser.parse(File.read(filename), filename)
@@ -43,11 +40,11 @@ module Foundry
       ir  = prepare_ast(ast)
 
       Runtime.interpreter.
-          new(ir, @toplevel).
+          new(ir, VI::TOPLEVEL).
           evaluate
     end
 
-    def eval(string, name='(eval)', outer=nil)
+    def self.eval(string, name='(eval)', outer=nil)
       parser = Ruby19Parser.new
 
       if outer
@@ -65,17 +62,17 @@ module Foundry
       ir = prepare_ast(parser.parse(string, name), pipeline)
 
       if outer
-        Runtime.interpreter.
+        @interpreter.
             new(ir, nil, nil, nil, outer.env, outer).
             evaluate
       else
-        Runtime.interpreter.
-            new(ir, @toplevel).
+        @interpreter.
+            new(ir, VI::TOPLEVEL).
             evaluate
       end
     end
 
-    def make_pipeline(is_eval=false, locals=nil)
+    def self.make_pipeline(is_eval=false, locals=nil)
       Furnace::Transform::Pipeline.new([
         AST::Prepare::RubyParser.new(is_eval),
         AST::Prepare::ExpandImplicitContexts.new,
@@ -85,7 +82,7 @@ module Foundry
       ])
     end
 
-    def prepare_ast(input, pipeline=make_pipeline)
+    def self.prepare_ast(input, pipeline=make_pipeline)
       ast = AST::Node.from_sexp(input)
       p ast if @graph_ast
 

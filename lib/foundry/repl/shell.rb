@@ -6,10 +6,9 @@ module Foundry
 
     attr_accessor :interleave_backtraces
 
-    def initialize(runtime, interp)
+    def initialize(interp)
       self.class.initialize_readline!
 
-      @runtime   = runtime
       @interp    = interp
 
       @buffer    = ""
@@ -58,12 +57,12 @@ module Foundry
 
     command 'graph_ast', ":bool", "Draw RubyParser AST graphs after parsing code"
     def graph_ast(cmdline)
-      boolean_command 'graph_ast', cmdline, @runtime, :graph_ast
+      boolean_command 'graph_ast', cmdline, Foundry::Runtime, :graph_ast
     end
 
     command 'graph_ir', ":bool", "Display IR after parsing code"
     def graph_ir(cmdline)
-      boolean_command 'graph_ir', cmdline, @runtime, :graph_ir
+      boolean_command 'graph_ir', cmdline, Foundry::Runtime, :graph_ir
     end
 
     command 'include_host', ":bool", "Include host information in backtraces"
@@ -133,7 +132,7 @@ module Foundry
     end
 
     def safe_eval(string, name='(repl)')
-      @runtime.eval(string, name, @interp)
+      Foundry::Runtime.eval(string, name, @interp)
 
     rescue Racc::ParseError => e
       # TODO: better error handling

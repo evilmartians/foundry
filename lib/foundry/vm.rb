@@ -84,5 +84,7 @@ module Foundry
     Foundry.const_set :IncludedModule,   Foundry_IncludedModule
     Foundry.const_set :SingletonClass,   Foundry_SingletonClass
     Foundry.const_set :Tuple,            Foundry_Tuple
+
+    TOPLEVEL = Object.allocate
   end
 end

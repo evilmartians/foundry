@@ -23,7 +23,7 @@ end
 
 class StandaloneInterpreter < Foundry::Interpreter::Ruby
   def on_repl(node)
-    repl = Foundry::REPL::Shell.new($runtime, self.outer)
+    repl = Foundry::REPL::Shell.new(self.outer)
     repl.invoke!
 
     Foundry::VI::NIL
@@ -41,10 +41,9 @@ end
 Foundry::Runtime.interpreter = StandaloneInterpreter
 
 begin
-  $runtime = Foundry::Runtime.new
-  $runtime.bootstrap
+  Foundry::Runtime.bootstrap
 
-  $runtime.eval <<-REPL, '(prelude)'
+  Foundry::Runtime.eval <<-REPL, '(prelude)'
   module Kernel
     def repl!
       Foundry.primitive :repl
@@ -56,20 +55,20 @@ begin
 
   if opts[:evaluate]
     opts[:evaluate].each do |value|
-      $runtime.eval value, '(-e)'
+      Foundry::Runtime.eval value, '(-e)'
     end
   end
 
   if ARGV.any? || opts[:evaluate]
     ARGV.each do |input|
       if input == '-'
-        $runtime.eval STDIN.read, '(stdin)'
+        Foundry::Runtime.eval STDIN.read, '(stdin)'
       else
-        $runtime.load input
+        Foundry::Runtime.load input
       end
     end
   else
-    $runtime.eval 'repl!', '(prelude)'
+    Foundry::Runtime.eval 'repl!', '(prelude)'
   end
 rescue Foundry::Interpreter::Error => e
   puts "Unhandled exception:"
