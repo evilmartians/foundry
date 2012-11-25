@@ -12,8 +12,8 @@ module Foundry
     end
 
     def allocate(*args)
-      unless @vm_class.ancestors.include? VMBasicObject
-        ::Kernel.send :raise, ::Exception, "cannot allocate VMClass instance for VMImmediate"
+      unless @vm_class.ancestors.include? VMObject
+        ::Kernel.send :raise, ::Exception, "cannot allocate VM object instance for VMImmediate"
       else
         @vm_class.new(self, *args)
       end
