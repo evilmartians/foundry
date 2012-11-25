@@ -25,7 +25,7 @@ Interpreter = Foundry::Interpreter
 
 class SpecInterpreter < Foundry::Interpreter::Ruby
   def on_repl(args)
-    repl = Foundry::REPL::Shell.new($runtime, self.outer)
+    repl = Foundry::REPL::Shell.new(self.outer)
     repl.invoke!
 
     Foundry::VI::NIL

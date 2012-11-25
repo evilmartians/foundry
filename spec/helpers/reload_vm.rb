@@ -5,6 +5,5 @@ def reload_vm!
 
   Foundry::Interpreter.const_set :VI, Foundry::VI
 
-  $f = Foundry::Runtime.new
-  $f.bootstrap
+  Foundry::Runtime.bootstrap
 end
