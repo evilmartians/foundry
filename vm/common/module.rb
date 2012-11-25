@@ -1,4 +1,8 @@
 class Module
+  def name # attr_reader
+    @name
+  end
+
   def public(*)
     # TODO
   end

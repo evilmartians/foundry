@@ -1,6 +1,6 @@
 module Foundry
   class VMModule < VMObject
-    attr_reader :name
+    attr_accessor :name
     attr_reader :upperclass
 
     define_mapped_ivars :name, :upperclass,
@@ -9,9 +9,9 @@ module Foundry
     attr_reader :const_table, :method_table
     protected   :const_table, :method_table
 
-    def vm_initialize(name)
-      @name         = name.freeze
-      @upperclass   = nil
+    def vm_initialize
+      @name         = VI::NIL if defined?(VI::NIL)
+      @upperclass   = VI::NIL if defined?(VI::NIL)
       @const_table  = {}
       @method_table = {}
     end
@@ -21,10 +21,10 @@ module Foundry
     end
 
     def ancestors
-      if @upperclass
-        [ self ] + @upperclass.ancestors
-      else
+      if @upperclass.nil?
         [ self ]
+      else
+        [ self ] + @upperclass.ancestors
       end
     end
 
@@ -41,7 +41,7 @@ module Foundry
 
       if exists = @const_table.key?(name)
         exists
-      elsif search_parent && @upperclass
+      elsif search_parent && !@upperclass.nil?
         @upperclass.const_defined? name
       else
         false
@@ -51,6 +51,17 @@ module Foundry
     def const_set(name, value)
       name = name.to_sym
 
+      if value.is_a?(VI::Module) && value.name.nil?
+        # No VI.new_string defined yet.
+        if self == VI::Object
+          scope = ""
+        else
+          scope = "#{@name}::"
+        end
+
+        value.name = VI::String.vm_new("#{scope}#{name}")
+      end
+
       @const_table[name] = value
     end
 
@@ -59,7 +70,7 @@ module Foundry
 
       if value = @const_table[name]
         value
-      elsif search_parent && @upperclass
+      elsif search_parent && !@upperclass.nil?
         @upperclass.const_get name
       else
         VI::UNDEF
@@ -67,7 +78,7 @@ module Foundry
     end
 
     def instance_methods(search_parent=true)
-      if search_parent && @upperclass
+      if search_parent && !@upperclass.nil?
         (@method_table.keys + @upperclass.instance_methods).uniq
       else
         @method_table.keys
@@ -78,9 +89,9 @@ module Foundry
       name = name.to_sym
 
       if @method_table.key?(name) &&
-            !((undefined = @method_table[name]) == VI::UNDEF)
+            !(undefined = (@method_table[name] == VI::UNDEF))
         true
-      elsif !undefined && search_parent && @upperclass
+      elsif !undefined && search_parent && !@upperclass.nil?
         @upperclass.method_defined?(name)
       else
         false
@@ -98,7 +109,7 @@ module Foundry
 
       if value = @method_table[name]
         value
-      elsif search_parent && @upperclass
+      elsif search_parent && !@upperclass.nil?
         @upperclass.instance_method(name)
       else
         VI::UNDEF
@@ -106,7 +117,15 @@ module Foundry
     end
 
     def inspect
-      "{Module #{@name}}"
+      "{Module #{as_module_name @name, 'module'}}"
+    end
+
+    def as_module_name(name, entity)
+      if name.nil?
+        "<unnamed #{entity}>"
+      else
+        name.value
+      end
     end
   end
 end

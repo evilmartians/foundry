@@ -331,7 +331,7 @@ module Foundry::Interpreter
           raise Error.new(self, "#{name} is not a module")
         end
       else
-        modulus = VI.new_module(name)
+        modulus = VI.new_module
         scope.const_set name, modulus
       end
 
@@ -357,7 +357,7 @@ module Foundry::Interpreter
           raise Error.new(self, "#{name} is not a class")
         end
       else
-        klass = VI.new_class(superclass, name)
+        klass = VI.new_class(superclass)
         scope.const_set name, klass
       end
 

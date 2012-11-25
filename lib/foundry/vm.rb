@@ -22,16 +22,16 @@ require_relative 'vm/vm_integer'
 module Foundry
   module VI
     BasicObject = VMClass.new(nil)
-    BasicObject.vm_initialize(nil, 'BasicObject', VMObject)
+    BasicObject.vm_initialize(nil, VMObject)
 
     Object      = VMClass.new(nil)
-    Object.vm_initialize(BasicObject, 'Object', VMObject)
+    Object.vm_initialize(BasicObject, VMObject)
 
     Module      = VMClass.new(nil)
-    Module.vm_initialize(Object, 'Module', VMModule)
+    Module.vm_initialize(Object, VMModule)
 
     Class       = VMClass.new(nil)
-    Class.vm_initialize(Module, 'Class', VMClass)
+    Class.vm_initialize(Module, VMClass)
 
     [BasicObject, Object, Module, Class].each do |klass|
       klass.instance_exec do
@@ -39,31 +39,33 @@ module Foundry
       end
     end
 
-    Kernel        = Module.vm_new('Kernel')
-
-    NilClass      = Class.vm_new(Object, 'NilClass',   VMNilClass)
-    TrueClass     = Class.vm_new(Object, 'TrueClass',  VMTrueClass)
-    FalseClass    = Class.vm_new(Object, 'FalseClass', VMFalseClass)
+    NilClass      = Class.vm_new(Object, VMNilClass)
 
     UNDEF         = :undefined
     NIL           = VMNilClass.new
+
+    TrueClass     = Class.vm_new(Object, VMTrueClass)
+    FalseClass    = Class.vm_new(Object, VMFalseClass)
+
     TRUE          = VMTrueClass.new
     FALSE         = VMFalseClass.new
 
-    Binding       = Class.vm_new(Object, 'Binding', VMBinding)
-    Proc          = Class.vm_new(Object, 'Proc', VMProc)
+    Kernel        = Module.vm_new
 
-    Symbol        = Class.vm_new(Object, 'Symbol', VMSymbol)
-    String        = Class.vm_new(Object, 'String', VMString)
+    Binding       = Class.vm_new(Object, VMBinding)
+    Proc          = Class.vm_new(Object, VMProc)
 
-    Numeric       = Class.vm_new(Object, 'Numeric',  VMObject)
-    Integer       = Class.vm_new(Numeric, 'Integer', VMInteger)
+    Symbol        = Class.vm_new(Object, VMSymbol)
+    String        = Class.vm_new(Object, VMString)
 
-    Foundry       = Module.vm_new('Foundry')
+    Numeric       = Class.vm_new(Object, VMObject)
+    Integer       = Class.vm_new(Numeric, VMInteger)
 
-    Foundry_IncludedModule   = Class.vm_new(Module, 'Foundry::IncludedModule', VMIncludedModule)
-    Foundry_SingletonClass   = Class.vm_new(Class,  'Foundry::SingletonClass', VMClass)
-    Foundry_Tuple            = Class.vm_new(Object, 'Foundry::Tuple', VMTuple)
+    Foundry       = Module.vm_new
+
+    Foundry_IncludedModule   = Class.vm_new(Module, VMIncludedModule)
+    Foundry_SingletonClass   = Class.vm_new(Class, VMClass)
+    Foundry_Tuple            = Class.vm_new(Object, VMTuple)
 
     BasicObject.const_set :BasicObject, BasicObject
 
@@ -92,14 +94,19 @@ module Foundry
     Foundry.const_set :SingletonClass, Foundry_SingletonClass
     Foundry.const_set :Tuple,          Foundry_Tuple
 
-    TOPLEVEL = Object.vm_new
-
-    def self.new_module(name)
-      Module.vm_new(name)
+    BasicObject.instance_exec do
+      @name       = String.vm_new('BasicObject')
+      @upperclass = NIL
     end
 
-    def self.new_class(superclass, name)
-      Class.vm_new(superclass, name, VMObject)
+    TOPLEVEL = Object.vm_new
+
+    def self.new_module
+      Module.vm_new
+    end
+
+    def self.new_class(superclass)
+      Class.vm_new(superclass)
     end
 
     def self.new_binding

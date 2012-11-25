@@ -22,7 +22,7 @@ module Foundry::Interpreter
 
     def on_allocate(node)
       self_, = process_all(node.children)
-      self_.allocate
+      self_.vm_new
     end
 
     def on_include(node)

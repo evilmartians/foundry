@@ -2,12 +2,14 @@ module Foundry
   class VMClass < VMModule
     attr_reader :superclass
 
-    def vm_initialize(superclass, name, vm_class)
-      super(name)
+    define_mapped_ivars :superclass
 
-      @vm_class   = vm_class
+    def vm_initialize(superclass, vm_class=VMObject)
+      super()
+
       @superclass = superclass
       @upperclass = superclass
+      @vm_class   = vm_class
     end
 
     def vm_new(*args)
@@ -22,10 +24,10 @@ module Foundry
 
     def inspect
       if @superclass
-        "{Class #{@name} < #{@superclass.name}}"
-      else
-        "{Class #{@name}}"
+        sup = " < #{as_module_name @superclass.name, 'class'}}"
       end
+
+      "{Class #{as_module_name @name, 'class'}#{sup}}"
     end
   end
 end

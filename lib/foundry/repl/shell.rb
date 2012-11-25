@@ -116,7 +116,7 @@ module Foundry
         klass = object.class
       end
 
-      while klass
+      until klass.nil?
         if klass.instance_methods(false).any?
           properties["#{klass.name}#methods:"] = \
             klass.instance_methods(false).sort.join("  ")
