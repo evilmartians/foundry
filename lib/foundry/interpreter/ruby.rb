@@ -4,6 +4,12 @@ module Foundry::Interpreter
     # Objects
     #
 
+    def on_trace(node)
+      $stderr.puts process_all(node.children).map(&:inspect).join(", ")
+
+      Foundry::VI::NIL
+    end
+
     def on_equal?(node)
       self_, other = process_all(node.children)
 
@@ -22,12 +28,7 @@ module Foundry::Interpreter
 
     def on_allocate(node)
       self_, = process_all(node.children)
-      self_.vm_new
-    end
-
-    def on_include(node)
-      klass, modulus = process_all(node.children)
-      klass.include(modulus)
+      self_.vm_allocate
     end
 
     #

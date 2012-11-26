@@ -193,6 +193,10 @@ module Foundry
           process(value)
         ])
       end
+
+      def on_attrasgn(node)
+        process(node.updated(:call))
+      end
     end
   end
 end

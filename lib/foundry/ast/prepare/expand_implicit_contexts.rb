@@ -116,7 +116,7 @@ module Foundry
       def on_yield(node)
         node.updated(:proc_call, [
           s(:check_block, s(:var, :Block)),
-          node.updated(:args),
+          node.updated(:array),
           s(:nil)
         ])
       end

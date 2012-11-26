@@ -139,7 +139,7 @@ module Foundry
         args, *body = node.children
 
         node.updated(nil, [
-          expand(node, args, body, true)
+          expand(node, args, process_all(body), true)
         ])
       end
     end

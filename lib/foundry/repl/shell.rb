@@ -121,7 +121,7 @@ module Foundry
           properties["#{klass.name}#methods:"] = \
             klass.instance_methods(false).sort.join("  ")
         end
-        klass = (klass.upperclass unless object.is_a? VI::Module)
+        klass = (klass.superclass unless object.is_a? VI::Module)
       end
 
       puts "Object #{object.__id__}"

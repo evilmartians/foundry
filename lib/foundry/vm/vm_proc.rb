@@ -1,11 +1,12 @@
 module Foundry
   class VMProc < VMObject
-    attr_reader :binding, :code
+    attr_reader :binding, :lambda, :code
 
-    define_mapped_ivars :binding
+    define_mapped_ivars :binding, :lambda
 
     def vm_initialize(binding, code)
       @binding = binding
+      @lambda  = false
       @code    = code
     end
 

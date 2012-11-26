@@ -1,4 +1,4 @@
-class Integer
+class Integer < Numeric
   def to_i
     self
   end

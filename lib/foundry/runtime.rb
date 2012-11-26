@@ -79,6 +79,7 @@ module Foundry
         AST::Prepare::ExpandArgumentParsing.new,
         AST::Prepare::TraceVariables.new(locals),
         AST::Prepare::ExpandPrimitives.new,
+        AST::Prepare::DumpIR.new,
       ])
     end
 

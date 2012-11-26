@@ -13,6 +13,10 @@ module Kernel
   alias ==   equal?
   alias ===  equal?
 
+  def to_s
+    "#<#{self.class}>"
+  end
+
   def inspect
     to_s
   end

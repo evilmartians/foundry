@@ -28,14 +28,6 @@ class StandaloneInterpreter < Foundry::Interpreter::Ruby
 
     Foundry::VI::NIL
   end
-
-  def on_trace(node)
-    process_all(node.children).each do |arg|
-      p arg
-    end
-
-    Foundry::VI::NIL
-  end
 end
 
 Foundry::Runtime.interpreter = StandaloneInterpreter

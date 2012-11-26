@@ -8,4 +8,14 @@ class Class < Module
     instance.initialize(*args)
     instance
   end
+
+  def superclass
+    klass = @superclass
+
+    while klass.is_a? Foundry::IncludedModule
+      klass = klass.direct_superclass
+    end
+
+    klass
+  end
 end

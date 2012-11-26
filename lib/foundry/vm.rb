@@ -58,14 +58,19 @@ module Foundry
     Symbol        = Class.vm_new(Object, VMSymbol)
     String        = Class.vm_new(Object, VMString)
 
-    Numeric       = Class.vm_new(Object, VMObject)
+    Numeric       = Class.vm_new(Object,  VMObject)
     Integer       = Class.vm_new(Numeric, VMInteger)
 
     Foundry       = Module.vm_new
 
     Foundry_IncludedModule   = Class.vm_new(Module, VMIncludedModule)
-    Foundry_SingletonClass   = Class.vm_new(Class, VMClass)
+    Foundry_SingletonClass   = Class.vm_new(Class,  VMClass)
     Foundry_Tuple            = Class.vm_new(Object, VMTuple)
+
+    BasicObject.instance_exec do
+      @name       = String.vm_new('BasicObject')
+      @superclass = NIL
+    end
 
     BasicObject.const_set :BasicObject, BasicObject
 
@@ -93,11 +98,6 @@ module Foundry
     Foundry.const_set :IncludedModule, Foundry_IncludedModule
     Foundry.const_set :SingletonClass, Foundry_SingletonClass
     Foundry.const_set :Tuple,          Foundry_Tuple
-
-    BasicObject.instance_exec do
-      @name       = String.vm_new('BasicObject')
-      @upperclass = NIL
-    end
 
     TOPLEVEL = Object.vm_new
 

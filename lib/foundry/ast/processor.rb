@@ -38,6 +38,11 @@ module Foundry
     end
     alias on_lasgn on_mut!
 
+    def on_iasgn(node)
+      scope, name, value = node.children
+      node.updated(nil, [ process(scope), process(name), process(value) ])
+    end
+
     def on_array(node)
       node.updated(nil, process_all(node.children))
     end

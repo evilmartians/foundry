@@ -1,48 +1,43 @@
 module Foundry
   class VMModule < VMObject
     attr_accessor :name
-    attr_reader :upperclass
+    attr_reader :superclass
+    attr_reader :constant_table, :method_table
 
-    define_mapped_ivars :name, :upperclass,
-                        :const_table, :method_table
-
-    attr_reader :const_table, :method_table
-    protected   :const_table, :method_table
+    define_mapped_ivars :name, :superclass,
+                        :constant_table, :method_table
 
     def vm_initialize
-      @name         = VI::NIL if defined?(VI::NIL)
-      @upperclass   = VI::NIL if defined?(VI::NIL)
-      @const_table  = {}
-      @method_table = {}
-    end
+      @name           = VI::NIL
+      @superclass     = VI::NIL
 
-    def include(modulus)
-      @upperclass = VI::Foundry_IncludedModule.vm_new(modulus, @upperclass)
+      @constant_table = {}
+      @method_table   = {}
     end
 
     def ancestors
-      if @upperclass.nil?
+      if @superclass.nil?
         [ self ]
       else
-        [ self ] + @upperclass.ancestors
+        [ self ] + @superclass.ancestors
       end
     end
 
     def constants(search_parent=true)
-      if @upperclass
-        (@const_table.keys + @upperclass.constants).uniq
+      if !@superclass.nil?
+        (@constant_table.keys + @superclass.constants).uniq
       else
-        @const_table.keys
+        @constant_table.keys
       end
     end
 
     def const_defined?(name, search_parent=true)
       name = name.to_sym
 
-      if exists = @const_table.key?(name)
+      if exists = @constant_table.key?(name)
         exists
-      elsif search_parent && !@upperclass.nil?
-        @upperclass.const_defined? name
+      elsif search_parent && !@superclass.nil?
+        @superclass.const_defined? name
       else
         false
       end
@@ -52,34 +47,34 @@ module Foundry
       name = name.to_sym
 
       if value.is_a?(VI::Module) && value.name.nil?
-        # No VI.new_string defined yet.
         if self == VI::Object
           scope = ""
         else
           scope = "#{@name}::"
         end
 
+        # No VI.new_string defined yet.
         value.name = VI::String.vm_new("#{scope}#{name}")
       end
 
-      @const_table[name] = value
+      @constant_table[name] = value
     end
 
     def const_get(name, search_parent=true)
       name = name.to_sym
 
-      if value = @const_table[name]
+      if value = @constant_table[name]
         value
-      elsif search_parent && !@upperclass.nil?
-        @upperclass.const_get name
+      elsif search_parent && !@superclass.nil?
+        @superclass.const_get name
       else
         VI::UNDEF
       end
     end
 
     def instance_methods(search_parent=true)
-      if search_parent && !@upperclass.nil?
-        (@method_table.keys + @upperclass.instance_methods).uniq
+      if search_parent && !@superclass.nil?
+        (@method_table.keys + @superclass.instance_methods).uniq
       else
         @method_table.keys
       end
@@ -91,8 +86,8 @@ module Foundry
       if @method_table.key?(name) &&
             !(undefined = (@method_table[name] == VI::UNDEF))
         true
-      elsif !undefined && search_parent && !@upperclass.nil?
-        @upperclass.method_defined?(name)
+      elsif !undefined && search_parent && !@superclass.nil?
+        @superclass.method_defined?(name)
       else
         false
       end
@@ -109,8 +104,8 @@ module Foundry
 
       if value = @method_table[name]
         value
-      elsif search_parent && !@upperclass.nil?
-        @upperclass.instance_method(name)
+      elsif search_parent && !@superclass.nil?
+        @superclass.instance_method(name)
       else
         VI::UNDEF
       end

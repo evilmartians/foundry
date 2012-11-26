@@ -1,22 +1,27 @@
 module Foundry
   class VMIncludedModule < VMModule
     attr_reader :module
-    attr_reader :upperclass
 
-    def vm_initialize(modulus, upperclass)
-      @module       = modulus
-      @name         = modulus.name
-      @upperclass   = upperclass
-      @const_table  = modulus.const_table
-      @method_table = modulus.method_table
+    define_mapped_ivars :module
+
+    def vm_initialize(module_, superclass)
+      @module         = module_
+      @superclass     = superclass
+
+      @constant_table = module_.constant_table
+      @method_table   = module_.method_table
+    end
+
+    def name
+      @module.name
     end
 
     def ancestors
-      [ @module ] + @upperclass.ancestors
+      [ @module ] + @superclass.ancestors
     end
 
     def inspect
-      "{IncludedModule #{@name}}"
+      "{IncludedModule #{name}}"
     end
   end
 end

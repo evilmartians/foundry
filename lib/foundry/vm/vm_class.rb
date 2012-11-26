@@ -1,20 +1,25 @@
 module Foundry
   class VMClass < VMModule
-    attr_reader :superclass
-
-    define_mapped_ivars :superclass
-
     def vm_initialize(superclass, vm_class=VMObject)
-      super()
+      # Parts of initialization happen early enough that VI::NIL
+      # is not defined. The name is overridden later anyway, and
+      # host `nil` responds to #nil? just as well.
+      @name           = VI::NIL if defined?(VI::NIL)
+      @superclass     = superclass
 
-      @superclass = superclass
-      @upperclass = superclass
-      @vm_class   = vm_class
+      @constant_table = {}
+      @method_table   = {}
+
+      @vm_class       = vm_class
+    end
+
+    def vm_allocate
+      @vm_class.new(self)
     end
 
     def vm_new(*args)
       if @vm_class.ancestors.include? VMObject
-        instance = @vm_class.new(self)
+        instance = vm_allocate
         instance.vm_initialize(*args)
         instance
       else
@@ -23,8 +28,8 @@ module Foundry
     end
 
     def inspect
-      if @superclass
-        sup = " < #{as_module_name @superclass.name, 'class'}}"
+      unless @superclass.nil?
+        sup = " < #{as_module_name @superclass.name, 'class'}"
       end
 
       "{Class #{as_module_name @name, 'class'}#{sup}}"
