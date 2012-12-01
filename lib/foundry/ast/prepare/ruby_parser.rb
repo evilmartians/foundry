@@ -60,6 +60,15 @@ module Foundry
         ])
       end
 
+      def on_sclass(node)
+        scope, *code = node.children
+
+        node.updated(nil, [
+           process(scope),
+          *process_all(code)
+        ])
+      end
+
       def on_const(node)
         node.updated(:const_ref)
       end

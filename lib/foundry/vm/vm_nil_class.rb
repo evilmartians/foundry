@@ -4,8 +4,8 @@ module Foundry
       VI::NilClass
     end
 
-    def nil?
-      true
+    def singleton_class
+      VI::NilClass
     end
 
     def inspect

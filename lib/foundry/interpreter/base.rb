@@ -17,8 +17,12 @@ module Foundry::Interpreter
     #
 
     def process(node)
+      prev_current_insn = @current_insn
       @current_insn = node if node
+
       super
+    ensure
+      @current_insn = prev_current_insn
     end
 
     def handler_missing(node)
@@ -205,12 +209,6 @@ module Foundry::Interpreter
     end
 
     def on_array_unshift(node)
-      array, value = process_all(node.children)
-
-      VI.new_tuple([ value ] + array.to_a)
-    end
-
-    def on_array_push(node)
       array, value = process_all(node.children)
 
       VI.new_tuple([ value ] + array.to_a)

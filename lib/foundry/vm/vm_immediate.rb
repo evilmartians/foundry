@@ -11,19 +11,35 @@ module Foundry
     end
 
     def nil?
+      equal? VI::NIL
+    end
+
+    def singleton_class_defined?
       false
     end
 
     def is_a?(klass)
-      self.class.ancestors.include? klass
+      if singleton_class_defined?
+        self.singleton_class.ancestors.include? klass
+      else
+        self.class.ancestors.include? klass
+      end
     end
 
     def respond_to?(method)
-      self.class.method_defined? method
+      if singleton_class_defined?
+        self.singleton_class.method_defined? method
+      else
+        self.class.method_defined? method
+      end
     end
 
     def method(method)
-      self.class.instance_method(method)
+      if singleton_class_defined?
+        self.singleton_class.instance_method method
+      else
+        self.class.instance_method method
+      end
     end
 
     def instance_variables

@@ -18,4 +18,16 @@ class Class < Module
 
     klass
   end
+
+  def ancestors
+    klass     = self
+    ancestors = []
+
+    until klass.nil?
+      ancestors << klass
+      klass = klass.superclass
+    end
+
+    ancestors
+  end
 end

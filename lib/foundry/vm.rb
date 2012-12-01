@@ -4,6 +4,7 @@ require_relative 'vm/vm_object'
 require_relative 'vm/vm_module'
 require_relative 'vm/vm_included_module'
 require_relative 'vm/vm_class'
+require_relative 'vm/vm_singleton_class'
 
 require_relative 'vm/vm_tuple'
 
@@ -64,7 +65,7 @@ module Foundry
     Foundry       = Module.vm_new
 
     Foundry_IncludedModule   = Class.vm_new(Module, VMIncludedModule)
-    Foundry_SingletonClass   = Class.vm_new(Class,  VMClass)
+    Foundry_SingletonClass   = Class.vm_new(Class,  VMSingletonClass)
     Foundry_Tuple            = Class.vm_new(Object, VMTuple)
 
     BasicObject.instance_exec do
@@ -73,6 +74,9 @@ module Foundry
     end
 
     BasicObject.const_set :BasicObject, BasicObject
+
+    # Make sure lazily defined singleton classes are created now.
+    Object.singleton_class
 
     Object.const_set :Object, Object
     Object.const_set :Module, Module

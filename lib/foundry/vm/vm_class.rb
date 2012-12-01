@@ -14,7 +14,11 @@ module Foundry
     end
 
     def vm_allocate
-      @vm_class.new(self)
+      if @vm_class.nil?
+        ::Kernel.send :raise, ::Exception, "cannot allocate instances of class #{self.inspect}"
+      else
+        @vm_class.new(self)
+      end
     end
 
     def vm_new(*args)
@@ -25,6 +29,19 @@ module Foundry
       else
         ::Kernel.send :raise, ::Exception, "cannot allocate VM object instance for VMImmediate"
       end
+    end
+
+    def singleton_class
+      if @singleton_class.nil?
+        if @superclass.nil?
+          # I am BasicObject.
+          @singleton_class = VI::Foundry_SingletonClass.vm_new(VI::Class, self)
+        else
+          @singleton_class = VI::Foundry_SingletonClass.vm_new(@superclass.singleton_class, self)
+        end
+      end
+
+      @singleton_class
     end
 
     def inspect

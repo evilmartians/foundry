@@ -110,6 +110,17 @@ module Foundry
           end.join("  ")
       end
 
+      if object.singleton_class_defined?
+        if object.is_a?(VI::Module) && !object.name.nil?
+          name_prefix = "#{object.name}."
+        end
+
+        if object.singleton_class.instance_methods(false).any?
+          properties["#{name_prefix}methods:"] = \
+            object.singleton_class.instance_methods(false).sort.join("  ")
+        end
+      end
+
       if object.is_a? VI::Module
         klass = object
       else
@@ -121,7 +132,8 @@ module Foundry
           properties["#{klass.name}#methods:"] = \
             klass.instance_methods(false).sort.join("  ")
         end
-        klass = (klass.superclass unless object.is_a? VI::Module)
+
+        klass = (klass.superclass if object.is_a? VI::Module)
       end
 
       puts "Object #{object.__id__}"

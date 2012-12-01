@@ -19,7 +19,12 @@ module Foundry
         vars, *body = node.children
 
         @let_vars   = vars.dup
-        @static_env = @static_env.dup.merge(@let_vars.keys)
+
+        @let_vars.each do |name, value|
+          @let_vars[name] = process(value)
+        end
+
+        @static_env = @static_env + @let_vars.keys
 
         node.updated(nil, [
           @let_vars, *process_all(body)

@@ -4,6 +4,10 @@ module Foundry
       VI::TrueClass
     end
 
+    def singleton_class
+      VI::TrueClass
+    end
+
     def inspect
       "{true}"
     end

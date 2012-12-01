@@ -1,6 +1,25 @@
 module Foundry::Interpreter
   class Ruby < Base
     #
+    # Classes
+    #
+
+    def on_class_of(node)
+      self_, = node.children
+      process(self_).class
+    end
+
+    def on_is_a?(node)
+      self_, klass = node.children
+      process(self_).is_a?(process(klass)) ? VI::TRUE : VI::FALSE
+    end
+
+    def on_singleton_class_of(node)
+      self_, = node.children
+      process(self_).singleton_class
+    end
+
+    #
     # Objects
     #
 

@@ -43,7 +43,18 @@ module Foundry
             process(scope), name, process(superclass)
           ]),
           body,
-          '<class definition>')
+          '<class body>')
+      end
+
+      def on_sclass(node)
+        scope, *body = node.children
+
+        process_scope(node,
+          node.updated(:singleton_class_of, [
+            process(scope)
+          ]),
+          body,
+          '<singleton class body>')
       end
 
       def on_module(node)
@@ -54,7 +65,7 @@ module Foundry
             process(scope), name
           ]),
           body,
-          '<module definition>')
+          '<module body>')
       end
 
       def on_const_ref(node)
@@ -89,7 +100,7 @@ module Foundry
         target, name, args, *code = node.children
 
         node.updated(:def, [
-          s(:singleton_class_of, target),
+          s(:singleton_class_of, process(target)),
           name, args,
           *process_all(code)
         ])

@@ -13,6 +13,24 @@ module Kernel
   alias ==   equal?
   alias ===  equal?
 
+  def class
+    FoundryRt.class_of self
+  end
+
+  def singleton_class
+    FoundryRt.singleton_class_of self
+  end
+
+  def is_a?(klass)
+    FoundryRt.is_a? self, klass
+  end
+
+  alias kind_of? is_a?
+
+  def instance_of?(klass)
+    self.class == klass
+  end
+
   def to_s
     "#<#{self.class}>"
   end

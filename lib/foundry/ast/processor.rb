@@ -81,5 +81,14 @@ module Foundry
         process(cond), process(body)
       ])
     end
+
+    alias on_until on_while
+
+    # Temporary
+
+    def on_singleton_class_of(node)
+      obj, = node.children
+      node.updated(nil, [ process(obj) ])
+    end
   end
 end
