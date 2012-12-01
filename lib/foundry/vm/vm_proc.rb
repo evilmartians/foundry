@@ -6,7 +6,7 @@ module Foundry
 
     def vm_initialize(binding, code)
       @binding = binding
-      @lambda  = false
+      @lambda  = VI::FALSE
       @code    = code
     end
 

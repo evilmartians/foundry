@@ -481,7 +481,7 @@ module Foundry::Interpreter
 
     def on_of_caller_env(node)
       var_node, = node.children
-      var = process(var_node)
+      var = process(var_node).value
 
       @outer.env.apply(var)
     end

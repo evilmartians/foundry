@@ -49,7 +49,6 @@ module Comparable
     return true
   end
 
-=begin no singletons
   # A version of MRI's rb_cmpint (sort of)
   def self.compare_int(int)
     return int if int.kind_of? Integer
@@ -58,5 +57,4 @@ module Comparable
     return -1 if int < 0
     return 0
   end
-=end
 end
