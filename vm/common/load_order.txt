@@ -8,5 +8,6 @@ basic_object.rb
 kernel.rb
 object.rb
 proc.rb
+symbol.rb
 comparable.rb
 integer.rb

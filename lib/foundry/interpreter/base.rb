@@ -380,6 +380,13 @@ module Foundry::Interpreter
         instance_variable_set(process(name_node).value, process(value_node))
     end
 
+    def on_ilist(node)
+      target_node, = node.children
+
+      VI.new_tuple(process(target_node).
+        instance_variables)
+    end
+
     #
     # Methods and closures
     #

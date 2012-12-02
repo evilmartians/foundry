@@ -11,6 +11,7 @@ module Foundry
     def length
       @storage.length
     end
+    alias count length
 
     def each(&block)
       @storage.each &block

@@ -31,6 +31,18 @@ module Kernel
     self.class == klass
   end
 
+  def instance_variables
+    FoundryRt.ilist(self)
+  end
+
+  def instance_variable_get(name)
+    FoundryRt.ivar(self, name.to_sym)
+  end
+
+  def instance_variable_set(name, value)
+    FoundryRt.iasgn(self, name.to_sym, value)
+  end
+
   def to_s
     "#<#{self.class}>"
   end
