@@ -16,6 +16,6 @@ class Proc
   end
 
   def lambda?
-    !!@lambda
+    @lambda
   end
 end
