@@ -1,17 +1,20 @@
 module Foundry
-  class VMTuple < VMObject
-    def vm_initialize(value)
+  class VMTuple < VMImmediate
+    def initialize(value)
       @storage = value.to_ary.freeze
     end
 
-    def [](index)
-      @storage[index.to_int] || VI::NIL
+    def class
+      VI::Foundry_Tuple
     end
 
-    def length
-      @storage.length
+    def size
+      @storage.size
     end
-    alias count length
+
+    def [](index)
+      @storage.fetch(index.to_int, VI::NIL)
+    end
 
     def each(&block)
       @storage.each &block

@@ -4,7 +4,7 @@ module Foundry
 
     def initialize(klass)
       @class           = klass
-      @ivar_table      = {}
+      @ivar_table      = VMLookupTable.new
 
       # Parts of initialization happen early enough so that
       # VI::NIL is not defined yet. All objects defined at this
@@ -48,7 +48,7 @@ module Foundry
       # which means that there is no host instance_variable_set.
       class_eval <<-EVAL, __FILE__ + '/define_mapped_ivars'
       def instance_variables
-        #{set.inspect} + super
+        VI.new_tuple(#{set.inspect} + super.to_a)
       end
 
       def instance_variable_get(ivar)
@@ -76,7 +76,7 @@ module Foundry
     end
 
     def inspect
-      if @ivar_table.any?
+      if @ivar_table.size > 0
         ivs = " "
         @ivar_table.each do |key, value|
           ivs << "#{key}=#{value.inspect}"

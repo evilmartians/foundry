@@ -1,16 +1,10 @@
 module Foundry
   class VMClass < VMModule
     def vm_initialize(superclass, vm_class=VMObject)
-      # Parts of initialization happen early enough that VI::NIL
-      # is not defined. The name is overridden later anyway, and
-      # host `nil` responds to #nil? just as well.
-      @name           = VI::NIL if defined?(VI::NIL)
-      @superclass     = superclass
+      super()
 
-      @constant_table = {}
-      @method_table   = {}
-
-      @vm_class       = vm_class
+      @superclass = superclass
+      @vm_class   = vm_class
     end
 
     def vm_allocate
@@ -27,7 +21,7 @@ module Foundry
         instance.vm_initialize(*args)
         instance
       else
-        ::Kernel.send :raise, ::Exception, "cannot allocate VM object instance for VMImmediate"
+        @vm_class.new(*args)
       end
     end
 
@@ -49,7 +43,7 @@ module Foundry
         sup = " < #{as_module_name @superclass.name, 'class'}"
       end
 
-      "{Class #{as_module_name @name, 'class'}#{sup}}"
+      "{class #{as_module_name @name, 'class'}#{sup}}"
     end
   end
 end

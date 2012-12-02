@@ -4,10 +4,6 @@ module Foundry
       VI::NilClass
     end
 
-    def singleton_class
-      VI::NilClass
-    end
-
     def inspect
       "{nil}"
     end

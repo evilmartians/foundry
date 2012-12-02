@@ -8,11 +8,17 @@ module Foundry
                         :constant_table, :method_table
 
     def vm_initialize
-      @name           = VI::NIL
-      @superclass     = VI::NIL
+      # Parts of initialization happen early enough that VI::NIL
+      # is not defined. The name is overridden later anyway, and
+      # host `nil` responds to #nil? just as well.
+      # @superclass for BasicObject is fixed as well.
+      if defined?(VI::NIL)
+        @name         = VI::NIL
+        @superclass   = VI::NIL
+      end
 
-      @constant_table = {}
-      @method_table   = {}
+      @constant_table = VMLookupTable.new
+      @method_table   = VMLookupTable.new
     end
 
     def ancestors
@@ -63,8 +69,8 @@ module Foundry
     def const_get(name, search_parent=true)
       name = name.to_sym
 
-      if value = @constant_table[name]
-        value
+      if @constant_table.key? name
+        @constant_table[name]
       elsif search_parent && !@superclass.nil?
         @superclass.const_get name
       else
@@ -102,8 +108,8 @@ module Foundry
     def instance_method(name, search_parent=true)
       name = name.to_sym
 
-      if value = @method_table[name]
-        value
+      if @method_table.key? name
+        @method_table[name]
       elsif search_parent && !@superclass.nil?
         @superclass.instance_method(name)
       else
@@ -112,7 +118,7 @@ module Foundry
     end
 
     def inspect
-      "{Module #{as_module_name @name, 'module'}}"
+      "{module #{as_module_name @name, 'module'}}"
     end
 
     def as_module_name(name, entity)

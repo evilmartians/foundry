@@ -187,7 +187,7 @@ module Foundry::Interpreter
       array_node, index, default_node = node.children
       array = process(array)
 
-      if index >= array.length || index < -array.length
+      if index >= array.size || index < -array.size
         process(default_node)
       else
         array[index]
@@ -198,14 +198,14 @@ module Foundry::Interpreter
       array_node, from, to = node.children
       array = process(array_node)
 
-      VI.new_tuple(array.to_ary[from..to])
+      VI.new_tuple(array.to_a[from..to])
     end
 
     def on_array_bigger_than(node)
       array_node, length = node.children
       array = process(array_node)
 
-      array.length > length ? VI::TRUE : VI::FALSE
+      array.size > length ? VI::TRUE : VI::FALSE
     end
 
     def on_array_unshift(node)
@@ -263,7 +263,7 @@ module Foundry::Interpreter
       cref_node, name = node.children
 
       cref = process(cref_node)
-      if cref.length == 0
+      if cref.size == 0
         cref = VI.new_tuple([ VI::Object ])
       end
 
@@ -383,8 +383,8 @@ module Foundry::Interpreter
     def on_ilist(node)
       target_node, = node.children
 
-      VI.new_tuple(process(target_node).
-        instance_variables)
+      process(target_node).
+        instance_variables
     end
 
     #
@@ -463,12 +463,12 @@ module Foundry::Interpreter
       args_node, from, to = node.children
       args = process(args_node)
 
-      if args.length < from || (!to.nil? && args.length > to)
+      if args.size < from || (!to.nil? && args.size > to)
         if from != to
           to = '.' if to.nil?
-          raise Error.new(self, "wrong number of arguments (#{args.length} for #{from}..#{to})")
+          raise Error.new(self, "wrong number of arguments (#{args.size} for #{from}..#{to})")
         else
-          raise Error.new(self, "wrong number of arguments (#{args.length} for #{from})")
+          raise Error.new(self, "wrong number of arguments (#{args.size} for #{from})")
         end
       end
 

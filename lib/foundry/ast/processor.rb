@@ -27,6 +27,11 @@ module Foundry
       node.updated(nil, [ process(receiver), name, process(args), process(block) ])
     end
 
+    def on_proc_call(node)
+      receiver, args, block = node.children
+      node.updated(nil, [ process(receiver), process(args), process(block) ])
+    end
+
     def on_let(node)
       vars, *body = node.children
       node.updated(nil, [ vars, *process_all(body) ])

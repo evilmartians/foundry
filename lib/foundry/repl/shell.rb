@@ -103,9 +103,9 @@ module Foundry
         "instance of" => object.class.name,
       }
 
-      if object.instance_variables.any?
+      if object.instance_variables.size > 0
         properties["instance variables:"] = \
-          object.instance_variables.map do |ivar|
+          object.instance_variables.to_a.map do |ivar|
             "#{ivar}=#{object.instance_variable_get(ivar).inspect}"
           end.join("  ")
       end
@@ -115,9 +115,9 @@ module Foundry
           name_prefix = "#{object.name}."
         end
 
-        if object.singleton_class.instance_methods(false).any?
+        if object.singleton_class.instance_methods(false).size > 0
           properties["#{name_prefix}methods:"] = \
-            object.singleton_class.instance_methods(false).sort.join("  ")
+            object.singleton_class.instance_methods(false).to_a.sort.join("  ")
         end
       end
 
@@ -128,9 +128,9 @@ module Foundry
       end
 
       until klass.nil?
-        if klass.instance_methods(false).any?
+        if klass.instance_methods(false).size > 0
           properties["#{klass.name}#methods:"] = \
-            klass.instance_methods(false).sort.join("  ")
+            klass.instance_methods(false).to_a.sort.join("  ")
         end
 
         klass = (klass.superclass if object.is_a? VI::Module)

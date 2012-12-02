@@ -14,6 +14,10 @@ module Foundry
       equal? VI::NIL
     end
 
+    def singleton_class
+      self.class
+    end
+
     def singleton_class_defined?
       false
     end

@@ -4,10 +4,6 @@ module Foundry
       VI::FalseClass
     end
 
-    def singleton_class
-      VI::FalseClass
-    end
-
     def inspect
       "{false}"
     end

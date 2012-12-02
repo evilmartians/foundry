@@ -1,6 +1,6 @@
 module Kernel
   def nil?
-    false
+    equal? nil
   end
 
   alias send __send__
