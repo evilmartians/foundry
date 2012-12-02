@@ -74,6 +74,10 @@ module Foundry
 
     def on_if(node)
       cond, true_branch, false_branch = node.children
+
+      true_branch  = s(:nil) if true_branch.nil?
+      false_branch = s(:nil) if false_branch.nil?
+
       node.updated(nil, [
         process(cond),
         process(true_branch), process(false_branch)

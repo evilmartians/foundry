@@ -18,8 +18,7 @@ Gem::Specification.new do |gem|
 
   gem.add_dependency "trollop"
   gem.add_dependency "ruby_parser", '>= 3.0.4'
-  gem.add_dependency "sexp_processor"
-  gem.add_dependency "furnace",     '= 0.3.0'
+  gem.add_dependency "furnace",     '= 0.3.1'
   gem.add_dependency "ansi"
 
   gem.add_development_dependency "rake"

@@ -53,6 +53,8 @@ module Foundry
       def on_class(node)
         name, superclass, *code = node.children
 
+        superclass = s(:nil) if superclass.nil?
+
         node.updated(nil, [
           *process_const_name(name),
            process(superclass),
@@ -127,6 +129,10 @@ module Foundry
 
       def on_call(node)
         receiver, name, *args = node.children
+
+        if receiver.nil?
+          receiver = s(:self)
+        end
 
         if args.length > 0 &&
              args.last.type == :block_pass

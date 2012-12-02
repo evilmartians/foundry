@@ -59,8 +59,7 @@ module Foundry
           if is_proc
             unpacker <<
               s(:if, s(:ivar, s(:self), s(:symbol, :@lambda)),
-                checker,
-                s(:nil))
+                checker)
           else
             unpacker << checker
           end

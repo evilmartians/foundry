@@ -109,10 +109,6 @@ module Foundry
       def on_call(node)
         receiver, name, args, block = node.children
 
-        if receiver.nil?
-          receiver = s(:var, :Self)
-        end
-
         node.updated(nil, [
           process(receiver), name,
           process(args),
