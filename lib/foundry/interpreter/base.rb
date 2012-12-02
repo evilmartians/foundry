@@ -448,7 +448,7 @@ module Foundry::Interpreter
       arguments = process(arguments_node)
       block     = process(block_node)
 
-      closure.call(self, arguments, block, self)
+      closure.call(closure, arguments, block, self)
     end
 
     def on_check_arity(node)

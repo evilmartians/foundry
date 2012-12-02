@@ -2,15 +2,13 @@ module Foundry
   module AST::Prepare
     class ExpandArgumentParsing < AST::Processor
       def expand(node, args_node, body_nodes, is_proc)
-        vars = {
-          :Args => s(:args),
-        }
-
-        unless is_proc
-          vars.merge!({
+        if is_proc
+          vars = {}
+        else
+          vars = {
             :Self  => s(:self),
             :Block => s(:proc_ref)
-          })
+          }
         end
 
         pre_args, var_args, post_args = [], [], []
@@ -54,9 +52,18 @@ module Foundry
         unpacker = []
 
         unless arity_from == 0 && arity_to.nil?
-          unpacker <<
+          checker =
             s(:check_arity,
-              s(:var, :Args), arity_from, arity_to)
+              s(:args), arity_from, arity_to)
+
+          if is_proc
+            unpacker <<
+              s(:if, s(:ivar, s(:self), s(:symbol, :@lambda)),
+                checker,
+                s(:nil))
+          else
+            unpacker << checker
+          end
         end
 
         pre_args.each_with_index do |arg, index|
@@ -65,7 +72,7 @@ module Foundry
           unpacker <<
             s(:lasgn, name,
               s(:array_ref,
-                s(:var, :Args),
+                s(:args),
                 index))
         end
 
@@ -76,7 +83,7 @@ module Foundry
             name, default_value = arg.children
 
             arg_unpacker =
-              s(:array_ref, s(:var, :Args), pre_args.length + index)
+              s(:array_ref, s(:args), pre_args.length + index)
 
           elsif arg.type == :splat_arg
             name, = arg.children
@@ -85,7 +92,7 @@ module Foundry
             if name
               arg_unpacker =
                 s(:array_slice,
-                  s(:var, :Args),
+                  s(:args),
                   pre_args.length + index,
                   -(post_args.length + 1))
             end
@@ -96,7 +103,7 @@ module Foundry
               s(:lasgn, name,
                 s(:if,
                   s(:array_bigger_than,
-                    s(:var, :Args), arity_from + index),
+                    s(:args), arity_from + index),
                   arg_unpacker,
                   default_value))
           end
@@ -108,7 +115,7 @@ module Foundry
           unpacker <<
             s(:lasgn, name,
               s(:array_ref,
-                s(:var, :Args),
+                s(:args),
                 -(post_args.count - index)))
         end
 
@@ -116,7 +123,7 @@ module Foundry
           name, = block_arg.children
 
           unpacker <<
-            s(:lasgn, name, s(:var, :Block))
+            s(:lasgn, name, s(:proc_ref))
         end
 
         node.updated(:let, [

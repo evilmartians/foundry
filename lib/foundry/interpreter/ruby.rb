@@ -24,9 +24,14 @@ module Foundry::Interpreter
     #
 
     def on_trace(node)
-      $stderr.puts process_all(node.children).map(&:inspect).join(", ")
+      results = process_all(node.children)
+      $stderr.puts results.map(&:inspect).join(", ")
 
-      Foundry::VI::NIL
+      if results.one?
+        results.first
+      else
+        VI.new_tuple(results)
+      end
     end
 
     def on_equal?(node)
