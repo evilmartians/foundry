@@ -137,7 +137,7 @@ module Foundry
 
         node.updated(nil, [
           process(target), name,
-          expand(node, args, body, false)
+          expand(node, args, process_all(body), false)
         ])
       end
 
