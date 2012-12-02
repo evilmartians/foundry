@@ -1,12 +1,14 @@
 module Foundry::Interpreter
   class Base < Furnace::AST::Processor
-    attr_reader :env, :outer
+    attr_reader :binding, :outer
 
-    def initialize(code, self_=nil, args=nil, block=nil, env=nil, outer=nil)
-      @code         = code
+    def initialize(executable, self_=nil, args=nil, block=nil, outer=nil)
+      @executable   = executable
       @self, @args  = self_, args
       @block        = block
-      @env, @outer  = env, outer
+
+      @binding      = @executable.binding
+      @outer        = outer
 
       @current_insn = nil
       @scope_stack  = []
@@ -60,7 +62,7 @@ module Foundry::Interpreter
     end
 
     def evaluate
-      process @code
+      process @executable.code
     end
 
     #
@@ -90,16 +92,16 @@ module Foundry::Interpreter
     def on_let(node)
       vars, *body = node.children
 
-      old_env = @env
+      old_env = @binding
 
-      if @env
-        @env = @env.chain
+      if @binding
+        @binding = @binding.chain
       else
-        @env = VI.new_binding
+        @binding = VI.new_binding
       end
 
       vars.each do |name, value|
-        @env.define name, process(value)
+        @binding.define name, process(value)
       end
 
       @scope_stack.push(node)
@@ -108,41 +110,29 @@ module Foundry::Interpreter
     ensure
       @scope_stack.pop
 
-      @env = old_env
+      @binding = old_env
     end
 
     def on_var(node)
       var, = node.children
 
-      @env.apply(var)
+      @binding.apply(var)
     end
 
     def on_mut!(node)
       var, value = node.children
 
-      @env.mutate(var, process(value))
+      @binding.mutate(var, process(value))
     end
 
     def on_eval_mut!(node)
       var, value = node.children
 
-      unless @env.defined?(var)
-        @env.define(var, VI::NIL)
+      unless @binding.defined?(var)
+        @binding.define(var, VI::NIL)
       end
 
-      @env.mutate(var, process(value))
-    end
-
-    def on_if_defined(node)
-      expr_node, value_node = node.children
-
-      expr = process(expr_node)
-
-      if expr.equal? VI::UNDEF
-        process(value_node)
-      else
-        expr
-      end
+      @binding.mutate(var, process(value))
     end
 
     #
@@ -396,8 +386,9 @@ module Foundry::Interpreter
 
       name = process(name_node).value
 
-      proc = VI.new_proc(@env,
-        body_node.updated(nil, nil, function: name))
+      proc = VI.new_proc(
+          body_node.updated(nil, nil, function: name),
+          @binding)
 
       target = process(target_node)
       target.define_method(name, proc)
@@ -408,17 +399,18 @@ module Foundry::Interpreter
     def on_proc(node)
       body_node, = node.children
 
-      VI.new_proc(@env,
-        body_node.updated(nil, nil, function: '<closure>'))
+      VI.new_proc(
+          body_node.updated(nil, nil, function: '<closure>'),
+          @binding)
     end
 
     def on_alias(node)
       (to_name, ), (from_name, ) = node.children.map(&:children)
-      definee = @env.apply(:Defn)
+      definee = @binding.apply(:Defn)
 
       method = definee.instance_method(from_name)
 
-      if method == VI::UNDEF && @env.apply(:Defn).is_a?(VI::Module)
+      if method == VI::UNDEF && @binding.apply(:Defn).is_a?(VI::Module)
         method = definee.method(from_name)
       end
 
@@ -456,7 +448,7 @@ module Foundry::Interpreter
       arguments = process(arguments_node)
       block     = process(block_node)
 
-      closure.call(closure.binding.apply(:Self), arguments, block, self)
+      closure.call(self, arguments, block, self)
     end
 
     def on_check_arity(node)

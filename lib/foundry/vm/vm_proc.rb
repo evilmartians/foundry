@@ -1,18 +1,22 @@
 module Foundry
   class VMProc < VMObject
-    attr_reader :binding, :lambda, :code
+    attr_reader :code, :binding, :lambda
 
     define_mapped_ivars :binding, :lambda
 
-    def vm_initialize(binding, code)
+    def vm_initialize(code, binding)
+      @code    = code
       @binding = binding
       @lambda  = VI::FALSE
-      @code    = code
+    end
+
+    def lambda?
+      @lambda == VI::TRUE
     end
 
     def call(self_, arguments, block, outer)
       Runtime.interpreter.
-        new(@code, self_, arguments, block, @binding, outer).
+        new(self, self_, arguments, block, outer).
         evaluate
     end
 

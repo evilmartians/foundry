@@ -171,7 +171,7 @@ module Foundry
 
     def invoke!
       puts "Foundry REPL. Type \\? to view command reference."
-      puts "Self: #{@interp.env.apply(:Self).inspect}"
+      puts "Self: #{@interp.binding.apply(:Self).inspect}"
 
       until @terminate
         if @buffer.empty?

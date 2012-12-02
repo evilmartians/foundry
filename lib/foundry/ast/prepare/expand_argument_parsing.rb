@@ -4,11 +4,11 @@ module Foundry
       def expand(node, args_node, body_nodes, is_proc)
         vars = {
           :Args => s(:args),
-          :Self => s(:if_defined, s(:self), s(:var, :Self)),
         }
 
         unless is_proc
           vars.merge!({
+            :Self  => s(:self),
             :Block => s(:proc_ref)
           })
         end

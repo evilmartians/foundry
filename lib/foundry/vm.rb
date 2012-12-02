@@ -113,8 +113,8 @@ module Foundry
       Binding.vm_new(nil)
     end
 
-    def self.new_proc(binding, code)
-      Proc.vm_new(binding, code)
+    def self.new_proc(code, binding)
+      Proc.vm_new(code, binding)
     end
 
     def self.new_symbol(value)

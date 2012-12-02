@@ -32,44 +32,45 @@ module Foundry
     end
 
     def self.load(filename)
-      parser = Ruby19Parser.new
-
-      ast = parser.parse(File.read(filename), filename)
-      return if ast.nil?
-
-      ir  = prepare_ast(ast)
-
-      Runtime.interpreter.
-          new(ir, VI::TOPLEVEL).
-          evaluate
+      eval_at_toplevel(File.read(filename), filename)
     end
 
     def self.eval(string, name='(eval)', outer=nil)
+      if outer.nil?
+        eval_at_toplevel(string, name)
+      else
+        eval_with_binding(string, name, outer)
+      end
+    end
+
+    def self.eval_at_toplevel(source, name)
       parser = Ruby19Parser.new
 
-      if outer
-        locals = []
-        outer.env.each do |name|
-          locals << name
-          parser.env[name] = :lvar
-        end
+      ir   = prepare_ast(parser.parse(source, name))
+      proc = VI.new_proc(ir, nil)
 
-        pipeline = make_pipeline(true, locals)
-      else
-        pipeline = make_pipeline(false)
+      @interpreter.
+          new(proc, VI::TOPLEVEL).
+          evaluate
+    end
+
+    def self.eval_with_binding(source, name, outer)
+      parser = Ruby19Parser.new
+
+      locals = []
+      outer.binding.each do |name|
+        locals << name
+        parser.env[name] = :lvar
       end
 
-      ir = prepare_ast(parser.parse(string, name), pipeline)
+      pipeline = make_pipeline(true, locals)
 
-      if outer
-        @interpreter.
-            new(ir, nil, nil, nil, outer.env, outer).
-            evaluate
-      else
-        @interpreter.
-            new(ir, VI::TOPLEVEL).
-            evaluate
-      end
+      ir   = prepare_ast(parser.parse(source, name), pipeline)
+      proc = VI.new_proc(ir, outer.binding)
+
+      @interpreter.
+          new(proc, nil, nil, nil, outer).
+          evaluate
     end
 
     def self.make_pipeline(is_eval=false, locals=nil)
