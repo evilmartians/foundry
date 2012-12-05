@@ -56,6 +56,35 @@ module Foundry::Interpreter
     end
 
     #
+    # LUTs
+    #
+
+    def on_lut_lookup(node)
+      self_, key = process_all(node.children)
+      self_[key.value]
+    end
+
+    def on_lut_store(node)
+      self_, key, value = process_all(node.children)
+      self_[key.value] = value
+    end
+
+    def on_lut_check(node)
+      self_, key = process_all(node.children)
+      self_.key?(key.value) ? VI::TRUE : VI::FALSE
+    end
+
+    def on_lut_traverse(node)
+      self_, proc = process_all(node.children)
+
+      self_.each do |key, value|
+        proc.call(VI::NIL, VI.new_tuple([ VI.new_symbol(key), value ]), VI::NIL, nil)
+      end
+
+      self_
+    end
+
+    #
     # Integers
     #
 

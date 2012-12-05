@@ -7,6 +7,9 @@ class Proc
     FoundryRt.proc_call self, args, block
   end
 
+  alias []  call
+  alias === call
+
   def binding
     @binding
   end
@@ -17,5 +20,9 @@ class Proc
 
   def lambda?
     @lambda
+  end
+
+  def arity
+    @arity
   end
 end

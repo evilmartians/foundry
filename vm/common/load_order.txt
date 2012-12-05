@@ -9,5 +9,6 @@ kernel.rb
 object.rb
 proc.rb
 symbol.rb
+foundry/lookup_table.rb
 comparable.rb
 integer.rb
