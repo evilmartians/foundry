@@ -527,5 +527,33 @@ module Foundry::Interpreter
     def on_until(node)
       process_loop(node, true)
     end
+
+    #
+    # &&, ||
+    #
+
+    def on_and(node)
+      left, right = node.children
+
+      left_value = process(left)
+      if left_value.equal?(VI::NIL) ||
+            left_value.equal?(VI::FALSE)
+        left_value
+      else
+        process(right)
+      end
+    end
+
+    def on_or(node)
+      left, right = node.children
+
+      left_value = process(left)
+      if left_value.equal?(VI::NIL) ||
+            left_value.equal?(VI::FALSE)
+        process(right)
+      else
+        left_value
+      end
+    end
   end
 end

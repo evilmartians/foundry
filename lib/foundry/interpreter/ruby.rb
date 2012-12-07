@@ -78,10 +78,24 @@ module Foundry::Interpreter
       self_, proc = process_all(node.children)
 
       self_.each do |key, value|
-        proc.call(VI::NIL, VI.new_tuple([ VI.new_symbol(key), value ]), VI::NIL, nil)
+        proc.call(VI::NIL, VI.new_tuple([ VI.new_symbol(key), value ]), VI::NIL, self)
       end
 
       self_
+    end
+
+    #
+    # Tuples
+    #
+
+    def on_tuple_size(node)
+      self_, = process_all(node.children)
+      VI.new_integer self_.size
+    end
+
+    def on_tuple_lookup(node)
+      self_, index = process_all(node.children)
+      self_[index.value]
     end
 
     #
@@ -93,6 +107,7 @@ module Foundry::Interpreter
       :-  => :sub,
       :*  => :mul,
       :/  => :div,
+      :%  => :mod,
     }.each do |op, node|
       define_method(:"on_int_#{node}") do |node|
         self_, other = process_all(node.children)

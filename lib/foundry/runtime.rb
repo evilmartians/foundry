@@ -7,10 +7,8 @@ module Foundry
       attr_accessor :graph_ir
     end
 
-    def self.initialize
-      @graph_ast = false
-      @graph_ir  = false
-    end
+    @graph_ast = false
+    @graph_ir  = false
 
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 

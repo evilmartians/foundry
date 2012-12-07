@@ -93,6 +93,16 @@ module Foundry
 
     alias on_until on_while
 
+    def on_binary_op(node)
+      left, right = node.children
+      node.updated(nil, [
+        process(left), process(right)
+      ])
+    end
+
+    alias on_and on_binary_op
+    alias on_or  on_binary_op
+
     # Temporary
 
     def on_singleton_class_of(node)

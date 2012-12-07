@@ -149,6 +149,10 @@ module Foundry
         ])
       end
 
+      def on_yield(node)
+        node.updated(nil, process_all(node.children))
+      end
+
       def on_args(node)
         args = node.children.map do |arg|
           if arg.is_a? Symbol

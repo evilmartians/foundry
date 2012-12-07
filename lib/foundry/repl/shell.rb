@@ -81,7 +81,7 @@ module Foundry
     def ls(cmdline)
       cmdline = (cmdline || "").strip
       if cmdline.empty?
-        describe @interp.env.apply(:Self)
+        describe @interp.binding.apply(:Self)
       else
         object = safe_eval(cmdline, '(ls-eval)')
         describe object unless object.equal? nil
