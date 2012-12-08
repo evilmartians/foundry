@@ -69,15 +69,15 @@ module Foundry::Interpreter
     # Initial contexts
     #
 
-    def on_self(node)
-      @self
-    end
-
     def on_args(node)
       @args
     end
 
-    def on_proc_ref(node)
+    def on_self_arg(node)
+      @self
+    end
+
+    def on_block_arg(node)
       @block
     end
 
@@ -119,13 +119,13 @@ module Foundry::Interpreter
       @binding.apply(var)
     end
 
-    def on_mut!(node)
+    def on_mut(node)
       var, value = node.children
 
       @binding.mutate(var, process(value))
     end
 
-    def on_eval_mut!(node)
+    def on_eval_mut(node)
       var, value = node.children
 
       unless @binding.defined?(var)
@@ -151,7 +151,7 @@ module Foundry::Interpreter
     # Tuples and de/composition
     #
 
-    def on_array(node)
+    def on_tuple(node)
       result = []
 
       node.children.map do |elem|
@@ -166,42 +166,31 @@ module Foundry::Interpreter
       VI.new_tuple(result)
     end
 
-    def on_array_ref(node)
+    def on_tuple_ref(node)
       array_node, index = node.children
       array = process(array_node)
 
       array[index]
     end
 
-    def on_array_fetch(node)
-      array_node, index, default_node = node.children
-      array = process(array)
-
-      if index >= array.size || index < -array.size
-        process(default_node)
-      else
-        array[index]
-      end
-    end
-
-    def on_array_slice(node)
-      array_node, from, to = node.children
-      array = process(array_node)
-
-      VI.new_tuple(array.to_a[from..to])
-    end
-
-    def on_array_bigger_than(node)
+    def on_tuple_bigger?(node)
       array_node, length = node.children
       array = process(array_node)
 
       array.size > length ? VI::TRUE : VI::FALSE
     end
 
-    def on_array_unshift(node)
-      array, value = process_all(node.children)
+    def on_tuple_slice(node)
+      array_node, from, to = node.children
+      array = process(array_node)
 
-      VI.new_tuple([ value ] + array.to_a)
+      VI.new_tuple(array.to_a[from..to])
+    end
+
+    def on_tuple_concat(node)
+      left, right = process_all(node.children)
+
+      VI.new_tuple(left.to_a + right.to_a)
     end
 
     #
@@ -249,7 +238,7 @@ module Foundry::Interpreter
       VI::UNDEF
     end
 
-    def on_const_ref_in(node)
+    def on_const_ref(node)
       cref_node, name = node.children
 
       cref = process(cref_node)
@@ -363,7 +352,7 @@ module Foundry::Interpreter
         instance_variable_get(process(name_node).value)
     end
 
-    def on_iasgn(node)
+    def on_imut(node)
       target_node, name_node, value_node = node.children
 
       process(target_node).
@@ -382,9 +371,7 @@ module Foundry::Interpreter
     #
 
     def on_def(node)
-      target_node, name_node, body_node = node.children
-
-      name = process(name_node).value
+      target_node, name, body_node = node.children
 
       proc = VI.new_proc(
           body_node.updated(nil, nil, function: name),
@@ -396,7 +383,7 @@ module Foundry::Interpreter
       VI::NIL
     end
 
-    def on_proc(node)
+    def on_lambda(node)
       body_node, = node.children
 
       VI.new_proc(
@@ -427,21 +414,22 @@ module Foundry::Interpreter
     # Calls
     #
 
-    def on_call(node)
-      receiver_node, name, arguments_node, block_node = node.children
+    def on_send(node)
+      receiver_node, name_node, arguments_node, block_node = node.children
 
       receiver  = process(receiver_node)
+      name      = process(name_node)
       arguments = process(arguments_node)
       block     = process(block_node)
 
       if receiver.respond_to? name
         receiver.method(name).call(receiver, arguments, block, self)
       else
-        raise Error.new(self, "undefined method #{name} for #{receiver.inspect}")
+        raise Error.new(self, "undefined method #{name.value} for #{receiver.inspect}")
       end
     end
 
-    def on_proc_call(node)
+    def on_apply(node)
       closure_node, arguments_node, block_node = node.children
 
       closure   = process(closure_node)

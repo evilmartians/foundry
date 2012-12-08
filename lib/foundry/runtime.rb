@@ -73,12 +73,11 @@ module Foundry
 
     def self.make_pipeline(is_eval=false, locals=nil)
       Furnace::Transform::Pipeline.new([
-        AST::Prepare::RubyParser.new(is_eval),
-        AST::Prepare::ExpandImplicitContexts.new,
-        AST::Prepare::ExpandArgumentParsing.new,
-        AST::Prepare::TraceVariables.new(locals),
-        AST::Prepare::ExpandPrimitives.new,
-        AST::Prepare::DumpIR.new,
+        Transform::RubyParser.new(is_eval),
+        Transform::ArgumentProcessing.new,
+        Transform::TraceVariables.new(locals),
+        Transform::LiteralPrimitives.new,
+        Transform::DumpIR.new,
       ])
     end
 

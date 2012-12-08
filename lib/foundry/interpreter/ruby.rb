@@ -24,7 +24,7 @@ module Foundry::Interpreter
 
     def on_coerce(node)
       type, value = node.children
-      on_call(s(:call, type, :coerce, s(:array, value), s(:nil)))
+      on_call(s(:send, type, :coerce, s(:array, value), s(:nil)))
     end
 
     #
