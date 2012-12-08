@@ -13,8 +13,8 @@ class BasicObject
     ::Kernel.raise ::NotImplementedError, "Foundry does not implement object_id"
   end
 
-  def __send__(method, *args, &block)
-    FoundryRt.call self, method.to_sym, args, block
+  def __send__(Symbol method, *args, &block)
+    FoundryRt.call self, method, args, block
   end
 
   def !

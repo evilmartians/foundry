@@ -437,7 +437,7 @@ module Foundry::Interpreter
       if receiver.respond_to? name
         receiver.method(name).call(receiver, arguments, block, self)
       else
-        raise Error.new(self, "undefined method #{name} for #{receiver.class.name}")
+        raise Error.new(self, "undefined method #{name} for #{receiver.inspect}")
       end
     end
 

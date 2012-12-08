@@ -1,4 +1,12 @@
 class Class < Module
+  def coerce(object)
+    if object.is_a? self
+      object
+    else
+      raise TypeError, "coerce: #{object.class} is not a #{self}"
+    end
+  end
+
   def allocate
     FoundryRt.allocate self
   end
