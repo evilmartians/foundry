@@ -17,8 +17,8 @@ Gem::Specification.new do |gem|
   gem.version       = Foundry::VERSION
 
   gem.add_dependency "trollop"
-  gem.add_dependency "ruby_parser", '>= 3.0.4'
-  gem.add_dependency "furnace",     '= 0.3.1'
+  gem.add_dependency "foundry-ruby_parser", '>= 3.1.0'
+  gem.add_dependency "furnace",             '= 0.3.1'
   gem.add_dependency "ansi"
 
   gem.add_development_dependency "rake"

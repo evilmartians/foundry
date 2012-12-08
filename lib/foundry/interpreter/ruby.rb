@@ -19,6 +19,14 @@ module Foundry::Interpreter
       process(self_).singleton_class
     end
 
+    # TODO
+    include Foundry::AST::SexpBuilder
+
+    def on_coerce(node)
+      type, value = node.children
+      on_call(s(:call, type, :coerce, s(:array, value), s(:nil)))
+    end
+
     #
     # Objects
     #

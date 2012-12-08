@@ -2,6 +2,7 @@ module Foundry::AST
 end
 
 require_relative 'ast/node'
+require_relative 'ast/sexp_builder'
 require_relative 'ast/processor'
 
 require_relative 'ast/prepare/ruby_parser'

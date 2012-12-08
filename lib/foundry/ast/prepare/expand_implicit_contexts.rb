@@ -86,12 +86,38 @@ module Foundry
         ])
       end
 
+      def on_args(node)
+        node.updated(nil, process_all(node.children))
+      end
+
+      def on_typed_arg(node)
+        type, value = node.children
+        node.updated(nil, [
+          process(type), process(value)
+        ])
+      end
+
+      def on_optional_arg(node)
+        name, default_value = node.children
+        node.updated(nil, [
+          name, process(default_value)
+        ])
+      end
+
+      def on_returns(node)
+        type, = node.children
+        node.updated(nil, [
+          process(type)
+        ])
+      end
+
       def on_defn(node)
         name, args, *code = node.children
 
         node.updated(:def, [
           s(:var, :Defn),
-          name, args,
+           name,
+           process(args),
           *process_all(code)
         ])
       end
@@ -101,7 +127,8 @@ module Foundry
 
         node.updated(:def, [
           s(:singleton_class_of, process(target)),
-          name, args,
+           name,
+           process(args),
           *process_all(code)
         ])
       end

@@ -153,25 +153,55 @@ module Foundry
         node.updated(nil, process_all(node.children))
       end
 
+      def on_tvar(node)
+        klass, declaration = node.children
+        node.updated(:typed_arg, [
+          process(klass), on_arg(declaration)
+        ])
+      end
+
+      def on_rtype(node)
+        type, = node.children
+        node.updated(:returns, [
+          process(type)
+        ])
+      end
+
+      # Not present in RP output.
+      def on_arg(arg)
+        if arg.is_a? Symbol
+          if arg == :*
+            s(:splat_arg)
+          elsif arg[0] == '*'
+            s(:splat_arg, arg[1..-1].to_sym)
+          elsif arg[0] == '&'
+            s(:block_arg, arg[1..-1].to_sym)
+          else
+            s(:arg, arg)
+          end
+        elsif arg.type == :tvar
+          on_tvar(arg)
+        elsif arg.type == :lasgn
+          on_optarg(arg)
+        elsif arg.type == :rtype
+          on_rtype(arg)
+        else
+          raise "Unknown arg type #{arg}"
+        end
+      end
+
+      # Not present in RP output.
+      def on_optarg(arg)
+        name, default_value = arg.children
+
+        arg.updated(:optional_arg, [
+          name, process(default_value)
+        ])
+      end
+
       def on_args(node)
         args = node.children.map do |arg|
-          if arg.is_a? Symbol
-            if arg == :*
-              s(:splat_arg)
-            elsif arg[0] == '*'
-              s(:splat_arg, arg[1..-1].to_sym)
-            elsif arg[0] == '&'
-              s(:block_arg, arg[1..-1].to_sym)
-            else
-              s(:arg, arg)
-            end
-          else
-            name, default_value = arg.children
-
-            arg.updated(:optional_arg, [
-              name, process(default_value)
-            ])
-          end
+          on_arg(arg)
         end
 
         node.updated(nil, args)

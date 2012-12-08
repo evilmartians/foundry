@@ -1,7 +1,13 @@
 class Integer < Numeric
-  def to_i
+  def self.coerce(object)
+    object.to_int
+  end
+
+  def to_int
     self
   end
+
+  alias to_i to_int
 
   def +@
     self

@@ -18,7 +18,7 @@ class BasicObject
   end
 
   def !
-    self.equal?(false) || self.equal?(nil) ? true : false
+    equal?(false) || equal?(nil) ? true : false
   end
 
   def !=(other)

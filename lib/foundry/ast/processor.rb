@@ -2,9 +2,7 @@ module Foundry
   class AST::Processor < Furnace::AST::Processor
     alias transform process
 
-    def s(type, *children)
-      AST::Node.new(type, children)
-    end
+    include AST::SexpBuilder
 
     def on_block(node)
       node.updated(nil, process_all(node.children))
@@ -108,6 +106,11 @@ module Foundry
     def on_singleton_class_of(node)
       obj, = node.children
       node.updated(nil, [ process(obj) ])
+    end
+
+    def on_coerce(node)
+      type, value = node.children
+      node.updated(nil, [ process(type), process(value) ])
     end
   end
 end

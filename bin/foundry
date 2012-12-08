@@ -4,6 +4,9 @@ unless $:.include?(File.dirname(__FILE__) + '/../lib')
   $:.unshift(File.dirname(__FILE__) + '/../lib')
 end
 
+require 'bundler'
+Bundler.setup
+
 require 'trollop'
 require 'foundry'
 require 'pp'
