@@ -11,7 +11,8 @@ module Foundry
             :Self  => s(:self_arg),
             :Block => s(:nil),
             :Defn  => s(:const_base),
-            :Cref  => s(:tuple),
+            :Cref  => s(:tuple,
+                        s(:const_base)),
           },
           *process_all(node.children),
         ], function: '(toplevel)')
@@ -35,7 +36,7 @@ module Foundry
     end
 
     def on_class(node)
-      name, superclass, *body = node.children
+      name, superclass, *body = *node
 
       superclass = s(:nil) if superclass.nil?
 
@@ -48,7 +49,7 @@ module Foundry
     end
 
     def on_module(node)
-      name, *body = node.children
+      name, *body = *node
 
       process_module_scope(node,
         s(:define_module,
@@ -58,7 +59,7 @@ module Foundry
     end
 
     def on_sclass(node)
-      scope, *body = node.children
+      scope, *body = *node
 
       process_module_scope(node,
         s(:singleton_class_of,
@@ -68,7 +69,7 @@ module Foundry
     end
 
     def on_const_search(node)
-      name, = node.children
+      name, = *node
 
       node.updated(:const_ref, [
         s(:var, :Cref),
@@ -83,7 +84,7 @@ module Foundry
     end
 
     def on_defn(node)
-      name, args, *code = node.children
+      name, args, *code = *node
 
       node.updated(:def, [
         s(:var, :Defn),
@@ -94,7 +95,7 @@ module Foundry
     end
 
     def on_defs(node)
-      target, name, args, *code = node.children
+      target, name, args, *code = *node
 
       node.updated(:def, [
         s(:singleton_class_of, process(target)),
@@ -117,7 +118,7 @@ module Foundry
     end
 
     def on_ivar(node)
-      name, = node.children
+      name, = *node
 
       node.updated(:ivar, [
         s(:var, :Self),
@@ -126,7 +127,7 @@ module Foundry
     end
 
     def on_iasgn(node)
-      name, value = node.children
+      name, value = *node
 
       node.updated(:imut, [
         s(:var, :Self),

@@ -10,8 +10,10 @@ module Foundry
     def vm_allocate
       if @vm_class.nil?
         ::Kernel.send :raise, ::Exception, "cannot allocate instances of class #{self.inspect}"
-      else
+      elsif @vm_class.ancestors.include? VMObject
         @vm_class.new(self)
+      else
+        @vm_class.new
       end
     end
 

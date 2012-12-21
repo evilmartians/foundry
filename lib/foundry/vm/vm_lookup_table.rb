@@ -4,6 +4,10 @@ module Foundry
       @storage = {}
     end
 
+    def self.vm_allocate
+      new
+    end
+
     def class
       VI::Foundry_LookupTable
     end

@@ -5,6 +5,7 @@ module Foundry
     require_relative 'ruby_parser/calls'
     require_relative 'ruby_parser/formal_parameters'
     require_relative 'ruby_parser/context_reification'
+    require_relative 'ruby_parser/global_variables'
 
     def initialize(is_eval)
       @is_eval = is_eval
@@ -23,5 +24,6 @@ module Foundry
     include Calls
     include FormalParameters
     include ContextReification
+    include GlobalVariables
   end
 end

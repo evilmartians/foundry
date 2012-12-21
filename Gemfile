@@ -4,6 +4,7 @@ source 'https://rubygems.org'
 gemspec
 
 gem 'foundry-ruby_parser', git: 'git@github.com:evilmartians/foundry-ruby_parser'
+gem 'furnace', path: '../furnace'
 
 group :development do
   gem 'pry'

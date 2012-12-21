@@ -19,12 +19,11 @@ module Foundry::Interpreter
       process(self_).singleton_class
     end
 
-    # TODO
     include Foundry::AST::SexpBuilder
 
     def on_coerce(node)
       type, value = node.children
-      on_call(s(:send, type, :coerce, s(:array, value), s(:nil)))
+      process(s_send(type, :coerce, value))
     end
 
     #
@@ -32,7 +31,7 @@ module Foundry::Interpreter
     #
 
     def on_trace(node)
-      results = process_all(node.children)
+      results = process(node.children.first).to_a
       $stderr.puts results.map(&:inspect).join(", ")
 
       if results.one?

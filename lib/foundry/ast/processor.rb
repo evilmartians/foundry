@@ -1,8 +1,8 @@
 module Foundry
   class AST::Processor < Furnace::AST::Processor
-    alias transform process
-
     include AST::SexpBuilder
+
+    alias transform process
 
     def handler_missing(node)
       unless node.children.all? { |c| c.is_a? AST::Node }

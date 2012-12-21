@@ -11,5 +11,6 @@ proc.rb
 symbol.rb
 foundry/lookup_table.rb
 foundry/tuple.rb
+foundry/globals.rb
 comparable.rb
 integer.rb

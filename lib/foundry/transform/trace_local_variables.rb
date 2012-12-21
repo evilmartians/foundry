@@ -1,5 +1,5 @@
 module Foundry
-  class Transform::TraceVariables < AST::Processor
+  class Transform::TraceLocalVariables < AST::Processor
     def initialize(locals=nil)
       @locals = locals || []
     end

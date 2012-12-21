@@ -242,9 +242,6 @@ module Foundry::Interpreter
       cref_node, name = node.children
 
       cref = process(cref_node)
-      if cref.size == 0
-        cref = VI.new_tuple([ VI::Object ])
-      end
 
       const = find_const_in(cref, name)
       if const == VI::UNDEF

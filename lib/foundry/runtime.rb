@@ -75,7 +75,8 @@ module Foundry
       Furnace::Transform::Pipeline.new([
         Transform::RubyParser.new(is_eval),
         Transform::ArgumentProcessing.new,
-        Transform::TraceVariables.new(locals),
+        Transform::TraceLocalVariables.new(locals),
+        Transform::ExpandGlobalVariables.new,
         Transform::LiteralPrimitives.new,
         Transform::DumpIR.new,
       ])

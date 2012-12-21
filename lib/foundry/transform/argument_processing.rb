@@ -110,7 +110,7 @@ module Foundry
 
         when :splat_arg
           name, = arg.children
-          default_value = s(:array)
+          default_value = s(:tuple)
 
           value =
             s(:tuple_slice, s(:args), index_low, index_high)
