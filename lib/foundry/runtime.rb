@@ -5,10 +5,12 @@ module Foundry
 
       attr_accessor :graph_ast
       attr_accessor :graph_ir
+      attr_accessor :graph_ssa
     end
 
     @graph_ast = false
     @graph_ir  = false
+    @graph_ssa = false
 
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
@@ -88,6 +90,12 @@ module Foundry
 
       ir = pipeline.run(ast)
       p ir if @graph_ir
+
+      if @graph_ssa
+        context   = Interpreter::Context.new
+        transform = SSA::Transform.new(context)
+        transform.transform(ir)
+      end
 
       ir
     end

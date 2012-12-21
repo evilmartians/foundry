@@ -26,6 +26,9 @@ end
 
 class StandaloneInterpreter < Foundry::Interpreter::Ruby
   def on_repl(node)
+    Foundry::Runtime.graph_ir  = true
+    Foundry::Runtime.graph_ssa = true
+
     repl = Foundry::REPL::Shell.new(self.outer)
     repl.invoke!
 
@@ -45,8 +48,6 @@ begin
     end
   end
   REPL
-
-  #$runtime.graph_ir = true
 
   if opts[:evaluate]
     opts[:evaluate].each do |value|

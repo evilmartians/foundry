@@ -65,6 +65,11 @@ module Foundry
       boolean_command 'graph_ir', cmdline, Foundry::Runtime, :graph_ir
     end
 
+    command 'graph_ssa', ":bool", "Display SSA"
+    def graph_ssa(cmdline)
+      boolean_command 'graph_ssa', cmdline, Foundry::Runtime, :graph_ssa
+    end
+
     command 'include_host', ":bool", "Include host information in backtraces"
     def include_host(cmdline)
       boolean_command 'include_host', cmdline, self, :interleave_backtraces

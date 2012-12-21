@@ -23,15 +23,17 @@ module Foundry
       node.updated(:let, [
         {
           :Scope  => new_scope,
-
-          :Self   => s(:var, :Scope),
-          :Block  => s(:nil),
-          :Defn   => s(:var, :Scope),
-          :Cref   => s(:tuple_concat,
-                       s(:var, :Cref),
-                       s(:tuple, s(:var, :Scope))),
         },
-        *process_all(body)
+        s(:let, {
+            :Self   => s(:var, :Scope),
+            :Block  => s(:nil),
+            :Defn   => s(:var, :Scope),
+            :Cref   => s(:tuple_concat,
+                         s(:var, :Cref),
+                         s(:tuple, s(:var, :Scope))),
+
+          },
+          *process_all(body))
       ], function: function)
     end
 

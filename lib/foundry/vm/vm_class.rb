@@ -40,6 +40,10 @@ module Foundry
       @singleton_class
     end
 
+    def inspect_as_type
+      "^#{as_module_name @name, 'class'}"
+    end
+
     def inspect
       unless @superclass.nil?
         sup = " < #{as_module_name @superclass.name, 'class'}"

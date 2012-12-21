@@ -14,6 +14,10 @@ module Foundry
       equal? VI::NIL
     end
 
+    def to_s
+      inspect
+    end
+
     def singleton_class
       self.class
     end

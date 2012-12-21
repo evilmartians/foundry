@@ -92,17 +92,18 @@ module Foundry::Interpreter
     def on_let(node)
       vars, *body = node.children
 
-      old_env = @binding
-
       if @binding
-        @binding = @binding.chain
+        new_binding = @binding.chain
       else
-        @binding = VI.new_binding
+        new_binding = VI.new_binding
       end
 
       vars.each do |name, value|
-        @binding.define name, process(value)
+        new_binding.define name, process(value)
       end
+
+      old_binding = @binding
+      @binding = new_binding
 
       @scope_stack.push(node)
 
@@ -110,7 +111,7 @@ module Foundry::Interpreter
     ensure
       @scope_stack.pop
 
-      @binding = old_env
+      @binding = old_binding
     end
 
     def on_var(node)
