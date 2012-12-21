@@ -117,6 +117,12 @@ module Foundry
       ])
     end
 
+    def on_zsuper(node)
+      node.updated(:super, [
+        s(:args)
+      ])
+    end
+
     def on_ivar(node)
       name, = *node
 
