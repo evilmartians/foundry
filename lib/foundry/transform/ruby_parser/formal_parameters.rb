@@ -16,7 +16,6 @@ module Foundry
       ])
     end
 
-    # Not present in RP output.
     def process_optional_arg(arg)
       name, default_value = arg.children
 
