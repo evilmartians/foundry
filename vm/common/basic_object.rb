@@ -14,7 +14,7 @@ class BasicObject
   end
 
   def __send__(Symbol method, *args, &block)
-    FoundryRt.call self, method, args, block
+    FoundryRt.send self, method, args, block
   end
 
   def !

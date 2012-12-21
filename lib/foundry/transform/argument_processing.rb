@@ -158,7 +158,7 @@ module Foundry
         name, = @block_arg.children
 
         @prologue <<
-          s(:lasgn, name, s(:proc_ref))
+          s(:lasgn, name, s(:block_arg))
       end
 
       def append_arg_unpackers
