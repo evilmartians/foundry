@@ -19,10 +19,6 @@ module Foundry
       node.updated(:string)
     end
 
-    def on_dstr(node)
-      node.updated(:string, [ "TODO" ])
-    end
-
     def on_array(node)
       process(node.updated(:tuple))
     end
