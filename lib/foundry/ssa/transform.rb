@@ -196,24 +196,43 @@ module Foundry
       process_all(node).last
     end
 
+    #
+    # Control flow
+    #
+
     def on_if(node)
       cond, if_true, if_false = *node
 
-      true_block, false_block = @builder.condition SSA::BranchIf, process(cond)
-      true_value, false_value = nil
-
-      @builder.with true_block do |post_block|
-        true_value = process(if_true)
-        @builder.branch post_block
+      @builder.control_flow_op(SSA::BranchIf, [ process(cond) ]) do |post|
+        [
+          @builder.branch(post) { process(if_true)  },
+          @builder.branch(post) { process(if_false) }
+        ]
       end
+    end
 
-      @builder.with false_block do |post_block|
-        false_value = process(if_false)
-        @builder.branch post_block
+    def on_and(node)
+      left, right = *node
+
+      left_value = process(left)
+      @builder.control_flow_op(SSA::BranchIf, [ left_value ]) do |post|
+        [
+          @builder.branch(post) { process(right)  },
+          [ post, left_value ]
+        ]
       end
+    end
 
-      @builder.phi nil, { true_block  => true_value,
-                          false_block => false_value }
+    def on_or(node)
+      left, right = *node
+
+      left_value = process(left)
+      @builder.control_flow_op(SSA::BranchIf, [ left_value ]) do |post|
+        [
+          [ post, left_value ],
+          @builder.branch(post) { process(right)  }
+        ]
+      end
     end
 
     #
