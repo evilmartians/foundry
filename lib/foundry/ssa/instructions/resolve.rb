@@ -1,11 +1,11 @@
 module Foundry::SSA
-  class Tuple < Furnace::SSA::Instruction
+  class Resolve < Furnace::SSA::Instruction
     def use_count
-      nil
+      2
     end
 
     def type
-      VI::Foundry_Tuple
+      VI::Proc
     end
   end
 end

@@ -25,6 +25,10 @@ module Foundry
     end
     alias to_ary to_a
 
+    def self.inspect_as_type
+      '^Tuple[?]'
+    end
+
     def inspect
       "{Tuple #{@storage.inspect}}"
     end

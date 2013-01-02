@@ -41,7 +41,11 @@ module Foundry
     end
 
     def inspect_as_type
-      "^#{as_module_name @name, 'class'}"
+      if @vm_class.ancestors.include? VMObject
+        "^" + @name.value.sub(/^Foundry::/, '')
+      else
+        @vm_class.inspect_as_type
+      end
     end
 
     def inspect

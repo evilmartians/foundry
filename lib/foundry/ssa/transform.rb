@@ -1,25 +1,27 @@
 module Foundry
   class SSA::Transform < Furnace::AST::Processor
-    def initialize(context)
-      @context = context
+    def initialize(mod, outer_env, name_prefix='chunk')
+      @module   = mod
+      @env      = outer_env
 
-      @self_arg = SSA::Value.new('self')
-      @args     = SSA::Value.new('args')
-      @proc_arg = SSA::Value.new('proc')
+      @builder  = SSA::Builder.new(name_prefix, [
+                      [ VI::Binding,       'outer' ],
+                      [ nil,               'self'  ],
+                      [ VI::Foundry_Tuple, 'args'  ],
+                      [ VI::Proc,          'block' ],
+                    ], nil)
+      @function = @builder.function
+      @binding, @self_arg, @args, @block_arg = @function.arguments
 
-      @builder = SSA::Builder.new([ @self_arg, @args, @proc_arg ], nil)
-
-      @function_id = @context.make_id
-      @context.set(@function_id, @builder.function)
+      @module.add(@function)
     end
 
     def transform(ast)
       @builder.return process(ast)
 
-      puts @builder.function.inspect
-      #puts @builder.function.to_graphviz
+      puts @function.pretty_print
 
-      @function_id
+      @function
     end
 
     def on_self_arg(node)
@@ -34,40 +36,160 @@ module Foundry
       @block_arg
     end
 
+    def on_let(node)
+      vars, *body = *node
+
+      old_env, old_binding = @env, @binding
+
+      @env     = [ vars.keys.to_set ] + @env
+      @binding = @builder.append SSA::Binding, vars.keys, [ @binding ]
+
+      vars.each do |var, value_node|
+        value = process(value_node)
+
+        @builder.append SSA::LvarStore, 0, var, [ @binding, value ]
+      end
+
+      process_all(body).last
+
+    ensure
+      @env, @binding = old_env, old_binding
+    end
+
     def on_var(node)
-      @self_arg # HACK
+      name, = *node
+
+      @env.each_with_index do |frame, depth|
+        if frame.include? name
+          return @builder.append SSA::LvarLoad, nil, depth, name, [ @binding ]
+        end
+      end
+
+      raise "cannot find #{name} in environment"
+    end
+
+    def on_mut(node)
+      name, value_node = *node
+
+      value = process(value_node)
+
+      @env.each_with_index do |frame, depth|
+        if frame.include? name
+          @builder.append SSA::LvarStore, depth, name, [ @binding, value ]
+
+          return value
+        end
+      end
+
+      raise "cannot find #{name} in environment"
+    end
+
+    def on_eval_mut(node)
+      name, value = *node
+
+      @env[0].add name
+
+      on_mut(node)
+    end
+
+    def on_ivar(node)
+      object, var = *process_all(node)
+
+      @builder.append SSA::IvarLoad, nil, [ object, var ]
+    end
+
+    def on_imut(node)
+      object, var, value = *process_all(node)
+
+      @builder.append SSA::IvarStore, [ object, var, value ]
+
+      value
     end
 
     def on_true(node)
-      SSA::Immediate.new(VI::TrueClass, VI::TRUE)
+      SSA::Constant.new(VI::TrueClass, VI::TRUE)
     end
 
     def on_false(node)
-      SSA::Immediate.new(VI::FalseClass, VI::FALSE)
+      SSA::Constant.new(VI::FalseClass, VI::FALSE)
     end
 
     def on_nil(node)
-      SSA::Immediate.new(VI::NilClass, VI::NIL)
+      SSA::Constant.new(VI::NilClass, VI::NIL)
     end
 
     def on_integer(node)
       value, = *node
-      SSA::Immediate.new(VI::Integer, value)
+      SSA::Constant.new(VI::Integer, value)
     end
 
     def on_symbol(node)
       value, = *node
-      SSA::Immediate.new(VI::Symbol, value)
+      SSA::Constant.new(VI::Symbol, value)
+    end
+
+    def on_string(node)
+      value, = *node
+      SSA::Constant.new(VI::String, value)
     end
 
     def on_tuple(node)
-      result, = @builder.insn SSA::Tuple, *process_all(node)
-      result
+      @builder.append SSA::Tuple, process_all(node)
+    end
+
+    def on_tuple_ref(node)
+      tuple_node, index = *node
+      @builder.append SSA::TupleRef, index, [ process(tuple_node) ]
+    end
+
+    def on_tuple_bigger?(node)
+      tuple_node, size = *node
+      @builder.append SSA::TupleBigger, size, [ process(tuple_node) ]
+    end
+
+    def on_tuple_slice(node)
+      tuple_node, from, to = *node
+      @builder.append SSA::TupleSlice, from, to, [ process(tuple_node) ]
+    end
+
+    def make_lambda(body_node, name_prefix)
+      transform = SSA::Transform.new(@module, @env, name_prefix)
+      lambda    = transform.transform(body_node)
+
+      @builder.append SSA::Lambda, [ @binding, lambda.to_value ]
+    end
+
+    def on_def(node)
+      scope_node, name, body_node = *node
+
+      scope = process(scope_node)
+
+      @builder.append SSA::DefineMethod,
+                [ scope,
+                  SSA::Constant.new(VI::Symbol, name),
+                  make_lambda(body_node, name) ]
+
+      SSA::Constant.new(VI::NilClass, VI::NIL)
+    end
+
+    def on_lambda(node)
+      body_node, = *node
+
+      make_lambda(body_node, 'lambda')
     end
 
     def on_send(node)
-      result, = @builder.insn SSA::Send, *process_all(node)
-      result
+      receiver, method, args, block = *process_all(node)
+
+      method_body = @builder.append SSA::Resolve, [ receiver, method ]
+
+      @builder.append SSA::Call, nil, [ method_body, receiver, args, block ]
+    end
+
+    def on_apply(node)
+      proc, args, block = *process_all(node)
+
+      @builder.append SSA::Call, nil, [ proc, proc, args, block ]
     end
 
     def on_block(node)
@@ -77,19 +199,43 @@ module Foundry
     def on_if(node)
       cond, if_true, if_false = *node
 
-      true_block, false_block = @builder.cond SSA::If, process(cond)
-      post_block = @builder.block
+      true_block, false_block = @builder.condition SSA::BranchIf, process(cond)
+      true_value, false_value = nil
 
-      @builder.goto true_block
-      true_value = @builder.assign process(if_true)
-      @builder.jump post_block
+      @builder.with true_block do |post_block|
+        true_value = process(if_true)
+        @builder.branch post_block
+      end
 
-      @builder.goto false_block
-      false_value = @builder.assign process(if_false)
-      @builder.jump post_block
+      @builder.with false_block do |post_block|
+        false_value = process(if_false)
+        @builder.branch post_block
+      end
 
-      @builder.goto post_block
-      @builder.phi true_value, false_value
+      @builder.phi nil, { true_block  => true_value,
+                          false_block => false_value }
+    end
+
+    #
+    # Utilites
+    #
+
+    def on_check_arity(node)
+      args_node, min, max = *node
+
+      args = process(args_node)
+
+      @builder.append SSA::CheckArity, min, max, [ args ]
+
+      args
+    end
+
+    def on_check_block(node)
+      proc, = *process_all(node)
+
+      @builder.append SSA::CheckBlock, [ proc ]
+
+      proc
     end
   end
 end

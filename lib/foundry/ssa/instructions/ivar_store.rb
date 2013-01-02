@@ -1,5 +1,5 @@
 module Foundry::SSA
-  class Store < Furnace::SSA::Instruction
+  class IvarStore < Furnace::SSA::Instruction
     def use_count
       3
     end

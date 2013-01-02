@@ -43,6 +43,7 @@ module Foundry
       name, value = node.children
       node.updated(nil, [ name, process(value) ])
     end
+    alias on_eval_mut on_mut
     alias on_lasgn on_mut
 
     #

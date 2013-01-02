@@ -1,5 +1,5 @@
 module Foundry::SSA
-  class If < Furnace::SSA::Instruction
+  class BranchIf < Furnace::SSA::Instruction
     def use_count
       3
     end

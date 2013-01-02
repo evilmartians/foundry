@@ -57,15 +57,13 @@ module Foundry
     def self.eval_with_binding(source, name, outer)
       parser = Ruby19Parser.new
 
-      locals = []
+      locals = Set[]
       outer.binding.each do |name|
-        locals << name
+        locals.add name
         parser.env[name] = :lvar
       end
 
-      pipeline = make_pipeline(true, locals)
-
-      ir   = prepare_ast(parser.parse(source, name), pipeline)
+      ir   = prepare_ast(parser.parse(source, name), true, locals)
       proc = VI.new_proc(ir, outer.binding)
 
       @interpreter.
@@ -73,8 +71,8 @@ module Foundry
           evaluate
     end
 
-    def self.make_pipeline(is_eval=false, locals=nil)
-      Furnace::Transform::Pipeline.new([
+    def self.prepare_ast(input, is_eval=false, locals=nil)
+      pipeline = Furnace::Transform::Pipeline.new([
         Transform::RubyParser.new(is_eval),
         Transform::ArgumentProcessing.new,
         Transform::TraceLocalVariables.new(locals),
@@ -82,9 +80,7 @@ module Foundry
         Transform::LiteralPrimitives.new,
         Transform::DumpIR.new,
       ])
-    end
 
-    def self.prepare_ast(input, pipeline=make_pipeline)
       ast = AST::Node.from_sexp(input)
       p ast if @graph_ast
 
@@ -92,8 +88,8 @@ module Foundry
       p ir if @graph_ir
 
       if @graph_ssa
-        context   = Interpreter::Context.new
-        transform = SSA::Transform.new(context)
+        mod       = SSA::Module.new
+        transform = SSA::Transform.new(mod, [ locals ], 'eval')
         transform.transform(ir)
       end
 

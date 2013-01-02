@@ -1,11 +1,11 @@
 module Foundry
   class Transform::TraceLocalVariables < AST::Processor
     def initialize(locals=nil)
-      @locals = locals || []
+      @locals = locals || Set[]
     end
 
     def transform(root)
-      @static_env = Set.new(@locals)
+      @static_env = @locals.dup
       @let_vars   = nil
 
       process root

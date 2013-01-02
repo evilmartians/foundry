@@ -37,6 +37,10 @@ module Foundry
       VI.new_tuple(@storage.keys)
     end
 
+    def self.inspect_as_type
+      "LookupTable"
+    end
+
     def inspect
       "{LUT #{@storage.inspect}}"
     end

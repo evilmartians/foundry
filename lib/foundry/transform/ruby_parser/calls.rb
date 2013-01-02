@@ -3,6 +3,10 @@ module Foundry
     def on_iter(node)
       send, block_args, *block_body = node.children
 
+      if block_body.empty?
+        block_body = [ s(:nil) ]
+      end
+
       block = node.updated(:lambda, [
         block_args, *block_body
       ])

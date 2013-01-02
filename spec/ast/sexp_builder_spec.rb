@@ -25,7 +25,7 @@ describe 'AST::SexpBuilder' do
   end
 
   it 'builds calls' do
-    s_call(s(:foo), :bar, s(:integer, 1), s(:string, "2")).should ==
+    s_send(s(:foo), :bar, s(:integer, 1), s(:string, "2")).should ==
       s(:send,
         s(:foo),
         s(:symbol, :bar),
