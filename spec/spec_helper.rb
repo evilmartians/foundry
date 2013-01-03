@@ -16,6 +16,9 @@ RSpec.configure do |config|
   config.order = 'random'
 end
 
+require 'simplecov'
+SimpleCov.start
+
 require 'foundry'
 
 VI          = Foundry::VI
