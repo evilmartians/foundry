@@ -9,7 +9,8 @@ module Foundry
                       [ nil,               'self'  ],
                       [ VI::Foundry_Tuple, 'args'  ],
                       [ VI::Proc,          'block' ],
-                    ], nil)
+                  ], nil)
+
       @function = @builder.function
       @binding, @self_arg, @args, @block_arg = @function.arguments
 
@@ -42,12 +43,12 @@ module Foundry
       old_env, old_binding = @env, @binding
 
       @env     = [ vars.keys.to_set ] + @env
-      @binding = @builder.append SSA::Binding, vars.keys, [ @binding ]
+      @binding = @builder.binding vars.keys, [ @binding ]
 
       vars.each do |var, value_node|
         value = process(value_node)
 
-        @builder.append SSA::LvarStore, 0, var, [ @binding, value ]
+        @builder.lvar_store 0, var, [ @binding, value ]
       end
 
       process_all(body).last
@@ -61,7 +62,7 @@ module Foundry
 
       @env.each_with_index do |frame, depth|
         if frame.include? name
-          return @builder.append SSA::LvarLoad, nil, depth, name, [ @binding ]
+          return @builder.lvar_load nil, depth, name, [ @binding ]
         end
       end
 
@@ -75,7 +76,7 @@ module Foundry
 
       @env.each_with_index do |frame, depth|
         if frame.include? name
-          @builder.append SSA::LvarStore, depth, name, [ @binding, value ]
+          @builder.lvar_store depth, name, [ @binding, value ]
 
           return value
         end
@@ -95,13 +96,13 @@ module Foundry
     def on_ivar(node)
       object, var = *process_all(node)
 
-      @builder.append SSA::IvarLoad, nil, [ object, var ]
+      @builder.ivar_load nil, [ object, var ]
     end
 
     def on_imut(node)
       object, var, value = *process_all(node)
 
-      @builder.append SSA::IvarStore, [ object, var, value ]
+      @builder.ivar_store [ object, var, value ]
 
       value
     end
@@ -134,29 +135,29 @@ module Foundry
     end
 
     def on_tuple(node)
-      @builder.append SSA::Tuple, process_all(node)
+      @builder.tuple process_all(node)
     end
 
     def on_tuple_ref(node)
       tuple_node, index = *node
-      @builder.append SSA::TupleRef, index, [ process(tuple_node) ]
+      @builder.tuple_ref index, [ process(tuple_node) ]
     end
 
     def on_tuple_bigger?(node)
       tuple_node, size = *node
-      @builder.append SSA::TupleBigger, size, [ process(tuple_node) ]
+      @builder.tuple_bigger size, [ process(tuple_node) ]
     end
 
     def on_tuple_slice(node)
       tuple_node, from, to = *node
-      @builder.append SSA::TupleSlice, from, to, [ process(tuple_node) ]
+      @builder.tuple_slice from, to, [ process(tuple_node) ]
     end
 
     def make_lambda(body_node, name_prefix)
       transform = SSA::Transform.new(@module, @env, name_prefix)
       lambda    = transform.transform(body_node)
 
-      @builder.append SSA::Lambda, [ @binding, lambda.to_value ]
+      @builder.lambda [ @binding, lambda.to_value ]
     end
 
     def on_def(node)
@@ -181,15 +182,15 @@ module Foundry
     def on_send(node)
       receiver, method, args, block = *process_all(node)
 
-      method_body = @builder.append SSA::Resolve, [ receiver, method ]
+      method_body = @builder.resolve [ receiver, method ]
 
-      @builder.append SSA::Call, nil, [ method_body, receiver, args, block ]
+      @builder.call nil, [ method_body, receiver, args, block ]
     end
 
     def on_apply(node)
       proc, args, block = *process_all(node)
 
-      @builder.append SSA::Call, nil, [ proc, proc, args, block ]
+      @builder.call nil, [ proc, proc, args, block ]
     end
 
     def on_block(node)
@@ -203,7 +204,7 @@ module Foundry
     def on_if(node)
       cond, if_true, if_false = *node
 
-      @builder.control_flow_op(SSA::BranchIf, [ process(cond) ]) do |post|
+      @builder.control_flow_op(:branch_if, [ process(cond) ]) do |post|
         [
           @builder.branch(post) { process(if_true)  },
           @builder.branch(post) { process(if_false) }
@@ -215,7 +216,7 @@ module Foundry
       left, right = *node
 
       left_value = process(left)
-      @builder.control_flow_op(SSA::BranchIf, [ left_value ]) do |post|
+      @builder.control_flow_op(:branch_if, [ left_value ]) do |post|
         [
           @builder.branch(post) { process(right)  },
           [ post, left_value ]
@@ -227,7 +228,7 @@ module Foundry
       left, right = *node
 
       left_value = process(left)
-      @builder.control_flow_op(SSA::BranchIf, [ left_value ]) do |post|
+      @builder.control_flow_op(:branch_if, [ left_value ]) do |post|
         [
           [ post, left_value ],
           @builder.branch(post) { process(right)  }
@@ -244,7 +245,7 @@ module Foundry
 
       args = process(args_node)
 
-      @builder.append SSA::CheckArity, min, max, [ args ]
+      @builder.check_arity min, max, [ args ]
 
       args
     end
@@ -252,7 +253,7 @@ module Foundry
     def on_check_block(node)
       proc, = *process_all(node)
 
-      @builder.append SSA::CheckBlock, [ proc ]
+      @builder.check_block [ proc ]
 
       proc
     end

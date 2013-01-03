@@ -1,7 +1,7 @@
-module Foundry::SSA
-  class CheckBlock < Furnace::SSA::Instruction
-    def use_count
-      1
+module Foundry
+  class SSA::CheckBlockInsn < Furnace::SSA::Instruction
+    syntax do |s|
+      s.operand :block, VI::Proc
     end
   end
 end

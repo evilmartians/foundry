@@ -1,7 +1,8 @@
-module Foundry::SSA
-  class Lambda < Furnace::SSA::Instruction
-    def use_count
-      2
+module Foundry
+  class SSA::LambdaInsn < Furnace::SSA::Instruction
+    syntax do |s|
+      s.operand :binding,  VI::Binding
+      s.operand :function, SSA::Function
     end
 
     def type

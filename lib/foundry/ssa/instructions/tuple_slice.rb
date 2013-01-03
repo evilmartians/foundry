@@ -1,6 +1,10 @@
-module Foundry::SSA
-  class TupleSlice < Furnace::SSA::Instruction
+module Foundry
+  class SSA::TupleSliceInsn < Furnace::SSA::Instruction
     attr_accessor :from, :to
+
+    syntax do |s|
+      s.operand :tuple
+    end
 
     def initialize(basic_block, from, to, operands=[], name=nil)
       super(basic_block, operands, name)

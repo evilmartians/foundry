@@ -1,7 +1,7 @@
 module Foundry::SSA
   include Furnace::SSA
 
-  VI = Foundry::VI
+  require_relative 'ssa/builder'
 
   require_relative 'ssa/transform'
 

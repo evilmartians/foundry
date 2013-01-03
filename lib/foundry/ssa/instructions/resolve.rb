@@ -1,7 +1,8 @@
-module Foundry::SSA
-  class Resolve < Furnace::SSA::Instruction
-    def use_count
-      2
+module Foundry
+  class SSA::ResolveInsn < Furnace::SSA::Instruction
+    syntax do |s|
+      s.operand :object
+      s.operand :method, VI::Symbol
     end
 
     def type

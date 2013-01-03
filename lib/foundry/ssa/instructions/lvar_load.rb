@@ -1,7 +1,11 @@
-module Foundry::SSA
-  class LvarLoad < Furnace::SSA::GenericInstruction
+module Foundry
+  class SSA::LvarLoadInsn < Furnace::SSA::GenericInstruction
     attr_accessor :depth
     attr_accessor :variable
+
+    syntax do |s|
+      s.operand :binding, VI::Binding
+    end
 
     def initialize(basic_block, type, depth, variable, operands=[], name=nil)
       super(basic_block, type, operands, name)

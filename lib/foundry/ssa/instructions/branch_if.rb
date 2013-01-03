@@ -1,7 +1,9 @@
-module Foundry::SSA
-  class BranchIf < Furnace::SSA::Instruction
-    def use_count
-      3
+module Foundry
+  class SSA::BranchIfInsn < Furnace::SSA::TerminatorInstruction
+    syntax do |s|
+      s.operand :condition
+      s.operand :true_target,  SSA::BasicBlock
+      s.operand :false_target, SSA::BasicBlock
     end
   end
 end

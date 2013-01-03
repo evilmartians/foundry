@@ -1,6 +1,10 @@
-module Foundry::SSA
-  class Binding < Furnace::SSA::Instruction
+module Foundry
+  class SSA::BindingInsn < Furnace::SSA::Instruction
     attr_accessor :variables
+
+    syntax do |s|
+      s.operand :binding, VI::Binding
+    end
 
     def initialize(basic_block, variables=[], operands=[], name=nil)
       super(basic_block, operands, name)
