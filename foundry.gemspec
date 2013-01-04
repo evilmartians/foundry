@@ -19,6 +19,7 @@ Gem::Specification.new do |gem|
   gem.add_dependency "trollop"
   gem.add_dependency "foundry-ruby_parser", '>= 3.1.0'
   gem.add_dependency "furnace",             '= 0.3.1'
+  gem.add_dependency "ruby-llvm",           '~> 3.2.0.beta'
   gem.add_dependency "ansi"
 
   gem.add_development_dependency "rake"

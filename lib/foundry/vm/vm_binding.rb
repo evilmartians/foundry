@@ -16,6 +16,18 @@ module Foundry
       @next.each(&block) if @next
     end
 
+    def each_regular
+      each do |var|
+        yield var if var =~ /^[a-z]/
+      end
+    end
+
+    def to_set
+      set =  @vars.keys.to_set
+      set += @next.to_set if @next
+      set
+    end
+
     def defined?(name)
       each do |var|
         return true if var == name

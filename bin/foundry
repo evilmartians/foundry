@@ -18,17 +18,14 @@ Usage: foundry [options] filename...
 
   EOS
 
-  opt :target,   "Target environment",         :default => 'dummy'
-  opt :warn,     "Enable or disable warnings", :type => :strings
-  opt :feature,  "Enable or disable features", :type => :strings
-  opt :evaluate, "Evaluate code",              :type => :strings
+  opt :target,   "Target environment",         default: 'dummy'
+  opt :evaluate, "Evaluate code",              type: :strings
+  opt :dump,     "Dump LLVM IR",               default: false
+  opt :output,   "Write bitcode",              type: :string
 end
 
-class StandaloneInterpreter < Foundry::Interpreter::Ruby
+class StandaloneEvaluator < Foundry::Evaluator::Ruby
   def on_repl(node)
-    Foundry::Runtime.graph_ir  = true
-    Foundry::Runtime.graph_ssa = true
-
     repl = Foundry::REPL::Shell.new(self.outer)
     repl.invoke!
 
@@ -36,7 +33,7 @@ class StandaloneInterpreter < Foundry::Interpreter::Ruby
   end
 end
 
-Foundry::Runtime.interpreter = StandaloneInterpreter
+Foundry::Runtime.interpreter = StandaloneEvaluator
 
 begin
   Foundry::Runtime.bootstrap
@@ -66,7 +63,19 @@ begin
   else
     Foundry::Runtime.eval 'repl!', '(prelude)'
   end
-rescue Foundry::Interpreter::Error => e
+
+  translator = Foundry::Runtime.compile
+
+  if opts[:dump]
+    translator.llvm_module.dump
+  end
+
+  if opts[:output]
+    File.open(opts[:output], 'w') do |io|
+      translator.llvm_module.write_bitcode(io)
+    end
+  end
+rescue Foundry::Evaluator::Error => e
   puts "Unhandled exception:"
   puts e.inner_exception.inspect
   puts e.inner_backtrace

@@ -1,0 +1,2 @@
+module Foundry::Layout
+end

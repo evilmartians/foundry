@@ -60,14 +60,14 @@ module Foundry
       boolean_command 'graph_ast', cmdline, Foundry::Runtime, :graph_ast
     end
 
-    command 'graph_ir', ":bool", "Display IR after parsing code"
-    def graph_ir(cmdline)
-      boolean_command 'graph_ir', cmdline, Foundry::Runtime, :graph_ir
+    command 'graph_hir', ":bool", "Display high-level intermediate representation"
+    def graph_hir(cmdline)
+      boolean_command 'graph_hir', cmdline, Foundry::Runtime, :graph_hir
     end
 
-    command 'graph_ssa', ":bool", "Display SSA"
-    def graph_ssa(cmdline)
-      boolean_command 'graph_ssa', cmdline, Foundry::Runtime, :graph_ssa
+    command 'graph_lir', ":bool", "Display low-level intermediate representation"
+    def graph_lir(cmdline)
+      boolean_command 'graph_lir', cmdline, Foundry::Runtime, :graph_lir
     end
 
     command 'include_host', ":bool", "Include host information in backtraces"
@@ -157,7 +157,7 @@ module Foundry
       #puts e.code
       #puts "#{"~" * (e.column - 1)}^"
 
-    rescue Foundry::Interpreter::Error => e
+    rescue Foundry::Evaluator::Error => e
       puts e.inner_exception
       e.interleave_backtraces(caller.length) do |line, is_host|
         next if is_host && !@interleave_backtraces

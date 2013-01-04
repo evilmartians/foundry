@@ -4,13 +4,13 @@ module Foundry
       attr_accessor :interpreter
 
       attr_accessor :graph_ast
-      attr_accessor :graph_ir
-      attr_accessor :graph_ssa
+      attr_accessor :graph_hir
+      attr_accessor :graph_lir
     end
 
     @graph_ast = false
-    @graph_ir  = false
-    @graph_ssa = false
+    @graph_hir = false
+    @graph_lir = false
 
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
@@ -46,7 +46,7 @@ module Foundry
     def self.eval_at_toplevel(source, name)
       parser = Ruby19Parser.new
 
-      ir   = prepare_ast(parser.parse(source, name))
+      ir   = ast_to_hir(parser.parse(source, name))
       proc = VI.new_proc(ir, nil)
 
       @interpreter.
@@ -63,7 +63,7 @@ module Foundry
         parser.env[name] = :lvar
       end
 
-      ir   = prepare_ast(parser.parse(source, name), true, locals)
+      ir   = ast_to_hir(parser.parse(source, name), true, locals)
       proc = VI.new_proc(ir, outer.binding)
 
       @interpreter.
@@ -71,29 +71,33 @@ module Foundry
           evaluate
     end
 
-    def self.prepare_ast(input, is_eval=false, locals=nil)
+    def self.ast_to_hir(input, is_eval=false, locals=nil)
       pipeline = Furnace::Transform::Pipeline.new([
-        Transform::RubyParser.new(is_eval),
-        Transform::ArgumentProcessing.new,
-        Transform::TraceLocalVariables.new(locals),
-        Transform::ExpandGlobalVariables.new,
-        Transform::LiteralPrimitives.new,
-        Transform::DumpIR.new,
+        HIR::Transform::FromRubyParser.new(is_eval),
+        HIR::Transform::ArgumentProcessing.new,
+        HIR::Transform::TraceLocalVariables.new(locals),
+        HIR::Transform::ExpandGlobalVariables.new,
+        HIR::Transform::LiteralPrimitives.new,
+        HIR::Transform::DumpIR.new,
       ])
 
-      ast = AST::Node.from_sexp(input)
+      ast = HIR::Node.from_sexp(input)
       p ast if @graph_ast
 
-      ir = pipeline.run(ast)
-      p ir if @graph_ir
+      hir = pipeline.run(ast)
+      p hir if @graph_hir
 
-      if @graph_ssa
-        mod       = SSA::Module.new
-        transform = SSA::Transform.new(mod, [ locals ], 'eval')
-        transform.transform(ir)
-      end
+      hir
+    end
 
-      ir
+    def self.compile
+      pipeline = Furnace::Transform::Pipeline.new([
+      ])
+
+      translator = LIR::Translator.new
+      translator.run VI::TOPLEVEL.method(:main), 'main'
+
+      pipeline.run(translator)
     end
   end
 end
