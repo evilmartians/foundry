@@ -100,12 +100,13 @@ module Foundry
       translator = LIR::Translator.new
       translator.graph_lir = @graph_lir
 
-      construct_toplevel_call(translator, 'main')
+      toplevel = construct_toplevel_call('main')
+      translator.lir_module.add toplevel
 
       pipeline.run(translator)
     end
 
-    def self.construct_toplevel_call(translator, name)
+    def self.construct_toplevel_call(name)
       builder  = LIR::Builder.new(name, [], LIR::Void)
 
       toplevel = builder.toplevel
@@ -120,7 +121,7 @@ module Foundry
         puts "#{builder.function.pretty_print}\n"
       end
 
-      translator.lir_module.add builder.function
+      builder.function
     end
   end
 end
