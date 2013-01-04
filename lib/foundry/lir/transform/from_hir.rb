@@ -5,9 +5,10 @@ module Foundry
     end
 
     def transform(body_node, outer_env, name_prefix='anonymous')
-      @env      = outer_env
+      @name_prefix = name_prefix
+      @env         = outer_env
 
-      @builder  = LIR::Builder.new(name_prefix, [
+      @builder  = LIR::Builder.new(@name_prefix, [
                       [ VI::Binding,       'outer' ],
                       [ nil,               'self'  ],
                       [ VI::Foundry_Tuple, 'args'  ],
@@ -175,7 +176,7 @@ module Foundry
     def on_lambda(node)
       body_node, = *node
 
-      make_lambda(body_node, 'lambda')
+      make_lambda(body_node, "#{@name_prefix}$l")
     end
 
     def on_send(node)
