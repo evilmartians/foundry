@@ -107,30 +107,30 @@ module Foundry
     end
 
     def on_true(node)
-      LIR::Constant.new(VI::TrueClass, VI::TRUE)
+      @builder.true
     end
 
     def on_false(node)
-      LIR::Constant.new(VI::FalseClass, VI::FALSE)
+      @builder.false
     end
 
     def on_nil(node)
-      LIR::Constant.new(VI::NilClass, VI::NIL)
+      @builder.nil
     end
 
     def on_integer(node)
       value, = *node
-      LIR::Constant.new(VI::Integer, value)
+      @builder.integer(value)
     end
 
     def on_symbol(node)
       value, = *node
-      LIR::Constant.new(VI::Symbol, value)
+      @builder.symbol(value)
     end
 
     def on_string(node)
       value, = *node
-      LIR::Constant.new(VI::String, value)
+      @builder.string(value)
     end
 
     def on_tuple(node)

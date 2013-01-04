@@ -10,7 +10,7 @@ module Foundry
 
     @graph_ast = false
     @graph_hir = false
-    @graph_lir = false
+    @graph_lir = true
 
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
@@ -90,14 +90,37 @@ module Foundry
       hir
     end
 
+    include HIR::SexpBuilder
+
     def self.compile
       pipeline = Furnace::Transform::Pipeline.new([
+        LIR::Transform::Codegen.new,
       ])
 
       translator = LIR::Translator.new
-      translator.run VI::TOPLEVEL.method(:main), 'main'
+      translator.graph_lir = @graph_lir
+
+      construct_toplevel_call(translator, 'main')
 
       pipeline.run(translator)
+    end
+
+    def self.construct_toplevel_call(translator, name)
+      builder  = LIR::Builder.new(name, [], LIR::Void)
+
+      toplevel = builder.toplevel
+      method   = builder.resolve [toplevel, builder.symbol(name)]
+      args     = builder.tuple
+
+      builder.call nil, [method, toplevel, args, builder.nil]
+
+      builder.return LIR::Void.value
+
+      if @graph_lir
+        puts "#{builder.function.pretty_print}\n"
+      end
+
+      translator.lir_module.add builder.function
     end
   end
 end

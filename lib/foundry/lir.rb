@@ -35,5 +35,6 @@ module Foundry::LIR
 
   module Transform
     require_relative 'lir/transform/from_hir'
+    require_relative 'lir/transform/codegen'
   end
 end

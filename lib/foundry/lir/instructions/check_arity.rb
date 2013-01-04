@@ -15,9 +15,5 @@ module Foundry
       p.text    @min, '..', @max || '.'
       p.keyword 'of'
     end
-
-    def use_count
-      1
-    end
   end
 end
