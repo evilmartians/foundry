@@ -371,11 +371,12 @@ module Foundry::Evaluator
     def on_def(node)
       target_node, name, body_node = node.children
 
+      target = process(target_node)
+
       proc = VI.new_proc(
-          body_node.updated(nil, nil, function: name),
+          body_node.updated(nil, nil, function: "#{target.name}:#{name}"),
           @binding)
 
-      target = process(target_node)
       target.define_method(name, proc)
 
       VI::NIL

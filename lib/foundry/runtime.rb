@@ -90,25 +90,33 @@ module Foundry
       hir
     end
 
-    include HIR::SexpBuilder
-
     def self.compile
       pipeline = Furnace::Transform::Pipeline.new([
-        LIR::Transform::SparseConditionalConstantPropagation.new,
+        Furnace::Transform::IterativeProcess.new([
+          LIR::Transform::MethodSeeder.new,
+          LIR::Transform::SparseConditionalConstantPropagation.new,
+        ]),
         LIR::Transform::Codegen.new,
       ])
 
       translator = LIR::Translator.new
-      translator.graph_lir = @graph_lir
 
       toplevel = construct_toplevel_call('main')
       translator.lir_module.add toplevel
 
       pipeline.run(translator)
+
+      if @graph_lir
+        translator.each_function do |func|
+          puts "#{func.pretty_print}\n"
+        end
+      end
+
+      translator
     end
 
     def self.construct_toplevel_call(name)
-      builder  = LIR::Builder.new(name, [], LIR::Void)
+      builder = LIR::Builder.new(name, [], LIR::Void)
 
       builder.invoke_method nil,
           [ builder.toplevel,
@@ -118,10 +126,6 @@ module Foundry
           ]
 
       builder.return LIR::Void.value
-
-      if @graph_lir
-        puts "#{builder.function.pretty_print}\n"
-      end
 
       builder.function
     end

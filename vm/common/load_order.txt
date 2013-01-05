@@ -13,4 +13,5 @@ foundry/lookup_table.rb
 foundry/tuple.rb
 foundry/globals.rb
 comparable.rb
+numeric.rb
 integer.rb

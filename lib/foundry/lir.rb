@@ -4,6 +4,8 @@ require 'llvm/transforms/scalar'
 module Foundry::LIR
   include Furnace::SSA
 
+  require_relative 'lir/analysis_error'
+
   require_relative 'lir/builder'
 
   require_relative 'lir/instructions/binding'
@@ -34,6 +36,7 @@ module Foundry::LIR
   module Transform
     require_relative 'lir/transform/from_hir'
 
+    require_relative 'lir/transform/method_seeder'
     require_relative 'lir/transform/sparse_conditional_constant_propagation'
     require_relative 'lir/transform/codegen'
   end

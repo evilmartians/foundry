@@ -1,14 +1,12 @@
 module Foundry
-  class VMBinding < VMObject
-    def initialize(klass)
-      super
-
+  class VMBinding < VMImmediate
+    def initialize(next_=nil)
       @vars = {}
-      @next = nil
+      @next = next_
     end
 
-    def vm_initialize(next_)
-      @next = next_
+    def class
+      VI::Binding
     end
 
     def each(&block)
@@ -67,8 +65,12 @@ module Foundry
       VI::Binding.vm_new(self)
     end
 
+    def self.inspect_as_type
+      "^Binding<?>"
+    end
+
     def inspect
-      "{Binding}"
+      "{Binding:#{__id__}}"
     end
   end
 end

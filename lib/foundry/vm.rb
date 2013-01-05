@@ -7,6 +7,8 @@ require_relative 'vm/vm_class'
 require_relative 'vm/vm_singleton_class'
 
 require_relative 'vm/vm_tuple'
+require_relative 'vm/tuple_type'
+
 require_relative 'vm/vm_lookup_table'
 
 require_relative 'vm/vm_nil_class'

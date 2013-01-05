@@ -1,8 +1,7 @@
 module Foundry
   class LIR::Transform::Codegen
     def transform(translator)
-      translator.lir_module.each do |lir_function|
-        p lir_function.name
+      translator.each_function do |lir_function|
       end
 
       translator

@@ -4,21 +4,30 @@ module Foundry
       @lir_module = mod
     end
 
-    def transform(body_node, outer_env, name_prefix='anonymous')
+    def handler_missing(node)
+      raise "cannot lower #{node.type}"
+    end
+
+    def transform(body_node, outer_env, name_prefix='anonymous', static_binding=nil)
       @name_prefix = name_prefix
       @env         = outer_env
 
-      @builder  = LIR::Builder.new(@name_prefix, [
-                      [ VI::Binding,       'outer' ],
-                      [ nil,               'self'  ],
-                      [ VI::Foundry_Tuple, 'args'  ],
-                      [ VI::Proc,          'block' ],
-                  ], nil)
+      @builder     = LIR::Builder.new(@name_prefix, [
+                        [ nil,               'self'  ],
+                        [ VI::Foundry_Tuple, 'args'  ],
+                        [ VI::Proc,          'block' ],
+                    ], nil)
+      @lir_module.add(@builder.function)
 
       @function = @builder.function
-      @binding, @self_arg, @args, @block_arg = @function.arguments
+      @self_arg, @args, @block_arg = @function.arguments
 
-      @lir_module.add(@function)
+      if static_binding
+        @binding = @builder.constant static_binding
+      else
+        @binding = @builder.ivar_load VI::Binding,
+                        [ @self_arg, @builder.symbol(:@binding) ]
+      end
 
       @builder.return process(body_node)
 
@@ -201,39 +210,69 @@ module Foundry
     # Control flow
     #
 
+    def flip_if(should_flip, branches)
+      if should_flip
+        branches.reverse
+      else
+        branches
+      end
+    end
+
     def on_if(node)
       cond, if_true, if_false = *node
 
-      @builder.control_flow_op(:branch_if, [ process(cond) ]) do |post|
+      @builder.control_flow_op(:branch_if, [ process(cond) ]) do |head, tail|
         [
-          @builder.branch(post) { process(if_true)  },
-          @builder.branch(post) { process(if_false) }
+          @builder.fork(tail) { process(if_true)  },
+          @builder.fork(tail) { process(if_false) }
         ]
+      end
+    end
+
+    def process_logic_shortcut(node, is_or)
+      left, right = *node
+
+      left_value = process(left)
+      @builder.control_flow_op(:branch_if, [ left_value ]) do |head, tail|
+        flip_if(is_or, [
+          @builder.fork(tail) { process(right)  },
+          [ tail, left_value ]
+        ])
       end
     end
 
     def on_and(node)
-      left, right = *node
-
-      left_value = process(left)
-      @builder.control_flow_op(:branch_if, [ left_value ]) do |post|
-        [
-          @builder.branch(post) { process(right)  },
-          [ post, left_value ]
-        ]
-      end
+      process_logic_shortcut(node, false)
     end
 
     def on_or(node)
-      left, right = *node
+      process_logic_shortcut(node, true)
+    end
 
-      left_value = process(left)
-      @builder.control_flow_op(:branch_if, [ left_value ]) do |post|
-        [
-          [ post, left_value ],
-          @builder.branch(post) { process(right)  }
-        ]
+    def process_loop(node, is_until)
+      cond, body = *node
+
+      @builder.add_block do
+        cond_value = process(cond)
+        @builder.control_flow_op(:branch_if, [ cond_value ]) do |head, tail|
+          flip_if(is_until, [
+            @builder.fork(tail) do
+              process(body)
+              @builder.nil
+            end,
+
+            [ tail, @builder.nil ]
+          ])
+        end
       end
+    end
+
+    def on_while(node)
+      process_loop(node, false)
+    end
+
+    def on_until(node)
+      process_loop(node, true)
     end
 
     #
@@ -256,6 +295,10 @@ module Foundry
       @builder.check_block [ proc ]
 
       proc
+    end
+
+    def on_trace(node)
+      @builder.trace process_all(node)
     end
   end
 end

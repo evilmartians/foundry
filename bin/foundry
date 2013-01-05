@@ -24,6 +24,8 @@ Usage: foundry [options] filename...
   opt :output,   "Write bitcode",              type: :string
 end
 
+Furnace::SSA::PrettyPrinter.colorize = $stdout.tty?
+
 class StandaloneEvaluator < Foundry::Evaluator::Ruby
   def on_repl(node)
     repl = Foundry::REPL::Shell.new(self.outer)
@@ -81,4 +83,7 @@ rescue Foundry::Evaluator::Error => e
   puts e.inner_backtrace
   puts e.backtrace
   exit!
+rescue Foundry::LIR::AnalysisError => e
+  puts "Analysis error:"
+  puts "    #{e}"
 end

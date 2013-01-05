@@ -18,6 +18,10 @@ module Foundry
       inspect
     end
 
+    def type
+      self.class
+    end
+
     def singleton_class
       self.class
     end
@@ -60,6 +64,52 @@ module Foundry
 
     def instance_variable_set(ivar, value)
       VI::NIL
+    end
+
+    def self.define_mapped_ivars(*set)
+      set = set.map { |var| :"@#{var}" }
+
+      # This basically adjusts cref to include receiver class.
+      # Also, note that VMImmediate descends from BasicObject
+      # which means that there is no host instance_variable_set.
+      class_eval <<-EVAL, __FILE__ + '/define_mapped_ivars'
+      def instance_variables
+        VI.new_tuple(#{set.inspect} + super.to_a)
+      end
+
+      def instance_variable_get(ivar)
+        #{set.each_with_index.map do |ivar, index| <<-IVAR
+        #{'els' if index > 0}if ivar == #{ivar.inspect}
+          #{ivar} || VI::NIL
+          IVAR
+        end.join}
+        else
+          super
+        end
+      end
+
+      def instance_variable_set(ivar, value)
+        #{set.each_with_index.map do |ivar, index| <<-IVAR
+        #{'els' if index > 0}if ivar == #{ivar.inspect}
+          #{ivar} = value
+          IVAR
+        end.join}
+        else
+          super
+        end
+      end
+      EVAL
+    end
+
+    def inspect
+      if @ivar_table.size > 0
+        ivs = " "
+        @ivar_table.each do |key, value|
+          ivs << "#{key}=#{value.inspect}"
+        end
+      end
+
+      "{#{@class.name}:#{__id__}#{ivs}}"
     end
   end
 end

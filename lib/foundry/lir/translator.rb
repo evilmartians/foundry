@@ -3,18 +3,24 @@ module Foundry
     attr_reader   :lir_module
     attr_reader   :llvm_module
 
-    attr_accessor :graph_lir
-
     def initialize(name='foundry-generated-code')
-      @graph_lir   = false
-
       @lir_module  = LIR::Module.new
       @llvm_module = LLVM::Module.new(name)
 
       @cache       = {}
     end
 
-    def run_on_method(proc, name)
+    def each_function(&block)
+      @lir_module.each(&block)
+    end
+
+    def has_method?(proc)
+      hash_key = proc.code
+
+      @cache.key? hash_key
+    end
+
+    def seed_method(proc)
       hash_key = proc.code
 
       if @cache.key? hash_key
@@ -22,11 +28,8 @@ module Foundry
       else
         transform = LIR::Transform::FromHIR.new(@lir_module)
         function  = transform.transform(
-              proc.code, proc.binding.to_static_env, name)
-
-        if @graph_lir
-          puts "#{builder.function.pretty_print}\n"
-        end
+              proc.code, proc.binding.to_static_env,
+              proc.code.function, proc.binding)
 
         @cache[hash_key] = function.name
       end

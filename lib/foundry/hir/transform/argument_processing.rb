@@ -91,7 +91,7 @@ module Foundry
 
           if @is_proc
             @prologue <<
-              s(:if, s(:ivar, s(:self_arg), s(:symbol, :@lambda)),
+              s(:and, s(:ivar, s(:self_arg), s(:symbol, :@lambda)),
                 checker)
           else
             @prologue << checker

@@ -52,15 +52,4 @@ class Integer < Numeric
   def >=(other)
     FoundryRt.int_gte self, other
   end
-
-  def times
-    i = 0
-
-    while i < self
-      yield i
-      i += 1
-    end
-
-    self
-  end
 end

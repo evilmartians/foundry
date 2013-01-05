@@ -4,36 +4,48 @@ module Foundry
       LIR
     end
 
+    def constant(value)
+      LIR::Constant.new(value.type, value)
+    end
+
     def nil
-      LIR::Constant.new(VI::NilClass, VI::NIL)
+      constant VI::NIL
     end
 
     def false
-      LIR::Constant.new(VI::FalseClass, VI::FALSE)
+      constant VI::FALSE
     end
 
     def true
-      LIR::Constant.new(VI::TrueClass, VI::TRUE)
+      constant VI::TRUE
     end
 
     def integer(value)
-      LIR::Constant.new(VI::Integer, VI.new_integer(value))
+      constant VI.new_integer(value)
     end
 
     def symbol(value)
-      LIR::Constant.new(VI::Symbol, VI.new_symbol(value))
+      constant VI.new_symbol(value)
     end
 
     def string(value)
-      LIR::Constant.new(VI::String, VI.new_string(value))
+      constant VI.new_string(value)
     end
 
     def const_base
-      LIR::Constant.new(VI::Class, VI::Object)
+      constant VI::Object
     end
 
     def toplevel
-      LIR::Constant.new(VI::Object, VI::TOPLEVEL)
+      constant VI::TOPLEVEL
+    end
+
+    def tuple(elements=[])
+      if elements.all? &:constant?
+        constant VI.new_tuple(elements.map(&:value))
+      else
+        super
+      end
     end
   end
 end
