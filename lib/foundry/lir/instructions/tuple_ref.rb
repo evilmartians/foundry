@@ -15,12 +15,12 @@ module Foundry
       p.text @index, ','
     end
 
-    def use_count
-      1
-    end
-
     def type
-      nil
+      tuple_ty = @tuple.type
+
+      if tuple_ty.reified?
+        tuple_ty.element_types[@index]
+      end
     end
   end
 end

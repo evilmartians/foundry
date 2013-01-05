@@ -1,5 +1,7 @@
 module Foundry
   class TupleType
+    attr_accessor :elements
+
     def initialize(elements)
       @elements = elements
     end
@@ -8,6 +10,10 @@ module Foundry
       @elements.map do |elem|
         elem.type if elem
       end
+    end
+
+    def reified?
+      true
     end
 
     def inspect_as_type

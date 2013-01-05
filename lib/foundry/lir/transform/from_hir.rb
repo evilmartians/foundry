@@ -191,15 +191,19 @@ module Foundry
     def on_send(node)
       receiver, method, args, block = *process_all(node)
 
-      @builder.invoke_method nil,
-          [ receiver, method, args, block ]
+      function = @builder.resolve_method([ receiver, method ])
+
+      @builder.invoke nil,
+          [ function, method, args, block ]
     end
 
     def on_apply(node)
       proc, args, block = *process_all(node)
 
-      @builder.invoke_closure nil,
-          [ proc, args, block ]
+      function = @builder.resolve_closure([ proc ])
+
+      @builder.invoke nil,
+          [ function, args, block ]
     end
 
     def on_block(node)

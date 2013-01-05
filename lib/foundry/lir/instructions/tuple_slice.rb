@@ -15,12 +15,12 @@ module Foundry
       p.text @from, '..', @to, ','
     end
 
-    def use_count
-      1
-    end
-
     def type
-      VI::Foundry_Tuple
+      tuple_ty = @tuple.type
+
+      if tuple_ty.reified?
+        tuple_ty.element_types[@from..@to]
+      end
     end
   end
 end

@@ -21,8 +21,9 @@ module Foundry::LIR
   require_relative 'lir/instructions/ivar_load'
   require_relative 'lir/instructions/ivar_store'
 
-  require_relative 'lir/instructions/invoke_method'
-  require_relative 'lir/instructions/invoke_closure'
+  require_relative 'lir/instructions/resolve_method'
+  require_relative 'lir/instructions/resolve_closure'
+  require_relative 'lir/instructions/invoke'
 
   require_relative 'lir/instructions/branch_if'
 
@@ -36,7 +37,8 @@ module Foundry::LIR
   module Transform
     require_relative 'lir/transform/from_hir'
 
-    require_relative 'lir/transform/method_seeder'
+    require_relative 'lir/transform/seed_methods'
+    require_relative 'lir/transform/dead_code_elimination'
     require_relative 'lir/transform/sparse_conditional_constant_propagation'
     require_relative 'lir/transform/codegen'
   end

@@ -5,5 +5,9 @@ module Foundry
       s.operand :method,  VI::Symbol
       s.operand :body,    VI::Proc
     end
+
+    def has_side_effects?
+      true
+    end
   end
 end

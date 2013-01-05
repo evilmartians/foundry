@@ -10,6 +10,10 @@ module Foundry
       end
     end
 
+    def reified?
+      true
+    end
+
     def inspect_as_type
       types = element_types.map do |type|
         Furnace::SSA.inspect_type(type)

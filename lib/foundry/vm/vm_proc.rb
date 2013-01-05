@@ -28,6 +28,10 @@ module Foundry
       "^Proc<?>"
     end
 
+    def self.generic_type?
+      true
+    end
+
     def inspect
       "{Proc}"
     end

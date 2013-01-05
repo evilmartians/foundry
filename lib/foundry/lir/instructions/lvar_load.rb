@@ -18,9 +18,5 @@ module Foundry
       p.text    @depth
       p.keyword 'in'
     end
-
-    def use_count
-      3
-    end
   end
 end

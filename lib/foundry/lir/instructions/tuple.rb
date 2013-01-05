@@ -1,7 +1,7 @@
 module Foundry
   class LIR::TupleInsn < Furnace::SSA::Instruction
     def type
-      VI::Foundry_Tuple
+      TupleType.new(@operands)
     end
   end
 end

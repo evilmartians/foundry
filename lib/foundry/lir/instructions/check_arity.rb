@@ -15,5 +15,9 @@ module Foundry
       p.text    @min, '..', @max || '.'
       p.keyword 'of'
     end
+
+    def has_side_effects?
+      true
+    end
   end
 end

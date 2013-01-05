@@ -29,6 +29,10 @@ module Foundry
       TupleType.new(@storage)
     end
 
+    def self.reified?
+      false
+    end
+
     def self.inspect_as_type
       "^Tuple<?>"
     end

@@ -93,8 +93,9 @@ module Foundry
     def self.compile
       pipeline = Furnace::Transform::Pipeline.new([
         Furnace::Transform::IterativeProcess.new([
-          LIR::Transform::MethodSeeder.new,
+          LIR::Transform::SeedMethods.new,
           LIR::Transform::SparseConditionalConstantPropagation.new,
+          LIR::Transform::DeadCodeElimination.new,
         ]),
         LIR::Transform::Codegen.new,
       ])
@@ -118,9 +119,16 @@ module Foundry
     def self.construct_toplevel_call(name)
       builder = LIR::Builder.new(name, [], LIR::Void)
 
-      builder.invoke_method nil,
-          [ builder.toplevel,
-            builder.symbol(name),
+      toplevel = builder.toplevel
+
+      method = builder.resolve_method [
+            toplevel,
+            builder.symbol(name)
+          ]
+
+      builder.invoke nil,
+          [ method,
+            toplevel,
             builder.tuple,
             builder.nil
           ]

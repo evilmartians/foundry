@@ -40,6 +40,14 @@ module Foundry
       @singleton_class
     end
 
+    def reified?
+      if @vm_class.ancestors.include? VMObject
+        true
+      else
+        @vm_class.reified?
+      end
+    end
+
     def inspect_as_type
       if @vm_class.ancestors.include? VMObject
         "^" + @name.value.sub(/^Foundry::/, '')

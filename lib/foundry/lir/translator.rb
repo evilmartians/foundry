@@ -31,7 +31,7 @@ module Foundry
               proc.code, proc.binding.to_static_env,
               proc.code.function, proc.binding)
 
-        @cache[hash_key] = function.name
+        @cache[hash_key] = function
       end
     end
   end

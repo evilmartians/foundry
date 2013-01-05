@@ -20,8 +20,8 @@ module Foundry
       p.keyword 'in'
     end
 
-    def use_count
-      4
+    def has_side_effects?
+      true
     end
   end
 end

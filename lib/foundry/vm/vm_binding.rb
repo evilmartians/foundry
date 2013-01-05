@@ -69,6 +69,10 @@ module Foundry
       "^Binding<?>"
     end
 
+    def self.reified?
+      false
+    end
+
     def inspect
       "{Binding:#{__id__}}"
     end

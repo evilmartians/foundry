@@ -5,5 +5,9 @@ module Foundry
       s.operand :variable, VI::Symbol
       s.operand :value
     end
+
+    def has_side_effects?
+      true
+    end
   end
 end

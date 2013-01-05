@@ -1,10 +1,12 @@
 module Foundry
-  class LIR::InvokeMethodInsn < Furnace::SSA::GenericInstruction
+  class LIR::ResolveMethodInsn < Furnace::SSA::Instruction
     syntax do |s|
       s.operand :receiver
       s.operand :method,    VI::Symbol
-      s.operand :arguments
-      s.operand :block
+    end
+
+    def type
+      LIR::Function
     end
   end
 end

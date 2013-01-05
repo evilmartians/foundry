@@ -1,6 +1,6 @@
 module Foundry
   class LIR::TupleBiggerInsn < Furnace::SSA::Instruction
-    attr_accessor :index
+    attr_accessor :size
 
     syntax do |s|
       s.operand :tuple
@@ -15,12 +15,16 @@ module Foundry
       p.text @size, ','
     end
 
-    def use_count
-      1
-    end
-
     def type
-      VI::Object
+      tuple_ty = @tuple.type
+
+      if tuple_ty.reified?
+        if tuple_ty.elements.count > @size
+          VI::TrueClass
+        else
+          VI::FalseClass
+        end
+      end
     end
   end
 end
