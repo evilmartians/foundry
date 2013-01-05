@@ -37,8 +37,10 @@ module Foundry::LIR
   module Transform
     require_relative 'lir/transform/from_hir'
 
-    require_relative 'lir/transform/seed_methods'
+    require_relative 'lir/transform/resolve_methods'
+    require_relative 'lir/transform/specialize_methods'
     require_relative 'lir/transform/dead_code_elimination'
+    require_relative 'lir/transform/global_dead_code_elimination'
     require_relative 'lir/transform/sparse_conditional_constant_propagation'
     require_relative 'lir/transform/codegen'
   end

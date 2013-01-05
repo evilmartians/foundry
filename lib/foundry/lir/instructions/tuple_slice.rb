@@ -16,7 +16,7 @@ module Foundry
     end
 
     def type
-      tuple_ty = @tuple.type
+      tuple_ty = tuple.type
 
       if tuple_ty.reified?
         tuple_ty.element_types[@from..@to]

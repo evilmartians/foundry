@@ -1,5 +1,5 @@
 module Foundry
-  class LIR::Transform::SeedMethods
+  class LIR::Transform::ResolveMethods
     def transform(translator)
       updated = false
 
@@ -11,7 +11,7 @@ module Foundry
 
             if type.method_defined?(method)
               proc     = type.instance_method(method)
-              function = translator.seed_method proc
+              function = translator.add_method proc
 
               insn.replace_with(function.to_value)
             else

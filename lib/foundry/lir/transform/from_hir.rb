@@ -194,7 +194,7 @@ module Foundry
       function = @builder.resolve_method([ receiver, method ])
 
       @builder.invoke nil,
-          [ function, method, args, block ]
+          [ function, receiver, args, block ]
     end
 
     def on_apply(node)

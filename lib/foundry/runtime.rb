@@ -93,7 +93,9 @@ module Foundry
     def self.compile
       pipeline = Furnace::Transform::Pipeline.new([
         Furnace::Transform::IterativeProcess.new([
-          LIR::Transform::SeedMethods.new,
+          LIR::Transform::SpecializeMethods.new,
+          LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
+          LIR::Transform::ResolveMethods.new,
           LIR::Transform::SparseConditionalConstantPropagation.new,
           LIR::Transform::DeadCodeElimination.new,
         ]),

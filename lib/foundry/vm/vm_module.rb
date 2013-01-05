@@ -117,6 +117,14 @@ module Foundry
       end
     end
 
+    def hash
+      __id__.hash
+    end
+
+    def eql?(other)
+      self.hash == other.hash
+    end
+
     def inspect
       "{module #{as_module_name @name, 'module'}}"
     end

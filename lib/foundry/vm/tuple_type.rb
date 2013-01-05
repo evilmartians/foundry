@@ -16,6 +16,15 @@ module Foundry
       true
     end
 
+    def ==(other)
+      other.is_a?(TupleType) &&
+        eql?(other)
+    end
+
+    def hash
+      element_types.hash
+    end
+
     def inspect_as_type
       types = element_types.map do |type|
         Furnace::SSA.inspect_type(type)
