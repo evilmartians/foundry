@@ -22,10 +22,13 @@ module Foundry
       end
     end
 
-    def to_set
-      set =  @vars.keys.to_set
-      set += @next.to_set if @next
-      set
+    def to_static_env
+      set =  [ @vars.keys.to_set ]
+      if @next
+        set + @next.to_static_env
+      else
+        set
+      end
     end
 
     def defined?(name)

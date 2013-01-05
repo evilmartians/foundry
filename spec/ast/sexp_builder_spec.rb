@@ -1,7 +1,7 @@
 require 'spec_helper'
 
-describe 'AST::SexpBuilder' do
-  include Foundry::AST::SexpBuilder
+describe 'HIR::SexpBuilder' do
+  include Foundry::HIR::SexpBuilder
 
   it 'builds non-nested consts' do
     s_const('Foundry').should ==

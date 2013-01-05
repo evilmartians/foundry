@@ -4,7 +4,7 @@ class Proc
   end
 
   def call(*args, &block)
-    FoundryRt.proc_call self, args, block
+    FoundryRt.apply self, args, block
   end
 
   alias []  call

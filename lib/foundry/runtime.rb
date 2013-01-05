@@ -94,6 +94,7 @@ module Foundry
 
     def self.compile
       pipeline = Furnace::Transform::Pipeline.new([
+        LIR::Transform::SparseConditionalConstantPropagation.new,
         LIR::Transform::Codegen.new,
       ])
 
@@ -109,11 +110,12 @@ module Foundry
     def self.construct_toplevel_call(name)
       builder  = LIR::Builder.new(name, [], LIR::Void)
 
-      toplevel = builder.toplevel
-      method   = builder.resolve [toplevel, builder.symbol(name)]
-      args     = builder.tuple
-
-      builder.call nil, [method, toplevel, args, builder.nil]
+      builder.invoke_method nil,
+          [ builder.toplevel,
+            builder.symbol(name),
+            builder.tuple,
+            builder.nil
+          ]
 
       builder.return LIR::Void.value
 

@@ -32,15 +32,15 @@ module Kernel
   end
 
   def instance_variables
-    FoundryRt.ilist(self)
+    FoundryRt.ivlist(self)
   end
 
   def instance_variable_get(Symbol name)
-    FoundryRt.ivar(self, name.to_sym)
+    FoundryRt.ivar(self, name)
   end
 
   def instance_variable_set(Symbol name, value)
-    FoundryRt.iasgn(self, name.to_sym, value)
+    FoundryRt.iasgn(self, name, value)
   end
 
   def to_s

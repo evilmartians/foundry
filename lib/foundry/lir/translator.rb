@@ -14,7 +14,7 @@ module Foundry
       @cache       = {}
     end
 
-    def run(proc, name)
+    def run_on_method(proc, name)
       hash_key = proc.code
 
       if @cache.key? hash_key
@@ -22,7 +22,7 @@ module Foundry
       else
         transform = LIR::Transform::FromHIR.new(@lir_module)
         function  = transform.transform(
-              proc.code, [ proc.binding.to_set ], name)
+              proc.code, proc.binding.to_static_env, name)
 
         if @graph_lir
           puts "#{builder.function.pretty_print}\n"

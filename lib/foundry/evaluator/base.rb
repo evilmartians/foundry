@@ -357,7 +357,7 @@ module Foundry::Evaluator
         instance_variable_set(process(name_node).value, process(value_node))
     end
 
-    def on_ilist(node)
+    def on_ivlist(node)
       target_node, = node.children
 
       process(target_node).
