@@ -203,7 +203,7 @@ module Foundry
       function = @builder.resolve_closure([ proc ])
 
       @builder.invoke nil,
-          [ function, args, block ]
+          [ function, proc, args, block ]
     end
 
     def on_block(node)
