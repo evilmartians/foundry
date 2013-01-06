@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :variables
 
     syntax do |s|
-      s.operand :binding, VI::Binding
+      s.operand :binding
     end
 
     def initialize(basic_block, variables=[], operands=[], name=nil)
@@ -17,7 +17,7 @@ module Foundry
     end
 
     def type
-      VI::Binding
+      BindingType.new(@variables, binding.type)
     end
   end
 end

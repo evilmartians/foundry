@@ -4,7 +4,7 @@ module Foundry
     attr_accessor :variable
 
     syntax do |s|
-      s.operand :binding, VI::Binding
+      s.operand :binding
       s.operand :value
     end
 

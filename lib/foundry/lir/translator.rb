@@ -28,9 +28,9 @@ module Foundry
         @methods[hash_key]
       else
         transform = LIR::Transform::FromHIR.new(@lir_module)
-        function  = transform.transform(
-              proc.code, proc.binding.to_static_env,
-              proc.code.function, proc.binding)
+
+        binding   = LIR::Constant.new(proc.binding.type, proc.binding)
+        function  = transform.run(proc.code, binding, proc.code.function)
 
         @methods[hash_key] = function
       end

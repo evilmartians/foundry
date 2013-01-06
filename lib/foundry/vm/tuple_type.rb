@@ -17,8 +17,7 @@ module Foundry
     end
 
     def ==(other)
-      other.is_a?(TupleType) &&
-        eql?(other)
+      eql?(other)
     end
 
     def hash

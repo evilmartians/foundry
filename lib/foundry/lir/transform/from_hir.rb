@@ -8,9 +8,9 @@ module Foundry
       raise "cannot lower #{node.type}"
     end
 
-    def transform(body_node, outer_env, name_prefix='anonymous', static_binding=nil)
+    def run(code, binding, name_prefix='anonymous')
       @name_prefix = name_prefix
-      @env         = outer_env
+      @env         = binding.type.to_static_env
 
       @builder     = LIR::Builder.new(@name_prefix, [
                         [ nil,               'self'  ],
@@ -22,14 +22,14 @@ module Foundry
       @function = @builder.function
       @self_arg, @args, @block_arg = @function.arguments
 
-      if static_binding
-        @binding = @builder.constant static_binding
+      if binding.constant?
+        @binding = binding
       else
-        @binding = @builder.ivar_load VI::Binding,
+        @binding = @builder.ivar_load binding.type,
                         [ @self_arg, @builder.symbol(:@binding) ]
       end
 
-      @builder.return process(body_node)
+      @builder.return process(code)
 
       @function
     end
@@ -162,9 +162,9 @@ module Foundry
       @builder.tuple_slice from, to, [ process(tuple_node) ]
     end
 
-    def make_lambda(body_node, name_prefix)
+    def make_lambda(code, name_prefix)
       transform = LIR::Transform::FromHIR.new(@lir_module)
-      lambda    = transform.transform(body_node, @env, name_prefix)
+      lambda    = transform.run(code, @binding, name_prefix)
 
       @builder.lambda [ @binding, lambda.to_value ]
     end

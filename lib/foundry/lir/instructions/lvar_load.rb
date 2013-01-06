@@ -4,7 +4,7 @@ module Foundry
     attr_accessor :variable
 
     syntax do |s|
-      s.operand :binding, VI::Binding
+      s.operand :binding
     end
 
     def initialize(basic_block, type, depth, variable, operands=[], name=nil)

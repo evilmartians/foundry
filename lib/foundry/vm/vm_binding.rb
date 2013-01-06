@@ -20,15 +20,6 @@ module Foundry
       end
     end
 
-    def to_static_env
-      set =  [ @vars.keys.to_set ]
-      if @next
-        set + @next.to_static_env
-      else
-        set
-      end
-    end
-
     def defined?(name)
       each do |var|
         return true if var == name
@@ -63,6 +54,12 @@ module Foundry
 
     def chain
       VI::Binding.vm_new(self)
+    end
+
+    def type
+      BindingType.new(@vars.map do |name, value|
+        [ name, value.type ]
+      end, @next && @next.type)
     end
 
     def self.inspect_as_type

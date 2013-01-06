@@ -16,6 +16,8 @@ require_relative 'vm/vm_true_class'
 require_relative 'vm/vm_false_class'
 
 require_relative 'vm/vm_binding'
+require_relative 'vm/binding_type'
+
 require_relative 'vm/vm_proc'
 
 require_relative 'vm/vm_symbol'
