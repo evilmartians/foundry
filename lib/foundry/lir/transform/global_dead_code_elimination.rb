@@ -22,7 +22,7 @@ module Foundry
           case insn
           when LIR::InvokeInsn
             next_name = insn.callee
-          when LIR::LambdaInsn
+          when LIR::ClosureInsn
             next_name = insn.code
           else
             next

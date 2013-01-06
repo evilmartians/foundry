@@ -9,9 +9,9 @@ module Foundry::LIR
   require_relative 'lir/builder'
 
   require_relative 'lir/instructions/binding'
+  require_relative 'lir/instructions/closure'
   require_relative 'lir/instructions/lvar_load'
   require_relative 'lir/instructions/lvar_store'
-  require_relative 'lir/instructions/lambda'
 
   require_relative 'lir/instructions/tuple'
   require_relative 'lir/instructions/tuple_ref'

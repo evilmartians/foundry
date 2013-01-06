@@ -162,11 +162,11 @@ module Foundry
       @builder.tuple_slice from, to, [ process(tuple_node) ]
     end
 
-    def make_lambda(code, name_prefix)
+    def make_closure(code, name_prefix)
       transform = LIR::Transform::FromHIR.new(@lir_module)
-      lambda    = transform.run(code, @binding, name_prefix)
+      closure   = transform.run(code, @binding, name_prefix)
 
-      @builder.lambda [ @binding, lambda.to_value ]
+      @builder.closure [ @binding, closure.to_value ]
     end
 
     def on_def(node)
@@ -177,7 +177,7 @@ module Foundry
       @builder.append LIR::DefineMethod,
                 [ scope,
                   LIR::Constant.new(VI::Symbol, name),
-                  make_lambda(body_node, name) ]
+                  make_closure(body_node, name) ]
 
       LIR::Constant.new(VI::NilClass, VI::NIL)
     end
@@ -185,7 +185,7 @@ module Foundry
     def on_lambda(node)
       body_node, = *node
 
-      make_lambda(body_node, "#{@name_prefix}$l")
+      make_closure(body_node, "#{@name_prefix}$l")
     end
 
     def on_send(node)
