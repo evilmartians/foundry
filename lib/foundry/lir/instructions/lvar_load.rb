@@ -18,5 +18,12 @@ module Foundry
       p.text    @depth
       p.keyword 'in'
     end
+
+    def type
+      binding_ty = binding.type
+      if binding_ty.reified?
+        binding_ty.type_at @depth, @variable
+      end
+    end
   end
 end

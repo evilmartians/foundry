@@ -17,14 +17,10 @@ module Foundry
     end
 
     def has_side_effects?
-      if arguments.nil?
-        true
-      else
-        arguments_ty = arguments.type
+      arguments_ty = arguments.type
 
-        arguments_ty.reified? &&
-            !arguments_ty.element_types.count.between?(@min, @max)
-      end
+      !arguments_ty.reified? ||
+          !arguments_ty.element_types.count.between?(@min, @max)
     end
   end
 end

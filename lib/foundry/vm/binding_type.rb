@@ -17,6 +17,14 @@ module Foundry
       end
     end
 
+    def type_at(depth, name)
+      if depth > 0
+        @next.type_at(depth - 1, name)
+      elsif @variables.key? name
+        @variables[name]
+      end
+    end
+
     def reified?
       true
     end

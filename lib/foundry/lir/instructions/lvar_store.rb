@@ -23,5 +23,18 @@ module Foundry
     def has_side_effects?
       true
     end
+
+    def valid?(ignore_nil_types=true)
+      super && begin
+        variable_ty = binding.type.type_at(@depth, @variable)
+        value_ty    = value.type
+
+        if variable_ty.nil? || value_ty.nil?
+          ignore_nil_types
+        else
+          variable_ty == value_ty
+        end
+      end
+    end
   end
 end
