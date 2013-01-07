@@ -27,7 +27,12 @@ module Foundry
     end
 
     def type
-      Monotype.of(VI::Integer)
+      case @operation
+      when :+, :-, :*, :/, :%
+        Monotype.of(VI::Integer)
+      when :<, :<=, :>, :>=
+        Monotype.of(VI::Object)
+      end
     end
   end
 end

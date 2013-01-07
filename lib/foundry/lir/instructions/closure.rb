@@ -6,7 +6,7 @@ module Foundry
     end
 
     def type
-      Monotype.of(VI::Proc)
+      ClosureType.new
     end
   end
 end
