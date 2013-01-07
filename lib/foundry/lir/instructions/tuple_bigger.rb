@@ -20,7 +20,7 @@ module Foundry
 
       tuple_ty.is_a?(TupleType) &&
           tuple_ty.size &&
-          (tuple_ty.length > @size ?
+          (tuple_ty.size > @size ?
               Foundry.typeof(VI::TRUE) :
               Foundry.typeof(VI::FALSE))
     end

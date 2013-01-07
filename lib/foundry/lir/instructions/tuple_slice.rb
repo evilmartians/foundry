@@ -20,7 +20,7 @@ module Foundry
 
       tuple_ty.is_a?(TupleType) &&
           tuple_ty.size &&
-          tuple_ty.element_types[@from..@to]
+          TupleType.new(tuple_ty.element_types[@from..@to])
     end
   end
 end

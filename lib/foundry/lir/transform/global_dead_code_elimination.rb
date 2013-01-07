@@ -20,10 +20,8 @@ module Foundry
 
         func.each_instruction do |insn|
           case insn
-          when LIR::InvokeInsn
+          when LIR::InvokeInsn, LIR::ClosureInsn
             next_name = insn.callee
-          when LIR::ClosureInsn
-            next_name = insn.code
           else
             next
           end

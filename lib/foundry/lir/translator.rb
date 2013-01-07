@@ -36,19 +36,18 @@ module Foundry
       end
     end
 
-    def specialize(source_function, argument_types)
-      key = [source_function.original_name, argument_types]
+    def specialize(source_function, *types)
+      key = [source_function.original_name, types]
 
       if @functions.key? key
         @functions[key]
       else
         function = source_function.dup
-        function.arguments.each_with_index do |arg, index|
-          arg.type = argument_types[index]
-        end
-        @lir_module.add function
 
+        @lir_module.add function
         @functions[key] = function
+
+        yield function
       end
     end
   end

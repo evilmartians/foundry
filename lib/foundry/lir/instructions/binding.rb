@@ -9,6 +9,7 @@ module Foundry
     def initialize(basic_block, variables=[], operands=[], name=nil)
       super(basic_block, operands, name)
       @variables = variables
+      @type      = nil
     end
 
     def initialize_copy(original)
@@ -22,6 +23,10 @@ module Foundry
 
     def type
       @type ||= BindingType.new(@variables, binding.type)
+    end
+
+    def reset_type!
+      @type = nil
     end
   end
 end
