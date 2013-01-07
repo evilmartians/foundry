@@ -9,14 +9,12 @@ module Foundry
         generic_fun  = translator.lir_module[insn.callee.value]
         arguments_ty = insn.arguments.map(&:type)
 
-        translator.specialize(generic_fun,
-              arguments_ty) do |specialized_fun|
+        insn.callee = translator.specialize(generic_fun,
+                            arguments_ty) do |specialized_fun|
 
           specialized_fun.arguments.each_with_index do |arg, index|
             arg.type = arguments_ty[index]
           end
-
-          insn.callee = specialized_fun.to_value
 
           updated = true
         end
@@ -28,8 +26,8 @@ module Foundry
         generic_fun = translator.lir_module[insn.callee.value]
         binding_ty  = insn.binding.type
 
-        translator.specialize(generic_fun,
-              binding_ty) do |specialized_fun|
+        insn.callee = translator.specialize(generic_fun,
+                            binding_ty) do |specialized_fun|
 
           self_arg, = specialized_fun.arguments
 
@@ -45,8 +43,6 @@ module Foundry
               break
             end
           end
-
-          insn.callee = specialized_fun.to_value
 
           updated = true
         end

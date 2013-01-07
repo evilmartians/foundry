@@ -7,8 +7,9 @@ module Foundry
     end
 
     def initialize(basic_block, min=0, max=0, operands=[], name=nil)
-      super(basic_block, operands, name)
       @min, @max = min, max
+
+      super(basic_block, operands, name)
     end
 
     def pretty_parameters(p)

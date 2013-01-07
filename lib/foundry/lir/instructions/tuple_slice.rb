@@ -7,8 +7,9 @@ module Foundry
     end
 
     def initialize(basic_block, from, to, operands=[], name=nil)
+      @from, @to = from.to_i, to.to_i
+
       super(basic_block, operands, name)
-      @from, @to = from, to
     end
 
     def pretty_parameters(p)
@@ -19,8 +20,8 @@ module Foundry
       tuple_ty = tuple.type
 
       tuple_ty.is_a?(TupleType) &&
-          tuple_ty.size &&
-          TupleType.new(tuple_ty.element_types[@from..@to])
+          tuple_ty.elements &&
+          TupleType.new(tuple_ty.elements[@from..@to])
     end
   end
 end

@@ -48,6 +48,8 @@ module Foundry
         @functions[key] = function
 
         yield function
+
+        function
       end
     end
   end

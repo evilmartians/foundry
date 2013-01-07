@@ -33,16 +33,13 @@ module Foundry
         end
       end
 
-      updated = false
-
       mod.each do |func|
         if !seen.include? func
           mod.remove func.name
-          updated = true
         end
       end
 
-      updated
+      false
     end
   end
 end

@@ -5,8 +5,18 @@ module Foundry
       s.operand :callee,  LIR::Function
     end
 
+    def initialize(basic_block, operands=[], name=nil)
+      @type = nil
+
+      super
+    end
+
     def type
-      ClosureType.new
+      @type = ClosureType.new
+    end
+
+    def reset_type!
+      @type = nil
     end
   end
 end

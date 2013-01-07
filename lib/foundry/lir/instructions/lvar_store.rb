@@ -9,8 +9,9 @@ module Foundry
     end
 
     def initialize(basic_block, depth, variable, operands=[], name=nil)
+      @depth, @variable = depth.to_i, variable.to_sym
+
       super(basic_block, operands, name)
-      @depth, @variable = depth, variable
     end
 
     def pretty_parameters(p)

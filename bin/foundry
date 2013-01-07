@@ -18,10 +18,11 @@ Usage: foundry [options] filename...
 
   EOS
 
-  opt :target,   "Target environment",         default: 'dummy'
-  opt :evaluate, "Evaluate code",              type: :strings
-  opt :dump,     "Dump LLVM IR",               default: false
-  opt :output,   "Write bitcode",              type: :string
+  opt :target,    "Target environment",         default: 'dummy'
+  opt :evaluate,  "Evaluate code",              type: :strings
+  opt :dump_lir,  "Dump LIR",                   default: false
+  opt :dump_llvm, "Dump LLVM IR",               default: false
+  opt :output,    "Write bitcode",              type: :string
 end
 
 Furnace::SSA::PrettyPrinter.colorize = $stdout.tty?
@@ -68,7 +69,13 @@ begin
 
   translator = Foundry::Runtime.compile
 
-  if opts[:dump]
+  if opts[:dump_lir]
+    translator.each_function do |func|
+      puts "#{func.pretty_print}\n"
+    end
+  end
+
+  if opts[:dump_llvm]
     translator.llvm_module.dump
   end
 

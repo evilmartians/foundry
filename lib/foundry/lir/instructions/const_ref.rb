@@ -7,8 +7,9 @@ module Foundry
     end
 
     def initialize(basic_block, constant, operands=[], name=nil)
-      super(basic_block, operands, name)
       @constant = constant
+
+      super(basic_block, operands, name)
     end
 
     def pretty_parameters(p)

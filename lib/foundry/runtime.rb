@@ -10,7 +10,7 @@ module Foundry
 
     @graph_ast = false
     @graph_hir = false
-    @graph_lir = true
+    @graph_lir = false
 
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
@@ -101,6 +101,7 @@ module Foundry
           LIR::Transform::SpecializeMethods.new,
           LIR::Transform::LocalTypeInference.new,
           LIR::Transform::ReturnTypeInference.new,
+          LIR::Transform::BindingSimplification.new,
           LIR::Transform::SparseConditionalConstantPropagation.new,
           LIR::Transform::DeadCodeElimination.new,
         ]),
