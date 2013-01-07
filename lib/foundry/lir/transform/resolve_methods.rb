@@ -7,14 +7,15 @@ module Foundry
         if insn.receiver.type &&
               insn.method.constant?
           type, method = insn.receiver.type, insn.method.value
+          klass = type.klass
 
-          if type.method_defined?(method)
-            proc     = type.instance_method(method)
+          if klass.method_defined?(method)
+            proc     = klass.instance_method(method)
             function = translator.add_method proc
 
             insn.replace_with(function.to_value)
           else
-            raise LIR::AnalysisError, "Undefined method #{method} for #{type}"
+            raise LIR::AnalysisError, "Undefined method #{method} for #{klass}"
           end
 
           updated = true

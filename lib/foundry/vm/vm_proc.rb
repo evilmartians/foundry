@@ -24,14 +24,6 @@ module Foundry
         evaluate
     end
 
-    def self.inspect_as_type
-      "^Proc<?>"
-    end
-
-    def self.generic_type?
-      true
-    end
-
     def inspect
       "{Proc}"
     end

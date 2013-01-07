@@ -5,7 +5,7 @@ module Foundry
     end
 
     def class
-      VI::Foundry_Tuple
+      VI::Tuple
     end
 
     def size
@@ -24,18 +24,6 @@ module Foundry
       @storage
     end
     alias to_ary to_a
-
-    def type
-      TupleType.new(@storage)
-    end
-
-    def self.reified?
-      false
-    end
-
-    def self.inspect_as_type
-      "^Tuple<?>"
-    end
 
     def inspect
       "{Tuple #{@storage.inspect}}"

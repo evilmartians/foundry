@@ -7,8 +7,6 @@ require_relative 'vm/vm_class'
 require_relative 'vm/vm_singleton_class'
 
 require_relative 'vm/vm_tuple'
-require_relative 'vm/tuple_type'
-
 require_relative 'vm/vm_lookup_table'
 
 require_relative 'vm/vm_nil_class'
@@ -16,8 +14,6 @@ require_relative 'vm/vm_true_class'
 require_relative 'vm/vm_false_class'
 
 require_relative 'vm/vm_binding'
-require_relative 'vm/binding_type'
-
 require_relative 'vm/vm_proc'
 
 require_relative 'vm/vm_symbol'
@@ -65,10 +61,10 @@ module Foundry
 
     Foundry       = Module.vm_new
 
-    Foundry_IncludedModule   = Class.vm_new(Module, VMIncludedModule)
-    Foundry_SingletonClass   = Class.vm_new(Class,  VMSingletonClass)
-    Foundry_Tuple            = Class.vm_new(Object, VMTuple)
-    Foundry_LookupTable      = Class.vm_new(Object, VMLookupTable)
+    IncludedModule   = Class.vm_new(Module, VMIncludedModule)
+    SingletonClass   = Class.vm_new(Class,  VMSingletonClass)
+    Tuple            = Class.vm_new(Object, VMTuple)
+    LookupTable      = Class.vm_new(Object, VMLookupTable)
 
     BasicObject.instance_exec do
       @name       = String.vm_new('BasicObject')
@@ -98,10 +94,10 @@ module Foundry
 
     Object.const_set :Foundry, Foundry
 
-    Foundry.const_set :IncludedModule, Foundry_IncludedModule
-    Foundry.const_set :SingletonClass, Foundry_SingletonClass
-    Foundry.const_set :Tuple,          Foundry_Tuple
-    Foundry.const_set :LookupTable,    Foundry_LookupTable
+    Foundry.const_set :IncludedModule, IncludedModule
+    Foundry.const_set :SingletonClass, SingletonClass
+    Foundry.const_set :Tuple,          Tuple
+    Foundry.const_set :LookupTable,    LookupTable
 
     TOPLEVEL = Object.vm_new
 
@@ -134,7 +130,7 @@ module Foundry
     end
 
     def self.new_tuple(value)
-      Foundry_Tuple.vm_new(value)
+      Tuple.vm_new(value)
     end
   end
 end

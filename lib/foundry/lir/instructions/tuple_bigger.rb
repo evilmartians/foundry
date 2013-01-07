@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :size
 
     syntax do |s|
-      s.operand :tuple
+      s.operand :tuple, Monotype.of(VI::Tuple)
     end
 
     def initialize(basic_block, size, operands=[], name=nil)
@@ -18,13 +18,11 @@ module Foundry
     def type
       tuple_ty = tuple.type
 
-      if tuple_ty.reified?
-        if tuple_ty.elements.count > @size
-          VI::TrueClass
-        else
-          VI::FalseClass
-        end
-      end
+      tuple_ty.is_a?(TupleType) &&
+          tuple_ty.size &&
+          (tuple_ty.length > @size ?
+              Foundry.typeof(VI::TRUE) :
+              Foundry.typeof(VI::FALSE))
     end
   end
 end

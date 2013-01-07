@@ -31,29 +31,13 @@ module Foundry
       if @singleton_class.nil?
         if @superclass.nil?
           # I am BasicObject.
-          @singleton_class = VI::Foundry_SingletonClass.vm_new(VI::Class, self)
+          @singleton_class = VI::SingletonClass.vm_new(VI::Class, self)
         else
-          @singleton_class = VI::Foundry_SingletonClass.vm_new(@superclass.singleton_class, self)
+          @singleton_class = VI::SingletonClass.vm_new(@superclass.singleton_class, self)
         end
       end
 
       @singleton_class
-    end
-
-    def reified?
-      if @vm_class.ancestors.include? VMObject
-        true
-      else
-        @vm_class.reified?
-      end
-    end
-
-    def inspect_as_type
-      if @vm_class.ancestors.include? VMObject
-        "^" + @name.value.sub(/^Foundry::/, '')
-      else
-        @vm_class.inspect_as_type
-      end
     end
 
     def inspect

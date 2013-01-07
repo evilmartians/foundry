@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :constant
 
     syntax do |s|
-      s.operand :cref
+      s.operand :cref, Monotype.of(VI::Tuple)
     end
 
     def initialize(basic_block, constant, operands=[], name=nil)

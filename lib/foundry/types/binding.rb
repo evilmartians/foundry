@@ -1,5 +1,5 @@
 module Foundry
-  class BindingType
+  class BindingType < LIR::GenericType
     attr_reader :variables, :next
 
     def initialize(elements, next_)
@@ -10,6 +10,7 @@ module Foundry
 
     def to_static_env
       set = [ @variables.keys.to_set ]
+
       if @next
         set + @next.to_static_env
       else
@@ -37,26 +38,24 @@ module Foundry
       end
     end
 
-    def reified?
-      true
+    def parameters
+      [@variables, @next]
     end
 
-    def ==(other)
-      eql?(other)
+    def subtype_of?(other)
+      super ||
+          other.instance_of?(Monotype) &&
+          other.klass == VI::Binding
     end
 
-    def hash
-      [@variables, @next].hash
-    end
-
-    def inspect_as_type
+    def inspect
       types = @variables.map do |name, type|
         "#{name}: #{Furnace::SSA.inspect_type(type)}"
       end
 
       continuation = ", ..." if @next
 
-      "^Binding<#{types.join(', ')}#{continuation}>"
+      "binding<#{types.join(', ')}#{continuation}>"
     end
   end
 end

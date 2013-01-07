@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :variables
 
     syntax do |s|
-      s.operand :binding
+      s.operand :binding, Monotype.of(VI::Binding)
     end
 
     def initialize(basic_block, variables=[], operands=[], name=nil)

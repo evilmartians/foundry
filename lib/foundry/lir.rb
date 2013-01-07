@@ -1,8 +1,46 @@
 require 'llvm/core'
 require 'llvm/transforms/scalar'
 
+module Foundry
+  def self.typeof(object)
+    if object.__vm_object?
+      klass = object.class
+
+      if klass == VI::Tuple
+        TupleType.new(object.to_a)
+      elsif klass == VI::Binding
+        object.__type__ # TODO refactor this somehow
+      elsif klass == VI::Proc
+        ClosureType.new(klass)
+      else
+        Monotype.of(klass)
+      end
+    else
+      case object
+      when LIR::Value
+        object.type
+      else
+        raise ArgumentError, "typeof(#{object.class}) is not defined"
+      end
+    end
+  end
+end
+
 module Foundry::LIR
   include Furnace::SSA
+
+  def self.void
+    Furnace::SSA.void
+  end
+
+  def self.void_value
+    Furnace::SSA.void_value
+  end
+
+  require_relative 'types/monotype'
+  require_relative 'types/tuple'
+  require_relative 'types/binding'
+  require_relative 'types/closure'
 
   require_relative 'lir/analysis_error'
 

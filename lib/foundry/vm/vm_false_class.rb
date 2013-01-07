@@ -4,10 +4,6 @@ module Foundry
       VI::FalseClass
     end
 
-    def self.inspect_as_type
-      "^FalseClass"
-    end
-
     def inspect
       "{false}"
     end

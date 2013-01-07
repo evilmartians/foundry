@@ -1,11 +1,11 @@
 module Foundry
   class LIR::ResolveClosureInsn < Furnace::SSA::Instruction
     syntax do |s|
-      s.operand :proc, VI::Proc
+      s.operand :closure, Monotype.of(VI::Proc)
     end
 
     def type
-      LIR::Function
+      LIR::Function.to_type
     end
   end
 end

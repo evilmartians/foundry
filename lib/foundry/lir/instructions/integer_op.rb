@@ -5,8 +5,8 @@ module Foundry
     attr_accessor :operation
 
     syntax do |s|
-      s.operand :left,  VI::Integer
-      s.operand :right, VI::Integer
+      s.operand :left,  Monotype.of(VI::Integer)
+      s.operand :right, Monotype.of(VI::Integer)
     end
 
     def initialize(basic_block, operation, operands=[], name=nil)
@@ -27,7 +27,7 @@ module Foundry
     end
 
     def type
-      VI::Integer
+      Monotype.of(VI::Integer)
     end
   end
 end

@@ -22,7 +22,7 @@ module Foundry
 
     def singleton_class
       if @singleton_class.nil?
-        @singleton_class = VI::Foundry_SingletonClass.vm_new(self.class, self)
+        @singleton_class = VI::SingletonClass.vm_new(self.class, self)
       end
 
       @singleton_class

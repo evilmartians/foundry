@@ -13,9 +13,9 @@ module Foundry
       @env         = binding.type.to_static_env
 
       @builder     = LIR::Builder.new(@name_prefix, [
-                        [ nil,               'self'  ],
-                        [ VI::Foundry_Tuple, 'args'  ],
-                        [ VI::Proc,          'block' ],
+                        [ nil,                    'self'  ],
+                        [ TupleType.new(nil),     'args'  ],
+                        [ Monotype.of(VI::Proc),  'block' ],
                     ], nil)
       @lir_module.add(@builder.function)
 

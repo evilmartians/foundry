@@ -29,7 +29,7 @@ module Foundry
       else
         transform = LIR::Transform::FromHIR.new(@lir_module)
 
-        binding   = LIR::Constant.new(proc.binding.type, proc.binding)
+        binding   = LIR::Constant.new(Foundry.typeof(proc.binding), proc.binding)
         function  = transform.run(proc.code, binding, proc.code.function)
 
         @methods[hash_key] = function

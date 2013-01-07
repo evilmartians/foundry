@@ -7,7 +7,7 @@ module Foundry
         value_ty   = insn.value.type
         binding_ty = insn.binding.type
 
-        if value_ty && value_ty.reified?
+        if value_ty && value_ty.monotype?
           variable_ty = binding_ty.type_at(insn.depth, insn.variable)
 
           if variable_ty.nil?

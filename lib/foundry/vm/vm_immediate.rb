@@ -18,10 +18,6 @@ module Foundry
       inspect
     end
 
-    def type
-      self.class
-    end
-
     def singleton_class
       self.class
     end
@@ -99,10 +95,6 @@ module Foundry
         end
       end
       EVAL
-    end
-
-    def self.reified?
-      true
     end
 
     def inspect

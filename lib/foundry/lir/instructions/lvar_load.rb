@@ -4,12 +4,12 @@ module Foundry
     attr_accessor :variable
 
     syntax do |s|
-      s.operand :binding
+      s.operand :binding, Monotype.of(VI::Binding)
     end
 
-    def initialize(basic_block, type, depth, variable, operands=[], name=nil)
+    def initialize(basic_block, type, depth, variable, operands=[], name=variable.to_s)
       super(basic_block, type, operands, name)
-      @depth, @variable = depth, variable
+      @depth, @variable = depth.to_i, variable.to_sym
     end
 
     def pretty_parameters(p)

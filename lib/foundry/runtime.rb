@@ -125,7 +125,7 @@ module Foundry
     end
 
     def self.construct_toplevel_call(name)
-      builder = LIR::Builder.new(name, [], LIR::Void)
+      builder = LIR::Builder.new(name, [], LIR.void)
 
       toplevel = builder.toplevel
 
@@ -141,7 +141,7 @@ module Foundry
             builder.nil
           ]
 
-      builder.return LIR::Void.value
+      builder.return LIR.void_value
 
       builder.function
     end

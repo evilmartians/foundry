@@ -56,10 +56,10 @@ module Foundry
       VI::Binding.vm_new(self)
     end
 
-    def type
+    def __type__
       @type ||= BindingType.new(@vars.map do |name, value|
-                  [ name, value.type ]
-                end, @next && @next.type)
+                  [ name, ::Foundry.typeof(value) ]
+                end, @next && @next.__type__)
     end
 
     def inspect
