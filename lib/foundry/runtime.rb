@@ -84,7 +84,11 @@ module Foundry
       ast = HIR::Node.from_sexp(input)
       p ast if @graph_ast
 
-      hir = pipeline.run(ast)
+      hir_context = HIR::Context.new(ast)
+      pipeline.run(hir_context)
+
+      hir = hir_context.root
+
       p hir if @graph_hir
 
       hir
@@ -92,13 +96,15 @@ module Foundry
 
     def self.compile
       pipeline = Furnace::Transform::Pipeline.new([
-        Furnace::Transform::IterativeProcess.new([
-          LIR::Transform::SpecializeMethods.new,
-          LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
+        Furnace::Transform::Iterative.new([
           LIR::Transform::ResolveMethods.new,
+          LIR::Transform::SpecializeMethods.new,
+          LIR::Transform::LocalTypeInference.new,
           LIR::Transform::SparseConditionalConstantPropagation.new,
           LIR::Transform::DeadCodeElimination.new,
         ]),
+
+        LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
         LIR::Transform::Codegen.new,
       ])
 

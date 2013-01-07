@@ -101,6 +101,10 @@ module Foundry
       EVAL
     end
 
+    def self.reified?
+      true
+    end
+
     def inspect
       if @ivar_table.size > 0
         ivs = " "

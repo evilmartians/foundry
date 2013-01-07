@@ -26,7 +26,9 @@ module Foundry
 
     def valid?(ignore_nil_types=true)
       super && begin
-        variable_ty = binding.type.type_at(@depth, @variable)
+        binding_ty  = binding.type
+
+        variable_ty = binding_ty.type_at(@depth, @variable)
         value_ty    = value.type
 
         if variable_ty.nil? || value_ty.nil?

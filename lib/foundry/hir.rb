@@ -1,6 +1,8 @@
 module Foundry::HIR
   require_relative 'hir/node'
   require_relative 'hir/sexp_builder'
+
+  require_relative 'hir/context'
   require_relative 'hir/processor'
 
   module Transform

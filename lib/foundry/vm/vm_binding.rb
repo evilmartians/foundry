@@ -57,17 +57,9 @@ module Foundry
     end
 
     def type
-      BindingType.new(@vars.map do |name, value|
-        [ name, value.type ]
-      end, @next && @next.type)
-    end
-
-    def self.inspect_as_type
-      "^Binding<?>"
-    end
-
-    def self.reified?
-      false
+      @type ||= BindingType.new(@vars.map do |name, value|
+                  [ name, value.type ]
+                end, @next && @next.type)
     end
 
     def inspect

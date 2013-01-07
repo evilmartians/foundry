@@ -2,6 +2,12 @@ module Foundry
   class HIR::Processor < Furnace::AST::Processor
     include HIR::SexpBuilder
 
+    def run(context)
+      context.root = transform(context.root)
+
+      true
+    end
+
     alias transform process
 
     def handler_missing(node)
@@ -10,7 +16,7 @@ module Foundry
         return
       end
 
-      node.updated(nil, process_all(node.children))
+      node.updated(nil, process_all(node))
     end
 
     #
@@ -30,7 +36,7 @@ module Foundry
     #
 
     def on_let(node)
-      vars, *body = node.children
+      vars, *body = *node
       node.updated(nil, [ vars, *process_all(body) ])
     end
 
@@ -40,7 +46,7 @@ module Foundry
     alias on_lvar on_var
 
     def on_mut(node)
-      name, value = node.children
+      name, value = *node
       node.updated(nil, [ name, process(value) ])
     end
     alias on_eval_mut on_mut
@@ -51,12 +57,12 @@ module Foundry
     #
 
     def on_define_class(node)
-      scope, name, superclass = node.children
+      scope, name, superclass = *node
       node.updated(nil, [ process(scope), name, process(superclass) ])
     end
 
     def on_define_module(node)
-      scope, name = node.children
+      scope, name = *node
       node.updated(nil, [ process(scope), name ])
     end
 
@@ -65,7 +71,7 @@ module Foundry
     #
 
     def on_def(node)
-      scope, name, *body = node.children
+      scope, name, *body = *node
       node.updated(nil, [ process(scope), name, *process_all(body) ])
     end
 
@@ -78,32 +84,32 @@ module Foundry
     #
 
     def on_tuple(node)
-      node.updated(nil, process_all(node.children))
+      node.updated(nil, process_all(node))
     end
 
     def on_tuple_ref(node)
-      tuple, index = node.children
+      tuple, index = *node
       node.updated(nil, [
         process(tuple), index
       ])
     end
 
     def on_tuple_slice(node)
-      tuple, index_low, index_high = node.children
+      tuple, index_low, index_high = *node
       node.updated(nil, [
         process(tuple), index_low, index_high
       ])
     end
 
     def on_tuple_concat(node)
-      left, right = node.children
+      left, right = *node
       node.updated(nil, [
         process(left), process(right)
       ])
     end
 
     def on_tuple_bigger?(node)
-      tuple, length = node.children
+      tuple, length = *node
       node.updated(nil, [
         process(tuple), length
       ])
@@ -114,17 +120,17 @@ module Foundry
     #
 
     def on_const_ref(node)
-      scope, name = node.children
+      scope, name = *node
       node.updated(nil, [ process(scope), name ])
     end
 
     def on_const_fetch(node)
-      scope, name = node.children
+      scope, name = *node
       node.updated(nil, [ process(scope), name ])
     end
 
     def on_const_declare(node)
-      scope, name, value = node.children
+      scope, name, value = *node
       node.updated(nil, [ process(scope), name, process(value) ])
     end
 
@@ -133,7 +139,7 @@ module Foundry
     #
 
     def on_if(node)
-      cond, true_branch, false_branch = node.children
+      cond, true_branch, false_branch = *node
 
       true_branch  = s(:nil) if true_branch.nil?
       false_branch = s(:nil) if false_branch.nil?
@@ -145,7 +151,7 @@ module Foundry
     end
 
     def on_loop(node)
-      cond, body = node.children
+      cond, body = *node
       node.updated(nil, [
         process(cond), process(body)
       ])

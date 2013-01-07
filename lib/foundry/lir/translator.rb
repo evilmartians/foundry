@@ -37,12 +37,10 @@ module Foundry
     end
 
     def specialize(source_function, argument_types)
-      hash_key = [source_function.name, argument_types]
+      key = [source_function.original_name, argument_types]
 
-      if @functions.key? hash_key
-        @functions[hash_key]
-      elsif source_function.arguments.map(&:type) == argument_types
-        @functions[hash_key] = source_function
+      if @functions.key? key
+        @functions[key]
       else
         function = source_function.dup
         function.arguments.each_with_index do |arg, index|
@@ -50,8 +48,7 @@ module Foundry
         end
         @lir_module.add function
 
-        hash_key = [function.name, argument_types]
-        @functions[hash_key] = function
+        @functions[key] = function
       end
     end
   end

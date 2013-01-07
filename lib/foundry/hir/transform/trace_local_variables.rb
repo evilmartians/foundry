@@ -41,7 +41,7 @@ module Foundry
         @static_env.add name
 
         if @let_vars
-          @let_vars[name] = s(:nil)
+          @let_vars[name] = s(:void)
         else
           # TODO: document this eval-related hack
           return node.updated(:eval_mut, [

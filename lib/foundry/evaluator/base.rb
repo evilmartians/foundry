@@ -202,6 +202,8 @@ module Foundry::Evaluator
       VI::NIL
     end
 
+    alias on_void on_nil
+
     def on_false(node)
       VI::FALSE
     end

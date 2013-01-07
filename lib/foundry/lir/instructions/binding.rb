@@ -11,13 +11,17 @@ module Foundry
       @variables = variables
     end
 
+    def initialize_copy(original)
+      @type = nil
+    end
+
     def pretty_parameters(p)
       p.text    @variables.map(&:inspect).join(", ")
       p.keyword 'chain'
     end
 
     def type
-      BindingType.new(@variables, binding.type)
+      @type ||= BindingType.new(@variables, binding.type)
     end
   end
 end

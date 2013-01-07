@@ -4,7 +4,7 @@ module Foundry
       @keep_names = keep_names
     end
 
-    def transform(translator)
+    def run(translator)
       mod      = translator.lir_module
       worklist = Set.new
       seen     = Set.new
@@ -44,7 +44,7 @@ module Foundry
         end
       end
 
-      translator if updated
+      updated
     end
   end
 end

@@ -18,38 +18,38 @@ class Integer < Numeric
   end
 
   def +(other)
-    FoundryRt.int_add self, other
+    FoundryRt.intop :+, self, other
   end
 
   def -(other)
-    FoundryRt.int_sub self, other
+    FoundryRt.intop :-, self, other
   end
 
   def *(other)
-    FoundryRt.int_mul self, other
+    FoundryRt.intop :*, self, other
   end
 
   def /(other)
-    FoundryRt.int_div self, other
+    FoundryRt.intop :/, self, other
   end
 
   def %(other)
-    FoundryRt.int_mod self, other
+    FoundryRt.intop :%, self, other
   end
 
   def <(other)
-    FoundryRt.int_lt self, other
+    FoundryRt.intop :<,  self, other
   end
 
   def <=(other)
-    FoundryRt.int_lte self, other
+    FoundryRt.intop :<=, self, other
   end
 
   def >(other)
-    FoundryRt.int_gt self, other
+    FoundryRt.intop :>,  self, other
   end
 
   def >=(other)
-    FoundryRt.int_gte self, other
+    FoundryRt.intop :>=, self, other
   end
 end

@@ -109,29 +109,9 @@ module Foundry::Evaluator
     # Integers
     #
 
-    {
-      :+  => :add,
-      :-  => :sub,
-      :*  => :mul,
-      :/  => :div,
-      :%  => :mod,
-    }.each do |op, node|
-      define_method(:"on_int_#{node}") do |node|
-        self_, other = process_all(node.children)
-        VI.new_integer(self_.value.send(op, other.value))
-      end
-    end
-
-    {
-      :<  => :lt,
-      :<= => :lte,
-      :>  => :gt,
-      :>= => :gte,
-    }.each do |op, node|
-      define_method(:"on_int_#{node}") do |node|
-        self_, other = process_all(node.children)
-        self_.value.send(op, other.value) ? VI::TRUE : VI::FALSE
-      end
+    def on_intop(node)
+      op, left, right = *process_all(node)
+      VI.new_integer left.value.send(op.value, right.value)
     end
   end
 end

@@ -29,10 +29,14 @@ module Foundry::LIR
 
   require_relative 'lir/instructions/define_method'
 
+  require_relative 'lir/instructions/integer_op'
+  require_relative 'lir/instructions/trace'
+
   require_relative 'lir/instructions/check_arity'
   require_relative 'lir/instructions/check_block'
 
   require_relative 'lir/translator'
+  require_relative 'lir/processor'
 
   module Transform
     require_relative 'lir/transform/from_hir'
@@ -41,6 +45,7 @@ module Foundry::LIR
     require_relative 'lir/transform/specialize_methods'
     require_relative 'lir/transform/dead_code_elimination'
     require_relative 'lir/transform/global_dead_code_elimination'
+    require_relative 'lir/transform/local_type_inference'
     require_relative 'lir/transform/sparse_conditional_constant_propagation'
     require_relative 'lir/transform/codegen'
   end

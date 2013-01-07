@@ -22,6 +22,18 @@ module Foundry
         @next.type_at(depth - 1, name)
       elsif @variables.key? name
         @variables[name]
+      else
+        raise ArgumentError, "binding for #{name} not found"
+      end
+    end
+
+    def set_type_at(depth, name, value)
+      if depth > 0
+        @next.set_type_at(depth - 1, name, value)
+      elsif @variables.key? name
+        @variables[name] = value
+      else
+        raise ArgumentError, "binding for #{name} not found"
       end
     end
 

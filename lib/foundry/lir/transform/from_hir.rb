@@ -55,6 +55,8 @@ module Foundry
       @binding = @builder.binding vars.keys, [ @binding ]
 
       vars.each do |var, value_node|
+        next if value_node.type == :void
+
         value = process(value_node)
 
         @builder.lvar_store 0, var, [ @binding, value ]
@@ -116,16 +118,16 @@ module Foundry
       value
     end
 
-    def on_true(node)
-      @builder.true
+    def on_nil(node)
+      @builder.nil
     end
 
     def on_false(node)
       @builder.false
     end
 
-    def on_nil(node)
-      @builder.nil
+    def on_true(node)
+      @builder.true
     end
 
     def on_integer(node)
@@ -280,6 +282,22 @@ module Foundry
     end
 
     #
+    # Primitives
+    #
+
+    def on_intop(node)
+      op_node, left_node, right_node = *node
+      op, = *op_node
+
+      @builder.integer_op(op,
+          process_all([ left_node, right_node ]))
+    end
+
+    def on_trace(node)
+      @builder.trace process_all(node)
+    end
+
+    #
     # Utilites
     #
 
@@ -299,10 +317,6 @@ module Foundry
       @builder.check_block [ proc ]
 
       proc
-    end
-
-    def on_trace(node)
-      @builder.trace process_all(node)
     end
   end
 end
