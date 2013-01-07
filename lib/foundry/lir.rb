@@ -84,6 +84,7 @@ module Foundry::LIR
     require_relative 'lir/transform/dead_code_elimination'
     require_relative 'lir/transform/global_dead_code_elimination'
     require_relative 'lir/transform/local_type_inference'
+    require_relative 'lir/transform/return_type_inference'
     require_relative 'lir/transform/sparse_conditional_constant_propagation'
     require_relative 'lir/transform/codegen'
   end

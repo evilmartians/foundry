@@ -100,6 +100,7 @@ module Foundry
           LIR::Transform::ResolveMethods.new,
           LIR::Transform::SpecializeMethods.new,
           LIR::Transform::LocalTypeInference.new,
+          LIR::Transform::ReturnTypeInference.new,
           LIR::Transform::SparseConditionalConstantPropagation.new,
           LIR::Transform::DeadCodeElimination.new,
         ]),
