@@ -22,11 +22,12 @@ SimpleCov.start
 require 'foundry'
 
 VI          = Foundry::VI
-AST         = Foundry::AST
+HIR         = Foundry::HIR
+LIR         = Foundry::LIR
 REPL        = Foundry::REPL
-Interpreter = Foundry::Interpreter
+Evaluator   = Foundry::Evaluator
 
-class SpecInterpreter < Foundry::Interpreter::Ruby
+class SpecInterpreter < Foundry::Evaluator::Ruby
   def on_repl(args)
     repl = Foundry::REPL::Shell.new(self.outer)
     repl.invoke!

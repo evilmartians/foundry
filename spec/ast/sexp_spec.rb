@@ -1,8 +1,8 @@
 require 'spec_helper'
 
-describe "AST::Node" do
+describe HIR::Node do
   it "should convert from sexp with location" do
-    tree = AST::Node.from_sexp(RubyParser.new.parse("1 + \n2", '(chunky bacon)'))
+    tree = HIR::Node.from_sexp(RubyParser.new.parse("1 + \n2", '(chunky bacon)'))
 
     tree.line.should == 1
     tree.file.should == '(chunky bacon)'
@@ -12,7 +12,7 @@ describe "AST::Node" do
   end
 
   it "should convert from sexp without location" do
-    AST::Node.from_simple_sexp([ :node, [ :nested, 42 ] ]).should ==
-        AST::Node.new(:node, [ AST::Node.new(:nested, [ 42 ]) ])
+    HIR::Node.from_simple_sexp([ :node, [ :nested, 42 ] ]).should ==
+        HIR::Node.new(:node, [ HIR::Node.new(:nested, [ 42 ]) ])
   end
 end
