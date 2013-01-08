@@ -5,10 +5,6 @@ module Foundry
     end
 
     def self.of(klass)
-      if defined?(LIR::LvarLoadInsn) &&
-           klass == LIR::LvarLoadInsn
-        raise
-      end
       @identity_map[klass]
     end
 
