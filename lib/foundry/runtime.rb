@@ -1,3 +1,5 @@
+require 'benchmark'
+
 module Foundry
   class Runtime
     class << self
@@ -115,7 +117,11 @@ module Foundry
       toplevel = construct_toplevel_call('main')
       translator.lir_module.add toplevel
 
-      pipeline.run(translator)
+      time = Benchmark.realtime do
+        pipeline.run(translator)
+      end
+
+      $stderr.puts "Optimized in %d ms." % [time * 1000]
 
       if @graph_lir
         translator.each_function do |func|
