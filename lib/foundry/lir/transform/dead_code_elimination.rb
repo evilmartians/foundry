@@ -1,18 +1,52 @@
 module Foundry
   class LIR::Transform::DeadCodeElimination < LIR::Processor
     def run_on_function(translator, func)
-      updated  = false
-      worklist = func.each_instruction.to_set
+      updated      = false
 
-      until worklist.empty?
-        insn = worklist.first
-        worklist.delete insn
+      cfg_worklist = func.each_basic_block.to_set
+      ssa_worklist = func.each_instruction.to_set
 
-        unless insn.used? || insn.has_side_effects?
-          worklist.merge insn.each_operand.reject(&:constant?)
-          insn.remove
+      until ssa_worklist.empty? && cfg_worklist.empty?
+        until cfg_worklist.empty?
+          block = cfg_worklist.first
+          cfg_worklist.delete block
 
-          updated = true
+          phi_uses, branch_uses = block.each_use.
+                partition { |use| use.is_a?(LIR::PhiInsn) }
+
+          unless func.entry == block || branch_uses.any? || block.exits?
+            phi_uses.each do |phi|
+              phi.operands.delete block
+
+              if phi.operands.one?
+                _, value = phi.operands.first
+                phi.replace_all_uses_with value
+                phi.remove
+              end
+            end
+
+            block.each_instruction do |insn|
+              ssa_worklist.merge insn.each_operand.reject(&:constant?)
+            end
+
+            cfg_worklist.merge block.successors
+
+            func.remove block
+
+            updated = true
+          end
+        end
+
+        until ssa_worklist.empty?
+          insn = ssa_worklist.first
+          ssa_worklist.delete insn
+
+          unless insn.used? || insn.has_side_effects?
+            ssa_worklist.merge insn.each_operand.reject(&:constant?)
+            insn.remove
+
+            updated = true
+          end
         end
       end
 

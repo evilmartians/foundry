@@ -1,5 +1,5 @@
 module Foundry
-  class Monotype < LIR::Type
+  class Monotype < LIR::GenericType
     @identity_map = Hash.new do |map, klass|
       map[klass] = Monotype.new(klass)
     end
@@ -16,6 +16,10 @@ module Foundry
 
     def initialize(klass)
       @klass = klass
+    end
+
+    def parameters
+      [@klass]
     end
 
     def inspect

@@ -18,6 +18,17 @@ module Foundry
         end
       end
 
+      func.each_instruction(LIR::PhiInsn) do |insn|
+        types      = insn.operands.values.map(&:type)
+        uniq_types = types.uniq
+
+        if uniq_types.one?
+          insn.type = uniq_types.first
+        elsif uniq_types.all? && uniq_types.all?(&:monotype?)
+          raise LIR::AnalysisError, "ambiguous phi node"
+        end
+      end
+
       updated
     end
   end

@@ -17,13 +17,7 @@ module Foundry
     end
 
     def type
-      tuple_ty = tuple.type
-
-      tuple_ty.is_a?(TupleType) &&
-          tuple_ty.size &&
-          (tuple_ty.size > @min_size ?
-              Foundry.typeof(VI::TRUE) :
-              Foundry.typeof(VI::FALSE))
+      Monotype.of(VI::Object)
     end
   end
 end

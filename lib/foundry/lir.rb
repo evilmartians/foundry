@@ -24,6 +24,10 @@ module Foundry
       end
     end
   end
+
+  def self.constant(value)
+    LIR::Constant.new(typeof(value), value)
+  end
 end
 
 module Foundry::LIR

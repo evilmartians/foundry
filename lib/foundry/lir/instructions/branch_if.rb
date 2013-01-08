@@ -5,5 +5,9 @@ module Foundry
       s.operand :true_target,  LIR::BasicBlock
       s.operand :false_target, LIR::BasicBlock
     end
+
+    def exits?
+      false
+    end
   end
 end
