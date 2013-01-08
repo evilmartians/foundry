@@ -53,11 +53,13 @@ module Foundry
           end
         end
 
-        if binding.variables.empty?
-          binding.remove
-        elsif !need_next && binding.next.type != LIR.void
-          binding.next = LIR.void_value
-          binding.reset_type!
+        if !need_next
+          if binding.variables.empty?
+            binding.remove
+          elsif binding.next.type != LIR.void
+            binding.next = LIR.void_value
+            binding.reset_type!
+          end
         end
       end
 
