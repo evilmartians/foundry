@@ -4,7 +4,11 @@ require 'llvm/transforms/scalar'
 module Foundry
   def self.typeof(object)
     if object.__vm_object?
-      klass = object.class
+      if object.singleton_class_defined?
+        klass = object.singleton_class
+      else
+        klass = object.class
+      end
 
       if klass == VI::Tuple
         TupleType.new(object.to_a)

@@ -1,8 +1,8 @@
 module Foundry
   class VMModule < VMObject
     attr_accessor :name
-    attr_reader :superclass
-    attr_reader :constant_table, :method_table
+    attr_writer   :superclass
+    attr_reader   :constant_table, :method_table
 
     define_mapped_ivars :name, :superclass,
                         :constant_table, :method_table
@@ -19,6 +19,10 @@ module Foundry
 
       @constant_table = VMLookupTable.new
       @method_table   = VMLookupTable.new
+    end
+
+    def direct_superclass
+      @superclass
     end
 
     def ancestors
@@ -115,14 +119,6 @@ module Foundry
       else
         VI::UNDEF
       end
-    end
-
-    def hash
-      __id__.hash
-    end
-
-    def eql?(other)
-      self.hash == other.hash
     end
 
     def inspect

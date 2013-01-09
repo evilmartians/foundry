@@ -27,13 +27,23 @@ module Foundry
       end
     end
 
+    def superclass
+      klass = @superclass
+
+      while klass.is_a? VI::IncludedModule
+        klass = klass.direct_superclass
+      end
+
+      klass
+    end
+
     def singleton_class
       if @singleton_class.nil?
         if @superclass.nil?
           # I am BasicObject.
           @singleton_class = VI::SingletonClass.vm_new(VI::Class, self)
         else
-          @singleton_class = VI::SingletonClass.vm_new(@superclass.singleton_class, self)
+          @singleton_class = VI::SingletonClass.vm_new(superclass.singleton_class, self)
         end
       end
 

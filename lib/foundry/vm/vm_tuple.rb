@@ -25,6 +25,14 @@ module Foundry
     end
     alias to_ary to_a
 
+    def +(other)
+      VI.new_tuple(@storage + other.to_a)
+    end
+
+    def uniq
+      VI.new_tuple(@storage.uniq)
+    end
+
     def inspect
       "{Tuple #{@storage.inspect}}"
     end

@@ -97,6 +97,14 @@ module Foundry
       EVAL
     end
 
+    def hash
+      __id__.hash
+    end
+
+    def eql?(other)
+      self.hash == other.hash
+    end
+
     def inspect
       if @ivar_table.size > 0
         ivs = " "
