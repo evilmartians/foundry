@@ -1,4 +1,11 @@
-all: test
+run: test
+	./test
+
+dis: test.bc
+	llvm-dis-3.2 $^ -o -
+
+objdump: test.o
+	objdump -d $^
 
 clean:
 	@rm -f *.bc *.ll *.o test
