@@ -1,6 +1,6 @@
 module Foundry
   class LIR::IntegerOpInsn < Furnace::SSA::Instruction
-    OPERATIONS = [ :+, :-, :*, :/, :%, :<, :<=, :>, :>= ]
+    OPERATIONS = [ :+, :-, :*, :/, :%, :<, :<=, :>, :>=, :==, :!= ]
 
     attr_accessor :operation
 
@@ -30,7 +30,7 @@ module Foundry
       case @operation
       when :+, :-, :*, :/, :%
         Monotype.of(VI::Integer)
-      when :<, :<=, :>, :>=
+      when :<, :<=, :>, :>=, :==, :!=
         Monotype.of(VI::Object)
       end
     end

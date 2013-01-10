@@ -62,7 +62,7 @@ module Kernel
     prc
   end
 
-  def trace(*objs)
-    FoundryRt.trace objs
+  def trace(obj)
+    FoundryRt.trace obj
   end
 end

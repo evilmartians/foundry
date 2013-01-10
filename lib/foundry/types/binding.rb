@@ -6,6 +6,7 @@ module Foundry
       # Accept both a Hash or an Array of names.
       @variables = Hash[elements.map { |elem| Array(elem) }]
       @next      = next_
+      @indexes   = nil
     end
 
     def to_static_env
@@ -36,6 +37,30 @@ module Foundry
       else
         raise ArgumentError, "binding for #{name} not found"
       end
+    end
+
+    def pin!
+      unless @indexes
+        @variables.freeze
+
+        @indexes = {}
+
+        @variables.each_with_index do |(name, _), index|
+          @indexes[name] = index
+        end
+
+        @next.pin! if @next != LIR.void
+      end
+
+      self
+    end
+
+    def variable_types
+      @variables.values
+    end
+
+    def index_of(name)
+      @indexes[name]
     end
 
     def parameters

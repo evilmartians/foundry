@@ -106,6 +106,7 @@ module Foundry
           LIR::Transform::BindingSimplification.new,
           LIR::Transform::SparseConditionalConstantPropagation.new,
           LIR::Transform::DeadCodeElimination.new,
+          LIR::Transform::BasicBlockMerging.new,
         ]),
 
         LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
@@ -121,7 +122,7 @@ module Foundry
         pipeline.run(translator)
       end
 
-      $stderr.puts "Optimized in %d ms." % [time * 1000]
+      $stderr.puts "LLVM bitcode generation complete in %d ms." % [time * 1000]
 
       if @graph_lir
         translator.each_function do |func|

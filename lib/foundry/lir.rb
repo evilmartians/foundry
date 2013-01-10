@@ -1,4 +1,5 @@
 require 'llvm/core'
+require 'llvm/analysis'
 require 'llvm/transforms/scalar'
 
 module Foundry
@@ -94,6 +95,7 @@ module Foundry::LIR
     require_relative 'lir/transform/local_type_inference'
     require_relative 'lir/transform/return_type_inference'
     require_relative 'lir/transform/binding_simplification'
+    require_relative 'lir/transform/basic_block_merging'
     require_relative 'lir/transform/sparse_conditional_constant_propagation'
     require_relative 'lir/transform/codegen'
   end
