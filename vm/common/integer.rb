@@ -37,6 +37,14 @@ class Integer < Numeric
     FoundryRt.intop :%, self, other
   end
 
+  def ==(other)
+    FoundryRt.intop :==, self, other
+  end
+
+  def !=(other)
+    FoundryRt.intop :!=, self, other
+  end
+
   def <(other)
     FoundryRt.intop :<,  self, other
   end

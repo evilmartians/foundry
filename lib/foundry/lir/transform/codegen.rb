@@ -312,8 +312,8 @@ module Foundry
           when :<=; builder.icmp :sle, llvm_left, llvm_right
           when :>;  builder.icmp :sgt, llvm_left, llvm_right
           when :>=; builder.icmp :sge, llvm_left, llvm_right
-          when :>;  builder.icmp :eq,  llvm_left, llvm_right
-          when :>=; builder.icmp :ne,  llvm_left, llvm_right
+          when :==; builder.icmp :eq,  llvm_left, llvm_right
+          when :!=; builder.icmp :ne,  llvm_left, llvm_right
           end
 
           pred_true  = @data[VI::TRUE].bitcast_to(@types[Monotype.of(VI::Object)])
