@@ -82,7 +82,7 @@ module Foundry
         end
 
       when LIR::BranchInsn
-        @cfg_worklist.add insn.target
+        schedule_block insn.target
 
         :TOP
 
@@ -103,7 +103,7 @@ module Foundry
           insn.replace_with(LIR::BranchInsn.new(insn.basic_block, [ target ]))
           @ssa_worklist.delete insn
 
-          @cfg_worklist.add target
+          schedule_block target
 
           @updated = true
         end
@@ -124,6 +124,12 @@ module Foundry
 
       else
         :BOT
+      end
+    end
+
+    def schedule_block(block)
+      unless @cfg_reachable.include? block
+        @cfg_worklist.add block
       end
     end
 

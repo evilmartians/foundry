@@ -68,11 +68,9 @@ module Foundry
 
       unless (llvm_ty = @llvm.types[llvm_name])
         llvm_ty = LLVM::Type.struct([], false, llvm_name)
-        unless klass.superclass.nil?
-          llvm_ty.element_types = [
-              emit_class_body_type(klass.superclass),
-          ].compact
-        end
+        llvm_ty.element_types = [
+            (emit_class_body_type(klass.superclass) unless klass.superclass.nil?),
+        ].compact
       end
 
       llvm_ty
@@ -89,6 +87,12 @@ module Foundry
 
       when Monotype
         klass         = type.klass
+
+        # HACK
+        if klass == VI::Integer
+          return int_ptr_type
+        end
+
         llvm_body_ty  = emit_class_body_type(klass)
 
         llvm_imp_name = "i.#{llvm_body_ty.name}"
@@ -135,6 +139,11 @@ module Foundry
     def emit_object(object, name=nil)
       if object.is_a?(VI::Class) && !object.name.nil?
         name = name(nil, object)
+      end
+
+      # HACK
+      if object.class == VI::Integer
+        return int_ptr_type.from_i(object.value)
       end
 
       if name && (datum = @llvm.globals[name])
@@ -204,7 +213,9 @@ module Foundry
       @values.clear
 
       func.arguments.each_with_index do |arg, index|
-        @values[arg] = llvm_func.params[index]
+        llvm_arg = llvm_func.params[index]
+        llvm_arg.name = arg.name
+        @values[arg] = llvm_arg
       end
 
       func.each_basic_block do |block|
@@ -331,7 +342,7 @@ module Foundry
         llvm_int  = builder.ptr2int(llvm_ptr, int_ptr_type)
 
         llvm_and  = builder.and(llvm_int, ~int_ptr_type.from_i(0b0010))
-        llvm_cmp  = builder.icmp(:eq, llvm_and, int_ptr_type.from_i(0))
+        llvm_cmp  = builder.icmp(:ne, llvm_and, int_ptr_type.from_i(0))
 
         builder.cond(llvm_cmp,
             @values[insn.true_target],

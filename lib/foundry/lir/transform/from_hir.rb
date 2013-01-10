@@ -262,7 +262,7 @@ module Foundry
         cond_value = process(cond)
         @builder.control_flow_op(:branch_if, [ cond_value ]) do |head, tail|
           flip_if(is_until, [
-            @builder.fork(tail) do
+            @builder.fork(head) do
               process(body)
               @builder.nil
             end,
