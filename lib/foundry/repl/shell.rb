@@ -171,8 +171,13 @@ module Foundry
       end
     end
 
-    INITIAL_PROMPT  = "\001#{ANSI.green}\002f! \001#{ANSI.reset}\002"
-    CONTINUE_PROMPT = "\001#{ANSI.bold}#{ANSI.white}\002 > \001#{ANSI.reset}\002"
+    if defined?(JRUBY_VERSION)
+      INITIAL_PROMPT  = "f! "
+      CONTINUE_PROMPT = " > "
+    else
+      INITIAL_PROMPT  = "\001#{ANSI.green}\002f! \001#{ANSI.reset}\002"
+      CONTINUE_PROMPT = "\001#{ANSI.bold}#{ANSI.white}\002 > \001#{ANSI.reset}\002"
+    end
 
     def invoke!
       puts "Foundry REPL. Type \\? to view command reference."
