@@ -9,7 +9,6 @@ Bundler.setup
 
 require 'trollop'
 require 'foundry'
-require 'pp'
 
 opts = Trollop::options do
   version "Foundry Ruby Interpreter/Compiler #{Foundry::VERSION}"

@@ -31,22 +31,17 @@ module Foundry::Evaluator
     #
 
     def on_trace(node)
-      results = process(node.children.first).to_a
-      $stderr.puts results.map(&:inspect).join(", ")
+      result = process(node.children.first)
+      $stderr.puts result.inspect
 
-      if results.one?
-        results.first
-      else
-        VI.new_tuple(results)
-      end
+      VI::NIL
     end
 
     def on_equal?(node)
       self_, other = process_all(node.children)
 
       if self_.class == other.class &&
-            (self_.class == VI::Integer ||
-             other.class == VI::Symbol)
+            other.class == VI::Symbol
         self_.value == other.value ? VI::TRUE : VI::FALSE
       else
         self_.equal?(other) ? VI::TRUE : VI::FALSE
@@ -111,7 +106,14 @@ module Foundry::Evaluator
 
     def on_intop(node)
       op, left, right = *process_all(node)
-      VI.new_integer left.value.send(op.value, right.value)
+      case op.value
+      when :<, :<=, :>, :>=, :==, :!=
+        left.value.send(op.value, right.value) ?
+            VI::TRUE : VI::FALSE
+
+      when :+, :-, :*, :/, :%
+        VI.new_integer left.value.send(op.value, right.value)
+      end
     end
   end
 end
