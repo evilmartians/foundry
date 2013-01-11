@@ -1,3 +1,4 @@
+require 'ffi' # warbler requires it to be here.
 require 'llvm/core'
 require 'llvm/analysis'
 require 'llvm/transforms/scalar'
