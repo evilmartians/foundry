@@ -3,10 +3,9 @@ source 'https://rubygems.org'
 # Specify your gem's dependencies in foundry.gemspec
 gemspec
 
-gem 'ruby-llvm', github: 'whitequark/ruby-llvm'
-gem 'foundry-ruby_parser'
-gem 'furnace', path: '../furnace'
+gem 'ruby-llvm', path: '../ruby-llvm'
 
 group :development do
+  gem 'warbler', github: 'whitequark/warbler'
   gem 'pry'
 end

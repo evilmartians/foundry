@@ -17,7 +17,13 @@ module Foundry
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
     def self.bootstrap
-      load_package(File.join(VM_ROOT, 'common'))
+      $stderr.puts "Bootstrapping VM..."
+
+      time = Benchmark.realtime do
+        load_package(File.join(VM_ROOT, 'common'))
+      end
+
+      $stderr.puts "VM loading complete in %d ms." % [time * 1000]
     end
 
     def self.load_package(directory)
