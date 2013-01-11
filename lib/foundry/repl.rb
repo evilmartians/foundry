@@ -1,4 +1,4 @@
 module Foundry::REPL
-  require_relative 'repl/multiline'
-  require_relative 'repl/shell'
+  require 'foundry/repl/multiline'
+  require 'foundry/repl/shell'
 end

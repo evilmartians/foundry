@@ -46,57 +46,57 @@ module Foundry::LIR
     Furnace::SSA.void_value
   end
 
-  require_relative 'types/monotype'
-  require_relative 'types/tuple'
-  require_relative 'types/binding'
-  require_relative 'types/closure'
+  require 'foundry/types/monotype'
+  require 'foundry/types/tuple'
+  require 'foundry/types/binding'
+  require 'foundry/types/closure'
 
-  require_relative 'lir/analysis_error'
+  require 'foundry/lir/analysis_error'
 
-  require_relative 'lir/builder'
+  require 'foundry/lir/builder'
 
-  require_relative 'lir/instructions/binding'
-  require_relative 'lir/instructions/closure'
-  require_relative 'lir/instructions/lvar_load'
-  require_relative 'lir/instructions/lvar_store'
+  require 'foundry/lir/instructions/binding'
+  require 'foundry/lir/instructions/closure'
+  require 'foundry/lir/instructions/lvar_load'
+  require 'foundry/lir/instructions/lvar_store'
 
-  require_relative 'lir/instructions/tuple'
-  require_relative 'lir/instructions/tuple_ref'
-  require_relative 'lir/instructions/tuple_bigger'
-  require_relative 'lir/instructions/tuple_slice'
+  require 'foundry/lir/instructions/tuple'
+  require 'foundry/lir/instructions/tuple_ref'
+  require 'foundry/lir/instructions/tuple_bigger'
+  require 'foundry/lir/instructions/tuple_slice'
 
-  require_relative 'lir/instructions/ivar_load'
-  require_relative 'lir/instructions/ivar_store'
+  require 'foundry/lir/instructions/ivar_load'
+  require 'foundry/lir/instructions/ivar_store'
 
-  require_relative 'lir/instructions/resolve_method'
-  require_relative 'lir/instructions/resolve_closure'
-  require_relative 'lir/instructions/invoke'
+  require 'foundry/lir/instructions/resolve_method'
+  require 'foundry/lir/instructions/resolve_closure'
+  require 'foundry/lir/instructions/invoke'
 
-  require_relative 'lir/instructions/branch_if'
+  require 'foundry/lir/instructions/branch_if'
 
-  require_relative 'lir/instructions/define_method'
+  require 'foundry/lir/instructions/define_method'
 
-  require_relative 'lir/instructions/integer_op'
-  require_relative 'lir/instructions/trace'
+  require 'foundry/lir/instructions/integer_op'
+  require 'foundry/lir/instructions/trace'
 
-  require_relative 'lir/instructions/check_arity'
-  require_relative 'lir/instructions/check_block'
+  require 'foundry/lir/instructions/check_arity'
+  require 'foundry/lir/instructions/check_block'
 
-  require_relative 'lir/translator'
-  require_relative 'lir/processor'
+  require 'foundry/lir/translator'
+  require 'foundry/lir/processor'
 
   module Transform
-    require_relative 'lir/transform/from_hir'
+    require 'foundry/lir/transform/from_hir'
 
-    require_relative 'lir/transform/resolve_methods'
-    require_relative 'lir/transform/specialize_methods'
-    require_relative 'lir/transform/dead_code_elimination'
-    require_relative 'lir/transform/global_dead_code_elimination'
-    require_relative 'lir/transform/local_type_inference'
-    require_relative 'lir/transform/return_type_inference'
-    require_relative 'lir/transform/binding_simplification'
-    require_relative 'lir/transform/basic_block_merging'
-    require_relative 'lir/transform/sparse_conditional_constant_propagation'
-    require_relative 'lir/transform/codegen'
+    require 'foundry/lir/transform/resolve_methods'
+    require 'foundry/lir/transform/specialize_methods'
+    require 'foundry/lir/transform/dead_code_elimination'
+    require 'foundry/lir/transform/global_dead_code_elimination'
+    require 'foundry/lir/transform/local_type_inference'
+    require 'foundry/lir/transform/return_type_inference'
+    require 'foundry/lir/transform/binding_simplification'
+    require 'foundry/lir/transform/basic_block_merging'
+    require 'foundry/lir/transform/sparse_conditional_constant_propagation'
+    require 'foundry/lir/transform/codegen'
   end
 end

@@ -4,8 +4,10 @@ unless $:.include?(File.dirname(__FILE__) + '/../lib')
   $:.unshift(File.dirname(__FILE__) + '/../lib')
 end
 
-require 'bundler'
-Bundler.setup
+unless defined?(WARBLER_CONFIG)
+  require 'bundler'
+  Bundler.setup
+end
 
 require 'trollop'
 require 'foundry'

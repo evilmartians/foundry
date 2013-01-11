@@ -38,7 +38,7 @@ Warbler::Config.new do |config|
   # project directory, it will be used to collect the gems to bundle
   # in your application. If you wish to explicitly disable this
   # functionality, uncomment here.
-  # config.bundler = false
+  config.bundler = false
 
   # An array of Bundler groups to avoid including in the war file.
   # Defaults to ["development", "test"].
@@ -53,7 +53,7 @@ Warbler::Config.new do |config|
   # config.gems << "tzinfo"
 
   # Uncomment this if you don't want to package rails gem.
-  # config.gems -= ["ffi"]
+  config.gems -= ["ffi"]
 
   # The most recent versions of gems are used.
   # You can specify versions of gems by using a hash assignment:

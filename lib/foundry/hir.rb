@@ -1,16 +1,16 @@
 module Foundry::HIR
-  require_relative 'hir/node'
-  require_relative 'hir/sexp_builder'
+  require 'foundry/hir/node'
+  require 'foundry/hir/sexp_builder'
 
-  require_relative 'hir/context'
-  require_relative 'hir/processor'
+  require 'foundry/hir/context'
+  require 'foundry/hir/processor'
 
   module Transform
-    require_relative 'hir/transform/from_ruby_parser'
-    require_relative 'hir/transform/literal_primitives'
-    require_relative 'hir/transform/argument_processing'
-    require_relative 'hir/transform/trace_local_variables'
-    require_relative 'hir/transform/expand_global_variables'
-    require_relative 'hir/transform/dump_ir'
+    require 'foundry/hir/transform/from_ruby_parser'
+    require 'foundry/hir/transform/literal_primitives'
+    require 'foundry/hir/transform/argument_processing'
+    require 'foundry/hir/transform/trace_local_variables'
+    require 'foundry/hir/transform/expand_global_variables'
+    require 'foundry/hir/transform/dump_ir'
   end
 end

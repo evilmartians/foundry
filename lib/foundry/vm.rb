@@ -1,25 +1,25 @@
-require_relative 'vm/vm_immediate'
-require_relative 'vm/vm_object'
+require 'foundry/vm/vm_immediate'
+require 'foundry/vm/vm_object'
 
-require_relative 'vm/vm_module'
-require_relative 'vm/vm_included_module'
-require_relative 'vm/vm_class'
-require_relative 'vm/vm_singleton_class'
+require 'foundry/vm/vm_module'
+require 'foundry/vm/vm_included_module'
+require 'foundry/vm/vm_class'
+require 'foundry/vm/vm_singleton_class'
 
-require_relative 'vm/vm_tuple'
-require_relative 'vm/vm_lookup_table'
+require 'foundry/vm/vm_tuple'
+require 'foundry/vm/vm_lookup_table'
 
-require_relative 'vm/vm_nil_class'
-require_relative 'vm/vm_true_class'
-require_relative 'vm/vm_false_class'
+require 'foundry/vm/vm_nil_class'
+require 'foundry/vm/vm_true_class'
+require 'foundry/vm/vm_false_class'
 
-require_relative 'vm/vm_binding'
-require_relative 'vm/vm_proc'
+require 'foundry/vm/vm_binding'
+require 'foundry/vm/vm_proc'
 
-require_relative 'vm/vm_symbol'
-require_relative 'vm/vm_string'
+require 'foundry/vm/vm_symbol'
+require 'foundry/vm/vm_string'
 
-require_relative 'vm/vm_integer'
+require 'foundry/vm/vm_integer'
 
 module Foundry
   module VI
