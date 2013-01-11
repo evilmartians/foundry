@@ -1,0 +1,71 @@
+GIT
+  remote: git://github.com/whitequark/warbler.git
+  revision: 9c5e65d337b2d80b7e03e922fef24205000a56ab
+  specs:
+    warbler (1.3.6)
+      jruby-jars (>= 1.4.0)
+      jruby-rack (>= 1.0.0)
+      rake (>= 0.8.7)
+      rubyzip (>= 0.9.4)
+
+PATH
+  remote: .
+  specs:
+    foundry (0.0.1)
+      ansi
+      foundry-ruby_parser (>= 3.1.0)
+      furnace (= 0.4.0.beta.1)
+      ruby-llvm (~> 3.2.0.beta)
+      trollop
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ansi (1.4.3)
+    coderay (1.0.8)
+    diff-lcs (1.1.3)
+    ffi (1.3.1-java)
+    foundry-ruby_parser (3.1.1)
+      sexp_processor (~> 4.1)
+    furnace (0.4.0.beta.1)
+      ansi
+    jruby-jars (1.7.2)
+    jruby-rack (1.1.12)
+    method_source (0.8.1)
+    multi_json (1.5.0)
+    pry (0.9.10-java)
+      coderay (~> 1.0.5)
+      method_source (~> 0.8)
+      slop (~> 3.3.1)
+      spoon (~> 0.0)
+    rake (10.0.3)
+    rspec (2.12.0)
+      rspec-core (~> 2.12.0)
+      rspec-expectations (~> 2.12.0)
+      rspec-mocks (~> 2.12.0)
+    rspec-core (2.12.2)
+    rspec-expectations (2.12.1)
+      diff-lcs (~> 1.1.3)
+    rspec-mocks (2.12.1)
+    ruby-llvm (3.2.0.beta.1)
+      ffi (>= 1.0.0)
+    rubyzip (0.9.9)
+    sexp_processor (4.1.3)
+    simplecov (0.7.1)
+      multi_json (~> 1.0)
+      simplecov-html (~> 0.7.1)
+    simplecov-html (0.7.1)
+    slop (3.3.3)
+    spoon (0.0.1)
+    trollop (2.0)
+
+PLATFORMS
+  java
+
+DEPENDENCIES
+  foundry!
+  pry
+  rake (~> 10.0)
+  rspec
+  simplecov
+  warbler!

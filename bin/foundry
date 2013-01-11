@@ -19,11 +19,17 @@ Usage: foundry [options] filename...
 
   EOS
 
-  opt :target,    "Target environment",         default: 'dummy'
-  opt :evaluate,  "Evaluate code",              type: :strings
-  opt :dump_lir,  "Dump LIR",                   default: false
-  opt :dump_llvm, "Dump LLVM IR",               default: false
-  opt :output,    "Write bitcode",              type: :string
+  opt :target,     "Target environment",         default: 'dummy'
+  opt :evaluate,   "Evaluate code",              type: :strings
+  opt :dump_lir,   "Dump LIR",                   default: false
+  opt :dump_llvm,  "Dump LLVM IR",               default: false
+  opt :output,     "Write bitcode",              type: :string
+  opt :print_maps, "Print /proc/self/maps (don't use)", type: :string
+end
+
+if opts[:print_maps]
+  File.write(opts[:print_maps], File.read('/proc/self/maps'))
+  exit
 end
 
 Furnace::SSA::PrettyPrinter.colorize = $stdout.tty?

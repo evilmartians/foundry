@@ -4,3 +4,6 @@
 [submodule "vendor/rubyspec"]
 	path = vendor/rubyspec
 	url = git://github.com/rubyspec/rubyspec
+[submodule "redist"]
+	path = redist
+	url = git@github.com:whitequark/foundry-redist.git
