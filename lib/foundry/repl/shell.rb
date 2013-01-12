@@ -86,7 +86,7 @@ module Foundry
     def ls(cmdline)
       cmdline = (cmdline || "").strip
       if cmdline.empty?
-        describe @interp.binding.apply(:Self)
+        describe @interp.binding.apply(:self)
       else
         object = safe_eval(cmdline, '(ls-eval)')
         describe object unless object.equal? nil
@@ -181,7 +181,7 @@ module Foundry
 
     def invoke!
       puts "Foundry REPL. Type \\? to view command reference."
-      puts "Self: #{@interp.binding.apply(:Self).inspect}"
+      puts "Self: #{@interp.binding.apply(:self).inspect}"
 
       until @terminate
         if @buffer.empty?
