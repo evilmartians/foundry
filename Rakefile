@@ -50,7 +50,7 @@ desc "Build a redistributable archive."
 task :redist => "foundry.jar" do
   rm_rf   "pkg"
 
-  release_id = Time.now.strftime("%Y%M%d")
+  release_id = Time.now.strftime("%Y%m%d")
   target     = "pkg/foundry-#{release_id}"
 
   mkdir_p target
