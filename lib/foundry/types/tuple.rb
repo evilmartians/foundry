@@ -1,23 +1,15 @@
 module Foundry
   class TupleType < LIR::GenericType
-    attr_accessor :elements
-
-    def initialize(elements=nil)
-      @elements = elements
-    end
-
     def element_types
-      if @elements
-        @elements.map do |elem|
-          Foundry.typeof(elem) if elem
-        end
-      end
+      raise NotImplementedError, "implement #{self.class}#element_types"
     end
 
-    alias parameters element_types
+    def parameters
+      element_types
+    end
 
     def size
-      @elements && @elements.length
+      element_types && element_types.length
     end
 
     def monotype?
@@ -31,7 +23,7 @@ module Foundry
     end
 
     def inspect
-      if @elements
+      if element_types
         types = element_types.map do |type|
           Furnace::SSA.inspect_type(type)
         end.join(', ')

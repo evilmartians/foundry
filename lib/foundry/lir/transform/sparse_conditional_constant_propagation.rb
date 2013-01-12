@@ -122,6 +122,18 @@ module Foundry
           :BOT
         end
 
+      when LIR::TupleConcatInsn
+        left_tuple, right_tuple = insn.left_tuple, insn.right_tuple
+
+        if left_tuple.constant? && right_tuple.constant?
+          new_insn = LIR::TupleInsn.new(insn.basic_block,
+              left_tuple.value.to_a +
+              right_tuple.value.to_a +
+              insn.elements)
+        else
+          :BOT
+        end
+
       else
         :BOT
       end

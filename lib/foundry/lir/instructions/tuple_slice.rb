@@ -25,9 +25,9 @@ module Foundry
     def type
       tuple_ty = tuple.type
 
-      tuple_ty.is_a?(TupleType) &&
+      tuple_ty.is_a?(LiteralTupleType) &&
           tuple_ty.elements &&
-          TupleType.new(tuple_ty.elements[@from..@to])
+          LiteralTupleType.new(tuple_ty.elements[@from..@to])
     end
 
     protected

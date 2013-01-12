@@ -13,7 +13,7 @@ module Foundry
       end
 
       if klass == VI::Tuple
-        TupleType.new(object.to_a)
+        LiteralTupleType.new(object.to_a)
       elsif klass == VI::Binding
         object.__type__ # TODO refactor this somehow
       elsif klass == VI::Proc
@@ -49,6 +49,8 @@ module Foundry::LIR
 
   require 'foundry/types/monotype'
   require 'foundry/types/tuple'
+  require 'foundry/types/literal_tuple'
+  require 'foundry/types/combined_tuple'
   require 'foundry/types/binding'
   require 'foundry/types/closure'
 
@@ -64,6 +66,7 @@ module Foundry::LIR
   require 'foundry/lir/instructions/tuple'
   require 'foundry/lir/instructions/tuple_ref'
   require 'foundry/lir/instructions/tuple_bigger'
+  require 'foundry/lir/instructions/tuple_concat'
   require 'foundry/lir/instructions/tuple_slice'
 
   require 'foundry/lir/instructions/ivar_load'
@@ -78,6 +81,7 @@ module Foundry::LIR
   require 'foundry/lir/instructions/define_method'
 
   require 'foundry/lir/instructions/integer_op'
+
   require 'foundry/lir/instructions/trace'
 
   require 'foundry/lir/instructions/check_arity'

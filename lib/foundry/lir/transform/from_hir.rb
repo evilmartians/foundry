@@ -165,7 +165,15 @@ module Foundry
     end
 
     def on_tuple(node)
-      @builder.tuple process_all(node)
+      node.children.reduce(@builder.tuple) do |tuple, child|
+        if child.type == :splat
+          splat_content, = *child
+          @builder.tuple_concat [ tuple, process(splat_content) ]
+        else
+          tuple.operands << process(child)
+          tuple
+        end
+      end
     end
 
     def on_tuple_ref(node)

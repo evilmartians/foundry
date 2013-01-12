@@ -6,6 +6,7 @@ module Foundry
       func.each_instruction(LIR::ResolveMethodInsn) do |insn|
         if insn.receiver.type &&
               insn.method.constant?
+
           type, method = insn.receiver.type, insn.method.value
           klass = type.klass
 
