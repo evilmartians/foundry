@@ -101,13 +101,6 @@ module Foundry
       ])
     end
 
-    def on_tuple_concat(node)
-      left, right = *node
-      node.updated(nil, [
-        process(left), process(right)
-      ])
-    end
-
     def on_tuple_bigger?(node)
       tuple, length = *node
       node.updated(nil, [

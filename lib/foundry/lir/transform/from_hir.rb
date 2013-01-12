@@ -165,15 +165,11 @@ module Foundry
     end
 
     def on_tuple(node)
-      node.children.reduce(@builder.tuple) do |tuple, child|
-        if child.type == :splat
-          splat_content, = *child
-          @builder.tuple_concat [ tuple, process(splat_content) ]
-        else
-          tuple.operands << process(child)
-          tuple
-        end
-      end
+      @builder.tuple process_all(node)
+    end
+
+    def on_tuple_concat(node)
+      @builder.tuple_concat process_all(node)
     end
 
     def on_tuple_ref(node)
@@ -192,7 +188,7 @@ module Foundry
     end
 
     def on_const_base(node)
-      Foundry.constant(VI::Object)
+      @builder.const_base
     end
 
     def on_const_ref(node)

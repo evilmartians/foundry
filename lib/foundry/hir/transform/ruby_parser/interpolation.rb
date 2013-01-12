@@ -1,22 +1,36 @@
 module Foundry
   module HIR::Transform::FromRubyParser::Interpolation
     def process_tuple(nodes)
-      result_nodes = []
+      last_tuple  = []
+      concat_node = nil
 
       nodes.each do |node|
         if node.type == :splat
-          result_nodes += node.children
+          unless concat_node
+            concat_node = []
+          end
+
+          splat_value, = *node
+
+          concat_node << s(:tuple, *last_tuple)
+          concat_node << process(splat_value)
+          last_tuple  =  []
         else
-          result_nodes << node
+          last_tuple  << process(node)
         end
       end
 
-      s(:tuple, result_nodes)
+      if concat_node.nil?
+        s(:tuple, *last_tuple)
+      else
+        concat_node << s(:tuple, *last_tuple)
+        s(:tuple_concat, *concat_node)
+      end
     end
 
-    #def on_tuple(node)
-    #  process_tuple(node.children)
-    #end
+    def on_tuple(node)
+      process_tuple(node.children)
+    end
 
     def process_dstr(seed, nodes)
       nodes.reduce(s(:string, seed)) do |ast, node|

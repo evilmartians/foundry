@@ -110,6 +110,13 @@ module Foundry
 
         :TOP
 
+      when LIR::TupleInsn
+        if insn.operands.all? &:constant?
+          Foundry.constant(VI.new_tuple(insn.operands))
+        else
+          :BOT
+        end
+
       when LIR::TupleBiggerInsn
         tuple    = insn.tuple
         tuple_ty = tuple.type
@@ -123,13 +130,8 @@ module Foundry
         end
 
       when LIR::TupleConcatInsn
-        left_tuple, right_tuple = insn.left_tuple, insn.right_tuple
-
-        if left_tuple.constant? && right_tuple.constant?
-          new_insn = LIR::TupleInsn.new(insn.basic_block,
-              left_tuple.value.to_a +
-              right_tuple.value.to_a +
-              insn.elements)
+        if insn.operands.all? &:constant?
+          Foundry.constant(VI.new_tuple(insn.operands.map(&:value).reduce(:+)))
         else
           :BOT
         end
