@@ -18,8 +18,17 @@ module Foundry
       [@klass]
     end
 
+    def subtype_of?(type)
+      type.instance_of?(Monotype) &&
+          klass.ancestors.include?(type.klass)
+    end
+
     def inspect
-      "^#{@klass.name}"
+      if @klass.is_a? VI::SingletonClass
+        "^Singleton<#{@klass.object.inspect}>"
+      else
+        "^#{@klass.name}"
+      end
     end
   end
 end

@@ -51,11 +51,7 @@ module Foundry
     end
 
     def inspect
-      unless @superclass.nil?
-        sup = " < #{as_module_name @superclass.name, 'class'}"
-      end
-
-      "{class #{as_module_name @name, 'class'}#{sup}}"
+      "{class #{as_module_name @name, 'class'}}"
     end
   end
 end
