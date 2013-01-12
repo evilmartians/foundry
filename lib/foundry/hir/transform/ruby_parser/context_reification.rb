@@ -8,11 +8,11 @@ module Foundry
       else
         node.updated(:let, [
           {
-            :Self  => s(:self_arg),
-            :Block => s(:nil),
-            :Defn  => s(:const_base),
-            :Cref  => s(:tuple,
-                        s(:const_base)),
+            :self     => s(:self_arg),
+            :"&block" => s(:nil),
+            :Defn     => s(:const_base),
+            :Cref     => s(:tuple,
+                           s(:const_base)),
           },
           *process_all(node.children),
         ], function: '(toplevel)')
@@ -25,12 +25,12 @@ module Foundry
           :Scope  => new_scope,
         },
         s(:let, {
-            :Self   => s(:var, :Scope),
-            :Block  => s(:nil),
-            :Defn   => s(:var, :Scope),
-            :Cref   => s(:tuple_concat,
-                         s(:var, :Cref),
-                         s(:tuple, s(:var, :Scope))),
+            :self     => s(:var, :Scope),
+            :"&block" => s(:nil),
+            :Defn     => s(:var, :Scope),
+            :Cref     => s(:tuple_concat,
+                           s(:var, :Cref),
+                           s(:tuple, s(:var, :Scope))),
 
           },
           *process_all(body))
@@ -108,12 +108,12 @@ module Foundry
     end
 
     def on_self(node)
-      node.updated(:var, [ :Self ])
+      node.updated(:var, [ :self ])
     end
 
     def on_yield(node)
       node.updated(:apply, [
-        s(:check_block, s(:var, :Block)),
+        s(:check_block, s(:var, :"&block")),
         process(node.updated(:array)),
         s(:nil)
       ])
@@ -129,7 +129,7 @@ module Foundry
       name, = *node
 
       node.updated(:ivar, [
-        s(:var, :Self),
+        s(:var, :self),
         s(:symbol, name)
       ])
     end
@@ -138,7 +138,7 @@ module Foundry
       name, value = *node
 
       node.updated(:imut, [
-        s(:var, :Self),
+        s(:var, :self),
         s(:symbol, name),
         process(value)
       ])

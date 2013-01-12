@@ -8,19 +8,28 @@ module Foundry
       raise "cannot lower #{node.type}"
     end
 
+    CONTEXT_VARS = [:Defn, :Cref].freeze
+
     def run(code, binding, name_prefix='anonymous')
       @name_prefix = name_prefix
       @env         = binding.type.to_static_env
 
       @builder     = LIR::Builder.new(@name_prefix, [
-                        [ nil,                    'self'  ],
-                        [ TupleType.new(nil),     'args'  ],
-                        [ Monotype.of(VI::Proc),  'block' ],
+                        [ nil,                       'self'  ],
+                        [ LiteralTupleType.new(nil), 'args'  ],
+                        [ Monotype.of(VI::Proc),     'block' ],
                     ], nil)
       @lir_module.add(@builder.function)
 
       @function = @builder.function
       @self_arg, @args, @block_arg = @function.arguments
+
+      @context = {}
+
+      CONTEXT_VARS.each do |var|
+        value = binding.value.apply(var)
+        @context[var] = Foundry.constant(value)
+      end
 
       if binding.constant?
         @binding = binding
@@ -32,6 +41,9 @@ module Foundry
       @builder.return process(code)
 
       @function
+    rescue
+      $stderr.puts "Failure while processing HIR:\n#{code.inspect}"
+      raise
     end
 
     def on_self_arg(node)
@@ -49,35 +61,42 @@ module Foundry
     def on_let(node)
       vars, *body = *node
 
-      old_env, old_binding = @env, @binding
+      old_env, old_binding, old_context = @env, @binding, @context
 
-      @env     = [ vars.keys.to_set ] + @env
-      @binding = @builder.binding vars.keys, [ @binding ]
+      @env     = [ (vars.keys - CONTEXT_VARS).to_set ] + @env
+      @binding = @builder.binding (vars.keys - CONTEXT_VARS), [ @binding ]
 
       vars.each do |var, value_node|
         next if value_node.type == :void
 
-        value = process(value_node)
-
-        @builder.lvar_store 0, var, [ @binding, value ]
+        if CONTEXT_VARS.include?(var)
+          @context = @context.merge({ var => process(value_node) })
+        else
+          value = process(value_node)
+          @builder.lvar_store 0, var, [ @binding, value ]
+        end
       end
 
       process_all(body).last
 
     ensure
-      @env, @binding = old_env, old_binding
+      @env, @binding, @context = old_env, old_binding, old_context
     end
 
     def on_var(node)
       name, = *node
 
-      @env.each_with_index do |frame, depth|
-        if frame.include? name
-          return @builder.lvar_load nil, depth, name, [ @binding ]
+      if CONTEXT_VARS.include?(name)
+        @context[name]
+      else
+        @env.each_with_index do |frame, depth|
+          if frame.include? name
+            return @builder.lvar_load nil, depth, name, [ @binding ]
+          end
         end
-      end
 
-      raise "cannot find #{name} in environment"
+        raise "cannot find #{name} in environment"
+      end
     end
 
     def on_mut(node)

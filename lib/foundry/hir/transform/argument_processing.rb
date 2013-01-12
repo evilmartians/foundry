@@ -20,8 +20,8 @@ module Foundry
       def seed_variables
         unless @is_proc
           @vars = {
-            :Self  => s(:self_arg),
-            :Block => s(:block_arg)
+            :self     => s(:self_arg),
+            :"&block" => s(:block_arg)
           }
         end
       end
