@@ -191,6 +191,20 @@ module Foundry
       @builder.tuple_slice from, to, [ process(tuple_node) ]
     end
 
+    def on_const_base(node)
+      Foundry.constant(VI::Object)
+    end
+
+    def on_const_ref(node)
+      cref, constant = *node
+      @builder.const_ref constant, [ process(cref) ]
+    end
+
+    def on_const_fetch(node)
+      scope, constant = *node
+      @builder.const_fetch constant, [ process(scope) ]
+    end
+
     def make_closure(code, name_prefix)
       transform = LIR::Transform::FromHIR.new(@lir_module)
       closure   = transform.run(code, @binding, name_prefix)

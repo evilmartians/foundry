@@ -134,6 +134,34 @@ module Foundry
           :BOT
         end
 
+      when LIR::ConstRefInsn
+        cref = insn.cref
+
+        if cref.constant?
+          cref.value.each do |elem|
+            if elem.const_defined?(insn.constant)
+              return Foundry.constant(elem.const_get(insn.constant))
+            end
+          end
+
+          raise LIR::AnalysisError, "#{insn.constant} not found in cref #{cref.value.to_a}"
+        else
+          :BOT
+        end
+
+      when LIR::ConstFetchInsn
+        scope = insn.scope
+
+        if scope.constant?
+          if scope.value.const_defined?(insn.constant)
+            return Foundry.constant(scope.value.const_get(insn.constant))
+          end
+
+          raise LIR::AnalysisError, "#{insn.constant} not found in #{scope.value}"
+        else
+          :BOT
+        end
+
       else
         :BOT
       end

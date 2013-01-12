@@ -16,5 +16,9 @@ module Foundry
       p.text    @constant
       p.keyword 'from'
     end
+
+    def type
+      nil
+    end
   end
 end
