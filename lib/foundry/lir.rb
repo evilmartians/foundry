@@ -58,6 +58,8 @@ module Foundry::LIR
 
   require 'foundry/lir/builder'
 
+  require 'foundry/lir/instructions/allocate'
+
   require 'foundry/lir/instructions/binding'
   require 'foundry/lir/instructions/closure'
   require 'foundry/lir/instructions/lvar_load'

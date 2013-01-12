@@ -326,6 +326,11 @@ module Foundry
     # Primitives
     #
 
+    def on_allocate(node)
+      klass, = process_all(node)
+      @builder.allocate [ klass ]
+    end
+
     def on_intop(node)
       op_node, left_node, right_node = *node
       op, = *op_node
