@@ -15,3 +15,4 @@ foundry/globals.rb
 comparable.rb
 numeric.rb
 integer.rb
+string.rb

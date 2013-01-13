@@ -21,10 +21,12 @@ Usage: foundry [options] filename...
 
   opt :target,     "Target environment",         default: 'dummy'
   opt :evaluate,   "Evaluate code",              type: :strings
+
   opt :dump_lir,   "Dump LIR",                   default: false
   opt :dump_llvm,  "Dump LLVM IR",               default: false
   opt :output,     "Write bitcode",              type: :string
-  opt :print_maps, "Print /proc/self/maps (don't use)", type: :string
+
+  opt :print_maps, "Print /proc/self/maps",      type: :string
 end
 
 if opts[:print_maps]
@@ -74,21 +76,18 @@ begin
     Foundry::Runtime.eval 'repl!', '(prelude)'
   end
 
-  translator = Foundry::Runtime.compile
+  Foundry::Runtime.graph_lir  = opts[:dump_lir]
+  Foundry::Runtime.graph_llvm = opts[:dump_llvm]
 
-  if opts[:dump_lir]
-    translator.each_function do |func|
-      puts "#{func.pretty_print}\n"
-    end
-  end
+  translator = Foundry::Runtime.optimize
 
-  if opts[:dump_llvm]
-    translator.llvm_module.dump
-  end
+  if opts[:output] || opts[:dump_llvm]
+    Foundry::Runtime.compile(translator)
 
-  if opts[:output]
-    File.open(opts[:output], 'w') do |io|
-      translator.llvm_module.write_bitcode(io)
+    if opts[:output]
+      File.open(opts[:output], 'w') do |io|
+        translator.llvm_module.write_bitcode(io)
+      end
     end
   end
 rescue Foundry::Evaluator::Error => e

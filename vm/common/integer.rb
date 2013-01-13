@@ -9,6 +9,10 @@ class Integer < Numeric
 
   alias to_i to_int
 
+  def to_s
+    FoundryRt.intop :to_s, self
+  end
+
   def +@
     self
   end

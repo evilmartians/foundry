@@ -38,6 +38,7 @@ module Foundry
           s_send(ast, :+, node.updated(:string))
         elsif node.type == :evstr
           expr, = *node
+          expr ||= s(:nil) # RUBYPARSER, fuck you
           s_send(ast, :+, s_send(process(expr), :to_s))
         end
       end
@@ -46,6 +47,11 @@ module Foundry
     def on_dstr(node)
       seed, *append = *node
       process_dstr(seed, append)
+    end
+
+    def on_dsym(node)
+      seed, *append = *node
+      s_send(process_dstr(seed, append), :to_sym)
     end
   end
 end

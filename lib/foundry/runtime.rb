@@ -8,11 +8,13 @@ module Foundry
       attr_accessor :graph_ast
       attr_accessor :graph_hir
       attr_accessor :graph_lir
+      attr_accessor :graph_llvm
     end
 
-    @graph_ast = false
-    @graph_hir = false
-    @graph_lir = false
+    @graph_ast  = false
+    @graph_hir  = false
+    @graph_lir  = false
+    @graph_llvm = false
 
     VM_ROOT = File.expand_path('../../../vm/', __FILE__)
 
@@ -102,7 +104,7 @@ module Foundry
       hir
     end
 
-    def self.compile
+    def self.optimize
       pipeline = Furnace::Transform::Pipeline.new([
         Furnace::Transform::Iterative.new([
           LIR::Transform::ResolveMethods.new,
@@ -116,7 +118,6 @@ module Foundry
         ]),
 
         LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
-        LIR::Transform::Codegen.new,
       ])
 
       translator = LIR::Translator.new
@@ -128,12 +129,28 @@ module Foundry
         pipeline.run(translator)
       end
 
-      $stderr.puts "LLVM bitcode generation complete in %d ms." % [time * 1000]
+      $stderr.puts "Optimization complete in %d ms." % [time * 1000]
 
       if @graph_lir
         translator.each_function do |func|
           puts "#{func.pretty_print}\n"
         end
+      end
+
+      translator
+    end
+
+    def self.compile(translator)
+      transform = LIR::Transform::Codegen.new
+
+      time = Benchmark.realtime do
+        transform.run(translator)
+      end
+
+      $stderr.puts "LLVM bitcode generation complete in %d ms." % [time * 1000]
+
+      if @graph_llvm
+        translator.llvm_module.dump
       end
 
       translator

@@ -6,4 +6,8 @@ class Symbol
   def to_sym
     self
   end
+
+  def to_s
+    FoundryRt.symop(:to_s, self)
+  end
 end

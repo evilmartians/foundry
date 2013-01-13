@@ -101,7 +101,7 @@ module Foundry::Evaluator
     end
 
     #
-    # Integers
+    # Primitives
     #
 
     def on_intop(node)
@@ -113,6 +113,27 @@ module Foundry::Evaluator
 
       when :+, :-, :*, :/, :%
         VI.new_integer left.value.send(op.value, right.value)
+
+      when :to_s
+        VI.new_string left.value.to_s
+      end
+    end
+
+    def on_symop(node)
+      op, left, right = *process_all(node)
+      case op.value
+      when :to_s
+        VI.new_string left.value.to_s
+      end
+    end
+
+    def on_strop(node)
+      op, left, right = *process_all(node)
+      case op.value
+      when :+
+        VI.new_string left.value + right.value
+      when :to_sym
+        VI.new_symbol left.value
       end
     end
   end

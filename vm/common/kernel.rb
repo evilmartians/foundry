@@ -44,7 +44,7 @@ module Kernel
   end
 
   def to_s
-    "#<#{self.class}>"
+    "#<#{self.class.name}>"
   end
 
   def inspect
