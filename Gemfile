@@ -6,6 +6,6 @@ gemspec
 gem 'ruby-llvm', path: '../ruby-llvm'
 
 group :development do
-  gem 'warbler', github: 'whitequark/warbler'
+  gem 'warbler', github: 'whitequark/warbler', platform: :jruby
   gem 'pry'
 end
