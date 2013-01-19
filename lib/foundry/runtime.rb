@@ -22,7 +22,9 @@ module Foundry
       $stderr.puts "Bootstrapping VM..."
 
       time = Benchmark.realtime do
-        load_package(File.join(VM_ROOT, 'common'))
+        %w(common baremetal stm32/f1).each do |package|
+          load_package(File.join(VM_ROOT, package))
+        end
       end
 
       $stderr.puts "VM loading complete in %d ms." % [time * 1000]
