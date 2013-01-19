@@ -1,2 +1,0 @@
-registers.rb
-registers/register_definition.rb
