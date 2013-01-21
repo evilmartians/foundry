@@ -18,7 +18,8 @@ module Foundry
                         [ nil,                       'self'  ],
                         [ LiteralTupleType.new(nil), 'args'  ],
                         [ Monotype.of(VI::Proc),     'block' ],
-                    ], nil)
+                    ], nil,
+                    instrument: Foundry::Runtime.instrument)
       @lir_module.add(@builder.function)
 
       @function = @builder.function

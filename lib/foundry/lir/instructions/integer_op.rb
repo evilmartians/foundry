@@ -22,7 +22,7 @@ module Foundry
       @operation = operation
     end
 
-    def pretty_parameters(p)
+    def pretty_parameters(p=LIR::PrettyPrinter.new)
       p.keyword @operation
     end
 

@@ -3,9 +3,9 @@ module Foundry
     attr_reader   :lir_module
     attr_reader   :llvm_module
 
-    def initialize(name='foundry-generated-code')
+    def initialize
       @lir_module  = LIR::Module.new
-      @llvm_module = LLVM::Module.new(name)
+      @llvm_module = LLVM::Module.new('foundry-code')
 
       @methods     = {}
       @functions   = {}

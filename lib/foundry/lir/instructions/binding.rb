@@ -19,7 +19,7 @@ module Foundry
       @type = nil
     end
 
-    def pretty_parameters(p)
+    def pretty_parameters(p=LIR::PrettyPrinter.new)
       p.text    @variables.map(&:inspect).join(", ")
       p.keyword 'chain'
     end

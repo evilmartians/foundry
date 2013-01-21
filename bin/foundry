@@ -10,6 +10,7 @@ unless defined?(WARBLER_CONFIG)
 end
 
 require 'trollop'
+require 'json'
 require 'foundry'
 
 opts = Trollop::options do
@@ -22,8 +23,9 @@ Usage: foundry [options] filename...
   opt :target,     "Target environment",         default: 'dummy'
   opt :evaluate,   "Evaluate code",              type: :strings
 
-  opt :dump_lir,   "Dump LIR",                   default: false
-  opt :dump_llvm,  "Dump LLVM IR",               default: false
+  opt :dump_lir,   "Dump LIR",                   default: false,    short: 'I'
+  opt :dump_llvm,  "Dump LLVM IR",               default: false,    short: 'L'
+  opt :instrument, "Write instrumentation data", type: :string,     short: 'i'
   opt :output,     "Write bitcode",              type: :string
 
   opt :print_maps, "Print /proc/self/maps",      type: :string
@@ -76,10 +78,17 @@ begin
     Foundry::Runtime.eval 'repl!', '(prelude)'
   end
 
+  Foundry::Runtime.instrument = !opts[:instrument].nil?
   Foundry::Runtime.graph_lir  = opts[:dump_lir]
   Foundry::Runtime.graph_llvm = opts[:dump_llvm]
 
   translator = Foundry::Runtime.optimize
+
+  if opts[:instrument]
+    File.open(opts[:instrument], 'w') do |io|
+      io.write JSON.dump(translator.lir_module.instrumentation)
+    end
+  end
 
   if opts[:output] || opts[:dump_llvm]
     Foundry::Runtime.compile(translator)

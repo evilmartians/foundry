@@ -14,7 +14,7 @@ module Foundry
       super(basic_block, operands, name)
     end
 
-    def pretty_parameters(p)
+    def pretty_parameters(p=LIR::PrettyPrinter.new)
       p.text    @variable.inspect
       p.keyword 'at'
       p.text    @depth
