@@ -161,7 +161,7 @@ module Foundry
     end
 
     def self.construct_toplevel_call(name)
-      builder = LIR::Builder.new(name, [], LIR.void, instrument: @instrument)
+      builder = LIR::Builder.new(name, [], nil, instrument: @instrument)
 
       toplevel = builder.toplevel
 
@@ -170,14 +170,14 @@ module Foundry
             builder.symbol(name)
           ]
 
-      builder.invoke nil,
+      retv = builder.invoke nil,
           [ method,
             toplevel,
             builder.tuple,
             builder.nil
           ]
 
-      builder.return LIR.void_value
+      builder.return retv
 
       builder.function
     end

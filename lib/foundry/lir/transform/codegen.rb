@@ -52,7 +52,7 @@ module Foundry
       @types[Monotype.of(klass)] = llvm_imp_ty.pointer
 
       @data[object] = int_ptr_type.from_i(address).
-            bitcast_to(llvm_imp_ty.pointer)
+            int_to_ptr(llvm_imp_ty.pointer)
     end
 
     def emit_class_body_type(klass)
