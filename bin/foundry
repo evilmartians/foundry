@@ -24,9 +24,11 @@ Usage: foundry [options] filename...
   opt :evaluate,   "Evaluate code",              type: :strings
 
   opt :dump_lir,   "Dump LIR",                   default: false,    short: 'I'
-  opt :dump_llvm,  "Dump LLVM IR",               default: false,    short: 'L'
   opt :instrument, "Write instrumentation data", type: :string,     short: 'i'
-  opt :output,     "Write bitcode",              type: :string
+
+  opt :llvm,       "Write LLVM bitcode",         default: false,    short: 'L'
+  opt :assembly,   "Write target assembly",      default: false,    short: 'S'
+  opt :output,     "Output filename",            type: :string
 
   opt :print_maps, "Print /proc/self/maps",      type: :string
 end
@@ -80,7 +82,6 @@ begin
 
   Foundry::Runtime.instrument = !opts[:instrument].nil?
   Foundry::Runtime.graph_lir  = opts[:dump_lir]
-  Foundry::Runtime.graph_llvm = opts[:dump_llvm]
 
   translator = Foundry::Runtime.optimize
 
@@ -90,21 +91,30 @@ begin
     end
   end
 
-  if opts[:output] || opts[:dump_llvm]
-    Foundry::Runtime.compile(translator)
+  Foundry::Runtime.compile(translator)
+  machine, linked = Foundry::Runtime.link(translator)
 
-    if opts[:output]
+  if opts[:llvm] && opts[:assembly]
+    linked.dump
+  elsif opts[:output]
+    if opts[:llvm]
       File.open(opts[:output], 'w') do |io|
-        translator.llvm_module.write_bitcode(io)
+        linked.write_bitcode(io)
       end
+    else
+      opts[:output] = '/dev/stdout' if opts[:output] == '-'
+
+      machine.emit(linked, opts[:output], opts[:assembly] ? :assembly : :object)
     end
   end
+
 rescue Foundry::Evaluator::Error => e
   puts "Unhandled exception:"
   puts e.inner_exception.inspect
   puts e.inner_backtrace
   puts e.backtrace
   exit!
+
 rescue Foundry::LIR::AnalysisError => e
   puts "Analysis error:"
   puts "    #{e}"

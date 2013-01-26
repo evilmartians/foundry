@@ -1,4 +1,8 @@
 require 'benchmark'
+require 'llvm/linker'
+require 'llvm/transforms/builder'
+
+LLVM::Target.init_all(true)
 
 module Foundry
   class Runtime
@@ -8,17 +12,16 @@ module Foundry
       attr_accessor :graph_ast
       attr_accessor :graph_hir
       attr_accessor :graph_lir
-      attr_accessor :graph_llvm
       attr_accessor :instrument
     end
 
     @graph_ast  = false
     @graph_hir  = false
     @graph_lir  = false
-    @graph_llvm = false
     @instrument = false
 
-    VM_ROOT = File.expand_path('../../../vm/', __FILE__)
+    VM_ROOT  = File.expand_path('../../../vm/',  __FILE__)
+    RTL_ROOT = File.expand_path('../../../rtl/', __FILE__)
 
     def self.bootstrap
       $stderr.puts "Bootstrapping VM..."
@@ -146,12 +149,7 @@ module Foundry
 
     def self.compile(translator)
       transform = LIR::Transform::Codegen.new
-
-      time = Benchmark.realtime do
-        transform.run(translator)
-      end
-
-      $stderr.puts "LLVM bitcode generation complete in %d ms." % [time * 1000]
+      transform.run(translator)
 
       if @graph_llvm
         translator.llvm_module.dump
@@ -160,22 +158,50 @@ module Foundry
       translator
     end
 
+    def self.link(translator)
+      linked_mod = LLVM::Module.new('foundry-linked')
+
+      # Link the translated module.
+      translator.llvm_module.link_into linked_mod
+
+      # Link the runtime library.
+      rtl = LLVM::Module.parse_bitcode(File.join(RTL_ROOT, 'testbench.bc'))
+      rtl.link_into_and_destroy(linked_mod)
+
+      target = LLVM::Target.by_name('x86-64')
+      unless target.target_machine?
+        raise ArgumentError, "Target #{target.name} does not have a TargetMachine available"
+      end
+
+      machine = target.create_machine('x86_64-linux-gnu')
+
+      builder = LLVM::PassManagerBuilder.new
+      builder.opt_level          = 3     # -O3
+      builder.size_level         = 1     # -Os
+      builder.simplify_lib_calls = false
+      builder.inliner_threshold  = 225   # -O2
+
+      pass_manager = LLVM::PassManager.new(machine)
+      builder.build_with_lto(pass_manager, true, true)
+
+      linked_mod.triple      = machine.triple
+      linked_mod.data_layout = machine.data_layout
+
+      pass_manager.run(linked_mod)
+
+      [ machine, linked_mod ]
+    end
+
     def self.construct_toplevel_call(name)
       builder = LIR::Builder.new(name, [], nil, instrument: @instrument)
 
       toplevel = builder.toplevel
 
-      method = builder.resolve_method [
-            toplevel,
-            builder.symbol(name)
-          ]
+      method = builder.resolve_method \
+          [ toplevel, builder.symbol(name) ]
 
       retv = builder.invoke nil,
-          [ method,
-            toplevel,
-            builder.tuple,
-            builder.nil
-          ]
+          [ method, toplevel, builder.tuple, builder.nil ]
 
       builder.return retv
 
