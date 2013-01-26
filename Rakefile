@@ -1,11 +1,27 @@
 #!/usr/bin/env rake
 
+require 'rake/clean'
 require 'rspec/core/rake_task'
-require 'warbler'
 require 'fileutils'
-require 'open-uri'
 
-### CONFIGURATION ###
+task :default => [:rtl]
+
+RSpec::Core::RakeTask.new(:spec)
+
+### RUNTIME LIBRARY ###
+
+RTL_BITCODE = FileList["rtl/*.ll"].ext('bc')
+
+CLEAN.include(RTL_BITCODE)
+
+desc "Compile RTL to bitcode."
+task :rtl => RTL_BITCODE
+
+rule '.bc' => '.ll' do |t|
+  sh "llvm-as-3.2 #{t.source} -o #{t.name}"
+end
+
+### WARBLER CONFIGURATION ###
 
 TARGET_JRUBY_VERSION = "1.7.2"
 
@@ -24,134 +40,136 @@ DEBIAN_PACKAGES = {
 
 DEBIAN_MIRROR = 'ru'
 
-### END CONFIGURATION ###
+### WARBLER CODE ###
 
-task :default => :spec
+if RUBY_ENGINE == 'jruby'
+  require 'warbler'
+  require 'open-uri'
 
-RSpec::Core::RakeTask.new(:spec)
-Warbler::Task.new
+  Warbler::Task.new
 
-def download(url, file)
-  puts "Downloading #{url}"
+  def download(url, file)
+    puts "Downloading #{url}"
 
-  mkdir_p File.dirname(file)
-  File.open(file, 'w') do |f|
-    f.write open(url).read
-  end
-end
-
-task :jar => "redist/java/jruby-complete.jar"
-file "foundry.jar" do
-  raise "JRuby required" unless defined?(JRUBY_VERSION)
-  Rake::Task['jar'].invoke
-end
-
-desc "Build a redistributable archive."
-task :redist => "foundry.jar" do
-  rm_rf   "pkg"
-
-  release_id = Time.now.strftime("%Y%m%d")
-  target     = "pkg/foundry-#{release_id}"
-
-  mkdir_p target
-
-  cp_r "redist/native",     target
-  cp   "foundry.jar",       target
-  cp   "redist/foundry.sh", target
-
-  %w(vm rtl).each do |lib|
-    cp_r lib, target
-  end
-
-  Bundler.definition.specs_for([ :default ]).each do |spec|
-    next if %w(ffi foundry).include? spec.name
-
-    Dir[spec.full_gem_path + "**/*"].
-          grep(/(LICENSE|COPYING|README)/).
-          each do |file|
-      mkdir_p "#{target}/legal/#{spec.name}"
-      cp file, "#{target}/legal/#{spec.name}/"
+    mkdir_p File.dirname(file)
+    File.open(file, 'w') do |f|
+      f.write open(url).read
     end
   end
 
-  sh "cd pkg; tar czvf foundry-#{release_id}.tgz #{File.basename(target)}"
-end
+  task :jar => "redist/java/jruby-complete.jar"
+  file "foundry.jar" do
+    raise "JRuby required" unless defined?(JRUBY_VERSION)
+    Rake::Task['jar'].invoke
+  end
 
-desc "Commit to the redist repository."
-task "redist:lock" do
-  sh "cd redist; git add -A; git commit -m 'Update dependencies'"
-  sh "git add redist"
-end
+  desc "Build a redistributable archive."
+  task :redist => "foundry.jar" do
+    rm_rf   "pkg"
 
-desc "Rebuild all dependencies for redistributables."
-task "redist:deps" => %w(redist/java/jruby-complete.jar redist:linux)
+    release_id = Time.now.strftime("%Y%m%d")
+    target     = "pkg/foundry-#{release_id}"
 
-file "redist/java/jruby-complete.jar" do
-  download("http://repository.codehaus.org/org/jruby/jruby-complete/#{TARGET_JRUBY_VERSION}/jruby-complete-#{TARGET_JRUBY_VERSION}.jar", 'redist/java/jruby-complete.jar')
-end
+    mkdir_p target
 
-desc "Download and unpack binary dependencies from Debian packages"
-task "redist:linux" => "foundry.jar" do
-  puts "Gathering memory maps"
+    cp_r "redist/native",     target
+    cp   "foundry.jar",       target
+    cp   "redist/foundry.sh", target
 
-  mkdir_p "tmp"
-  sh "java -jar foundry.jar --print-maps tmp/map"
-
-  shlibs = File.readlines('tmp/map').map do |line|
-    _, _, _, _, _, soname = line.split
-    if soname &&
-        soname.start_with?('/') &&
-        soname.include?('.so') &&
-        soname !~ /libnss_/
-      File.basename(soname)
+    %w(vm rtl).each do |lib|
+      cp_r lib, target
     end
-  end.compact.uniq
 
-  %w(i386 amd64).each do |src_arch|
-    target_arch = { 'i386' => 'i386', 'amd64' => 'x86_64' }[src_arch]
-    native_path = "redist/native/linux-#{target_arch}"
+    Bundler.definition.specs_for([ :default ]).each do |spec|
+      next if %w(ffi foundry).include? spec.name
 
-    rm_rf native_path
-    mkdir_p native_path
+      Dir[spec.full_gem_path + "**/*"].
+            grep(/(LICENSE|COPYING|README)/).
+            each do |file|
+        mkdir_p "#{target}/legal/#{spec.name}"
+        cp file, "#{target}/legal/#{spec.name}/"
+      end
+    end
 
-    DEBIAN_PACKAGES.each do |(src_pkg, lib_pkg, version), symlinks|
-      prefix = src_pkg.match(/(lib)?./)[0]
-      url = "http://ftp.#{DEBIAN_MIRROR}.debian.org/debian/pool/main/#{prefix}/#{src_pkg}/#{lib_pkg}_#{version}_#{src_arch}.deb"
+    sh "cd pkg; tar czvf foundry-#{release_id}.tgz #{File.basename(target)}"
+  end
 
-      rm_rf "tmp"
-      mkdir_p "tmp"
+  desc "Commit to the redist repository."
+  task "redist:lock" do
+    sh "cd redist; git add -A; git commit -m 'Update dependencies'"
+    sh "git add redist"
+  end
 
-      download(url, 'tmp/package.deb')
+  desc "Rebuild all dependencies for redistributables."
+  task "redist:deps" => %w(redist/java/jruby-complete.jar redist:linux)
 
-      # data.tar.gz or data.tar.xz
-      sh "cd tmp; ar x package.deb; tar xf data.tar.*"
+  file "redist/java/jruby-complete.jar" do
+    download("http://repository.codehaus.org/org/jruby/jruby-complete/#{TARGET_JRUBY_VERSION}/jruby-complete-#{TARGET_JRUBY_VERSION}.jar", 'redist/java/jruby-complete.jar')
+  end
 
-      found_any = []
+  desc "Download and unpack binary dependencies from Debian packages"
+  task "redist:linux" => "foundry.jar" do
+    puts "Gathering memory maps"
 
-      Dir["tmp/{usr/,}lib/#{target_arch}-linux-gnu/**/*.so*"].each do |lib|
-        soname = lib
-        soname = File.readlink(soname) if File.symlink?(soname)
-        soname = File.basename(soname)
+    mkdir_p "tmp"
+    sh "java -jar foundry.jar --print-maps tmp/map"
 
-        next unless shlibs.include? soname
+    shlibs = File.readlines('tmp/map').map do |line|
+      _, _, _, _, _, soname = line.split
+      if soname &&
+          soname.start_with?('/') &&
+          soname.include?('.so') &&
+          soname !~ /libnss_/
+        File.basename(soname)
+      end
+    end.compact.uniq
 
-        target = "#{native_path}/#{File.basename(lib)}"
+    %w(i386 amd64).each do |src_arch|
+      target_arch = { 'i386' => 'i386', 'amd64' => 'x86_64' }[src_arch]
+      native_path = "redist/native/linux-#{target_arch}"
 
-        if File.symlink?(lib)
-          ln_s File.readlink(lib), target
-        else
-          cp lib, target
+      rm_rf native_path
+      mkdir_p native_path
+
+      DEBIAN_PACKAGES.each do |(src_pkg, lib_pkg, version), symlinks|
+        prefix = src_pkg.match(/(lib)?./)[0]
+        url = "http://ftp.#{DEBIAN_MIRROR}.debian.org/debian/pool/main/#{prefix}/#{src_pkg}/#{lib_pkg}_#{version}_#{src_arch}.deb"
+
+        rm_rf "tmp"
+        mkdir_p "tmp"
+
+        download(url, 'tmp/package.deb')
+
+        # data.tar.gz or data.tar.xz
+        sh "cd tmp; ar x package.deb; tar xf data.tar.*"
+
+        found_any = []
+
+        Dir["tmp/{usr/,}lib/#{target_arch}-linux-gnu/**/*.so*"].each do |lib|
+          soname = lib
+          soname = File.readlink(soname) if File.symlink?(soname)
+          soname = File.basename(soname)
+
+          next unless shlibs.include? soname
+
+          target = "#{native_path}/#{File.basename(lib)}"
+
+          if File.symlink?(lib)
+            ln_s File.readlink(lib), target
+          else
+            cp lib, target
+          end
+
+          found_any = true
         end
 
-        found_any = true
-      end
+        unless found_any
+          raise "Cannot find any used files in package #{lib_pkg}-#{version}"
+        end
 
-      unless found_any
-        raise "Cannot find any used files in package #{lib_pkg}-#{version}"
-      end
-
-      symlinks.each do |from, to|
-        ln_s from, "#{native_path}/#{to}"
+        symlinks.each do |from, to|
+          ln_s from, "#{native_path}/#{to}"
+        end
       end
     end
   end
