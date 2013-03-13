@@ -13,9 +13,10 @@ PATH
   specs:
     foundry (0.0.1)
       ansi
-      foundry-ruby_parser (>= 3.1.0)
+      foundry-ruby_parser (= 3.1.1)
       furnace (= 0.4.0.beta.1)
-      ruby-llvm (~> 3.2.0.beta)
+      json
+      ruby-llvm (= 3.2.0.beta.1)
       trollop
 
 GEM
@@ -25,13 +26,13 @@ GEM
     coderay (1.0.8)
     diff-lcs (1.1.3)
     ffi (1.3.1)
-    ffi (1.3.1-java)
     foundry-ruby_parser (3.1.1)
       sexp_processor (~> 4.1)
     furnace (0.4.0.beta.1)
       ansi
     jruby-jars (1.7.2)
     jruby-rack (1.1.12)
+    json (1.7.6)
     method_source (0.8.1)
     multi_json (1.5.0)
     pry (0.9.10)
@@ -70,6 +71,7 @@ PLATFORMS
 
 DEPENDENCIES
   foundry!
+  furnace
   pry
   rake (~> 10.0)
   rspec
