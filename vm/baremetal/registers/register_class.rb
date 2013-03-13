@@ -1,6 +1,6 @@
 module Registers
-  class RegisterClass < Object.reify(scalar: true)
-    parametric_by :@@type, :@@address, :@@alignment, :@@combine
+  class RegisterClass < Object
+    parametric_by :type, :address, :alignment, :combine
 
     def initialize
       if @@combine
