@@ -305,6 +305,8 @@ module Foundry
         case insn.operation
         when :+;  builder.add llvm_left, llvm_right
         when :-;  builder.sub llvm_left, llvm_right
+        when :*;  builder.mul llvm_left, llvm_right
+        when :/;  builder.div llvm_left, llvm_right
 
         when :<, :<=, :>, :>=, :==, :!=
           llvm_res = case insn.operation
