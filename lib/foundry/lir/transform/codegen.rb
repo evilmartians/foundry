@@ -8,7 +8,7 @@ module Foundry
       @data   = Hash.new { |h, datum| h[datum] = emit_object(datum) }
       @values = Hash.new { |h, value| h[value] = emit_value(value)  }
 
-      @phi_fixups = {}
+      @phi_fixups = []
 
       bootstrap_types
 
@@ -233,6 +233,14 @@ module Foundry
           end
         end
       end
+
+      @phi_fixups.each do |phi|
+        llvm_phi = @values[phi]
+
+        phi.operands.each do |basic_block, operand|
+          llvm_phi.add_incoming({ @values[basic_block] => @values[operand] })
+        end
+      end
     end
 
     def emit_code(builder, insn)
@@ -349,6 +357,11 @@ module Foundry
         builder.cond(llvm_cmp,
             @values[insn.true_target],
             @values[insn.false_target])
+
+      when LIR::PhiInsn
+        @phi_fixups << insn
+
+        builder.phi(@types[insn.type], {})
 
       when LIR::ReturnInsn
         value = insn.value
