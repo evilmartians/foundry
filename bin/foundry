@@ -83,12 +83,20 @@ begin
   Foundry::Runtime.instrument = !opts[:instrument].nil?
   Foundry::Runtime.graph_lir  = opts[:dump_lir]
 
-  translator = Foundry::Runtime.optimize
+  translator = Foundry::LIR::Translator.new
 
-  if opts[:instrument]
-    File.open(opts[:instrument], 'w') do |io|
-      io.write JSON.dump(translator.lir_module.instrumentation)
+  begin
+    Foundry::Runtime.optimize(translator)
+  ensure
+    if opts[:instrument]
+      File.open(opts[:instrument], 'w') do |io|
+        io.write JSON.dump(translator.lir_module.instrumentation)
+      end
+
+      puts "Instrumentation dumped."
     end
+
+    raise if $!
   end
 
   Foundry::Runtime.compile(translator)

@@ -111,7 +111,7 @@ module Foundry
       hir
     end
 
-    def self.optimize
+    def self.optimize(translator)
       pipeline = Furnace::Transform::Pipeline.new([
         Furnace::Transform::Iterative.new([
           LIR::Transform::ResolveMethods.new,
@@ -122,12 +122,10 @@ module Foundry
           LIR::Transform::SparseConditionalConstantPropagation.new,
           LIR::Transform::DeadCodeElimination.new,
           LIR::Transform::BasicBlockMerging.new,
-        ]),
+        ], debug: true),
 
         LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
       ])
-
-      translator = LIR::Translator.new
 
       toplevel = construct_toplevel_call('main')
       translator.lir_module.add toplevel
