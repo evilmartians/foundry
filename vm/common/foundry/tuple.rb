@@ -9,6 +9,10 @@ class Foundry::Tuple
     FoundryRt.tuple_lookup(self, index)
   end
 
+  def +(other)
+    FoundryRt.tuple_concat(self, other)
+  end
+
   def each
     i = 0
 

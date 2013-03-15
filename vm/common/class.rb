@@ -1,6 +1,6 @@
 class Class < Module
   def coerce(object)
-    if object.is_a? self
+    if FoundryRt.is_a? object, self
       object
     else
       raise TypeError, "coerce: #{object.class} is not a #{self}"
@@ -32,7 +32,7 @@ class Class < Module
     ancestors = []
 
     until klass.nil?
-      ancestors << klass
+      ancestors += [ klass ]
       klass = klass.superclass
     end
 
