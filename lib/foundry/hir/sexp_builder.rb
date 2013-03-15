@@ -1,5 +1,7 @@
 module Foundry
   module HIR::SexpBuilder
+    module_function
+
     def s(type, *children)
       HIR::Node.new(type, children)
     end
