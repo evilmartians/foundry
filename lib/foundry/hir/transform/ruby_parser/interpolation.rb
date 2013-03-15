@@ -12,7 +12,7 @@ module Foundry
 
           splat_value, = *node
 
-          concat_node << s(:tuple, *last_tuple)
+          concat_node << s(:tuple, *last_tuple) unless last_tuple.empty?
           concat_node << process(splat_value)
           last_tuple  =  []
         else
@@ -23,7 +23,7 @@ module Foundry
       if concat_node.nil?
         s(:tuple, *last_tuple)
       else
-        concat_node << s(:tuple, *last_tuple)
+        concat_node << s(:tuple, *last_tuple) unless last_tuple.empty?
         s(:tuple_concat, *concat_node)
       end
     end
