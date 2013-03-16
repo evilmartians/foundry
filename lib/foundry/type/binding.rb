@@ -16,10 +16,10 @@ module Foundry
     def to_static_env
       set = [ @variables.keys.to_set ]
 
-      if @next.nil?
-        set
-      else
+      if @next
         set + @next.to_static_env
+      else
+        set
       end
     end
 
@@ -42,7 +42,7 @@ module Foundry
     end
 
     def replace_type_with(type, replacement)
-      unless @next.nil?
+      if @next
         next_type = @next.replace_type_with(type, replacement)
       else
         next_type = @next

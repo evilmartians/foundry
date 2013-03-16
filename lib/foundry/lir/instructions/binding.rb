@@ -26,7 +26,7 @@ module Foundry
     end
 
     def remove_next
-      self.next  = nil
+      self.next  = Foundry.constant VI::NIL
       self.type  = Type::Binding.new(
                       self.type.variables,
                       nil)

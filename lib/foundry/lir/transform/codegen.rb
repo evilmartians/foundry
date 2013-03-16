@@ -21,6 +21,7 @@ module Foundry
         @llvm.dump
         puts errors
         puts "===== END LLVM VERIFICATION ====="
+        exit!
       end
     end
 
@@ -248,7 +249,7 @@ module Foundry
         llvm_binding_ty = @types[insn.type]
         llvm_binding    = builder.alloca(llvm_binding_ty)
 
-        unless insn.next.nil?
+        unless insn.type.next.nil?
           llvm_next_binding_ptr = builder.gep(llvm_binding, indices([ 0, 0 ]))
           builder.store(@values[insn.next], llvm_next_binding_ptr)
         end
@@ -264,7 +265,7 @@ module Foundry
           binding_ty   = binding_ty.next
         end
 
-        if binding_ty.next != LIR.void
+        if binding_ty.next
           llvm_lvar_ptr = builder.gep(llvm_binding,
                   indices([ 0, binding_ty.index_of(insn.variable) + 1 ]))
         else

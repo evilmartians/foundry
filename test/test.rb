@@ -1,6 +1,9 @@
 def main
-  trace fact(10)
-  trace fib(10)
+  i = 0
+  while i < 10
+    trace fib(10)
+    i += 1
+  end
 end
 
 def fact(n)
