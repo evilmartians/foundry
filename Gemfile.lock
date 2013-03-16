@@ -16,11 +16,6 @@ GIT
       rake (>= 0.8.7)
       rubyzip (>= 0.9.4)
 
-GIT
-  remote: git@github.com:evilmartians/foundry-ruby_parser
-  revision: 6ffe61e12d425719a1df2d700fc4319b30e030f8
-  specs:
-
 PATH
   remote: .
   specs:
@@ -135,7 +130,6 @@ PLATFORMS
 
 DEPENDENCIES
   foundry!
-  foundry-ruby_parser!
   furnace!
   furnace-xray (~> 1.0)
   pry
