@@ -18,7 +18,8 @@ module Foundry
     end
 
     def has_side_effects?
-      !arguments.type.size.between?(@min, @max)
+      arguments.type.is_a?(Type::Tuple) &&
+          !arguments.type.size.between?(@min, @max)
     end
   end
 end

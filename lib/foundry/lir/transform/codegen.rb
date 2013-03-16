@@ -110,18 +110,18 @@ module Foundry
 
         llvm_imp_ty.pointer
 
-      when TupleType
+      when Type::Tuple
         elements_ty      = type.element_types
         llvm_elements_ty = elements_ty.map { |ty| @types[ty] }
 
         LLVM::Type.struct(llvm_elements_ty,
             false)
 
-      when BindingType
-        var_types      = type.pin!.variable_types
+      when Type::Binding
+        var_types      = type.variable_types
         llvm_var_types = var_types.map { |ty| @types[ty] }
 
-        if type.next != LIR.void
+        if type.next
           LLVM::Type.struct([ @types[type.next] ] + llvm_var_types, false)
         else
           LLVM::Type.struct(llvm_var_types, false)
@@ -178,12 +178,15 @@ module Foundry
         type, value = lir_value.type, lir_value.value
 
         case type
-        when Monotype
+        when Type::Ruby
           @data[value]
 
-        when TupleType
+        when Type::Tuple
           LLVM::ConstantStruct.const(
               value.to_a.map { |val| emit_object(val) })
+
+        else
+          raise RuntimeError, "unable to lower value #{value}"
         end
 
       else
@@ -242,12 +245,10 @@ module Foundry
     def emit_code(builder, insn)
       case insn
       when LIR::BindingInsn
-        llvm_binding_ty      = @types[insn.type]
-        llvm_next_binding_ty = @types[insn.next.type]
+        llvm_binding_ty = @types[insn.type]
+        llvm_binding    = builder.alloca(llvm_binding_ty)
 
-        llvm_binding = builder.alloca(llvm_binding_ty)
-
-        if insn.next != LIR.void_value
+        unless insn.next.nil?
           llvm_next_binding_ptr = builder.gep(llvm_binding, indices([ 0, 0 ]))
           builder.store(@values[insn.next], llvm_next_binding_ptr)
         end
@@ -322,8 +323,8 @@ module Foundry
           when :!=; builder.icmp :ne,  llvm_left, llvm_right
           end
 
-          pred_true  = @data[VI::TRUE].bitcast_to(@types[Monotype.of(VI::Object)])
-          pred_false = @data[VI::FALSE].bitcast_to(@types[Monotype.of(VI::Object)])
+          pred_true  = @data[VI::TRUE].bitcast_to(@types[Type.klass(VI::Object)])
+          pred_false = @data[VI::FALSE].bitcast_to(@types[Type.klass(VI::Object)])
 
           builder.select(llvm_res, pred_true, pred_false)
 
@@ -360,12 +361,10 @@ module Foundry
         builder.phi(@types[insn.type], {})
 
       when LIR::ReturnInsn
-        value = insn.value
-
-        if value.type == LIR.void
+        if insn.value_type == Type.bottom
           builder.ret_void
         else
-          builder.ret(@values[value])
+          builder.ret(@values[insn.value])
         end
 
       when LIR::TraceInsn
@@ -375,6 +374,8 @@ module Foundry
 
         llvm_int_value = builder.ptr2int(llvm_value, int_ptr_type)
         builder.call(llvm_trace_fun, llvm_int_value)
+
+        @data[VI::NIL]
 
       else
         raise RuntimeError, "cannot lower #{insn.class}"

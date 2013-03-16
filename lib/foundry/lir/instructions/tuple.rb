@@ -1,7 +1,7 @@
 module Foundry
   class LIR::TupleInsn < Furnace::SSA::Instruction
     def type
-      LiteralTupleType.new(@operands)
+      Type::Tuple.new(@operands.map(&:type))
     end
   end
 end

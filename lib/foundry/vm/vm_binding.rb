@@ -57,12 +57,17 @@ module Foundry
     end
 
     def __type__
+      if @next.nil?
+        next_type = @next
+      else
+        next_type = @next.__type__
+      end
+
       @type ||= Type::Binding.new(
                   @vars.map do |name, value|
                     [ name, Type.of(value) ]
                   end,
-                  !@next.nil? && @next.__type__
-                )
+                  next_type)
     end
 
     def inspect

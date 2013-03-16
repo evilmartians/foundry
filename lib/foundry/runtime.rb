@@ -115,16 +115,16 @@ module Foundry
       pipeline = Furnace::Transform::Pipeline.new([
         Furnace::Transform::Iterative.new([
           LIR::Transform::ResolveMethods.new,
-          #LIR::Transform::SpecializeMethods.new,
-          #LIR::Transform::LocalTypeInference.new,
-          #LIR::Transform::ReturnTypeInference.new,
-          #LIR::Transform::BindingSimplification.new,
-          #LIR::Transform::SparseConditionalConstantPropagation.new,
-          #LIR::Transform::DeadCodeElimination.new,
-          #LIR::Transform::BasicBlockMerging.new,
+          LIR::Transform::SpecializeMethods.new,
+          LIR::Transform::LocalTypeInference.new,
+          LIR::Transform::ReturnTypeInference.new,
+          LIR::Transform::BindingSimplification.new,
+          LIR::Transform::SparseConditionalConstantPropagation.new,
+          LIR::Transform::DeadCodeElimination.new,
+          LIR::Transform::BasicBlockMerging.new,
         ], debug: true),
 
-        #LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
+        LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
       ])
 
       toplevel = construct_toplevel_call('main')

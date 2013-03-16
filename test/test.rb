@@ -1,7 +1,6 @@
 def main
-  trace 1
-  #trace fact(5)
-  #trace fib(10)
+  trace fact(20)
+  trace fib(10)
 end
 
 def fact(n)
@@ -12,12 +11,10 @@ def fact(n)
   end
 end
 
-def fib(n)
+def fib(n) => Integer
   if n < 2
     1
   else
     fib(n - 1) + fib(n - 2)
   end
 end
-
-# trace 120

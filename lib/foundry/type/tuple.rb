@@ -9,7 +9,7 @@ module Foundry
     def replace_type_with(type, replacement)
       Type::Tuple.new(
           @element_types.map do |element_type|
-            element_types.replace_type_with(type, replacement)
+            element_type.replace_type_with(type, replacement)
           end)
     end
 
@@ -17,8 +17,31 @@ module Foundry
       @element_types.size
     end
 
+    def specialize(other)
+      if other.is_a?(Type::Tuple) && size == other.size
+        element_types.
+            zip(other.element_types).
+            map do |type, other_type|
+              type.specialize(other_type)
+            end.
+            reduce(:merge)
+      else
+        super
+      end
+    end
+
     def to_s
-      "tuple<#{@element_types.join(', ')}>"
+      LIR::PrettyPrinter.new(false) do |p|
+        pretty_print(p)
+      end
+    end
+
+    def pretty_print(p=LIR::PrettyPrinter.new)
+      p.type 'tuple'
+
+      p << '<'
+      p.objects(@element_types)
+      p.text '>'
     end
   end
 end

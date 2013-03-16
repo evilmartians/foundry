@@ -1,36 +1,40 @@
 module Foundry
-  class LIR::BindingInsn < Furnace::SSA::Instruction
-    attr_accessor :variables
-
+  class LIR::BindingInsn < Furnace::SSA::GenericInstruction
     syntax do |s|
       s.operand :next
     end
 
     def initialize(basic_block, variables=[], operands=[], name=nil)
-      @variables = variables
-      @type      = nil
+      @variables = []
 
-      super(basic_block, operands, name)
+      super(basic_block, Type.bottom, operands, name)
+
+      @variables = variables
+      self.type  = Type::Binding.new(
+                      @variables.map { |k| [k, Type.variable] },
+                      self.next.type)
     end
 
-    def initialize_copy(original)
-      super
+    def remove_variable(var)
+      @variables.delete var
 
-      @type = nil
+      self.type  = Type::Binding.new(
+                      self.type.variables.reject do |name, |
+                        name == var
+                      end,
+                      self.type.next)
+    end
+
+    def remove_next
+      self.next  = nil
+      self.type  = Type::Binding.new(
+                      self.type.variables,
+                      nil)
     end
 
     def pretty_parameters(p=LIR::PrettyPrinter.new)
       p.text    @variables.map(&:inspect).join(", ")
       p.keyword 'chain'
-    end
-
-    def type
-      @type ||= Type::Binding.new(@variables.map { |k| [k, Type.variable] },
-                                  self.next.type)
-    end
-
-    def reset_type!
-      @type = nil
     end
   end
 end

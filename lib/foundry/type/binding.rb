@@ -16,10 +16,10 @@ module Foundry
     def to_static_env
       set = [ @variables.keys.to_set ]
 
-      if @next
-        set + @next.to_static_env
-      else
+      if @next.nil?
         set
+      else
+        set + @next.to_static_env
       end
     end
 
@@ -42,11 +42,23 @@ module Foundry
     end
 
     def replace_type_with(type, replacement)
+      unless @next.nil?
+        next_type = @next.replace_type_with(type, replacement)
+      else
+        next_type = @next
+      end
+
       Type::Binding.new(
-          Hash[@variables.map do |name, type|
-                 [name, type.replace_type_with(type, replacement)]
+          Hash[@variables.map do |name, var_type|
+                 [name, var_type.replace_type_with(type, replacement)]
                end],
-          !@next.nil? && @next.replace_type_with(type, replacement))
+          next_type)
+    end
+
+    def to_s
+      LIR::PrettyPrinter.new(false) do |p|
+        pretty_print(p)
+      end
     end
 
     def pretty_print(p=LIR::PrettyPrinter.new)

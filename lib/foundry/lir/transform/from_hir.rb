@@ -18,7 +18,7 @@ module Foundry
                         [ Type.variable, 'self'  ],
                         [ Type.variable, 'args'  ],
                         [ Type.variable, 'block' ],
-                    ], Type.variable,
+                    ], Type.top,
                     instrument: Foundry::Runtime.instrument)
       @lir_module.add(@builder.function)
 

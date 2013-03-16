@@ -9,19 +9,23 @@ module Foundry
         generic_fun  = translator.lir_module[insn.callee.value]
         arguments_ty = insn.arguments.map(&:type)
 
-        next unless arguments_ty.all?
-
         insn.callee = translator.specialize(generic_fun,
                             arguments_ty) do |specialized_fun|
 
-          specialized_fun.arguments.each_with_index do |arg, index|
-            arg.type = arguments_ty[index]
-          end
+          specialized_fun.
+              arguments.
+              map.with_index do |arg, index|
+                arg.type.specialize(arguments_ty[index])
+              end.
+              reduce(:merge).
+              each do |type_var, replacement|
+                specialized_fun.replace_type_with(type_var, replacement)
+              end
 
           updated = true
         end
       end
-
+=begin
       func.each_instruction(LIR::ClosureInsn) do |insn|
         next unless insn.callee.constant?
 
@@ -40,8 +44,6 @@ module Foundry
 
               insn.type = binding_ty
 
-              insn.each_use &:reset_type!
-
               break
             end
           end
@@ -49,7 +51,7 @@ module Foundry
           updated = true
         end
       end
-
+=end
       updated
     end
   end

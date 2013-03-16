@@ -46,19 +46,17 @@ module Foundry
               insn.remove
             end
 
-            binding.variables.delete var
-            binding.type.variables.delete var
+            binding.remove_variable var
 
             updated = true
           end
         end
 
         if !need_next
-          if binding.variables.empty?
+          if binding.type.variables.empty?
             binding.remove
-          elsif binding.next.type != LIR.void
-            binding.next = LIR.void_value
-            binding.reset_type!
+          elsif !binding.next.nil?
+            binding.remove_next
           end
         end
       end

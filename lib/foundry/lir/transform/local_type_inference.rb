@@ -6,15 +6,12 @@ module Foundry
       func.each_instruction(LIR::LvarStoreInsn) do |insn|
         value_ty   = insn.value.type
         binding_ty = insn.binding.type
+        slot_ty    = binding_ty.type_at(insn.depth, insn.variable)
 
-        if value_ty && value_ty.monotype?
-          variable_ty = binding_ty.type_at(insn.depth, insn.variable)
+        if slot_ty.variable? && slot_ty != value_ty
+          func.replace_type_with(slot_ty, value_ty)
 
-          if variable_ty.nil?
-            binding_ty.set_type_at(insn.depth, insn.variable, value_ty)
-
-            updated = true
-          end
+          updated = true
         end
       end
 
@@ -24,7 +21,7 @@ module Foundry
 
         if uniq_types.one?
           insn.type = uniq_types.first
-        elsif uniq_types.all? && uniq_types.all?(&:monotype?)
+        elsif uniq_types.reject(&:variable?).count > 1
           raise LIR::AnalysisError, "ambiguous phi node"
         end
       end

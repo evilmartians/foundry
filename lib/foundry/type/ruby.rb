@@ -18,7 +18,7 @@ module Foundry
       if @klass.is_a? VI::SingletonClass
         "singleton<#{@klass.object.inspect}>"
       else
-        "#{@klass.name.to_s}*"
+        "#{@klass.name.to_s}&"
       end
     end
 

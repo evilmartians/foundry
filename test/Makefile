@@ -5,13 +5,13 @@ dis: test.rb
 	../bin/foundry $^ -LS
 
 objdump: test.o
-	llvm-objdump-3.2 -d $^
+	objdump -g -d $^
 
 %.o: %.rb
 	../bin/foundry $^ -o $@
 
 %: %.o
-	gcc $^ -o $@
+	gcc -g $^ -o $@
 
 clean:
 	@rm -f *.o test

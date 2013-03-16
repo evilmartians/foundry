@@ -5,8 +5,8 @@ module Foundry
     attr_accessor :operation
 
     syntax do |s|
-      s.operand :left,  Type.klass(VI::Integer)
-      s.operand :right, Type.klass(VI::Integer)
+      s.operand :left#,  Type.klass(VI::Integer)
+      s.operand :right#, Type.klass(VI::Integer)
     end
 
     def initialize(basic_block, operation, operands=[], name=nil)
@@ -29,9 +29,11 @@ module Foundry
     def type
       case @operation
       when :+, :-, :*, :/, :%
-        Monotype.of(VI::Integer)
+        Type.klass(VI::Integer)
       when :<, :<=, :>, :>=, :==, :!=
-        Monotype.of(VI::Object)
+        Type.klass(VI::Object)
+      else
+        Type.top
       end
     end
   end

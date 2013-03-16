@@ -3,13 +3,14 @@ module Foundry
     def run_on_function(translator, func)
       updated = false
 
-      returns = func.each_instruction(LIR::ReturnInsn).to_a
-      if returns.count == 1
-        value_ty = returns.first.value.type
+      returns = func.each_instruction(LIR::ReturnInsn,
+                                      LIR::ReturnValueInsn).to_a
 
-        if value_ty && func.return_type != value_ty
-          p 'FF was', func.return_type, value_ty
-          func.return_type = value_ty
+      if returns.count == 1
+        return_ty = returns.first.value_type
+
+        if func.return_type != return_ty
+          func.return_type = return_ty
 
           updated = true
         end
@@ -20,11 +21,8 @@ module Foundry
           called_fun = translator.lir_module[insn.callee.value]
           return_ty  = called_fun.return_type
 
-          next unless return_ty
-
-          unless insn.type == return_ty
-            p 'INV was', insn.type, return_ty
-            insn.type = return_ty
+          if insn.type != return_ty && return_ty != Type.top
+            func.replace_type_with insn.type, return_ty
 
             updated = true
           end
