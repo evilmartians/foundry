@@ -25,6 +25,7 @@ module Foundry
           updated = true
         end
       end
+
 =begin
       func.each_instruction(LIR::ClosureInsn) do |insn|
         next unless insn.callee.constant?
@@ -52,6 +53,7 @@ module Foundry
         end
       end
 =end
+
       updated
     end
   end

@@ -136,7 +136,7 @@ module Foundry
         name, value = arg_unpacker_without_types(arg, index_low, index_high)
 
         if type
-          value = s(:coerce, type, value)
+          value = coerce(type, value)
         end
 
         [ name, value ]
@@ -181,10 +181,15 @@ module Foundry
 
       def add_epilogue(node)
         if @return_type
-          s(:coerce, @return_type, node)
+          coerce(@return_type, node)
         else
           node
         end
+      end
+
+      def coerce(type, value)
+        s(:check_type, type,
+          s_send(type, :coerce, value))
       end
 
       def process(fun_node, body_nodes)
@@ -213,7 +218,7 @@ module Foundry
     end
 
     def on_def(node)
-      target, name, args, *body = node.children
+      target, name, args, *body = *node
 
       node.updated(nil, [
         process(target), name,
@@ -222,7 +227,7 @@ module Foundry
     end
 
     def on_lambda(node)
-      args, *body = node.children
+      args, *body = *node
 
       node.updated(nil, [
         expand(node, args, process_all(body), true)

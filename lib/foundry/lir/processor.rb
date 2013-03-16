@@ -4,7 +4,13 @@ module Foundry
       translator.each_function.reduce(false) do |updated, func|
         instrumentation_trace(func)
 
-        updated || run_on_function(translator, func)
+        updated || begin
+          run_on_function(translator, func)
+        rescue => e
+          $stderr.puts "Failure while processing function:"
+          $stderr.puts func.pretty_print
+          raise
+        end
       end
     end
 

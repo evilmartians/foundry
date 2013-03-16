@@ -19,11 +19,6 @@ module Foundry::Evaluator
       process(self_).singleton_class
     end
 
-    def on_coerce(node)
-      type, value = node.children
-      process(Foundry::HIR::SexpBuilder.s_send(type, :coerce, value))
-    end
-
     #
     # Objects
     #

@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :constant
 
     syntax do |s|
-      s.operand :cref, Type.klass(VI::Tuple)
+      s.operand :cref#, Type.klass(VI::Tuple)
     end
 
     def initialize(basic_block, constant, operands=[], name=nil)
@@ -18,7 +18,7 @@ module Foundry
     end
 
     def type
-      nil
+      Type.top
     end
   end
 end

@@ -1,5 +1,5 @@
 def main
-  trace fact(20)
+  trace fact(10)
   trace fib(10)
 end
 

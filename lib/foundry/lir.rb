@@ -50,6 +50,7 @@ module Foundry::LIR
 
   require 'foundry/lir/instructions/check_arity'
   require 'foundry/lir/instructions/check_block'
+  require 'foundry/lir/instructions/check_type'
 
   require 'foundry/lir/translator'
   require 'foundry/lir/processor'

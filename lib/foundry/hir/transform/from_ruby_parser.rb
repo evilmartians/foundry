@@ -7,6 +7,7 @@ module Foundry
     require 'foundry/hir/transform/ruby_parser/formal_parameters'
     require 'foundry/hir/transform/ruby_parser/context_reification'
     require 'foundry/hir/transform/ruby_parser/global_variables'
+    require 'foundry/hir/transform/ruby_parser/coercion'
 
     def initialize(is_eval)
       @is_eval = is_eval
@@ -27,5 +28,6 @@ module Foundry
     include FormalParameters
     include ContextReification
     include GlobalVariables
+    include Coercion
   end
 end

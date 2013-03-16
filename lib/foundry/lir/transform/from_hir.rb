@@ -362,5 +362,11 @@ module Foundry
 
       proc
     end
+
+    def on_check_type(node)
+      type, expr = *process_all(node)
+
+      @builder.check_type Type.variable, [ type, expr ]
+    end
   end
 end

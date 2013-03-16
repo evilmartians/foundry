@@ -467,6 +467,16 @@ module Foundry::Evaluator
       block
     end
 
+    def on_check_type(node)
+      type, value = process_all(node)
+
+      unless value.class == type
+        raise Error.new(self, "type check failed: #{value.inspect} is not a #{type.inspect}")
+      end
+
+      value
+    end
+
     def on_of_caller_env(node)
       var_node, = node.children
       var = process(var_node).value

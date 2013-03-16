@@ -26,6 +26,18 @@ module Foundry
         end
       end
 
+      func.each_instruction(LIR::CheckTypeInsn) do |insn|
+        if insn.expected_type.constant? && insn.type.variable?
+          func.replace_type_with(insn.type,
+                      Type.klass(insn.expected_type.value))
+        end
+
+        if !insn.expression.type.variable? &&
+                insn.type == insn.expression.type
+          insn.replace_with(insn.expression)
+        end
+      end
+
       updated
     end
   end
