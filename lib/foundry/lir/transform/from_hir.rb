@@ -15,10 +15,10 @@ module Foundry
       @env         = binding.type.to_static_env
 
       @builder     = LIR::Builder.new(@name_prefix, [
-                        [ nil,                       'self'  ],
-                        [ LiteralTupleType.new(nil), 'args'  ],
-                        [ Monotype.of(VI::Proc),     'block' ],
-                    ], nil,
+                        [ Type.variable, 'self'  ],
+                        [ Type.variable, 'args'  ],
+                        [ Type.variable, 'block' ],
+                    ], Type.variable,
                     instrument: Foundry::Runtime.instrument)
       @lir_module.add(@builder.function)
 
@@ -39,7 +39,7 @@ module Foundry
                         [ @self_arg, @builder.symbol(:@binding) ]
       end
 
-      @builder.return process(code)
+      @builder.return_value process(code)
 
       @function
     rescue
@@ -92,7 +92,8 @@ module Foundry
       else
         @env.each_with_index do |frame, depth|
           if frame.include? name
-            return @builder.lvar_load nil, depth, name, [ @binding ]
+            type = @binding.type.type_at(depth, name)
+            return @builder.lvar_load type, depth, name, [ @binding ]
           end
         end
 
@@ -127,7 +128,7 @@ module Foundry
     def on_ivar(node)
       object, var = *process_all(node)
 
-      @builder.ivar_load nil, [ object, var ]
+      @builder.ivar_load Type.variable, [ object, var ]
     end
 
     def on_imut(node)
@@ -233,7 +234,7 @@ module Foundry
 
       function = @builder.resolve_method([ receiver, method ])
 
-      @builder.invoke nil,
+      @builder.invoke Type.variable,
           [ function, receiver, args, block ]
     end
 
@@ -242,7 +243,7 @@ module Foundry
 
       function = @builder.resolve_closure([ proc ])
 
-      @builder.invoke nil,
+      @builder.invoke Type.variable,
           [ function, proc, args, block ]
     end
 

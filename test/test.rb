@@ -1,14 +1,23 @@
 def main
-  i = 0
-  j = 10
-  while i < 5
-    trace i
-    trace j
-    j += 1
-    i += j
-  end
-
-  #5.times do |i|
-  #  trace i
-  #end
+  trace 1
+  #trace fact(5)
+  #trace fib(10)
 end
+
+def fact(n)
+  if n > 1
+    n * fact(n - 1)
+  else
+    1
+  end
+end
+
+def fib(n)
+  if n < 2
+    1
+  else
+    fib(n - 1) + fib(n - 2)
+  end
+end
+
+# trace 120

@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :min, :max
 
     syntax do |s|
-      s.operand :arguments, Monotype.of(VI::Tuple)
+      s.operand :arguments#, Type.klass(VI::Tuple)
     end
 
     def initialize(basic_block, min=0, max=0, operands=[], name=nil)
@@ -18,11 +18,7 @@ module Foundry
     end
 
     def has_side_effects?
-      arguments_ty = arguments.type
-
-      !(arguments_ty.is_a?(TupleType) &&
-          arguments_ty.size &&
-          arguments_ty.size.between?(@min, @max))
+      !arguments.type.size.between?(@min, @max)
     end
   end
 end

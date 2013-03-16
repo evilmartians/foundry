@@ -2,7 +2,7 @@ module Foundry
   class LIR::ResolveMethodInsn < Furnace::SSA::Instruction
     syntax do |s|
       s.operand :receiver
-      s.operand :method,   Monotype.of(VI::Symbol)
+      s.operand :method,   Type.klass(VI::Symbol)
     end
 
     def type

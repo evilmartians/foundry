@@ -5,7 +5,7 @@ module Foundry
     end
 
     def constant(value)
-      LIR::Constant.new(Foundry.typeof(value), value)
+      LIR::Constant.new(Type.of(value), value)
     end
 
     def nil

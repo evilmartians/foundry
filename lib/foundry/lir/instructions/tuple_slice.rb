@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :from, :to
 
     syntax do |s|
-      s.operand :tuple, Monotype.of(VI::Tuple)
+      s.operand :tuple, Type.klass(VI::Tuple)
     end
 
     def initialize(basic_block, from, to, operands=[], name=nil)
@@ -23,11 +23,7 @@ module Foundry
     end
 
     def type
-      tuple_ty = tuple.type
-
-      tuple_ty.is_a?(LiteralTupleType) &&
-          tuple_ty.elements &&
-          LiteralTupleType.new(tuple_ty.elements[@from..@to])
+      TupleType.new(tuple.type.element_types[@from..@to])
     end
 
     protected

@@ -9,6 +9,8 @@ module Foundry
         generic_fun  = translator.lir_module[insn.callee.value]
         arguments_ty = insn.arguments.map(&:type)
 
+        next unless arguments_ty.all?
+
         insn.callee = translator.specialize(generic_fun,
                             arguments_ty) do |specialized_fun|
 

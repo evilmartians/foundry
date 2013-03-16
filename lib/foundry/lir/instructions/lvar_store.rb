@@ -4,7 +4,7 @@ module Foundry
     attr_accessor :variable
 
     syntax do |s|
-      s.operand :binding, Monotype.of(VI::Binding)
+      s.operand :binding#, Type.klass(VI::Binding)
       s.operand :value
     end
 
@@ -23,21 +23,6 @@ module Foundry
 
     def has_side_effects?
       true
-    end
-
-    def valid?(ignore_nil_types=true)
-      super && begin
-        binding_ty  = binding.type
-
-        variable_ty = binding_ty.type_at(@depth, @variable)
-        value_ty    = value.type
-
-        if variable_ty.nil? || value_ty.nil?
-          ignore_nil_types
-        else
-          variable_ty == value_ty
-        end
-      end
     end
   end
 end

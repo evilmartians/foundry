@@ -1,58 +1,17 @@
 require 'ffi' # warbler requires it to be here.
+
 require 'llvm/core'
 require 'llvm/analysis'
 require 'llvm/transforms/scalar'
 
 module Foundry
-  def self.typeof(object)
-    if object.__vm_object?
-      if object.singleton_class_defined?
-        klass = object.singleton_class
-      else
-        klass = object.class
-      end
-
-      if klass == VI::Tuple
-        LiteralTupleType.new(object.to_a)
-      elsif klass == VI::Binding
-        object.__type__ # TODO refactor this somehow
-      elsif klass == VI::Proc
-        ClosureType.new(klass)
-      else
-        Monotype.of(klass)
-      end
-    else
-      case object
-      when LIR::Value
-        object.type
-      else
-        raise ArgumentError, "typeof(#{object.class}) is not defined"
-      end
-    end
-  end
-
   def self.constant(value)
-    LIR::Constant.new(typeof(value), value)
+    LIR::Constant.new(Type.of(value), value)
   end
 end
 
 module Foundry::LIR
   include Furnace::SSA
-
-  def self.void
-    Furnace::SSA.void
-  end
-
-  def self.void_value
-    Furnace::SSA.void_value
-  end
-
-  require 'foundry/types/monotype'
-  require 'foundry/types/tuple'
-  require 'foundry/types/literal_tuple'
-  require 'foundry/types/combined_tuple'
-  require 'foundry/types/binding'
-  require 'foundry/types/closure'
 
   require 'foundry/lir/analysis_error'
 

@@ -25,7 +25,8 @@ module Foundry
     end
 
     def type
-      @type ||= BindingType.new(@variables, self.next.type)
+      @type ||= Type::Binding.new(@variables.map { |k| [k, Type.variable] },
+                                  self.next.type)
     end
 
     def reset_type!

@@ -49,7 +49,7 @@ module Foundry
 
       llvm_imp_ty = LLVM::Type.struct([], false, "i.#{klass.name}")
       llvm_imp_ty.element_types = []
-      @types[Monotype.of(klass)] = llvm_imp_ty.pointer
+      @types[Type.klass(klass)] = llvm_imp_ty.pointer
 
       @data[object] = int_ptr_type.from_i(address).
             int_to_ptr(llvm_imp_ty.pointer)
@@ -77,15 +77,11 @@ module Foundry
     end
 
     def emit_type(type)
-      unless type.monotype?
-        raise RuntimeError, "unable to lower polytype #{type.inspect}"
-      end
-
       case type
-      when LIR.void
+      when Type.bottom
         LLVM::Type.void
 
-      when Monotype
+      when Type::Ruby
         klass         = type.klass
 
         # HACK
@@ -103,7 +99,7 @@ module Foundry
           if klass == VI::Class
             llvm_klass_ptr_ty = llvm_imp_ty.pointer
           else
-            llvm_klass_ptr_ty = @types[Monotype.of(VI::Class)]
+            llvm_klass_ptr_ty = @types[Type.klass(VI::Class)]
           end
 
           llvm_imp_ty.element_types = [
@@ -162,13 +158,13 @@ module Foundry
         # ones. They're not compatible either despite having
         # identical structure. Yuck.
 
-        llvm_ptr_ty = @types[Monotype.of(klass)]
+        llvm_ptr_ty = @types[Type.klass(klass)]
         llvm_ty     = llvm_ptr_ty.element_type
 
         datum = @llvm.globals.add llvm_ty, name
         datum.initializer = LLVM::ConstantStruct.const([
             emit_object(klass, klass_name).bitcast_to(
-                @types[Monotype.of(VI::Class)]),
+                @types[Type.klass(VI::Class)]),
             LLVM::Constant.null(emit_class_body_type(klass))
         ]).bitcast_to(llvm_ty)
 

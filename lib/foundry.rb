@@ -5,6 +5,7 @@ require 'furnace'
 require 'foundry/version'
 
 require 'foundry/vm'
+require 'foundry/type'
 require 'foundry/hir'
 require 'foundry/lir'
 require 'foundry/evaluator'

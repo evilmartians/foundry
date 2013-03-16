@@ -11,7 +11,7 @@ module Foundry
 
     def each(&block)
       @vars.keys.each(&block)
-      @next.each(&block) if @next
+      @next.each(&block) unless @next.nil?
     end
 
     def each_regular
@@ -31,7 +31,7 @@ module Foundry
     def apply(name)
       if @vars.has_key? name
         @vars[name]
-      elsif @next
+      elsif !@next.nil?
         @next.apply(name)
       else
         ::Kernel.raise "Undefined variable #{name.inspect}"
@@ -57,9 +57,12 @@ module Foundry
     end
 
     def __type__
-      @type ||= BindingType.new(@vars.map do |name, value|
-                  [ name, ::Foundry.typeof(value) ]
-                end, @next && @next.__type__)
+      @type ||= Type::Binding.new(
+                  @vars.map do |name, value|
+                    [ name, Type.of(value) ]
+                  end,
+                  !@next.nil? && @next.__type__
+                )
     end
 
     def inspect

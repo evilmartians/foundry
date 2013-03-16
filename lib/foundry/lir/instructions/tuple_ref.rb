@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :index
 
     syntax do |s|
-      s.operand :tuple, Monotype.of(VI::Tuple)
+      s.operand :tuple, Type.klass(VI::Tuple)
     end
 
     def initialize(basic_block, index, operands=[], name=nil)
@@ -17,11 +17,7 @@ module Foundry
     end
 
     def type
-      tuple_ty = tuple.type
-
-      tuple_ty.is_a?(TupleType) &&
-          tuple_ty.size &&
-          tuple_ty.element_types[@index]
+      tuple.type.element_types[@index]
     end
   end
 end

@@ -115,16 +115,16 @@ module Foundry
       pipeline = Furnace::Transform::Pipeline.new([
         Furnace::Transform::Iterative.new([
           LIR::Transform::ResolveMethods.new,
-          LIR::Transform::SpecializeMethods.new,
-          LIR::Transform::LocalTypeInference.new,
-          LIR::Transform::ReturnTypeInference.new,
-          LIR::Transform::BindingSimplification.new,
-          LIR::Transform::SparseConditionalConstantPropagation.new,
-          LIR::Transform::DeadCodeElimination.new,
-          LIR::Transform::BasicBlockMerging.new,
+          #LIR::Transform::SpecializeMethods.new,
+          #LIR::Transform::LocalTypeInference.new,
+          #LIR::Transform::ReturnTypeInference.new,
+          #LIR::Transform::BindingSimplification.new,
+          #LIR::Transform::SparseConditionalConstantPropagation.new,
+          #LIR::Transform::DeadCodeElimination.new,
+          #LIR::Transform::BasicBlockMerging.new,
         ], debug: true),
 
-        LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
+        #LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
       ])
 
       toplevel = construct_toplevel_call('main')
@@ -191,17 +191,17 @@ module Foundry
     end
 
     def self.construct_toplevel_call(name)
-      builder = LIR::Builder.new(name, [], nil, instrument: @instrument)
+      builder = LIR::Builder.new(name, [], Type.bottom, instrument: @instrument)
 
       toplevel = builder.toplevel
 
       method = builder.resolve_method \
           [ toplevel, builder.symbol(name) ]
 
-      retv = builder.invoke nil,
+      retv = builder.invoke Type.top,
           [ method, toplevel, builder.tuple, builder.nil ]
 
-      builder.return retv
+      builder.return
 
       builder.function
     end

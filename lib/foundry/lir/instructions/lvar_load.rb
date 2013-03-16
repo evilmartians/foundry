@@ -4,7 +4,7 @@ module Foundry
     attr_accessor :variable
 
     syntax do |s|
-      s.operand :binding, Monotype.of(VI::Binding)
+      s.operand :binding#, Type.klass(VI::Binding)
     end
 
     def initialize(basic_block, type, depth, variable, operands=[], name=variable.to_s)
@@ -18,11 +18,6 @@ module Foundry
       p.keyword 'at'
       p.text    @depth
       p.keyword 'in'
-    end
-
-    def type
-      binding_ty = binding.type
-      binding_ty.type_at @depth, @variable
     end
   end
 end

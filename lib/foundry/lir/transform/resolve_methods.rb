@@ -3,6 +3,7 @@ module Foundry
     def run_on_function(translator, func)
       updated = false
 
+      p func
       func.each_instruction(LIR::ResolveMethodInsn) do |insn|
         if insn.receiver.type &&
               insn.method.constant?
