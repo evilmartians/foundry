@@ -1,7 +1,7 @@
 module Foundry
   class LIR::ResolveClosureInsn < Furnace::SSA::Instruction
     syntax do |s|
-      s.operand :closure, Type.klass(VI::Proc)
+      s.operand :closure#, Type.klass(VI::Proc)
     end
 
     def type

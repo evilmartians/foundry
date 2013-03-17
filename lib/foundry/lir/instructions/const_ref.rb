@@ -1,5 +1,5 @@
 module Foundry
-  class LIR::ConstRefInsn < Furnace::SSA::Instruction
+  class LIR::ConstRefInsn < Furnace::SSA::GenericInstruction
     attr_accessor :constant
 
     syntax do |s|
@@ -15,10 +15,6 @@ module Foundry
     def pretty_parameters(p=LIR::PrettyPrinter.new)
       p.text    @constant
       p.keyword 'in'
-    end
-
-    def type
-      Type.top
     end
   end
 end

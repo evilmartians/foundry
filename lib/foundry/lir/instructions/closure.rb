@@ -1,7 +1,7 @@
 module Foundry
   class LIR::ClosureInsn < Furnace::SSA::Instruction
     syntax do |s|
-      s.operand :binding, Type.klass(VI::Binding)
+      s.operand :binding#, Type.klass(VI::Binding)
       s.operand :callee,  LIR::Function
     end
 
@@ -10,7 +10,7 @@ module Foundry
     end
 
     def type
-      nil # FIXME
+      Type.top
     end
   end
 end

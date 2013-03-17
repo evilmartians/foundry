@@ -28,8 +28,10 @@ module Foundry
       @context = {}
 
       CONTEXT_VARS.each do |var|
-        value = binding.value.apply(var)
-        @context[var] = Foundry.constant(value)
+        if binding.constant?
+          value = binding.value.apply(var)
+          @context[var] = Foundry.constant(value)
+        end
       end
 
       if binding.constant?
@@ -195,12 +197,12 @@ module Foundry
 
     def on_const_ref(node)
       cref, constant = *node
-      @builder.const_ref constant, [ process(cref) ]
+      @builder.const_ref constant, Type.variable, [ process(cref) ]
     end
 
     def on_const_fetch(node)
       scope, constant = *node
-      @builder.const_fetch constant, [ process(scope) ]
+      @builder.const_fetch constant, Type.variable, [ process(scope) ]
     end
 
     def make_closure(code, name_prefix)
