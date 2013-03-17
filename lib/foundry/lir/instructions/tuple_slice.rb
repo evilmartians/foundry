@@ -26,7 +26,7 @@ module Foundry
       if tuple.type.variable?
         Type.top
       else
-        @type ||= TupleType.new(tuple.type.element_types[@from..@to])
+        TupleType.new(tuple.type.element_types[@from..@to])
       end
     end
 

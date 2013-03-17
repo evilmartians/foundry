@@ -20,7 +20,7 @@ module Foundry
       if tuple.type.variable?
         Type.top
       else
-        @type ||= tuple.type.element_types[@index]
+        tuple.type.element_types[@index]
       end
     end
   end

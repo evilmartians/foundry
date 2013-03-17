@@ -1,5 +1,7 @@
 def main
   tuple_magic
+  trace fact(10)
+  trace fib(10)
 end
 
 def tuple_magic

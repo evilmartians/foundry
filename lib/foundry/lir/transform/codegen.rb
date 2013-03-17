@@ -13,7 +13,13 @@ module Foundry
       bootstrap_types
 
       translator.each_function.each_with_index do |func, index|
-        emit_function(func)
+        begin
+          emit_function(func)
+        rescue => e
+          $stderr.puts "Failure while generating LLVM for function:"
+          $stderr.puts func.pretty_print
+          raise
+        end
       end
 
       if (errors = @llvm.verify)

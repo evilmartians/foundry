@@ -9,7 +9,7 @@ module Foundry
 
           type, method = insn.receiver.type, insn.method.value
 
-          next if type.variable?
+          next if type.variable? || type == Type.top
 
           klass = type.to_klass
 

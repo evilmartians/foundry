@@ -4,7 +4,7 @@ module Foundry
       if operands.map(&:type).any?(&:variable?)
         Type.top
       else
-        @type ||= Type::Tuple.new(
+        Type::Tuple.new(
             operands.
               map(&:type).
               map(&:element_types).
