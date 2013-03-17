@@ -121,7 +121,7 @@ module Foundry
         tuple    = insn.tuple
         tuple_ty = tuple.type
 
-        if tuple_ty.is_a?(TupleType) && tuple_ty.size
+        if !tuple_ty.variable?
           tuple_ty.size > insn.min_size ?
               Foundry.constant(VI::TRUE) :
               Foundry.constant(VI::FALSE)

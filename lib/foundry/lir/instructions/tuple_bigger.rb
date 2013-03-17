@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :min_size
 
     syntax do |s|
-      s.operand :tuple, Type.klass(VI::Tuple)
+      s.operand :tuple#, Type.klass(VI::Tuple)
     end
 
     def initialize(basic_block, min_size, operands=[], name=nil)

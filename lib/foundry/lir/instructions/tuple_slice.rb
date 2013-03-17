@@ -3,7 +3,7 @@ module Foundry
     attr_accessor :from, :to
 
     syntax do |s|
-      s.operand :tuple, Type.klass(VI::Tuple)
+      s.operand :tuple#, Type.klass(VI::Tuple)
     end
 
     def initialize(basic_block, from, to, operands=[], name=nil)
@@ -26,7 +26,7 @@ module Foundry
       if tuple.type.variable?
         Type.top
       else
-        TupleType.new(tuple.type.element_types[@from..@to])
+        Type::Tuple.new(tuple.type.element_types[@from..@to])
       end
     end
 
