@@ -141,6 +141,9 @@ module Foundry
       # HACK
       if object.class == VI::Integer
         return int_ptr_type.from_i(object.value)
+      elsif object.class == VI::Tuple
+        llvm_elements = object.to_a.map &method(:emit_object)
+        return LLVM::ConstantStruct.const(llvm_elements)
       end
 
       if name && (datum = @llvm.globals[name])
