@@ -1,9 +1,10 @@
 def main
-  i = 0
-  while i < 10
-    trace fib(10)
-    i += 1
-  end
+  tuple_magic
+end
+
+def tuple_magic
+  tup = [ 1, 2 ]
+  tup2 = [ *tup, "a", tup ]
 end
 
 def fact(n)
@@ -20,4 +21,8 @@ def fib(n) => Integer
   else
     fib(n - 1) + fib(n - 2)
   end
+end
+
+def closure
+  5.times { trace 42 }
 end

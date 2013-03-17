@@ -17,9 +17,11 @@ module Foundry
     end
 
     def type
-      tuple.type.is_a?(Type::Tuple) &&
-          tuple.type.element_types[@index] ||
-          Type.top
+      if tuple.type.variable?
+        Type.top
+      else
+        @type ||= tuple.type.element_types[@index]
+      end
     end
   end
 end

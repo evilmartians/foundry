@@ -112,7 +112,7 @@ module Foundry
 
       when LIR::TupleInsn
         if insn.operands.all? &:constant?
-          Foundry.constant(VI.new_tuple(insn.operands))
+          Foundry.constant(VI.new_tuple(insn.operands.map(&:value)))
         else
           :BOT
         end

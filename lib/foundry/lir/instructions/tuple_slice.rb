@@ -23,7 +23,11 @@ module Foundry
     end
 
     def type
-      TupleType.new(tuple.type.element_types[@from..@to])
+      if tuple.type.variable?
+        Type.top
+      else
+        @type ||= TupleType.new(tuple.type.element_types[@from..@to])
+      end
     end
 
     protected
