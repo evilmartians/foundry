@@ -318,11 +318,8 @@ module Foundry::Evaluator
     def on_define_class(node)
       scope_node, name, superclass_node = node.children
 
-      if superclass_node.nil?
-        superclass = VI::Object
-      else
-        superclass = process(superclass_node)
-      end
+      superclass = process(superclass_node)
+      superclass = VI::Object if superclass.nil?
 
       scope = process(scope_node)
       scope = VI::Object if scope.nil?
@@ -470,7 +467,7 @@ module Foundry::Evaluator
     def on_check_type(node)
       type, value = process_all(node)
 
-      unless value.class == type
+      unless value.is_a? type
         raise Error.new(self, "type check failed: #{value.inspect} is not a #{type.inspect}")
       end
 
