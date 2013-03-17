@@ -9,9 +9,9 @@ module Foundry
 
           type, method = insn.receiver.type, insn.method.value
 
-          next unless type.is_a? Type::Ruby
+          next if type.variable?
 
-          klass = type.klass
+          klass = type.to_klass
 
           if klass.method_defined?(method)
             proc     = klass.instance_method(method)

@@ -14,6 +14,10 @@ module Foundry
             parameter_compatible_subtype?(type.parameters)
     end
 
+    def to_klass
+      @klass
+    end
+
     def to_s
       if @klass.is_a? VI::SingletonClass
         "singleton<#{@klass.object.inspect}>"

@@ -17,6 +17,10 @@ module Foundry
       @element_types.size
     end
 
+    def to_klass
+      VI::Tuple
+    end
+
     def specialize(other)
       if other.is_a?(Type::Tuple) && size == other.size
         element_types.

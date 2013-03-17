@@ -21,6 +21,10 @@ module Foundry
           @return_type.replace_type_with(type, replacement))
     end
 
+    def to_klass
+      VI::Proc
+    end
+
     def to_s
       "closure<#{arguments_type}, &#{block_type} -> #{return_type}>"
     end
