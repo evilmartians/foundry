@@ -11,9 +11,9 @@ class Class < Module
     FoundryRt.allocate self
   end
 
-  def new(*args)
+  def new(*args, &block)
     instance = allocate
-    instance.initialize(*args)
+    instance.initialize(*args, &block)
     instance
   end
 
@@ -32,8 +32,13 @@ class Class < Module
     ancestors = []
 
     until klass.nil?
-      ancestors += [ klass ]
-      klass = klass.superclass
+      if klass.is_a? Foundry::IncludedModule
+        ancestors += [ klass.module ]
+      else
+        ancestors += [ klass ]
+      end
+
+      klass = klass.direct_superclass
     end
 
     ancestors

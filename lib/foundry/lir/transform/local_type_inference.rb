@@ -21,8 +21,6 @@ module Foundry
 
         if uniq_types.one?
           insn.type = uniq_types.first
-        elsif uniq_types.reject(&:variable?).count > 1
-          raise LIR::AnalysisError, "ambiguous phi node"
         end
       end
 

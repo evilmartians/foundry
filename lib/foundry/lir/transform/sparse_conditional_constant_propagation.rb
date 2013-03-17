@@ -178,8 +178,8 @@ module Foundry
     def falseful?(value)
       value_ty = value.type
 
-      value_ty == Monotype.of(VI::NilClass) ||
-          value_ty == Monotype.of(VI::FalseClass)
+      value_ty == Type.of(VI::NIL) ||
+          value_ty == Type.of(VI::FALSE)
     end
   end
 end

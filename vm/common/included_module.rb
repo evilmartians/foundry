@@ -7,6 +7,10 @@ class Foundry::IncludedModule < Module
     @method_table   = mod.method_table
   end
 
+  def module
+    @module
+  end
+
   def name
     @module.name
   end
