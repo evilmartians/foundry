@@ -38,6 +38,8 @@ module Foundry::LIR
   require 'foundry/lir/instructions/ivar_load'
   require 'foundry/lir/instructions/ivar_store'
 
+  require 'foundry/lir/instructions/reify'
+
   require 'foundry/lir/instructions/resolve_method'
   require 'foundry/lir/instructions/resolve_closure'
   require 'foundry/lir/instructions/invoke'

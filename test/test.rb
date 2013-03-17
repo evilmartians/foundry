@@ -1,9 +1,14 @@
-def main
-  tuple_magic
-  trace fact(10)
-  trace fib(10)
+class Parametric
+  parametric_by :a
 end
 
+def main
+  a = Parametric.new
+  b = Parametric.reify(a: 100).new
+  c = Parametric.reify(b: 'foo').new
+end
+
+=begin
 def tuple_magic
   tup = [ 1, 2 ]
   tup2 = [ *tup, "a", tup ]

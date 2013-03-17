@@ -43,4 +43,16 @@ class Class < Module
 
     ancestors
   end
+
+  def parametric_by(*names)
+    @parameters = @parameters + names
+  end
+
+  def parameters
+    @parameters
+  end
+
+  def reify(specializations)
+    FoundryRt.reify self, specializations
+  end
 end

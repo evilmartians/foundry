@@ -209,6 +209,11 @@ module Foundry
       @builder.const_fetch constant, Type.variable, [ process(scope) ]
     end
 
+    def on_reify(node)
+      klass, specializations = *process_all(node)
+      @builder.reify [ klass, specializations ]
+    end
+
     def make_closure(code, name_prefix)
       transform = LIR::Transform::FromHIR.new(@lir_module)
       closure   = transform.run(code, @binding, name_prefix)

@@ -1,10 +1,22 @@
 module Foundry
   class VMClass < VMModule
+    attr_reader :parameters, :specializations
+
+    define_mapped_ivars :parameters
+
     def vm_initialize(superclass, vm_class=VMObject)
       super()
 
       @superclass = superclass
       @vm_class   = vm_class
+
+      if @superclass.nil?
+        @parameters      = VMTuple.new([ :by_value ])
+        @specializations = VMLookupTable.new
+      else
+        @parameters      = @superclass.parameters
+        @specializations = @superclass.specializations.dup
+      end
     end
 
     def vm_allocate
@@ -51,7 +63,13 @@ module Foundry
     end
 
     def inspect
-      "{class #{as_module_name @name, 'class'}}"
+      specializations_s = @specializations.to_h.
+          map do |name, value|
+            "#{name}=#{value.inspect}"
+          end.
+          join(', ')
+
+      "{class #{as_module_name @name, 'class'}#{specializations_s}}"
     end
   end
 end
