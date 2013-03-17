@@ -54,4 +54,5 @@ module Foundry
   require_relative 'type/binding'
   require_relative 'type/closure'
   require_relative 'type/ruby'
+  require_relative 'type/lookup_table'
 end

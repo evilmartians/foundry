@@ -30,6 +30,8 @@ module Foundry::LIR
   require 'foundry/lir/instructions/tuple_concat'
   require 'foundry/lir/instructions/tuple_slice'
 
+  require 'foundry/lir/instructions/lut'
+
   require 'foundry/lir/instructions/const_ref'
   require 'foundry/lir/instructions/const_fetch'
 

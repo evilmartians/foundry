@@ -1,11 +1,15 @@
 module Foundry
   class VMLookupTable < VMImmediate
-    def initialize
-      @storage = {}
+    def initialize(storage={})
+      @storage = storage
     end
 
     def self.vm_allocate
       new
+    end
+
+    def dup
+      VMLookupTable.new(@storage.dup)
     end
 
     def class
@@ -35,6 +39,10 @@ module Foundry
 
     def keys
       VI.new_tuple(@storage.keys)
+    end
+
+    def to_h
+      @storage
     end
 
     def inspect

@@ -191,6 +191,10 @@ module Foundry
       @builder.tuple_slice from, to, [ process(tuple_node) ]
     end
 
+    def on_hash(node)
+      @builder.lut process_all(node)
+    end
+
     def on_const_base(node)
       @builder.const_base
     end

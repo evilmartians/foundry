@@ -132,5 +132,9 @@ module Foundry
     def self.new_tuple(value)
       Tuple.vm_new(value)
     end
+
+    def self.new_lut(value)
+      LookupTable.vm_new(value)
+    end
   end
 end

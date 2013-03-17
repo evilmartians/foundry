@@ -28,3 +28,4 @@ end
 def closure
   5.times { trace 42 }
 end
+=end
