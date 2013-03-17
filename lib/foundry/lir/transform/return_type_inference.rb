@@ -21,7 +21,9 @@ module Foundry
           called_fun = translator.lir_module[insn.callee.value]
           return_ty  = called_fun.return_type
 
-          if insn.type != return_ty && return_ty != Type.top
+          next if return_ty.variable?
+
+          if insn.type != return_ty
             func.replace_type_with insn.type, return_ty
 
             updated = true
