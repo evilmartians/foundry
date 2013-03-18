@@ -12,7 +12,8 @@ module Foundry
         if basic_block.successors.count == 1
           succ = basic_block.successors.first
 
-          if succ.predecessors.count == 1
+          if succ.predecessors.count == 1 &&
+                !basic_block.terminator.has_side_effects?
             basic_block.terminator.remove
 
             succ.each_instruction do |insn|

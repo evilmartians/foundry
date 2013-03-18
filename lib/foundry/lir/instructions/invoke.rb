@@ -1,7 +1,7 @@
 module Foundry
   class LIR::InvokeInsn < Furnace::SSA::GenericInstruction
     syntax do |s|
-      s.operand :callee,    LIR::Function
+      s.operand :callee,   LIR::Function
       s.splat   :arguments
     end
 

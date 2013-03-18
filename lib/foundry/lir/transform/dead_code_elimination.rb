@@ -26,7 +26,7 @@ module Foundry
             end
 
             block.each_instruction do |insn|
-              ssa_worklist.merge insn.each_operand.reject(&:constant?)
+              add_instruction_operands_to_worklist(ssa_worklist, insn)
             end
 
             cfg_worklist.merge block.successors
@@ -42,7 +42,7 @@ module Foundry
           ssa_worklist.delete insn
 
           unless insn.used? || insn.has_side_effects?
-            ssa_worklist.merge insn.each_operand.reject(&:constant?)
+            add_instruction_operands_to_worklist(ssa_worklist, insn)
             insn.remove
 
             updated = true
@@ -51,6 +51,17 @@ module Foundry
       end
 
       updated
+    end
+
+    protected
+
+    def add_instruction_operands_to_worklist(ssa_worklist, insn)
+      possibly_dead_insns = insn.
+          each_operand.select do |operand|
+            operand.is_a? LIR::Instruction
+          end
+
+      ssa_worklist.merge possibly_dead_insns
     end
   end
 end
