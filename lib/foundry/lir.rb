@@ -66,6 +66,7 @@ module Foundry::LIR
     require 'foundry/lir/transform/specialize_methods'
     require 'foundry/lir/transform/dead_code_elimination'
     require 'foundry/lir/transform/global_dead_code_elimination'
+    require 'foundry/lir/transform/inline'
     require 'foundry/lir/transform/local_type_inference'
     require 'foundry/lir/transform/return_type_inference'
     require 'foundry/lir/transform/binding_simplification'

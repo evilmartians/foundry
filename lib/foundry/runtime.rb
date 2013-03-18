@@ -122,6 +122,7 @@ module Foundry
           LIR::Transform::SparseConditionalConstantPropagation.new,
           LIR::Transform::DeadCodeElimination.new,
           LIR::Transform::BasicBlockMerging.new,
+          LIR::Transform::Inline.new,
         ], debug: true),
 
         LIR::Transform::GlobalDeadCodeElimination.new([ 'main' ]),
