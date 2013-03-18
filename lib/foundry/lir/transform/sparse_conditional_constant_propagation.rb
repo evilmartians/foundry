@@ -58,7 +58,8 @@ module Foundry
 
       @values.each do |insn, value|
         unless [:TOP, :BOT].include?(value)
-          insn.replace_with value
+          insn.replace_all_uses_with value
+          insn.remove
         end
       end
 
