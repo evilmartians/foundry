@@ -41,7 +41,9 @@ module Foundry
           insn = ssa_worklist.first
           ssa_worklist.delete insn
 
-          unless insn.used? || insn.has_side_effects?
+          unless insn.used? ||
+                    insn.has_side_effects? ||
+                    insn.terminator?
             add_instruction_operands_to_worklist(ssa_worklist, insn)
             insn.remove
 
