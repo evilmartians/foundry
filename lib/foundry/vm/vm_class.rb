@@ -4,7 +4,7 @@ module Foundry
 
     attr_reader :parameters, :specializations
 
-    define_mapped_ivars :parameters
+    define_mapped_ivars :parameters, :specializations
 
     def vm_initialize(superclass, vm_class=VMObject)
       super()
@@ -97,7 +97,7 @@ module Foundry
             @specializations.
             to_hash.
             map do |name, value|
-              "#{name.value}=#{value.inspect}"
+              "#{name}=#{value.inspect}"
             end.
             join(', ')
       end

@@ -55,4 +55,8 @@ class Class < Module
   def reify(specializations)
     FoundryRt.reify self, specializations
   end
+
+  def value_type!
+    @specializations[:by_value] = true
+  end
 end

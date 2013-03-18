@@ -34,14 +34,11 @@ module Foundry
         p.text @klass.object.inspect
         p <<   '>'
       else
-        if @specializations[:by_value] == VI::TRUE
-          sigil = '%'
+        if @specializations[:by_value] == Type.value(VI::TRUE)
+          p.type "#{@klass.name}&"
         else
-          sigil = ''
+          p.type @klass.name
         end
-
-        p.type @klass.name
-        p <<   sigil
 
         if (@specializations.keys - [:by_value]).any?
           p << '<'

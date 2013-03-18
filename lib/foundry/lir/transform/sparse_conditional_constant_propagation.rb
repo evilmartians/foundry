@@ -157,7 +157,7 @@ module Foundry
               insn.type,
               VI.new_lut(Hash[
                 insn.pairs.map do |key, value|
-                  [key.value, value.value]
+                  [key.value.to_sym, value.value]
                 end]))
         else
           :BOT
@@ -165,11 +165,12 @@ module Foundry
 
       when LIR::ReifyInsn
         if insn.operands.all? &:constant?
-          klass           = insn.klass.value
-          specializations = insn.specializations.value
+          klass               = insn.klass.value
+          parameters          = klass.parameters.to_a.map(&:to_sym)
+          specializations     = insn.specializations.value
+          specialization_keys = specializations.keys.to_a
 
-          if (invalid_params = (specializations.keys.to_a -
-                                klass.parameters.to_a)).empty?
+          if (invalid_params = (specialization_keys - parameters)).empty?
             Foundry.constant(klass.reify(specializations))
           else
             invalid_params_s = invalid_params.map(&:inspect).join(', ')

@@ -2,10 +2,15 @@ class Parametric
   parametric_by :a
 end
 
+class B
+  value_type!
+end
+
 def main
   a = Parametric.new
   b = Parametric.reify(a: 100).new
   c = Parametric.reify(a: Object).new
+  d = B.new
 end
 
 =begin
