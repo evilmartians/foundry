@@ -118,6 +118,18 @@ module Foundry
           :BOT
         end
 
+      when LIR::TupleRefInsn
+        tuple     = insn.tuple
+        tuple_idx = insn.index
+
+        if insn.tuple.constant?
+          insn.tuple.value[tuple_idx]
+        elsif insn.tuple.is_a?(LIR::TupleInsn)
+          insn.tuple.operands[tuple_idx]
+        else
+          :BOT
+        end
+
       when LIR::TupleBiggerInsn
         tuple    = insn.tuple
         tuple_ty = tuple.type
