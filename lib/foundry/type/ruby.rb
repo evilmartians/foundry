@@ -1,17 +1,20 @@
 module Foundry
   class Type::Ruby < Type::Top
-    attr_reader :klass, :parameters
+    attr_reader :klass, :specializations
 
-    def initialize(klass, parameters)
-      @klass      = klass
-      @parameters = parameters.freeze
+    def initialize(klass, specializations)
+      @klass           = klass
+      @specializations = Hash[
+        specializations.to_hash.map do |key, value|
+          [ key.to_sym, value_to_type(value) ]
+        end].freeze
     end
 
     def subtype_of?(type)
       super ||
           type.instance_of?(Type::Ruby) &&
             klass.ancestors.include?(type.klass) &&
-            parameter_compatible_subtype?(type.parameters)
+            specialization_compatible_subtype?(type.specializations)
     end
 
     def to_klass
@@ -19,18 +22,54 @@ module Foundry
     end
 
     def to_s
-      if @klass.is_a? VI::SingletonClass
-        "singleton<#{@klass.object.inspect}>"
-      else
-        "#{@klass.name.to_s}&"
+      LIR::PrettyPrinter.new(false) do |p|
+        pretty_print(p)
       end
+    end
+
+    def pretty_print(p=LIR::PrettyPrinter.new)
+      if @klass.is_a? VI::SingletonClass
+        p.type "singleton"
+        p <<   '<'
+        p.text @klass.object.inspect
+        p <<   '>'
+      else
+        if @specializations[:by_value] == VI::TRUE
+          sigil = '%'
+        else
+          sigil = ''
+        end
+
+        p.type @klass.name
+        p <<   sigil
+
+        if (@specializations.keys - [:by_value]).any?
+          p << '<'
+          @specializations.each do |key, value|
+            p.text key
+            p <<   ':'
+            value.pretty_print p
+          end
+          p.text '>'
+        end
+      end
+
+      p
     end
 
     protected
 
-    def parameter_compatible_subtype?(parameters)
-      parameters.keys.map do |param|
-        parameters[param] == @parameters[param]
+    def value_to_type(value)
+      if value.is_a? VI::Class
+        Type.klass(value)
+      else
+        Type.value(value)
+      end
+    end
+
+    def specialization_compatible_subtype?(specializations)
+      specializations.keys.map do |param|
+        specializations[param] == @parameters[param]
       end.reduce(:&)
     end
   end

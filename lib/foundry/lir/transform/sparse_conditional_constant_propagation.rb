@@ -127,7 +127,7 @@ module Foundry
         if insn.tuple.constant?
           Foundry.constant(insn.tuple.value[tuple_idx])
         elsif insn.tuple.is_a?(LIR::TupleInsn)
-          Foundry.constant(insn.tuple.operands[tuple_idx])
+          insn.tuple.operands[tuple_idx]
         else
           :BOT
         end
@@ -159,6 +159,23 @@ module Foundry
                 insn.pairs.map do |key, value|
                   [key.value, value.value]
                 end]))
+        else
+          :BOT
+        end
+
+      when LIR::ReifyInsn
+        if insn.operands.all? &:constant?
+          klass           = insn.klass.value
+          specializations = insn.specializations.value
+
+          if (invalid_params = (specializations.keys.to_a -
+                                klass.parameters.to_a)).empty?
+            Foundry.constant(klass.reify(specializations))
+          else
+            invalid_params_s = invalid_params.map(&:inspect).join(', ')
+            raise LIR::AnalysisError, "Class #{klass} cannot be " +
+                                      "specialized by #{invalid_params_s}"
+          end
         else
           :BOT
         end

@@ -5,7 +5,7 @@ end
 def main
   a = Parametric.new
   b = Parametric.reify(a: 100).new
-  c = Parametric.reify(b: 'foo').new
+  c = Parametric.reify(a: Object).new
 end
 
 =begin

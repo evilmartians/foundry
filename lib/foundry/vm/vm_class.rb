@@ -1,5 +1,7 @@
 module Foundry
   class VMClass < VMModule
+    attr_reader :vm_class
+
     attr_reader :parameters, :specializations
 
     define_mapped_ivars :parameters
@@ -11,12 +13,29 @@ module Foundry
       @vm_class   = vm_class
 
       if @superclass.nil?
-        @parameters      = VMTuple.new([ :by_value ])
+        @parameters      = VMTuple.new([ VMSymbol.new(:by_value) ])
         @specializations = VMLookupTable.new
       else
         @parameters      = @superclass.parameters
         @specializations = @superclass.specializations.dup
       end
+    end
+
+    def initialize_copy(original)
+      @class             = original.class
+      @name, @superclass = original.name, original.superclass
+      @vm_class          = original.vm_class
+      @method_table      = original.method_table
+      @constant_table    = original.constant_table
+
+      @parameters        = original.parameters
+      @specializations   = original.specializations.dup
+    end
+
+    def dup
+      instance = VMClass.allocate
+      instance.__send__ :initialize_copy, self
+      instance
     end
 
     def vm_allocate
@@ -62,12 +81,26 @@ module Foundry
       @singleton_class
     end
 
+    def reify(specializations)
+      reified_klass = dup
+
+      specializations.each do |key, value|
+        reified_klass.specializations[key] = value
+      end
+
+      reified_klass
+    end
+
     def inspect
-      specializations_s = @specializations.to_h.
-          map do |name, value|
-            "#{name}=#{value.inspect}"
-          end.
-          join(', ')
+      if @specializations.size > 0
+        specializations_s = ' ' +
+            @specializations.
+            to_hash.
+            map do |name, value|
+              "#{name.value}=#{value.inspect}"
+            end.
+            join(', ')
+      end
 
       "{class #{as_module_name @name, 'class'}#{specializations_s}}"
     end

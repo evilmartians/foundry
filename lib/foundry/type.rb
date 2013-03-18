@@ -17,7 +17,7 @@ module Foundry
         elsif klass == VI::Proc
           Type::Closure.new(klass)
         else
-          Type::Ruby.new(klass, {})
+          Type::Ruby.new(klass, klass.specializations)
         end
       else
         case object
@@ -46,7 +46,7 @@ module Foundry
     end
 
     def self.klass(klass)
-      Type::Ruby.new(klass, {})
+      Type::Ruby.new(klass, klass.specializations)
     end
   end
 

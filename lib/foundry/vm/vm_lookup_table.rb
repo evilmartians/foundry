@@ -41,7 +41,7 @@ module Foundry
       VI.new_tuple(@storage.keys)
     end
 
-    def to_h
+    def to_hash
       @storage
     end
 
