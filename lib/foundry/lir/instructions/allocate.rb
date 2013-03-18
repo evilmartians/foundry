@@ -5,10 +5,8 @@ module Foundry
     end
 
     def type
-      # TODO make this handle classes without associated singletons.
-      if !klass.type.variable? &&
-            klass.type.klass.is_a?(VI::SingletonClass)
-        Type.klass(klass.type.klass.object)
+      if klass.constant?
+        Type.klass klass.value
       else
         Type.top
       end
