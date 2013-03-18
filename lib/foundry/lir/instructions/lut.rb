@@ -11,8 +11,6 @@ module Foundry
       end
     end
 
-    protected
-
     def pairs
       operands.each_slice(2)
     end

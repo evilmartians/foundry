@@ -113,7 +113,9 @@ module Foundry
 
       when LIR::TupleInsn
         if insn.operands.all? &:constant?
-          Foundry.constant(VI.new_tuple(insn.operands.map(&:value)))
+          LIR::Constant.new(
+              insn.type,
+              VI.new_tuple(insn.operands.map(&:value)))
         else
           :BOT
         end
@@ -123,9 +125,9 @@ module Foundry
         tuple_idx = insn.index
 
         if insn.tuple.constant?
-          insn.tuple.value[tuple_idx]
+          Foundry.constant(insn.tuple.value[tuple_idx])
         elsif insn.tuple.is_a?(LIR::TupleInsn)
-          insn.tuple.operands[tuple_idx]
+          Foundry.constant(insn.tuple.operands[tuple_idx])
         else
           :BOT
         end
@@ -145,6 +147,18 @@ module Foundry
       when LIR::TupleConcatInsn
         if insn.operands.all? &:constant?
           Foundry.constant(VI.new_tuple(insn.operands.map(&:value).reduce(:+)))
+        else
+          :BOT
+        end
+
+      when LIR::LutInsn
+        if insn.operands.all? &:constant?
+          LIR::Constant.new(
+              insn.type,
+              VI.new_lut(Hash[
+                insn.pairs.map do |key, value|
+                  [key.value, value.value]
+                end]))
         else
           :BOT
         end
