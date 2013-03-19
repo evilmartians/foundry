@@ -195,6 +195,14 @@ module Foundry::Evaluator
     end
 
     #
+    # Lookup tables
+    #
+
+    def on_hash(node)
+      VI.new_lut(Hash[process_all(node).each_slice(2).to_a])
+    end
+
+    #
     # Literals
     #
 
@@ -219,7 +227,8 @@ module Foundry::Evaluator
 
     def on_integer(node)
       value, = node.children
-      VI.new_integer(value)
+      # VI.new_integer(value)
+      VI.new_machine_integer(value, true, 16)
     end
 
     def on_string(node)
@@ -336,6 +345,12 @@ module Foundry::Evaluator
       end
 
       klass
+    end
+
+    def on_reify(node)
+      klass, specializations = *process_all(node)
+
+      klass.reify(specializations)
     end
 
     #

@@ -16,4 +16,5 @@ foundry/globals.rb
 comparable.rb
 numeric.rb
 integer.rb
+machine/integer.rb
 string.rb

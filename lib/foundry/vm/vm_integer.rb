@@ -6,7 +6,8 @@ module Foundry
       @value = value.to_int
     end
 
-    alias to_i value
+    alias to_int value
+    alias to_i   value
 
     def inspect
       "{#{@value}}"

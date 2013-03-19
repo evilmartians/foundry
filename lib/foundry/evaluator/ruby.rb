@@ -105,11 +105,28 @@ module Foundry::Evaluator
             VI::TRUE : VI::FALSE
 
       when :+, :-, :*, :/, :%
-        VI.new_integer left.value.send(op.value, right.value)
+        if left.width != right.width ||
+              left.signed? != right.signed?
+          raise Error.new(self, "cannot coerce #{left.inspect} and #{right.inspect}")
+        end
+
+        VI.new_machine_integer(
+            left.value.send(op.value, right.value),
+            left.signed?,
+            left.width)
 
       when :to_s
         VI.new_string left.value.to_s
       end
+    end
+
+    def on_int_convert(node)
+      source, signed, width = *process_all(node)
+
+      VI.new_machine_integer(
+          source.to_int,
+          signed == VI::TRUE,
+          width.to_int)
     end
 
     def on_symop(node)

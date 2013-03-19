@@ -20,6 +20,7 @@ require 'foundry/vm/vm_symbol'
 require 'foundry/vm/vm_string'
 
 require 'foundry/vm/vm_integer'
+require 'foundry/vm/vm_machine_integer'
 
 module Foundry
   module VI
@@ -101,6 +102,12 @@ module Foundry
 
     TOPLEVEL = Object.vm_new
 
+    Machine          = Module.vm_new
+    Object.const_set  :Machine, Machine
+
+    Machine_Integer  = Class.vm_new(Integer, VMMachineInteger)
+    Machine.const_set :Integer, Machine_Integer
+
     def self.new_module
       Module.vm_new
     end
@@ -127,6 +134,13 @@ module Foundry
 
     def self.new_integer(value)
       Integer.vm_new(value)
+    end
+
+    def self.new_machine_integer(value, signed, width)
+      Machine_Integer.reify(
+          signed: signed ? TRUE : FALSE,
+          width:  new_integer(width)).
+        vm_new(value)
     end
 
     def self.new_tuple(value)
