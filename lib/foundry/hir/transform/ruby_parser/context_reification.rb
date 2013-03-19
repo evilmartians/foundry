@@ -29,8 +29,8 @@ module Foundry
             :"&block" => s(:nil),
             :Defn     => s(:var, :Scope),
             :Cref     => s(:tuple_concat,
-                           s(:var, :Cref),
-                           s(:tuple, s(:var, :Scope))),
+                           s(:tuple, s(:var, :Scope)),
+                           s(:var, :Cref)),
 
           },
           *process_all(body))
