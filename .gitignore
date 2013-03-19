@@ -16,3 +16,4 @@ coverage/
 *.jar
 *.bc
 .sass-cache/
+*.json
