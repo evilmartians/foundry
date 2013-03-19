@@ -78,6 +78,8 @@ begin
     end
   else
     Foundry::Runtime.eval 'repl!', '(prelude)'
+
+    exit
   end
 
   Foundry::Runtime.instrument = !opts[:instrument].nil?
@@ -121,7 +123,6 @@ rescue Foundry::Evaluator::Error => e
   puts e.inner_exception.inspect
   puts e.inner_backtrace
   puts e.backtrace
-  exit!
 
 rescue Foundry::LIR::AnalysisError => e
   puts "Analysis error:"
