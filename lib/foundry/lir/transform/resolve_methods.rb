@@ -18,11 +18,9 @@ module Foundry
             function = translator.add_method proc
 
             insn.replace_with(function.to_value)
-          else
-            raise LIR::AnalysisError, "Undefined method #{method} for #{klass}"
-          end
 
-          updated = true
+            updated = true
+          end
         end
       end
 

@@ -10,7 +10,7 @@ module Foundry
 
         target_func = translator.lir_module[insn.callee.value]
 
-        if should_inline?(target_func)
+        if func != target_func && should_inline?(target_func)
           inline_queue << [insn, target_func]
         end
       end
@@ -36,15 +36,14 @@ module Foundry
         end
 
         inlined_func.each_basic_block do |block|
+          func.add block
+          block.function = func
+          block.name = "i.#{block.name}"
+
           block.each do |insn|
             insn.function = func
             insn.name = "i.#{insn.name}"
           end
-
-          block.function = func
-          block.name = "i.#{block.name}"
-
-          func.add block
         end
 
         value_deps = {}
@@ -88,13 +87,23 @@ module Foundry
     end
 
     def should_inline?(function)
-      function.
-            each_instruction(LIR::ReifyInsn, LIR::AllocateInsn).
-            any? do |insn|
+      inline = false
+
+      inline ||= function.
+          each_instruction(LIR::ReifyInsn, LIR::AllocateInsn).
+          any? do |insn|
         insn.operands.any? do |operand|
           !operand.constant?
         end
       end
+
+      inline ||= function.
+          each_instruction(LIR::IsAInsn).
+          any? do |insn|
+        !insn.klass.constant?
+      end
+
+      inline
     end
   end
 end

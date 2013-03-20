@@ -163,6 +163,17 @@ module Foundry
           :BOT
         end
 
+      when LIR::IsAInsn
+        if insn.klass.constant? && !insn.object.type.variable?
+          if insn.object.type == Type.klass(insn.klass.value)
+            Foundry.constant(VI::TRUE)
+          else
+            Foundry.constant(VI::FALSE)
+          end
+        else
+          :BOT
+        end
+
       when LIR::ReifyInsn
         if insn.operands.all? &:constant?
           klass               = insn.klass.value
@@ -191,7 +202,7 @@ module Foundry
             end
           end
 
-          raise LIR::AnalysisError, "#{insn.constant} not found in cref #{cref.value.to_a}"
+          :TOP
         else
           :BOT
         end
@@ -204,7 +215,7 @@ module Foundry
             return Foundry.constant(scope.value.const_get(insn.constant))
           end
 
-          raise LIR::AnalysisError, "#{insn.constant} not found in #{scope.value}"
+          :TOP
         else
           :BOT
         end

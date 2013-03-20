@@ -11,6 +11,7 @@ module Foundry
 
     def initialize(basic_block, operation, operands=[], name=nil)
       super(basic_block, operands, name)
+
       self.operation = operation
     end
 
@@ -27,11 +28,18 @@ module Foundry
     end
 
     def type
-      case @operation
-      when :+, :-, :*, :/, :%
-        Type.klass(VI::Integer)
-      when :<, :<=, :>, :>=, :==, :!=
-        Type.klass(VI::Object)
+      if @operation == :* && left.type != right.type
+        #p "INTOP", left, right, left.type, right.type
+        #require 'pry';binding.pry
+      end
+
+      if left.type == right.type
+        case @operation
+        when :+, :-, :*, :/, :%
+          left.type
+        when :<, :<=, :>, :>=, :==, :!=
+          Type.boolean
+        end
       else
         Type.top
       end

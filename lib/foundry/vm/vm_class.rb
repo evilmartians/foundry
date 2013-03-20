@@ -2,6 +2,7 @@ module Foundry
   class VMClass < VMModule
     attr_reader :vm_class
 
+    attr_reader :unreified
     attr_reader :parameters, :specializations
 
     define_mapped_ivars :parameters, :specializations
@@ -11,6 +12,8 @@ module Foundry
 
       @superclass = superclass
       @vm_class   = vm_class
+
+      @unreified  = self
 
       if @superclass.nil?
         @parameters      = VMTuple.new([ VMSymbol.new(:by_value) ])
@@ -22,6 +25,8 @@ module Foundry
     end
 
     def initialize_copy(original)
+      @unreified         = original
+
       @class             = original.class
       @name, @superclass = original.name, original.superclass
       @vm_class          = original.vm_class

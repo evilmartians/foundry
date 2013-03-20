@@ -88,13 +88,25 @@ module Foundry
       when Type.bottom
         LLVM::Type.void
 
+      when Type::Tuple
+        elements_ty      = type.element_types
+        llvm_elements_ty = elements_ty.map { |ty| @types[ty] }
+
+        LLVM::Type.struct(llvm_elements_ty,
+            false)
+
+      when Type::Binding
+        var_types      = type.variable_types
+        llvm_var_types = var_types.map { |ty| @types[ty] }
+
+        if type.next
+          LLVM::Type.struct([ @types[type.next] ] + llvm_var_types, false)
+        else
+          LLVM::Type.struct(llvm_var_types, false)
+        end
+
       when Type::Ruby
         klass         = type.klass
-
-        # HACK
-        if klass == VI::Integer
-          return int_ptr_type
-        end
 
         llvm_body_ty  = emit_class_body_type(klass)
 
@@ -117,22 +129,8 @@ module Foundry
 
         llvm_imp_ty.pointer
 
-      when Type::Tuple
-        elements_ty      = type.element_types
-        llvm_elements_ty = elements_ty.map { |ty| @types[ty] }
-
-        LLVM::Type.struct(llvm_elements_ty,
-            false)
-
-      when Type::Binding
-        var_types      = type.variable_types
-        llvm_var_types = var_types.map { |ty| @types[ty] }
-
-        if type.next
-          LLVM::Type.struct([ @types[type.next] ] + llvm_var_types, false)
-        else
-          LLVM::Type.struct(llvm_var_types, false)
-        end
+      when Type::MachineInteger
+        LLVM::Type.from_ptr(LLVM::C.int_type(type.width.value.to_int), :integer)
 
       else
         raise RuntimeError, "unable to lower type #{type.inspect}"
@@ -140,64 +138,58 @@ module Foundry
     end
 
     def emit_object(object, name=nil)
-      if object.is_a?(VI::Class) && !object.name.nil?
-        name = name(nil, object)
-      end
+      klass = object.class.unreified
 
-      # HACK
-      if object.class == VI::Integer
-        return int_ptr_type.from_i(object.value)
-      elsif object.class == VI::Tuple
-        llvm_elements = object.to_a.map &method(:emit_object)
-        return LLVM::ConstantStruct.const(llvm_elements)
-      end
+      case
+      when klass == VI::Tuple
+        LLVM::ConstantStruct.const(
+            object.to_a.map { |val| @data[val] })
 
-      if name && (datum = @llvm.globals[name])
-        datum
+      when klass == VI::Machine_Integer
+        width   = object.class.specializations[VMSymbol.new(:width)].to_int
+        signed  = object.class.specializations[VMSymbol.new(:signed)] == VI::TRUE
+
+        llvm_ty = LLVM::Type.from_ptr(LLVM::C.int_type(width), :integer)
+
+        LLVM::ConstantInt.from_ptr(
+            LLVM::C.const_int(llvm_ty, object.value, signed ? 1 : 0))
+
       else
-        if object.singleton_class_defined?
-          klass      = object.singleton_class
-          klass_name = "S." + (name || object.__id__.to_s)
-        else
-          klass      = object.class
+        if object.is_a?(VI::Class) && !object.name.nil?
+          name = name(nil, object)
         end
 
-        # Have to bitcast to a named type explicitly here, as
-        # LLVM::ConstantStruct.const generates an unnamed type,
-        # and unnamed types are not uniqued together with named
-        # ones. They're not compatible either despite having
-        # identical structure. Yuck.
+        if name && (datum = @llvm.globals[name])
+          datum
+        else
+          if object.singleton_class_defined?
+            klass      = object.singleton_class
+            klass_name = "S." + (name || object.__id__.to_s)
+          else
+            klass      = object.class
+          end
 
-        llvm_ptr_ty = @types[Type.klass(klass)]
-        llvm_ty     = llvm_ptr_ty.element_type
+          llvm_ptr_ty = @types[Type.klass(klass)]
+          llvm_ty     = llvm_ptr_ty.element_type
 
-        datum = @llvm.globals.add llvm_ty, name
-        datum.initializer = LLVM::ConstantStruct.const([
-            emit_object(klass, klass_name).bitcast_to(
-                @types[Type.klass(VI::Class)]),
-            LLVM::Constant.null(emit_class_body_type(klass))
-        ]).bitcast_to(llvm_ty)
+          datum = @llvm.globals.add llvm_ty, name
+          datum.initializer = LLVM::ConstantStruct.named_const(
+              llvm_ty,
+              [
+                emit_object(klass, klass_name).bitcast_to(
+                  @types[Type.klass(VI::Class)]),
+                LLVM::Constant.null(emit_class_body_type(klass))
+              ])
 
-        datum
+          datum
+        end
       end
     end
 
     def emit_value(lir_value)
       case lir_value
       when LIR::Constant
-        type, value = lir_value.type, lir_value.value
-
-        case type
-        when Type::Ruby
-          @data[value]
-
-        when Type::Tuple
-          LLVM::ConstantStruct.const(
-              value.to_a.map { |val| emit_object(val) })
-
-        else
-          raise RuntimeError, "unable to lower value #{value}"
-        end
+        @data[lir_value.value]
 
       else
         raise RuntimeError, "unable to lower value #{lir_value}"
@@ -378,11 +370,17 @@ module Foundry
         end
 
       when LIR::TraceInsn
-        llvm_value     = @values[insn.operands.first]
+        value          = insn.operands.first
+        llvm_value     = @values[value]
         llvm_trace_fun = @llvm.functions.add("foundry.trace",
               [ int_ptr_type ], LLVM::Type.void)
 
-        llvm_int_value = builder.ptr2int(llvm_value, int_ptr_type)
+        if value.type.is_a? Type::MachineInteger
+          llvm_int_value = builder.sext(llvm_value, int_ptr_type)
+        else
+          llvm_int_value = builder.ptr2int(llvm_value, int_ptr_type)
+        end
+
         builder.call(llvm_trace_fun, llvm_int_value)
 
         @data[VI::NIL]

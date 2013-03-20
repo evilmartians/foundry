@@ -138,8 +138,8 @@ module Foundry
 
     def self.new_machine_integer(value, signed, width)
       Machine_Integer.reify(
-          signed: signed ? TRUE : FALSE,
-          width:  new_integer(width)).
+          VMSymbol.new(:signed) => signed ? TRUE : FALSE,
+          VMSymbol.new(:width)  => new_integer(width)).
         vm_new(value)
     end
 

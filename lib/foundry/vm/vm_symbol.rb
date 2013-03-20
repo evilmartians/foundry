@@ -17,8 +17,8 @@ module Foundry
     end
 
     def eql?(other)
-      other.class == VI::Symbol &&
-          other.value == @value
+      other.respond_to?(:to_sym) &&
+          @value == other.to_sym
     end
 
     def inspect

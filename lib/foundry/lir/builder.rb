@@ -24,6 +24,10 @@ module Foundry
       constant VI.new_integer(value)
     end
 
+    def machine_integer(value, signed, width)
+      constant VI.new_machine_integer(value, signed, width)
+    end
+
     def symbol(value)
       constant VI.new_symbol(value)
     end

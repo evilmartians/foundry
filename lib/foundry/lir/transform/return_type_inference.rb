@@ -9,7 +9,7 @@ module Foundry
       if returns.count == 1
         return_ty = returns.first.value_type
 
-        if func.return_type != return_ty
+        if func.return_type != return_ty && return_ty != Type.top
           func.return_type = return_ty
 
           updated = true

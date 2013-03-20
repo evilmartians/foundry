@@ -155,7 +155,7 @@ module Foundry
 
     def on_integer(node)
       value, = *node
-      @builder.integer(value)
+      @builder.machine_integer(value, true, 32)
     end
 
     def on_symbol(node)
@@ -207,6 +207,16 @@ module Foundry
     def on_const_fetch(node)
       scope, constant = *node
       @builder.const_fetch constant, Type.variable, [ process(scope) ]
+    end
+
+    def on_is_a?(node)
+      object, klass = *process_all(node)
+      @builder.is_a [ object, klass ]
+    end
+
+    def on_class_of(node)
+      object, = *process_all(node)
+      @builder.class_of [ object ]
     end
 
     def on_reify(node)
@@ -346,6 +356,11 @@ module Foundry
 
       @builder.integer_op(op,
           process_all([ left_node, right_node ]))
+    end
+
+    def on_strop(node)
+      #FIXME
+      @builder.nil
     end
 
     def on_trace(node)
