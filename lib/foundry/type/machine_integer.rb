@@ -39,12 +39,12 @@ module Foundry
     end
 
     def to_s
-      LIR::PrettyPrinter.new(false) do |p|
-        pretty_print(p)
+      Furnace::AwesomePrinter.new(false) do |p|
+        awesome_print(p)
       end
     end
 
-    def pretty_print(p=LIR::PrettyPrinter.new)
+    def awesome_print(p=Furnace::AwesomePrinter.new)
       if reified? && @width.value != VI::NIL
         width = @width.value.to_int
 
@@ -58,9 +58,9 @@ module Foundry
 
         p <<   '<'
         p.text 'signed:'
-        @signed.pretty_print p
+        @signed.awesome_print p
         p.text 'width:'
-        @width.pretty_print  p
+        @width.awesome_print  p
         p.text '>'
       end
     end

@@ -56,23 +56,22 @@ module Foundry
     end
 
     def to_s
-      LIR::PrettyPrinter.new(false) do |p|
-        pretty_print(p)
+      Furnace::AwesomePrinter.new(false) do |p|
+        awesome_print(p)
       end
     end
 
-    def pretty_print(p=LIR::PrettyPrinter.new)
-      p.type 'binding'
+    def awesome_print(p=Furnace::AwesomePrinter.new)
+      p.type('binding').
+        collection('<', ', ', '', @variables) do |name, type|
+          p.text(name).
+            text(':').
+            nest(type)
+        end
 
-      p << '<'
+      p.append(', ...') if @next
 
-      p.objects(@variables) do |name, type|
-        p.text "#{name}:"
-        type.pretty_print(p)
-      end
-      p << ', ... ' if @next
-
-      p << '>'
+      p.append('> ')
     end
   end
 end

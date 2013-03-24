@@ -1,6 +1,9 @@
 def main
-  trace fact(10)
-  trace fib(10)
+  i = 0.to_u8
+  while true
+    trace i
+    i += 1
+  end
 end
 
 def tuple_magic

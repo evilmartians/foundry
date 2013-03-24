@@ -31,7 +31,6 @@ module Foundry
             :Cref     => s(:tuple_concat,
                            s(:tuple, s(:var, :Scope)),
                            s(:var, :Cref)),
-
           },
           *process_all(body))
       ], function: function)

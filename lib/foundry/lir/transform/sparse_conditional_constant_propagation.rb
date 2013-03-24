@@ -101,7 +101,7 @@ module Foundry
             target = insn.true_target
           end
 
-          insn.replace_with(LIR::BranchInsn.new(insn.basic_block, [ target ]))
+          insn.replace_with(LIR::BranchInsn.new([ target ]))
           @ssa_worklist.delete insn
 
           schedule_block target

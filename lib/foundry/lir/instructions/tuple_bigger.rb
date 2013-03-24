@@ -3,16 +3,16 @@ module Foundry
     attr_accessor :min_size
 
     syntax do |s|
-      s.operand :tuple#, Type.klass(VI::Tuple)
+      s.operand :tuple
     end
 
-    def initialize(basic_block, min_size, operands=[], name=nil)
+    def initialize(min_size, operands=[], name=nil)
       @min_size = min_size.to_i
 
-      super(basic_block, operands, name)
+      super(operands, name)
     end
 
-    def pretty_parameters(p=LIR::PrettyPrinter.new)
+    def awesome_print_parameters(p=Furnace::AwesomePrinter.new)
       p.text @min_size, ','
     end
 

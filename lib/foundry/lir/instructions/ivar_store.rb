@@ -2,7 +2,7 @@ module Foundry
   class LIR::IvarStoreInsn < Furnace::SSA::Instruction
     syntax do |s|
       s.operand :object
-      s.operand :variable, Type.klass(VI::Symbol)
+      s.operand :variable
       s.operand :value
     end
 

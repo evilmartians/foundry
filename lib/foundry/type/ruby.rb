@@ -22,32 +22,30 @@ module Foundry
     end
 
     def to_s
-      LIR::PrettyPrinter.new(false) do |p|
-        pretty_print(p)
+      Furnace::AwesomePrinter.new(false) do |p|
+        awesome_print(p)
       end
     end
 
-    def pretty_print(p=LIR::PrettyPrinter.new)
+    def awesome_print(p=Furnace::AwesomePrinter.new)
       if @klass.is_a? VI::SingletonClass
-        p.type "singleton"
-        p <<   '<'
-        p.text @klass.object.inspect
-        p <<   '>'
+        p.type('singleton').
+          append('<').
+          text(@klass.object.inspect).
+          append('>')
       else
         if @specializations[:by_value] == Type.value(VI::TRUE)
-          p.type "#{@klass.name}&"
+          p.type("#{@klass.name}&")
         else
-          p.type @klass.name
+          p.type(@klass.name)
         end
 
         if (@specializations.keys - [:by_value]).any?
-          p << '<'
-          @specializations.each do |key, value|
-            p.text key
-            p <<   ':'
-            value.pretty_print p
-          end
-          p.text '>'
+          p.collection('<', ', ', '>', @specializations) do |key, value|
+              p.text(key).
+                append(':').
+                nest(value)
+            end
         end
       end
 

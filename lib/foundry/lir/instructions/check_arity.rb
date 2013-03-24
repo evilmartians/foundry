@@ -3,18 +3,21 @@ module Foundry
     attr_accessor :min, :max
 
     syntax do |s|
-      s.operand :arguments#, Type.klass(VI::Tuple)
+      s.operand :arguments
     end
 
-    def initialize(basic_block, min=0, max=0, operands=[], name=nil)
+    def initialize(min=0, max=0, operands=[], name=nil)
       @min, @max = min, max
 
-      super(basic_block, operands, name)
+      super(operands, name)
     end
 
-    def pretty_parameters(p=LIR::PrettyPrinter.new)
-      p.text    @min, '..', @max || '.'
-      p.keyword 'of'
+    def awesome_print_parameters(p=Furnace::AwesomePrinter.new)
+      p.text(@min).
+        append('..').
+        append(@max || '.').
+        append(' ').
+        keyword('of')
     end
 
     def has_side_effects?

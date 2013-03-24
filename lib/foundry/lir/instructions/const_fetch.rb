@@ -6,13 +6,13 @@ module Foundry
       s.operand :scope
     end
 
-    def initialize(basic_block, constant, type, operands=[], name=nil)
+    def initialize(constant, type, operands=[], name=nil)
       @constant = constant
 
-      super(basic_block, type, operands, name)
+      super(type, operands, name)
     end
 
-    def pretty_parameters(p=LIR::PrettyPrinter.new)
+    def awesome_print_parameters(p=Furnace::AwesomePrinter.new)
       p.text    @constant
       p.keyword 'from'
     end

@@ -3,16 +3,16 @@ module Foundry
     attr_accessor :from, :to
 
     syntax do |s|
-      s.operand :tuple#, Type.klass(VI::Tuple)
+      s.operand :tuple
     end
 
-    def initialize(basic_block, from, to, operands=[], name=nil)
+    def initialize(from, to, operands=[], name=nil)
       @from, @to = from.to_i, to.to_i
 
-      super(basic_block, operands, name)
+      super(operands, name)
     end
 
-    def pretty_parameters(p=LIR::PrettyPrinter.new)
+    def awesome_print_parameters(p=Furnace::AwesomePrinter.new)
       p.text @from, '..', @to, ','
     end
 

@@ -4,10 +4,10 @@ module Foundry
       s.operand :next
     end
 
-    def initialize(basic_block, variables=[], operands=[], name=nil)
+    def initialize(variables=[], operands=[], name=nil)
       @variables = []
 
-      super(basic_block, Type.bottom, operands, name)
+      super(Type.bottom, operands, name)
 
       @variables = variables
       self.type  = Type::Binding.new(
@@ -32,7 +32,7 @@ module Foundry
                       nil)
     end
 
-    def pretty_parameters(p=LIR::PrettyPrinter.new)
+    def awesome_print_parameters(p=Furnace::AwesomePrinter.new)
       p.text    @variables.map(&:inspect).join(", ")
       p.keyword 'chain'
     end

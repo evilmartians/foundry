@@ -18,7 +18,6 @@ module Foundry
 
             succ.each_instruction do |insn|
               basic_block.append insn
-              insn.basic_block = basic_block
             end
 
             succ.replace_all_uses_with basic_block

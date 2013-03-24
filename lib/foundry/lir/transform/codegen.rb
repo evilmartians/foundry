@@ -17,7 +17,7 @@ module Foundry
           emit_function(func)
         rescue => e
           $stderr.puts "Failure while generating LLVM for function:"
-          $stderr.puts func.pretty_print
+          $stderr.puts func.awesome_print
           raise
         end
       end

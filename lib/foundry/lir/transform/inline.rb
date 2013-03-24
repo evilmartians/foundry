@@ -26,24 +26,22 @@ module Foundry
             each_instruction(LIR::ReturnInsn, LIR::ReturnValueInsn).
             to_a
 
-        block_after_inlined = LIR::BasicBlock.new(func, "exit.#{inlined_func.name}")
+        block_after_inlined = LIR::BasicBlock.new([], "exit.#{inlined_func.name}")
         func.add block_after_inlined
 
         invoke_insn.basic_block.
               splice(invoke_insn).each do |spliced_insn|
-          spliced_insn.basic_block = block_after_inlined
           block_after_inlined.append spliced_insn
         end
 
         inlined_func.each_basic_block do |block|
-          func.add block
-          block.function = func
-          block.name = "i.#{block.name}"
-
           block.each do |insn|
-            insn.function = func
+            insn.basic_block = block # FIXME remove
             insn.name = "i.#{insn.name}"
           end
+
+          block.name = "i.#{block.name}"
+          func.add block
         end
 
         value_deps = {}
@@ -53,8 +51,7 @@ module Foundry
             value_deps[ret_insn.basic_block] = ret_insn.value
           end
 
-          branch_insn = LIR::BranchInsn.new(
-                          ret_insn.basic_block, [ block_after_inlined ])
+          branch_insn = LIR::BranchInsn.new([ block_after_inlined ])
           ret_insn.replace_with branch_insn
         end
 
@@ -65,8 +62,7 @@ module Foundry
             end
 
         if value_deps.count > 1
-          phi_insn = LIR::PhiInsn.new(
-                        block_after_inlined, Type.variable, value_deps)
+          phi_insn = LIR::PhiInsn.new(Type.variable, value_deps)
           block_after_inlined.prepend(phi_insn)
 
           invoke_insn.replace_all_uses_with phi_insn
@@ -74,8 +70,7 @@ module Foundry
           invoke_insn.replace_all_uses_with value_deps.values.first
         end
 
-        branch_insn = LIR::BranchInsn.new(
-                        invoke_insn.basic_block, [ inlined_entry ])
+        branch_insn = LIR::BranchInsn.new([ inlined_entry ])
         invoke_insn.basic_block.insert(invoke_insn, branch_insn)
 
         invoke_insn.remove

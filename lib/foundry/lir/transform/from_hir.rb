@@ -358,6 +358,12 @@ module Foundry
           process_all([ left_node, right_node ]))
     end
 
+    def on_int_convert(node)
+      value, signedness, width = *process_all(node)
+
+      @builder.integer_conv [ value, signedness, width ]
+    end
+
     def on_strop(node)
       #FIXME
       @builder.nil

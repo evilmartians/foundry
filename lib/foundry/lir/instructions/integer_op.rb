@@ -5,12 +5,12 @@ module Foundry
     attr_accessor :operation
 
     syntax do |s|
-      s.operand :left#,  Type.klass(VI::Integer)
-      s.operand :right#, Type.klass(VI::Integer)
+      s.operand :left
+      s.operand :right
     end
 
-    def initialize(basic_block, operation, operands=[], name=nil)
-      super(basic_block, operands, name)
+    def initialize(operation, operands=[], name=nil)
+      super(operands, name)
 
       self.operation = operation
     end
@@ -23,7 +23,7 @@ module Foundry
       @operation = operation
     end
 
-    def pretty_parameters(p=LIR::PrettyPrinter.new)
+    def awesome_print_parameters(p=Furnace::AwesomePrinter.new)
       p.keyword @operation
     end
 

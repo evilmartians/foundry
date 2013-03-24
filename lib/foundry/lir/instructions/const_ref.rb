@@ -3,16 +3,16 @@ module Foundry
     attr_accessor :constant
 
     syntax do |s|
-      s.operand :cref#, Type.klass(VI::Tuple)
+      s.operand :cref
     end
 
-    def initialize(basic_block, constant, operands=[], name=nil)
+    def initialize(constant, operands=[], name=nil)
       @constant = constant
 
-      super(basic_block, operands, name)
+      super(operands, name)
     end
 
-    def pretty_parameters(p=LIR::PrettyPrinter.new)
+    def awesome_print_parameters(p=Furnace::AwesomePrinter.new)
       p.text    @constant
       p.keyword 'in'
     end

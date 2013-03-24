@@ -38,7 +38,7 @@ if opts[:print_maps]
   exit
 end
 
-Furnace::SSA::PrettyPrinter.colorize = $stdout.tty?
+Furnace::AwesomePrinter.colorize = $stdout.tty?
 
 class StandaloneEvaluator < Foundry::Evaluator::Ruby
   def on_repl(node)

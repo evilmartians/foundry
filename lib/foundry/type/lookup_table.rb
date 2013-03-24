@@ -21,19 +21,19 @@ module Foundry
     end
 
     def to_s
-      LIR::PrettyPrinter.new(false) do |p|
-        pretty_print(p)
+      Furnace::AwesomePrinter.new(false) do |p|
+        awesome_print(p)
       end
     end
 
-    def pretty_print(p=LIR::PrettyPrinter.new)
+    def awesome_print(p=Furnace::AwesomePrinter.new)
       p.type 'lut'
 
       p << '<'
       @element_types.each do |key, value_type|
         p.text key
         p <<   ':'
-        value_type.pretty_print p
+        value_type.awesome_print p
       end
       p.text '>'
     end

@@ -3,17 +3,18 @@ module Foundry
     attr_accessor :index
 
     syntax do |s|
-      s.operand :tuple#, Type.klass(VI::Tuple)
+      s.operand :tuple
     end
 
-    def initialize(basic_block, index, operands=[], name=nil)
+    def initialize(index, operands=[], name=nil)
       @index = index.to_i
 
-      super(basic_block, operands, name)
+      super(operands, name)
     end
 
-    def pretty_parameters(p=LIR::PrettyPrinter.new)
-      p.text @index, ','
+    def awesome_print_parameters(p=Furnace::AwesomePrinter.new)
+      p.text(@index).
+        append(',')
     end
 
     def type

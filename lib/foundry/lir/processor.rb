@@ -8,7 +8,7 @@ module Foundry
           run_on_function(translator, func)
         rescue => e
           $stderr.puts "Failure while processing function:"
-          $stderr.puts func.pretty_print
+          $stderr.puts func.awesome_print
           raise
         end
       end

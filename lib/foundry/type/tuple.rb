@@ -35,17 +35,15 @@ module Foundry
     end
 
     def to_s
-      LIR::PrettyPrinter.new(false) do |p|
-        pretty_print(p)
+      Furnace::AwesomePrinter.new(false) do |p|
+        awesome_print(p)
       end
     end
 
-    def pretty_print(p=LIR::PrettyPrinter.new)
+    def awesome_print(p=Furnace::AwesomePrinter.new)
       p.type 'tuple'
 
-      p << '<'
-      p.objects(@element_types)
-      p.text '>'
+      p.collection('<', ', ', '>', @element_types)
     end
   end
 end

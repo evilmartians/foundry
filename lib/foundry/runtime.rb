@@ -139,7 +139,7 @@ module Foundry
 
       if @graph_lir
         translator.each_function do |func|
-          puts "#{func.pretty_print}\n"
+          puts "#{func.awesome_print}\n"
         end
       end
 

@@ -1,7 +1,7 @@
 module Foundry
   class LIR::AllocateInsn < Furnace::SSA::Instruction
     syntax do |s|
-      s.operand :klass#, Type.klass(VI::Class)
+      s.operand :klass
     end
 
     def type

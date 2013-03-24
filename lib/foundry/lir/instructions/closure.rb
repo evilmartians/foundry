@@ -1,12 +1,8 @@
 module Foundry
   class LIR::ClosureInsn < Furnace::SSA::Instruction
     syntax do |s|
-      s.operand :binding#, Type.klass(VI::Binding)
-      s.operand :callee,  LIR::Function
-    end
-
-    def initialize(basic_block, operands=[], name=nil)
-      super
+      s.operand :binding
+      s.operand :callee
     end
 
     def type

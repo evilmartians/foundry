@@ -51,6 +51,7 @@ module Foundry::LIR
   require 'foundry/lir/instructions/define_method'
 
   require 'foundry/lir/instructions/integer_op'
+  require 'foundry/lir/instructions/integer_conv'
 
   require 'foundry/lir/instructions/trace'
 
