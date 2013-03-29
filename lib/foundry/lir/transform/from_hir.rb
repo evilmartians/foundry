@@ -223,6 +223,11 @@ module Foundry
       @builder.reify [ klass, specializations ]
     end
 
+    def on_tvar(node)
+      object, var = *process_all(node)
+      @builder.specialization Type.variable, [ object, var ]
+    end
+
     def make_closure(code, name_prefix)
       transform = LIR::Transform::FromHIR.new(@lir_module)
       closure   = transform.run(code, @binding, name_prefix)

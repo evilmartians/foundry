@@ -27,15 +27,12 @@ module Foundry
     end
 
     def awesome_print(p=Furnace::AwesomePrinter.new)
-      p.type 'lut'
-
-      p << '<'
-      @element_types.each do |key, value_type|
-        p.text key
-        p <<   ':'
-        value_type.awesome_print p
-      end
-      p.text '>'
+      p.type('lut').
+        collection('<', ', ', '>', @element_types) do |key, value_type|
+          p.text(key).
+            append(': ').
+            nest(value_type)
+        end
     end
   end
 end

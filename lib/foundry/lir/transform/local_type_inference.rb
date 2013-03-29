@@ -11,19 +11,10 @@ module Foundry
         if slot_ty.variable? &&
               slot_ty != value_ty &&
               value_ty != Type.top
+
           func.replace_type_with(slot_ty, value_ty)
 
           updated = true
-        end
-      end
-
-      func.each_instruction(LIR::PhiInsn) do |insn|
-        types      = insn.operands.values.map(&:type)
-        uniq_types = types.uniq
-
-        if uniq_types.one? &&
-              uniq_types.first != Type.top
-          insn.type = uniq_types.first
         end
       end
 
@@ -35,7 +26,36 @@ module Foundry
 
         if !insn.expression.type.variable? &&
                 insn.type == insn.expression.type
+
           insn.replace_with(insn.expression)
+
+          updated = true
+        end
+      end
+
+      func.each_instruction(LIR::SpecializationInsn) do |insn|
+        if !insn.object.type.variable? &&
+              insn.object.type != Type.top &&
+              insn.specialization_name.constant?
+
+          dependent_type = insn.object.type.specializations[
+              insn.specialization_name.value.to_sym]
+          constant_value = Foundry.constant(dependent_type.value)
+
+          insn.replace_with constant_value
+        end
+      end
+
+      func.each_instruction(LIR::PhiInsn) do |insn|
+        types      = insn.operands.values.map(&:type)
+        uniq_types = types.uniq
+
+        if uniq_types.one? &&
+              uniq_types.first != Type.top
+
+          insn.type = uniq_types.first
+
+          updated = true
         end
       end
 

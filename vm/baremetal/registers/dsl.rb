@@ -4,7 +4,7 @@ module Registers
       size  = options[:size]  || 4
       align = options[:align] || size
 
-      native_type = Integer.reify(width: size * 8)
+      native_type = Machine::Integer.reify(width: size * 8)
       reg_class   = RegisterClass.reify(type: native_type, alignment: align)
 
       klass = Class.new(reg_class)

@@ -41,6 +41,7 @@ module Foundry::LIR
   require 'foundry/lir/instructions/is_a'
   require 'foundry/lir/instructions/class_of'
   require 'foundry/lir/instructions/reify'
+  require 'foundry/lir/instructions/specialization'
 
   require 'foundry/lir/instructions/resolve_method'
   require 'foundry/lir/instructions/resolve_closure'

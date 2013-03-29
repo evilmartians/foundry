@@ -16,8 +16,8 @@ module Foundry
       end
 
       inline_queue.each do |(invoke_insn, func_to_inline)|
-        func.instrument do |i|
-          i.transform_start("Inline #{func_to_inline.name}")
+        Furnace::SSA.instrumentation do |i|
+          i.mark_transform("Inline #{func_to_inline.name}")
         end
 
         inlined_func  = func_to_inline.dup

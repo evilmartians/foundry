@@ -142,5 +142,14 @@ module Foundry
         process(value)
       ])
     end
+
+    def on_cvar(node)
+      name, = *node
+
+      node.updated(:tvar, [
+        s(:var, :self),
+        s(:symbol, name.to_s[2..-1].to_sym)
+      ])
+    end
   end
 end
