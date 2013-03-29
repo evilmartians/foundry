@@ -51,6 +51,11 @@ module Kernel
     to_s
   end
 
+  def extend(mod)
+    mod.extend_object(self)
+    mod.extended(self)
+  end
+
   def proc(&prc)
     raise ArgumentError, "block required" if prc.nil?
     prc

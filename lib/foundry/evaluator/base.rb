@@ -353,6 +353,13 @@ module Foundry::Evaluator
       klass.reify(specializations)
     end
 
+    def on_tvar(node)
+      object, specialization = *process_all(node)
+
+      klass = object.class
+      klass.specializations[specialization]
+    end
+
     #
     # Instance variables
     #

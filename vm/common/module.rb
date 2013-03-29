@@ -30,7 +30,14 @@ class Module
 
   alias append_features include_into
 
+  def extend_object(object)
+    include_into FoundryRt.singleton_class_of(object)
+  end
+
   def included(mod)
+  end
+
+  def extended(object)
   end
 
   def const_get(Symbol name, search_parent=true)

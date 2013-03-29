@@ -14,6 +14,8 @@ module Foundry
           node.updated(name, arguments_node.children +
               [ process(block_node) ])
         end
+      else
+        node.updated(nil, process_all(node))
       end
     end
 

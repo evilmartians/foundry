@@ -48,36 +48,12 @@ module Machine
       FoundryRt.intop :to_s, self
     end
 
-    def to_u8
-      FoundryRt.int_convert self, false, 8
+    def to_unsigned
+      FoundryRt.int_convert self, false, @@width
     end
 
-    def to_u16
-      FoundryRt.int_convert self, false, 16
-    end
-
-    def to_u32
-      FoundryRt.int_convert self, false, 32
-    end
-
-    def to_u64
-      FoundryRt.int_convert self, false, 64
-    end
-
-    def to_s8
-      FoundryRt.int_convert self, true, 8
-    end
-
-    def to_s16
-      FoundryRt.int_convert self, true, 16
-    end
-
-    def to_s32
-      FoundryRt.int_convert self, true, 32
-    end
-
-    def to_s64
-      FoundryRt.int_convert self, true, 64
+    def to_signed
+      FoundryRt.int_convert self, true,  @@width
     end
   end
 
