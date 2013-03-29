@@ -28,12 +28,7 @@ module Foundry
     end
 
     def type
-      if @operation == :* && left.type != right.type
-        #p "INTOP", left, right, left.type, right.type
-        #require 'pry';binding.pry
-      end
-
-      if left.type == right.type
+      if !@operands.nil? && left.type == right.type
         case @operation
         when :+, :-, :*, :/, :%
           left.type

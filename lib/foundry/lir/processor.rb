@@ -15,9 +15,9 @@ module Foundry
     end
 
     def instrumentation_trace(func)
-      if func.instrumentation
+      if Furnace::SSA.instrumentation
         transform_name = self.class.name.split('::').last
-        func.instrumentation.transform_start(transform_name)
+        Furnace::SSA.instrumentation.mark_transform(func, transform_name)
       end
     end
   end

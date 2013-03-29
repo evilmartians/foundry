@@ -7,6 +7,8 @@ end
 unless defined?(WARBLER_CONFIG)
   require 'bundler'
   Bundler.setup
+
+  require 'pry'
 end
 
 require 'trollop'
@@ -36,6 +38,10 @@ end
 if opts[:print_maps]
   File.write(opts[:print_maps], File.read('/proc/self/maps'))
   exit
+end
+
+if opts[:instrument]
+  Furnace::SSA.start_instrumentation
 end
 
 Furnace::AwesomePrinter.colorize = $stdout.tty?
@@ -82,7 +88,6 @@ begin
     exit
   end
 
-  Foundry::Runtime.instrument = !opts[:instrument].nil?
   Foundry::Runtime.graph_lir  = opts[:dump_lir]
 
   translator = Foundry::LIR::Translator.new
@@ -91,9 +96,7 @@ begin
     Foundry::Runtime.optimize(translator)
   ensure
     if opts[:instrument]
-      File.open(opts[:instrument], 'w') do |io|
-        io.write JSON.dump(translator.lir_module.instrumentation)
-      end
+      Furnace::SSA.dump_instrumentation(opts[:instrument])
 
       puts "Instrumentation dumped."
     end

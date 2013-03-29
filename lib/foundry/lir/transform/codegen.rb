@@ -334,6 +334,29 @@ module Foundry
           raise RuntimeError, "unable to lower IntegerOp #{insn.operation}"
         end
 
+      when LIR::IntegerConvInsn
+        source_type = insn.value.type
+        target_type = insn.type
+
+        unless source_type.is_a?(Type::MachineInteger) &&
+               target_type.is_a?(Type::MachineInteger)
+          raise RuntimeError, "cannot lower IntegerConv " \
+                              "#{source_type.awesome_print} -> " \
+                              "#{target_type.awesome_print}"
+        end
+
+        llvm_source    = @values[insn.value]
+        llvm_target_ty = @types[target_type]
+
+        if source_type.width.value.to_i >
+              target_type.width.value.to_i
+          builder.trunc(llvm_source, llvm_target_ty)
+        elsif target_type.signed.value == VI::TRUE
+          builder.sext(llvm_source, llvm_target_ty)
+        else # target_type.signed.value == VI::FALSE
+          builder.sext(llvm_source, llvm_target_ty)
+        end
+
       when LIR::InvokeInsn
         fun_name  = insn.callee.value
         fun       = @lir[fun_name]

@@ -14,11 +14,11 @@ module Foundry
 
     def awesome_print_parameters(p=Furnace::AwesomePrinter.new)
       p.text(@index).
-        append(',')
+        append(', ')
     end
 
     def type
-      if tuple.type.variable?
+      if @operands.nil? || tuple.type.variable?
         Type.top
       else
         tuple.type.element_types[@index]

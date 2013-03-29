@@ -2,7 +2,7 @@ def main
   i = 0.to_u8
   while true
     trace i
-    i += 1
+    i += 1.to_s8
   end
 end
 

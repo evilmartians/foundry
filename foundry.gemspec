@@ -27,5 +27,5 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency "rspec"
   gem.add_development_dependency "simplecov"
   gem.add_development_dependency "warbler"
-  gem.add_development_dependency "furnace-xray", '~> 1.0'
+  gem.add_development_dependency "furnace-xray", '~> 1.1.0.pre1'
 end

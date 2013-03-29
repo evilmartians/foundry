@@ -8,7 +8,9 @@ module Foundry
         binding_ty = insn.binding.type
         slot_ty    = binding_ty.type_at(insn.depth, insn.variable)
 
-        if slot_ty.variable? && slot_ty != value_ty
+        if slot_ty.variable? &&
+              slot_ty != value_ty &&
+              value_ty != Type.top
           func.replace_type_with(slot_ty, value_ty)
 
           updated = true
@@ -19,7 +21,8 @@ module Foundry
         types      = insn.operands.values.map(&:type)
         uniq_types = types.uniq
 
-        if uniq_types.one?
+        if uniq_types.one? &&
+              uniq_types.first != Type.top
           insn.type = uniq_types.first
         end
       end

@@ -14,7 +14,7 @@ module Foundry
           phi_uses, branch_uses = block.each_use.
                 partition { |use| use.is_a?(LIR::PhiInsn) }
 
-          unless func.entry == block || branch_uses.any? || block.exits?
+          unless func.entry == block || branch_uses.any?
             phi_uses.each do |phi|
               phi.operands.delete block
 

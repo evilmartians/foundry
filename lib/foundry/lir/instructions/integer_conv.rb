@@ -7,7 +7,7 @@ module Foundry
     end
 
     def type
-      if signedness.constant? && width.constant?
+      if operands && signedness.constant? && width.constant?
         Type.klass(VI::Machine_Integer.reify(
             VMSymbol.new(:signed) => signedness.value,
             VMSymbol.new(:width)  => width.value))

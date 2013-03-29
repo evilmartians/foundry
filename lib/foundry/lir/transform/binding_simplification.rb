@@ -39,11 +39,11 @@ module Foundry
         store_count.each do |var, count|
           if count == 1
             value = store_insn[var].value
-            store_insn[var].remove
+            store_insn[var].erase
 
             load_insns[var].each do |insn|
               insn.replace_all_uses_with value
-              insn.remove
+              insn.erase
             end
 
             binding.remove_variable var

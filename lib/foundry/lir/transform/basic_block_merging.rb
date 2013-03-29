@@ -16,7 +16,8 @@ module Foundry
                 !basic_block.terminator.has_side_effects?
             basic_block.terminator.remove
 
-            succ.each_instruction do |insn|
+            content = succ.to_a
+            content.each do |insn|
               basic_block.append insn
             end
 

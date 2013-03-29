@@ -12,13 +12,11 @@ module Foundry
       attr_accessor :graph_ast
       attr_accessor :graph_hir
       attr_accessor :graph_lir
-      attr_accessor :instrument
     end
 
     @graph_ast  = false
     @graph_hir  = false
     @graph_lir  = false
-    @instrument = false
 
     VM_ROOT  = File.expand_path('../../../vm/',  __FILE__)
     RTL_ROOT = File.expand_path('../../../rtl/', __FILE__)
@@ -192,7 +190,7 @@ module Foundry
     end
 
     def self.construct_toplevel_call(name)
-      builder = LIR::Builder.new(name, [], Type.bottom, instrument: @instrument)
+      builder = LIR::Builder.new(name, [], Type.bottom)
 
       toplevel = builder.toplevel
 
