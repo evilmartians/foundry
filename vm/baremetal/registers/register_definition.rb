@@ -1,8 +1,8 @@
 module Registers
   class RegisterDefinition
     def initialize(Class klass)
-      @class  = klass
-      @offset = 0
+      @class   = klass
+      @offset  = 0
     end
 
     def reserved(Integer size)
@@ -37,15 +37,14 @@ module Registers
 
     FIELD_TYPES = [:r, :w, :rw]
 
-    def field(Symbol name, Symbol type, Integer width)
+    # FIXME def field(Symbol name, Symbol type, Integer width)
+    def field(Symbol name, Symbol type, width)
       check_type(type, FIELD_TYPES)
-
-      int_ty = Integer.reify(width: width)
 
       mask   = (2 ** width) - 1
       offset = @offset
 
-      @class.define_method(name) do || => int_ty
+      @class.define_method(name) do
         (self.value & mask) >> offset
       end if r?(type)
 
@@ -65,11 +64,13 @@ module Registers
     end
 
     def r?(type)
-      [:r, :rw, :r_c0, :r_c1].include? type
+      # FIXME [:r, :rw, :r_c0, :r_c1].include? type
+      type == :r || type == :rw || type == :r_c0 || type == :r_c1
     end
 
     def w?(type)
-      [:w, :rw].include? type
+      # FIXME [:w, :rw].include? type
+      type == :w || type == :rw
     end
 
     def c0?(type)

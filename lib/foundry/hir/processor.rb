@@ -145,6 +145,7 @@ module Foundry
 
     def on_loop(node)
       cond, body = *node
+
       node.updated(nil, [
         process(cond), process(body)
       ])
@@ -152,6 +153,20 @@ module Foundry
 
     alias on_while on_loop
     alias on_until on_loop
+
+    #
+    # Operator-assignment
+    #
+
+    def on_op_asgn2(node)
+      receiver_node, setter, operation, value_node = *node
+
+      node.updated(nil, [
+        process(receiver_node),
+        setter, operation,
+        process(value_node)
+      ])
+    end
 
     #
     # Utilites

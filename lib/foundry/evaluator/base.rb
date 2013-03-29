@@ -435,11 +435,7 @@ module Foundry::Evaluator
       arguments = process(arguments_node)
       block     = process(block_node)
 
-      if receiver.respond_to? name
-        receiver.method(name).call(receiver, arguments, block, self)
-      else
-        raise Error.new(self, "undefined method #{name.value} for #{receiver.inspect}")
-      end
+      do_send(receiver, name, arguments, block)
     end
 
     def on_apply(node)
@@ -544,7 +540,7 @@ module Foundry::Evaluator
     #
 
     def on_and(node)
-      left, right = node.children
+      left, right = *node
 
       left_value = process(left)
       if left_value.equal?(VI::NIL) ||
@@ -556,7 +552,7 @@ module Foundry::Evaluator
     end
 
     def on_or(node)
-      left, right = node.children
+      left, right = *node
 
       left_value = process(left)
       if left_value.equal?(VI::NIL) ||
@@ -564,6 +560,35 @@ module Foundry::Evaluator
         process(right)
       else
         left_value
+      end
+    end
+
+    #
+    # self.foo += 1
+    #
+
+    def on_op_asgn2(node)
+      receiver_node, setter, operation, arg_node = *node
+      getter    = setter[0..-2].to_sym
+
+      receiver  = process(receiver_node)
+      argument  = process(arg_node)
+
+      value     = do_send(receiver, getter, VI.new_tuple([]))
+      new_value = do_send(value, operation, VI.new_tuple([ argument ]))
+
+      do_send(receiver, setter, VI.new_tuple([ new_value ]))
+
+      new_value
+    end
+
+    protected
+
+    def do_send(receiver, name, arguments, block=VI::NIL)
+      if receiver.respond_to? name
+        receiver.method(name).call(receiver, arguments, block, self)
+      else
+        raise Error.new(self, "undefined method #{name.value} for #{receiver.inspect}")
       end
     end
   end

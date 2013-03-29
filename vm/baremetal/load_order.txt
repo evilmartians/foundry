@@ -1,1 +1,4 @@
 registers.rb
+registers/dsl.rb
+registers/register_class.rb
+registers/register_definition.rb

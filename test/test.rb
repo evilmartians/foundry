@@ -1,8 +1,12 @@
 def main
+  trace 1
+end
+
+def loop
   i = 0.to_u8
-  while true
+  while i < 30.to_u8
     trace i
-    i += 1.to_s8
+    i += 1.to_u8
   end
 end
 
