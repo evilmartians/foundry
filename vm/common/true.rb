@@ -15,5 +15,3 @@ class TrueClass
     "true"
   end
 end
-
-TRUE = true

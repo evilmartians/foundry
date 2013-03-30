@@ -1,4 +1,8 @@
 class Class < Module
+  def self.new(Class superclass)
+    FoundryRt.new_class superclass
+  end
+
   def coerce(object)
     object
   end

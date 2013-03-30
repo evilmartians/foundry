@@ -15,5 +15,3 @@ class FalseClass
     "false"
   end
 end
-
-FALSE = false

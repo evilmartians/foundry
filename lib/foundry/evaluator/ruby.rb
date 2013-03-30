@@ -19,6 +19,11 @@ module Foundry::Evaluator
       process(self_).singleton_class
     end
 
+    def on_new_class(node)
+      superclass, = *node
+      VI.new_class(process(superclass))
+    end
+
     #
     # Objects
     #
