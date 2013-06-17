@@ -132,6 +132,17 @@ module Foundry
           :BOT
         end
 
+      when LIR::TupleSizeInsn
+        tuple    = insn.tuple
+        tuple_ty = tuple.type
+
+        if !tuple_ty.variable?
+          Foundry.constant(
+              VI.new_integer(tuple_ty.size))
+        else
+          :BOT
+        end
+
       when LIR::TupleBiggerInsn
         tuple    = insn.tuple
         tuple_ty = tuple.type

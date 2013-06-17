@@ -392,6 +392,19 @@ module Foundry
           builder.ret(@values[insn.value])
         end
 
+      when LIR::MemStoreInsn
+        addr  = insn.address
+        value = insn.value
+
+        llvm_addr  = @values[addr]
+        llvm_value = @values[value]
+
+        llvm_ptr   = builder.int2ptr(llvm_addr, llvm_value.type.pointer)
+
+        llvm_store = builder.store(llvm_value, llvm_ptr)
+        llvm_store.volatile = true
+        llvm_store
+
       when LIR::TraceInsn
         value          = insn.operands.first
         llvm_value     = @values[value]

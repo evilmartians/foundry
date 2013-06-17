@@ -22,6 +22,12 @@ module Foundry
       Type::Ruby.new(VI::Object, {})
     end
 
+    def self.machine_integer(signedness=true, size=32)
+      Type::MachineInteger.new(
+          Type.value(signedness ? VI::TRUE : VI::FALSE),
+          Type.value(VI.new_integer(size)))
+    end
+
     def self.klass(klass)
       if klass.unreified == VI::Machine_Integer
         Type::MachineInteger.new(

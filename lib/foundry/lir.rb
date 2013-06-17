@@ -29,6 +29,7 @@ module Foundry::LIR
   require 'foundry/lir/instructions/tuple_bigger'
   require 'foundry/lir/instructions/tuple_concat'
   require 'foundry/lir/instructions/tuple_slice'
+  require 'foundry/lir/instructions/tuple_size'
 
   require 'foundry/lir/instructions/lut'
 
@@ -59,6 +60,8 @@ module Foundry::LIR
   require 'foundry/lir/instructions/check_arity'
   require 'foundry/lir/instructions/check_block'
   require 'foundry/lir/instructions/check_type'
+
+  require 'foundry/lir/instructions/mem_store'
 
   require 'foundry/lir/translator'
   require 'foundry/lir/processor'

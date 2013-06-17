@@ -37,6 +37,9 @@ module Foundry
       package = File.read(File.join(directory, 'load_order.txt'))
 
       package.lines.each do |entry|
+        # Skip empty lines and comments.
+        next if entry =~ /^\s*(#.*)?$/
+
         entry_path = File.join(directory, entry.rstrip)
         if File.directory?(entry_path)
           load_package(entry_path)

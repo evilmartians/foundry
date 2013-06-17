@@ -20,8 +20,29 @@ module Foundry::Evaluator
     end
 
     def on_new_class(node)
-      superclass, = *node
-      VI.new_class(process(superclass))
+      superclass, = *process_all(node)
+      VI.new_class(superclass)
+    end
+
+    def on_define_method(node)
+      klass, name, block = *process_all(node)
+
+      method = VI.new_proc(
+          Foundry::HIR::Node.new(
+            :let,
+            [
+              {
+                :self     => Foundry::HIR::Node.new(:self_arg),
+                :"&block" => Foundry::HIR::Node.new(:block_arg)
+              },
+              block.code.
+                updated(nil, nil, function: "(define_method:#{name.to_sym})")
+            ]),
+          block.binding)
+
+      klass.define_method(name.to_sym, method)
+
+      VI::NIL
     end
 
     #
@@ -109,7 +130,7 @@ module Foundry::Evaluator
         left.value.send(op.value, right.value) ?
             VI::TRUE : VI::FALSE
 
-      when :+, :-, :*, :/, :%
+      when :+, :-, :*, :/, :%, :**
         if left.width != right.width ||
               left.signed? != right.signed?
           raise Error.new(self, "cannot coerce #{left.inspect} and #{right.inspect}")
@@ -119,6 +140,22 @@ module Foundry::Evaluator
             left.value.send(op.value, right.value),
             left.signed?,
             left.width)
+
+      when :<<
+        VI.new_machine_integer(
+            left.value.send(op.value, right.value),
+            left.signed?,
+            left.width + right.value)
+
+      when :>>
+        if left.width < right.value
+          raise Error.new(self, "cannot shift #{left.inspect} by #{right} to the right")
+        end
+
+        VI.new_machine_integer(
+            left.value.send(op.value, right.value),
+            left.signed?,
+            left.width - right.value)
 
       when :to_s
         VI.new_string left.value.to_s

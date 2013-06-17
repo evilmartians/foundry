@@ -23,10 +23,10 @@ module Foundry
     end
 
     def type
-      if tuple.type.variable?
-        Type.top
-      else
+      if @opreands && !tuple.type.variable?
         Type::Tuple.new(tuple.type.element_types[@from..@to])
+      else
+        Type.top
       end
     end
 

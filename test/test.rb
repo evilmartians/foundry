@@ -1,5 +1,33 @@
+class Board
+  def self.setup
+    # RCC->APB2ENR |= IOPCEN; // 0x10
+    FoundryRt.store 0x40021000 + 0x18, 0x10, 4
+    # GPIOC->CRH = 0x44444411;
+    FoundryRt.store 0x40011000 + 0x04, 0x44444411, 4
+  end
+
+  def self.led_on=(value)
+    what = value ? 0x100 : 0
+    # GPIOC->ODR = BIT(8);
+    FoundryRt.store 0x40011000 + 0x0C, what, 4
+  end
+end
+
+def delay
+  i = 0
+  while i < 1000000
+    i += 1
+  end
+end
+
 def main
-  trace 1
+  Board.setup
+  while true
+    Board.led_on = true
+    delay
+    Board.led_on = false
+    delay
+  end
 end
 
 def loop

@@ -43,6 +43,8 @@ module Foundry
           constant_value = Foundry.constant(dependent_type.value)
 
           insn.replace_with constant_value
+
+          updated = true
         end
       end
 
@@ -51,7 +53,8 @@ module Foundry
         uniq_types = types.uniq
 
         if uniq_types.one? &&
-              uniq_types.first != Type.top
+              uniq_types.first != Type.top &&
+              uniq_types.first != insn.type
 
           insn.type = uniq_types.first
 

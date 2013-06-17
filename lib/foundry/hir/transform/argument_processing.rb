@@ -89,13 +89,7 @@ module Foundry
             s(:check_arity,
               s(:args), @arity_low, @arity_high)
 
-          if @is_proc
-            @prologue <<
-              s(:and, s(:ivar, s(:self_arg), s(:symbol, :@lambda)),
-                checker)
-          else
-            @prologue << checker
-          end
+          @prologue << checker
         end
       end
 

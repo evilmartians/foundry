@@ -1,7 +1,7 @@
 module Foundry
   class LIR::LutInsn < Furnace::SSA::Instruction
     def type
-      if pairs.all? { |k, v| k.constant? }
+      if @operands && pairs.all? { |k, v| k.constant? }
         Type::LookupTable.new(Hash[
             pairs.map do |key, value|
               [ key.value.to_sym, value.type ]

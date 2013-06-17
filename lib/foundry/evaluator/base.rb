@@ -227,8 +227,7 @@ module Foundry::Evaluator
 
     def on_integer(node)
       value, = node.children
-      # VI.new_integer(value)
-      VI.new_machine_integer(value, true, 16)
+      VI.new_integer(value)
     end
 
     def on_string(node)
@@ -395,7 +394,7 @@ module Foundry::Evaluator
       target = process(target_node)
 
       proc = VI.new_proc(
-          body_node.updated(nil, nil, function: "#{target.name}:#{name}"),
+          body_node.updated(nil, nil, function: "#{target.name}##{name}"),
           @binding)
 
       target.define_method(name, proc)

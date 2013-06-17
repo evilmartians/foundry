@@ -190,6 +190,11 @@ module Foundry
       @builder.tuple_slice from, to, [ process(tuple_node) ]
     end
 
+    def on_tuple_size(node)
+      tuple_node, = *node
+      @builder.tuple_size [ process(tuple_node) ]
+    end
+
     def on_hash(node)
       @builder.lut process_all(node)
     end
@@ -403,6 +408,16 @@ module Foundry
       type, expr = *process_all(node)
 
       @builder.check_type Type.variable, [ type, expr ]
+    end
+
+    #
+    # Hardware-related intrinsics
+    #
+
+    def on_store(node)
+      address, value, alignment = *process_all(node)
+
+      @builder.mem_store [ address, value, alignment ]
     end
   end
 end

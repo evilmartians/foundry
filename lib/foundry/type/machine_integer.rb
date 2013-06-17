@@ -56,7 +56,7 @@ module Foundry
       else
         p.type 'machine_integer'
 
-        p <<   '<'
+        p.append '<'
         p.text 'signed:'
         @signed.awesome_print p
         p.text 'width:'

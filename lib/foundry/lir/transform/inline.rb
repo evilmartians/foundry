@@ -17,7 +17,7 @@ module Foundry
 
       inline_queue.each do |(invoke_insn, func_to_inline)|
         Furnace::SSA.instrumentation do |i|
-          i.mark_transform("Inline #{func_to_inline.name}")
+          i.mark_transform(func, "Inline #{func_to_inline.name}")
         end
 
         inlined_func  = func_to_inline.dup
@@ -93,10 +93,18 @@ module Foundry
       end
 
       inline ||= function.
+          each_instruction(LIR::ReturnValueInsn).
+          all? do |insn|
+        insn.value.constant?
+      end
+
+      inline ||= function.
           each_instruction(LIR::IsAInsn).
           any? do |insn|
         !insn.klass.constant?
       end
+
+      inline ||= function.size == 1
 
       inline
     end
