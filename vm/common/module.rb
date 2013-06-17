@@ -68,6 +68,10 @@ class Module
     list
   end
 
+  def define_method(Symbol name, &block)
+    FoundryRt.define_method(self, name, block)
+  end
+
   def public(*)
     # TODO
   end

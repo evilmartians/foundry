@@ -1,5 +1,5 @@
-module STM32::F100RB
-  include STM32::F1
-
-  RCC = RCCUnit.reify(base: 0x4001_0000)
+module STM32
+  module F100RB
+    RCC = F1::RCCUnit.reify(base: 0x4001_0000).new
+  end
 end

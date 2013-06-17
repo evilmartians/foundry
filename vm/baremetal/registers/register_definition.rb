@@ -64,13 +64,11 @@ module Registers
     end
 
     def r?(type)
-      # FIXME [:r, :rw, :r_c0, :r_c1].include? type
-      type == :r || type == :rw || type == :r_c0 || type == :r_c1
+      [:r, :rw, :r_c0, :r_c1].include? type
     end
 
     def w?(type)
-      # FIXME [:w, :rw].include? type
-      type == :w || type == :rw
+      [:w, :rw].include? type
     end
 
     def c0?(type)

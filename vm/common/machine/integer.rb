@@ -20,6 +20,30 @@ module Machine
       FoundryRt.intop :%, self, other
     end
 
+    def **(other)
+      FoundryRt.intop :**, self, other
+    end
+
+    def <<(other)
+      FoundryRt.intop :<<, self, other
+    end
+
+    def >>(other)
+      FoundryRt.intop :>>, self, other
+    end
+
+    def &(other)
+      FoundryRt.intop :&, self, other
+    end
+
+    def |(other)
+      FoundryRt.intop :|, self, other
+    end
+
+    def ^(other)
+      FoundryRt.intop :^, self, other
+    end
+
     def ==(other)
       FoundryRt.intop :==, self, other
     end

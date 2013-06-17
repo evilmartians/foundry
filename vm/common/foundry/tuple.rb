@@ -13,14 +13,33 @@ class Foundry::Tuple
     FoundryRt.tuple_concat(self, other)
   end
 
-  def each
-    i = 0
+  def any?
+    length > 0
+  end
 
-    while i < length
-      yield self[i]
-      i += 1
+  def each
+    index = 0
+
+    while index < length
+      yield self[index]
+      index += 1
     end
 
     self
+  end
+
+  def include?(elem)
+    index = 0
+    found = false
+
+    while index < length
+      if elem == self[index]
+        found = true
+      end
+
+      index += 1
+    end
+
+    found
   end
 end

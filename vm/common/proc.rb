@@ -14,14 +14,6 @@ class Proc
     @binding
   end
 
-  def lambda_style!
-    @lambda = true
-  end
-
-  def lambda?
-    @lambda
-  end
-
   def arity
     @arity
   end
