@@ -1,0 +1,11 @@
+function unix_inet_addr_of_string() { return 0; }
+function caml_ba_init() { return 0; }
+function initialize_nat() { return 0; }
+function create_nat() { return 0; }
+function set_to_zero_nat() { return 0; };
+function set_digit_nat() { return 0; }
+function incr_nat() { return 0; };
+function caml_ba_create() { return 0; }
+function caml_ba_set_1() { return 0; }
+function caml_weak_create() { return 0; }
+function caml_weak_set() { return 0; }
