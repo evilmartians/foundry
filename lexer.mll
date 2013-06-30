@@ -75,6 +75,7 @@ rule lex_code state = parse
 | ':'       { Parser.Tk_COLON   (locate lexbuf) }
 | "::"      { Parser.Tk_DCOLON  (locate lexbuf) }
 | ';'       { Parser.Tk_SEMI    (locate lexbuf) }
+| ";;"      { Parser.Tk_DSEMI   (locate lexbuf) }
 | ','       { Parser.Tk_COMMA   (locate lexbuf) }
 | "->"      { Parser.Tk_ARROW   (locate lexbuf) }
 | "=>"      { Parser.Tk_ROCKET  (locate lexbuf) }
@@ -112,10 +113,12 @@ rule lex_code state = parse
 | "not"     { Parser.Kw_NOT     (locate lexbuf, lexeme lexbuf) }
 | "let"     { Parser.Kw_LET     (locate lexbuf, lexeme lexbuf) }
 | "mut"     { Parser.Kw_MUT     (locate lexbuf, lexeme lexbuf) }
+| "do"      { Parser.Kw_DO      (locate lexbuf, lexeme lexbuf) }
 | "if"      { Parser.Kw_IF      (locate lexbuf, lexeme lexbuf) }
 | "then"    { Parser.Kw_THEN    (locate lexbuf, lexeme lexbuf) }
 | "else"    { Parser.Kw_ELSE    (locate lexbuf, lexeme lexbuf) }
 | "end"     { Parser.Kw_END     (locate lexbuf, lexeme lexbuf) }
+| "public"  { Parser.Kw_PUBLIC  (locate lexbuf, lexeme lexbuf) }
 | "module"  { Parser.Kw_MODULE  (locate lexbuf, lexeme lexbuf) }
 | "class"   { Parser.Kw_CLASS   (locate lexbuf, lexeme lexbuf) }
 | "mixin"   { Parser.Kw_MIXIN   (locate lexbuf, lexeme lexbuf) }

@@ -12,7 +12,7 @@
 (* Punctuation *)
 %token <Location.t> Tk_LPAREN Tk_RPAREN Tk_LCURLY Tk_RCURLY Tk_LBRACK Tk_RBRACK
 %token <Location.t> Tk_ASGN Tk_ARROW Tk_ROCKET
-%token <Location.t> Tk_DOT Tk_COLON Tk_DCOLON Tk_COMMA Tk_SEMI
+%token <Location.t> Tk_DOT Tk_COLON Tk_DCOLON Tk_COMMA Tk_SEMI Tk_DSEMI
 
 (* Operators *)
 %token <Location.t * string> Tk_OP_ASGN
@@ -24,8 +24,8 @@
 (* Keywords *)
 %token <Location.t * string> Kw_TRUE Kw_FALSE Kw_NIL Kw_SELF Kw_AND Kw_OR Kw_NOT
 %token <Location.t * string> Kw_LET Kw_MUT Kw_DYNAMIC
-%token <Location.t * string> Kw_IF Kw_THEN Kw_ELSE Kw_END
-%token <Location.t * string> Kw_MODULE Kw_CLASS Kw_MIXIN Kw_IFACE Kw_DEF
+%token <Location.t * string> Kw_DO Kw_IF Kw_THEN Kw_ELSE Kw_END
+%token <Location.t * string> Kw_PUBLIC Kw_MODULE Kw_CLASS Kw_MIXIN Kw_IFACE Kw_DEF
 
 %token EOF
 
@@ -42,8 +42,13 @@
   let op_binary lhs op rhs =
     Location.binary (Syntax.loc lhs) op (Syntax.loc rhs)
 
+  let pat_unary op arg =
+    Location.unary op (Syntax.pat_loc arg)
+
   let collection =
     Location.collection
+  let lambda start finish body =
+    Location.lambda start finish (Syntax.loc body)
 
   let send_unary op arg =
     Location.send_unary op (Syntax.loc arg)
@@ -76,168 +81,256 @@
 %right    Tk_TILDE Tk_UPLUS Tk_UMINUS
 %nonassoc Tk_LBRACK Tk_DOT
 
-%start <Syntax.expr> compstmt
+%start <Syntax.expr list> toplevel
 
 %%
-    compstmt: stmt=stmt EOF
-              { stmt }
-            | stmt=stmt Tk_SEMI
-              { stmt }
+           eof: EOF | Tk_DSEMI
+                {}
 
-         arg: expr=expr
-              { Syntax.ActualArg (nullary (Syntax.loc expr), expr) }
-            | op=Tk_STAR expr=expr
-              { Syntax.ActualSplat (op_unary (fst op) expr, expr) }
+      toplevel: stmts=compstmt eof
+                { stmts }
 
-            | id=Id_LABEL expr=expr
-              { let (label_loc, label) = id in
-                  Syntax.ActualKwArg (op_unary label_loc expr, label, expr) }
-            | op=Tk_DSTAR expr=expr
-              { Syntax.ActualKwSplat (op_unary (fst op) expr, expr) }
+         block: lc=Tk_LCURLY stmts=compstmt rc=Tk_RCURLY
+                { Syntax.Begin (collection lc rc, stmts) }
+              | lc=Kw_DO     stmts=compstmt rc=Kw_END
+                { Syntax.Begin (collection (fst lc) (fst rc), stmts) }
 
-        args: args=separated_list(Tk_COMMA, arg)
-              { args }
+    tuple_elem: expr=expr
+                { Syntax.TupleElem (nullary (Syntax.loc expr), expr) }
+              | op=Tk_STAR expr=expr
+                { Syntax.TupleSplat (op_unary (fst op) expr, expr) }
 
-  tuple_elem: expr=expr
-              { Syntax.TupleElem (nullary (Syntax.loc expr), expr) }
-            | op=Tk_STAR expr=expr
-              { Syntax.TupleSplat (op_unary (fst op) expr, expr) }
+   tuple_elems: elems=separated_list(Tk_COMMA, tuple_elem)
+                { elems }
 
- tuple_elems: elems=separated_list(Tk_COMMA, tuple_elem)
-              { elems }
+   record_elem: id=Id_LABEL expr=expr
+                { let (label_loc, label) = id in
+                    Syntax.RecordElem (op_unary label_loc expr, label, expr) }
+              | lhs=expr tk=Tk_ROCKET rhs=expr
+                { Syntax.RecordPair (op_binary lhs tk rhs, lhs, rhs) }
+              | op=Tk_DSTAR expr=expr
+                { Syntax.RecordSplat (op_unary (fst op) expr, expr) }
 
- record_elem: id=Id_LABEL expr=expr
-              { let (label_loc, label) = id in
-                  Syntax.RecordElem (op_unary label_loc expr, label, expr) }
-            | lhs=expr tk=Tk_ROCKET rhs=expr
-              { Syntax.RecordPair (op_binary lhs tk rhs, lhs, rhs) }
-            | op=Tk_DSTAR expr=expr
-              { Syntax.RecordSplat (op_unary (fst op) expr, expr) }
+  record_elems: elems=separated_list(Tk_COMMA, record_elem)
+                { elems }
 
-record_elems: elems=separated_list(Tk_COMMA, record_elem)
-              { elems }
+    quote_elem: vl=Vl_STRING
+                { let (str_loc, str) = vl in
+                    Syntax.QuoteString (nullary str_loc, str) }
+              | uq=Vl_UNQUOTE expr=expr qu=Vl_QUOTE
+                { Syntax.QuoteSplice (collection uq qu, expr) }
 
-  quote_elem: vl=Vl_STRING
-              { let (str_loc, str) = vl in
-                  Syntax.QuoteString (nullary str_loc, str) }
-            | uq=Vl_UNQUOTE expr=expr qu=Vl_QUOTE
-              { Syntax.QuoteSplice (collection uq qu, expr) }
+   quote_elems: elems=list(quote_elem)
+                { elems }
 
- quote_elems: elems=list(quote_elem)
-              { elems }
+     pat_ident: id=Id_LOCAL
+                { let (id_loc, id) = id in
+                    Syntax.PatImmutable (let_bind None None id_loc, id) }
+              | kw=Kw_MUT id=Id_LOCAL
+                { let (kw_loc, _), (id_loc, id) = id, kw in
+                    Syntax.PatMutable (let_bind None (Some kw_loc) id_loc, id) }
 
-   let_ident: id=Id_LOCAL
-              { let (id_loc, id) = id in
-                  Syntax.LetImmutable (let_bind None None id_loc, id) }
-            | kw=Kw_MUT id=Id_LOCAL
-              { let (kw_loc, _), (id_loc, id) = id, kw in
-                  Syntax.LetMutable (let_bind None (Some kw_loc) id_loc, id) }
+   pat_extract: ident=pat_ident
+                { match ident with
+                  | Syntax.PatImmutable(loc, name)
+                  | Syntax.PatMutable(loc, name) ->
+                    Syntax.PatImplicit (nullary (fst loc), name, ident)
+                  | _ -> assert false }
+              | label=Id_LABEL pattern=pattern
+                { let (label_loc, label) = label in
+                    Syntax.PatRename (pat_unary label_loc pattern, label, pattern) }
 
- let_extract: ident=let_ident
-              { match ident with
-                | Syntax.LetImmutable(loc, name)
-                | Syntax.LetMutable(loc, name) ->
-                  Syntax.LetImplicit (nullary (fst loc), name, ident)
-                | _ -> assert false }
-            | label=Id_LABEL pattern=let_pattern
-              { let (label_loc, label) = label in
-                  Syntax.LetRename (unary label_loc (Syntax.let_loc pattern),
-                                    label, pattern) }
+       pattern: ident=pat_ident
+                { ident }
+              | lb=Tk_LBRACK elems=separated_list(Tk_COMMA, pattern) rb=Tk_RBRACK
+                { Syntax.PatTuple (collection lb rb, elems) }
+              | lb=Tk_LCURLY elems=separated_list(Tk_COMMA, pat_extract) rb=Tk_RCURLY
+                { Syntax.PatRecord (collection lb rb, elems) }
 
- let_pattern: ident=let_ident
-              { ident }
-            | lb=Tk_LBRACK elems=separated_list(Tk_COMMA, let_pattern) rb=Tk_RBRACK
-              { Syntax.LetTuple (collection lb rb, elems) }
-            | lb=Tk_LCURLY elems=separated_list(Tk_COMMA, let_extract) rb=Tk_RCURLY
-              { Syntax.LetRecord (collection lb rb, elems) }
+       %inline
+   f_local_arg: id=Id_LOCAL
+                { let (name_loc, name) = id in
+                    Syntax.FormalArg (nullary name_loc, name) }
 
-        stmt: kw=Kw_LET lhs=let_pattern op=Tk_ASGN rhs=expr
-              { Syntax.Let ((binary (Syntax.let_loc lhs) op (Syntax.loc rhs)), lhs, rhs) }
-            | expr=expr
-              { expr }
+       %inline
+  f_prefix_arg: op=Tk_STAR id=Id_LOCAL
+                { let (name_loc, name) = id in
+                    Syntax.FormalSplat (unary (fst op) name_loc, name) }
+              | id=Id_LABEL default=option(expr)
+                { let (label_loc, label) = id in
+                    match default with
+                    | Some expr ->
+                      Syntax.FormalKwOptArg (op_unary label_loc expr, label, expr)
+                    | None ->
+                      Syntax.FormalKwArg (nullary label_loc, label) }
+              | op=Tk_DSTAR id=Id_LOCAL
+                { let (name_loc, name) = id in
+                    Syntax.FormalKwSplat (unary (fst op) name_loc, name) }
 
-     %inline
-       binop: t=Tk_PLUS   | t=Tk_MINUS | t=Tk_STAR  | t=Tk_DIVIDE | t=Tk_PERCENT
-            | t=Tk_DSTAR  | t=Tk_AMPER | t=Tk_PIPE  | t=Tk_LSHFT  | t=Tk_RSHFT
-            | t=Tk_ARSHFT | t=Tk_EQ    | t=Tk_LT    | t=Tk_GT     | t=Tk_LEQ
-            | t=Tk_GEQ    | t=Tk_CMP
-              { t }
+         f_arg: arg=f_local_arg
+              | arg=f_prefix_arg
+                { arg }
 
-     %inline
-        unop: t=Tk_UPLUS | t=Tk_UMINUS | t=Tk_UTILDE
-              { t }
+        f_args: args=separated_list(Tk_COMMA, f_arg)
+                { args }
 
- method_name: t=Kw_TRUE  | t=Kw_FALSE | t=Kw_NIL   | t=Kw_SELF | t=Kw_AND
-            | t=Kw_OR    | t=Kw_NOT   | t=Kw_LET   | t=Kw_MUT  | t=Kw_DYNAMIC
-            | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE  | t=Kw_END  | t=Kw_MODULE
-            | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE | t=Kw_DEF
-            | t=Id_LOCAL | t=unop     | t=binop
-              { t }
+    f_lam_rest: arg=f_arg Tk_COMMA args=f_lam_rest
+                { arg :: args }
+              | arg=f_arg Tk_COMMA arg2=f_arg
+                { [arg; arg2] }
+              | /* nothing */
+                { [] }
 
-        expr: lhs=expr op=Kw_AND rhs=expr
-              { let (op_loc, _) = op in Syntax.And (op_binary lhs op_loc rhs, lhs, rhs) }
-            | lhs=expr op=Kw_OR  rhs=expr
-              { let (op_loc, _) = op in Syntax.Or (op_binary lhs op_loc rhs, lhs, rhs) }
-            |          op=Kw_NOT arg=expr
-              { let (op_loc, _) = op in Syntax.Not (op_unary op_loc arg, arg) }
+    f_lam_args: lp=Tk_LPAREN self=Kw_SELF Tk_COMMA args=f_args rp=Tk_RPAREN
+                { lp, (Syntax.FormalSelf (nullary (fst self))) :: args, rp }
+              | lp=Tk_LPAREN self=Kw_SELF rp=Tk_RPAREN
+                { lp, [Syntax.FormalSelf (nullary (fst self))], rp }
+              | lp=Tk_LPAREN arg=f_local_arg rp=Tk_RPAREN
+                { lp, [arg], rp }
+              | lp=Tk_LPAREN arg=f_prefix_arg rp=Tk_RPAREN
+                { lp, [arg], rp }
+              | lp=Tk_LPAREN args=f_lam_rest rp=Tk_RPAREN
+                { lp, args, rp }
 
-            | recv=expr op=Tk_DOT id=method_name lp=Tk_LPAREN args=args rp=Tk_RPAREN
-              { let (name_loc, name) = id in
-                  Syntax.Send (send_method recv op name_loc lp rp, recv, name, args) }
-            | recv=expr op=Tk_DOT id=method_name
-              { let (name_loc, name) = id in
-                  Syntax.Send (send_attr recv op name_loc, recv, name, []) }
-            | recv=expr lb=Tk_LBRACK args=args rb=Tk_RBRACK
-              { Syntax.Send (send_call recv lb rb, recv, "[]", args) }
+           arg: expr=expr
+                { Syntax.ActualArg (nullary (Syntax.loc expr), expr) }
+              | op=Tk_STAR expr=expr
+                { Syntax.ActualSplat (op_unary (fst op) expr, expr) }
+              | id=Id_LABEL expr=expr
+                { let (label_loc, label) = id in
+                    Syntax.ActualKwArg (op_unary label_loc expr, label, expr) }
+              | op=Tk_DSTAR expr=expr
+                { Syntax.ActualKwSplat (op_unary (fst op) expr, expr) }
 
-            | lhs=expr op=binop rhs=expr
-              { let (name_loc, name) = op in
-                  Syntax.Send (send_binary lhs name_loc rhs, lhs, name, arg rhs) }
+          args: args=separated_list(Tk_COMMA, arg)
+                { args }
 
-            | op=Tk_PLUS  recv=expr %prec Tk_UPLUS
-            | op=Tk_MINUS recv=expr %prec Tk_UMINUS
-            | op=Tk_TILDE recv=expr
-              { let (name_loc, name) = op in
-                  Syntax.Send (send_unary name_loc recv, recv, name ^ "@", []) }
+       %inline
+         binop: t=Tk_PLUS   | t=Tk_MINUS | t=Tk_STAR  | t=Tk_DIVIDE | t=Tk_PERCENT
+              | t=Tk_DSTAR  | t=Tk_AMPER | t=Tk_PIPE  | t=Tk_LSHFT  | t=Tk_RSHFT
+              | t=Tk_ARSHFT | t=Tk_EQ    | t=Tk_LT    | t=Tk_GT     | t=Tk_LEQ
+              | t=Tk_GEQ    | t=Tk_CMP
+                { t }
 
-            | p=primary
-              { p }
+       %inline
+          unop: t=Tk_UPLUS | t=Tk_UMINUS | t=Tk_UTILDE
+                { t }
 
-     primary: kw=Kw_SELF
-              { let (loc, _) = kw in Syntax.Self (nullary loc) }
-            | kw=Kw_TRUE
-              { let (loc, _) = kw in Syntax.Self (nullary loc) }
-            | kw=Kw_FALSE
-              { let (loc, _) = kw in Syntax.Self (nullary loc) }
-            | kw=Kw_NIL
-              { let (loc, _) = kw in Syntax.Self (nullary loc) }
+   method_name: t=Kw_TRUE  | t=Kw_FALSE | t=Kw_NIL   | t=Kw_SELF | t=Kw_AND
+              | t=Kw_OR    | t=Kw_NOT   | t=Kw_LET   | t=Kw_MUT  | t=Kw_DYNAMIC
+              | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE  | t=Kw_END  | t=Kw_MODULE
+              | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE | t=Kw_DEF  | t=Kw_PUBLIC
+              | t=Kw_DO
+              | t=Id_LOCAL | t=unop     | t=binop
+                { t }
 
-            | vl=Vl_INT
-              { let (loc, num) = vl in Syntax.Int ((nullary loc), num) }
-            | vl=Vl_SYMBOL
-              { let (loc, sym) = vl in Syntax.Sym ((nullary loc), sym) }
+       %inline
+         local: id=Id_LOCAL
+                { let (loc, name) = id in Syntax.Var (nullary loc, name) }
+              | kw=Kw_SELF
+                { let (loc, _) = kw in Syntax.Self (nullary loc) }
 
-            | id=Id_LOCAL
-              { let (loc, name) = id in Syntax.Var ((nullary loc), name) }
-            | id=Id_LOCAL lp=Tk_LPAREN args=args rp=Tk_RPAREN
-              { let (name_loc, name) = id in
-                  let recv = Syntax.Var ((nullary name_loc), name) in
-                    Syntax.Send ((send_call recv lp rp), recv, "call", args) }
+ compstmt_noid: stmt=stmt_noid Tk_SEMI stmts=compstmt
+                { stmt :: stmts }
+              | stmt=stmt_noid
+                { [stmt] }
 
-            | id=Id_TVAR
-              { let (loc, name) = id in Syntax.TVar ((nullary loc), name) }
-            | id=Id_IVAR
-              { let (loc, name) = id in Syntax.IVar ((nullary loc), name) }
-            | id=Id_CONST
-              { let (loc, name) = id in Syntax.Const ((nullary loc), name) }
+      compstmt: stmt=stmt Tk_SEMI stmts=compstmt
+                { stmt :: stmts }
+              | stmt=stmt
+                { [stmt] }
+              | /* nothing */
+                { [] }
 
-            | lb=Tk_LBRACK elems=tuple_elems  rb=Tk_RBRACK
-              { Syntax.Tuple ((collection lb rb), elems) }
-            | lc=Tk_LCURLY elems=record_elems rc=Tk_RCURLY
-              { Syntax.Record ((collection lc rc), elems) }
-            | lq=Vl_BEGIN elems=quote_elems rq=Vl_END
-              { let (lq_loc, kind) = lq in
-                  Syntax.Quote ((collection lq_loc rq), kind, elems) }
+          stmt: stmt=stmt_noid
+                { stmt }
+              | local=local
+                { local }
 
-            | lp=Tk_LPAREN expr=expr rp=Tk_RPAREN
-              { Syntax.Begin ((collection lp rp), [expr]) }
+     stmt_noid: kw=Kw_LET lhs=pattern op=Tk_ASGN rhs=expr
+                { Syntax.Let ((binary (Syntax.pat_loc lhs) op (Syntax.loc rhs)), lhs, rhs) }
+              | expr=expr_noid
+                { expr }
+
+          expr: expr=expr_noid
+                { expr }
+              | local=local
+                { local }
+
+     expr_noid: lhs=expr op=Kw_AND rhs=expr
+                { let (op_loc, _) = op in
+                    Syntax.And (op_binary lhs op_loc rhs, lhs, rhs) }
+
+              | lhs=expr op=Kw_OR  rhs=expr
+                { let (op_loc, _) = op in
+                    Syntax.Or (op_binary lhs op_loc rhs, lhs, rhs) }
+
+              | op=Kw_NOT arg=expr
+                { let (op_loc, _) = op in
+                    Syntax.Not (op_unary op_loc arg, arg) }
+
+              | recv=expr op=Tk_DOT id=method_name lp=Tk_LPAREN args=args rp=Tk_RPAREN
+                { let (name_loc, name) = id in
+                    Syntax.Send (send_method recv op name_loc lp rp,
+                                 recv, name, args) }
+
+              | recv=expr op=Tk_DOT id=method_name
+                { let (name_loc, name) = id in
+                    Syntax.Send (send_attr recv op name_loc,
+                                 recv, name, []) }
+
+              | recv=expr lb=Tk_LBRACK args=args rb=Tk_RBRACK
+                { Syntax.Send (send_call recv lb rb,
+                               recv, "[]", args) }
+
+              | lhs=expr op=binop rhs=expr
+                { let (name_loc, name) = op in
+                    Syntax.Send (send_binary lhs name_loc rhs,
+                                 lhs, name, arg rhs) }
+
+              | op=Tk_PLUS  recv=expr %prec Tk_UPLUS
+              | op=Tk_MINUS recv=expr %prec Tk_UMINUS
+              | op=Tk_TILDE recv=expr
+                { let (name_loc, name) = op in
+                    Syntax.Send (send_unary name_loc recv,
+                                 recv, name ^ "@", []) }
+
+              | lam_args=f_lam_args block=block
+                { let lp, args, rp = lam_args in
+                    Syntax.Lambda (lambda lp rp block,
+                                   args, block) }
+
+              | prim=primary_noid
+                { prim }
+
+  primary_noid: kw=Kw_TRUE
+                { let (loc, _) = kw in Syntax.Self (nullary loc) }
+              | kw=Kw_FALSE
+                { let (loc, _) = kw in Syntax.Self (nullary loc) }
+              | kw=Kw_NIL
+                { let (loc, _) = kw in Syntax.Self (nullary loc) }
+
+              | vl=Vl_INT
+                { let (loc, num) = vl in Syntax.Int (nullary loc, num) }
+              | vl=Vl_SYMBOL
+                { let (loc, sym) = vl in Syntax.Sym (nullary loc, sym) }
+
+              | id=Id_TVAR
+                { let (loc, name) = id in Syntax.TVar (nullary loc, name) }
+              | id=Id_IVAR
+                { let (loc, name) = id in Syntax.IVar (nullary loc, name) }
+              | id=Id_CONST
+                { let (loc, name) = id in Syntax.Const (nullary loc, name) }
+
+              | lb=Tk_LBRACK elems=tuple_elems  rb=Tk_RBRACK
+                { Syntax.Tuple (collection lb rb, elems) }
+              | lc=Tk_LCURLY elems=record_elems rc=Tk_RCURLY
+                { Syntax.Record (collection lc rc, elems) }
+              | lq=Vl_BEGIN elems=quote_elems rq=Vl_END
+                { let (lq_loc, kind) = lq in
+                    Syntax.Quote (collection lq_loc rq, kind, elems) }
+
+              | lp=Tk_LPAREN stmts=compstmt_noid rp=Tk_RPAREN
+                { Syntax.Begin (collection lp rp, stmts) }
+              | lp=Tk_LPAREN local=local rp=Tk_RPAREN
+                { Syntax.Begin (collection lp rp, [local])}

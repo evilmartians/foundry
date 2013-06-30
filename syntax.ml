@@ -6,10 +6,17 @@ type quote =
 with sexp_of
 
 type actual_arg =
-  | ActualArg     of Location.nullary    * expr
-  | ActualSplat   of Location.operator   * expr
-  | ActualKwArg   of Location.operator   * string * expr
-  | ActualKwSplat of Location.operator   * expr
+  | ActualArg       of Location.nullary    * expr
+  | ActualSplat     of Location.operator   * expr
+  | ActualKwArg     of Location.operator   * string * expr
+  | ActualKwSplat   of Location.operator   * expr
+and formal_arg =
+  | FormalSelf      of Location.nullary
+  | FormalArg       of Location.nullary    * string
+  | FormalSplat     of Location.operator   * string
+  | FormalKwArg     of Location.nullary    * string
+  | FormalKwOptArg  of Location.operator   * string * expr
+  | FormalKwSplat   of Location.operator   * string
 and tuple_elem =
   | TupleElem     of Location.nullary    * expr
   | TupleSplat    of Location.operator   * expr
@@ -20,14 +27,14 @@ and record_elem =
 and quote_elem =
   | QuoteString   of Location.nullary    * string
   | QuoteSplice   of Location.collection * expr
-and let_pattern =
-  | LetImmutable  of Location.let_bind   * string
-  | LetMutable    of Location.let_bind   * string
-  | LetTuple      of Location.collection * let_pattern list
-  | LetRecord     of Location.collection * let_extract list
-and let_extract =
-  | LetImplicit   of Location.nullary    * string * let_pattern
-  | LetRename     of Location.operator   * string * let_pattern
+and pattern =
+  | PatImmutable  of Location.let_bind   * string
+  | PatMutable    of Location.let_bind   * string
+  | PatTuple      of Location.collection * pattern list
+  | PatRecord     of Location.collection * pat_extract list
+and pat_extract =
+  | PatImplicit   of Location.nullary    * string * pattern
+  | PatRename     of Location.operator   * string * pattern
 and expr =
   | Self          of Location.nullary
   | Truth         of Location.nullary (* true  *)
@@ -46,7 +53,8 @@ and expr =
   | Tuple         of Location.collection * tuple_elem list
   | Record        of Location.collection * record_elem list
   | Quote         of Location.collection * quote * quote_elem list
-  | Let           of Location.operator   * let_pattern * expr
+  | Let           of Location.operator   * pattern * expr
+  | Lambda        of Location.collection * formal_arg list * expr
   | Begin         of Location.collection * expr list
 with sexp_of
 
@@ -59,9 +67,9 @@ let loc expr =
   | Let(loc,_,_) -> fst loc
   | Send (loc,_,_,_) -> fst loc
   | Tuple(loc,_) | Record(loc,_) | Begin (loc,_)
-  | Quote(loc,_,_) -> fst loc
+  | Quote(loc,_,_) | Lambda(loc,_,_) -> fst loc
 
-let let_loc let_pattern =
-  match let_pattern with
-  | LetImmutable (loc,_) | LetMutable(loc,_) -> fst loc
-  | LetRecord (loc,_) | LetTuple (loc,_) -> fst loc
+let pat_loc pattern =
+  match pattern with
+  | PatImmutable (loc,_) | PatMutable(loc,_) -> fst loc
+  | PatRecord (loc,_) | PatTuple (loc,_) -> fst loc

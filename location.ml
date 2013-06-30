@@ -54,6 +54,12 @@ let collection start finish =
     finish = finish;
   })
 
+let lambda start finish body =
+  (combine start body, {
+    start  = start;
+    finish = finish;
+  })
+
 let unary op arg =
   (combine op arg,  { operator = op })
 

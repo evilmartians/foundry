@@ -10,8 +10,10 @@ while true do
     |> print_endline
  *)
 
-  Parser.compstmt lex lexbuf
+  let print_stmt stmt =
+    stmt
     |> Syntax.sexp_of_expr
     |> Sexp.to_string_hum
     |> print_endline
+  in ignore (List.map (Parser.toplevel lex lexbuf) ~f:print_stmt)
 done
