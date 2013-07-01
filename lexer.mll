@@ -115,11 +115,17 @@ rule lex_code state = parse
 | "not"     { Parser.Kw_NOT     (locate lexbuf, lexeme lexbuf) }
 | "let"     { Parser.Kw_LET     (locate lexbuf, lexeme lexbuf) }
 | "mut"     { Parser.Kw_MUT     (locate lexbuf, lexeme lexbuf) }
+| "while"   { Parser.Kw_WHILE   (locate lexbuf, lexeme lexbuf) }
 | "do"      { Parser.Kw_DO      (locate lexbuf, lexeme lexbuf) }
 | "if"      { Parser.Kw_IF      (locate lexbuf, lexeme lexbuf) }
+| "elsif"   { Parser.Kw_ELSIF   (locate lexbuf, lexeme lexbuf) }
 | "then"    { Parser.Kw_THEN    (locate lexbuf, lexeme lexbuf) }
 | "else"    { Parser.Kw_ELSE    (locate lexbuf, lexeme lexbuf) }
+| "match"   { Parser.Kw_MATCH   (locate lexbuf, lexeme lexbuf) }
 | "end"     { Parser.Kw_END     (locate lexbuf, lexeme lexbuf) }
+| "as"      { Parser.Kw_AS      (locate lexbuf, lexeme lexbuf) }
+| "meta"    { Parser.Kw_META    (locate lexbuf, lexeme lexbuf) }
+| "type"    { Parser.Kw_TYPE    (locate lexbuf, lexeme lexbuf) }
 | "public"  { Parser.Kw_PUBLIC  (locate lexbuf, lexeme lexbuf) }
 | "dynamic" { Parser.Kw_DYNAMIC (locate lexbuf, lexeme lexbuf) }
 | "package" { Parser.Kw_PACKAGE (locate lexbuf, lexeme lexbuf) }
@@ -127,6 +133,7 @@ rule lex_code state = parse
 | "mixin"   { Parser.Kw_MIXIN   (locate lexbuf, lexeme lexbuf) }
 | "iface"   { Parser.Kw_IFACE   (locate lexbuf, lexeme lexbuf) }
 | "def"     { Parser.Kw_DEF     (locate lexbuf, lexeme lexbuf) }
+| "return"  { Parser.Kw_RETURN  (locate lexbuf, lexeme lexbuf) }
 
 (* Values *)
 | digits as v             { Parser.Vl_INT    (locate lexbuf, int_of_string v) }

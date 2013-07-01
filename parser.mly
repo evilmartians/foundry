@@ -24,8 +24,8 @@
 
 (* Keywords *)
 %token <Location.t * string> Kw_TRUE Kw_FALSE Kw_NIL Kw_SELF Kw_AND Kw_OR Kw_NOT
-%token <Location.t * string> Kw_LET Kw_MUT Kw_DYNAMIC
-%token <Location.t * string> Kw_DO Kw_IF Kw_THEN Kw_ELSE Kw_END
+%token <Location.t * string> Kw_LET Kw_MUT Kw_AS Kw_TYPE Kw_META Kw_DYNAMIC
+%token <Location.t * string> Kw_WHILE Kw_DO Kw_IF Kw_THEN Kw_ELSE Kw_MATCH Kw_END
 %token <Location.t * string> Kw_PUBLIC Kw_PACKAGE Kw_CLASS Kw_MIXIN Kw_IFACE Kw_DEF
 
 %token EOF
@@ -216,11 +216,12 @@
           unop: t=Tk_UPLUS | t=Tk_UMINUS | t=Tk_UTILDE
                 { t }
 
-   method_name: t=Kw_TRUE  | t=Kw_FALSE | t=Kw_NIL   | t=Kw_SELF | t=Kw_AND
-              | t=Kw_OR    | t=Kw_NOT   | t=Kw_LET   | t=Kw_MUT  | t=Kw_DYNAMIC
-              | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE  | t=Kw_END  | t=Kw_PACKAGE
-              | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE | t=Kw_DEF  | t=Kw_PUBLIC
-              | t=Kw_DO
+   method_name: t=Kw_TRUE  | t=Kw_FALSE | t=Kw_NIL   | t=Kw_SELF   | t=Kw_AND
+              | t=Kw_OR    | t=Kw_NOT   | t=Kw_LET   | t=Kw_MUT    | t=Kw_DYNAMIC
+              | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE  | t=Kw_END    | t=Kw_PACKAGE
+              | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE | t=Kw_DEF    | t=Kw_PUBLIC
+              | t=Kw_DO    | t=Kw_WHILE | t=Kw_AS    | t=Kw_RETURN | t=Kw_ELSIF
+              | t=Kw_MATCH | t=Kw_META
               | t=Id_LOCAL | t=unop     | t=binop
                 { t }
 
