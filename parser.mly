@@ -15,6 +15,7 @@
 %token <Location.t> Tk_DOT Tk_COLON Tk_DCOLON Tk_COMMA Tk_SEMI Tk_DSEMI
 
 (* Operators *)
+%token <Location.t>          Tk_OR_ASGN Tk_AND_ASGN
 %token <Location.t * string> Tk_OP_ASGN
 %token <Location.t * string> Tk_PLUS Tk_MINUS Tk_STAR Tk_DSTAR Tk_DIVIDE Tk_PERCENT
 %token <Location.t * string> Tk_AMPER Tk_PIPE Tk_LSHFT Tk_RSHFT Tk_ARSHFT Tk_TILDE
@@ -25,7 +26,7 @@
 %token <Location.t * string> Kw_TRUE Kw_FALSE Kw_NIL Kw_SELF Kw_AND Kw_OR Kw_NOT
 %token <Location.t * string> Kw_LET Kw_MUT Kw_DYNAMIC
 %token <Location.t * string> Kw_DO Kw_IF Kw_THEN Kw_ELSE Kw_END
-%token <Location.t * string> Kw_PUBLIC Kw_MODULE Kw_CLASS Kw_MIXIN Kw_IFACE Kw_DEF
+%token <Location.t * string> Kw_PUBLIC Kw_PACKAGE Kw_CLASS Kw_MIXIN Kw_IFACE Kw_DEF
 
 %token EOF
 
@@ -68,7 +69,6 @@
     [Syntax.ActualArg (nullary (Syntax.loc expr), expr)]
 %}
 
-%right    Tk_ASGN Tk_OP_ASGN
 %left     Kw_OR
 %left     Kw_AND
 %right    Kw_NOT
@@ -218,7 +218,7 @@
 
    method_name: t=Kw_TRUE  | t=Kw_FALSE | t=Kw_NIL   | t=Kw_SELF | t=Kw_AND
               | t=Kw_OR    | t=Kw_NOT   | t=Kw_LET   | t=Kw_MUT  | t=Kw_DYNAMIC
-              | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE  | t=Kw_END  | t=Kw_MODULE
+              | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE  | t=Kw_END  | t=Kw_PACKAGE
               | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE | t=Kw_DEF  | t=Kw_PUBLIC
               | t=Kw_DO
               | t=Id_LOCAL | t=unop     | t=binop
@@ -244,13 +244,38 @@
 
           stmt: stmt=stmt_noid
                 { stmt }
+              | lhs=lhs op=Tk_ASGN rhs=stmt
+                { Syntax.Assign (op_binary lhs op rhs, lhs, rhs) }
+              | lhs=lhs op=Tk_OP_ASGN rhs=stmt
+                { let (op_loc, op) = op in
+                    Syntax.OpAssign (op_binary lhs op_loc rhs, lhs, op, rhs) }
+              | lhs=lhs op=Tk_OR_ASGN rhs=stmt
+                { Syntax.OrAssign (op_binary lhs op rhs, lhs, rhs) }
+              | lhs=lhs op=Tk_AND_ASGN rhs=stmt
+                { Syntax.AndAssign (op_binary lhs op rhs, lhs, rhs) }
               | local=local
                 { local }
 
      stmt_noid: kw=Kw_LET lhs=pattern op=Tk_ASGN rhs=expr
-                { Syntax.Let ((binary (Syntax.pat_loc lhs) op (Syntax.loc rhs)), lhs, rhs) }
+                { Syntax.Let (binary (Syntax.pat_loc lhs) op (Syntax.loc rhs), lhs, rhs) }
               | expr=expr_noid
                 { expr }
+
+           lhs: id=Id_LOCAL
+                { let (loc, name) = id in Syntax.Var (nullary loc, name) }
+              | id=Id_IVAR
+                { let (loc, name) = id in Syntax.IVar (nullary loc, name) }
+              | id=Id_CONST
+                { let (loc, name) = id in Syntax.Const (nullary loc, name) }
+
+              | recv=expr op=Tk_DOT id=method_name
+                { let (name_loc, name) = id in
+                    Syntax.Send (send_attr recv op name_loc,
+                                 recv, name, []) }
+
+              | recv=expr lb=Tk_LBRACK args=args rb=Tk_RBRACK
+                { Syntax.Send (send_call recv lb rb,
+                               recv, "[]", args) }
 
           expr: expr=expr_noid
                 { expr }
@@ -302,6 +327,11 @@
 
               | prim=primary_noid
                 { prim }
+
+       primary: prim=primary_noid
+                { prim }
+              | local=local
+                { local }
 
   primary_noid: kw=Kw_TRUE
                 { let (loc, _) = kw in Syntax.Self (nullary loc) }

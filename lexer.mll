@@ -57,6 +57,8 @@ rule lex_code state = parse
 
 (* Punctuation *)
 | operator as op '=' { Parser.Tk_OP_ASGN (locate lexbuf, op) }
+| "and="    { Parser.Tk_AND_ASGN (locate lexbuf) }
+| "or="     { Parser.Tk_OR_ASGN  (locate lexbuf) }
 
 | '{'       { ignore (curly state 1);
               Parser.Tk_LCURLY   (locate lexbuf) }
@@ -119,12 +121,12 @@ rule lex_code state = parse
 | "else"    { Parser.Kw_ELSE    (locate lexbuf, lexeme lexbuf) }
 | "end"     { Parser.Kw_END     (locate lexbuf, lexeme lexbuf) }
 | "public"  { Parser.Kw_PUBLIC  (locate lexbuf, lexeme lexbuf) }
-| "module"  { Parser.Kw_MODULE  (locate lexbuf, lexeme lexbuf) }
+| "dynamic" { Parser.Kw_DYNAMIC (locate lexbuf, lexeme lexbuf) }
+| "package" { Parser.Kw_PACKAGE (locate lexbuf, lexeme lexbuf) }
 | "class"   { Parser.Kw_CLASS   (locate lexbuf, lexeme lexbuf) }
 | "mixin"   { Parser.Kw_MIXIN   (locate lexbuf, lexeme lexbuf) }
 | "iface"   { Parser.Kw_IFACE   (locate lexbuf, lexeme lexbuf) }
 | "def"     { Parser.Kw_DEF     (locate lexbuf, lexeme lexbuf) }
-| "dynamic" { Parser.Kw_DYNAMIC (locate lexbuf, lexeme lexbuf) }
 
 (* Values *)
 | digits as v             { Parser.Vl_INT    (locate lexbuf, int_of_string v) }

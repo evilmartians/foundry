@@ -53,9 +53,13 @@ and expr =
   | Tuple         of Location.collection * tuple_elem list
   | Record        of Location.collection * record_elem list
   | Quote         of Location.collection * quote * quote_elem list
-  | Let           of Location.operator   * pattern * expr
-  | Lambda        of Location.collection * formal_arg list * expr
   | Begin         of Location.collection * expr list
+  | Lambda        of Location.collection * formal_arg list * expr
+  | Let           of Location.operator   * pattern * expr
+  | Assign        of Location.operator   * expr * expr
+  | OrAssign      of Location.operator   * expr * expr
+  | AndAssign     of Location.operator   * expr * expr
+  | OpAssign      of Location.operator   * expr * string * expr
 with sexp_of
 
 let loc expr =
@@ -64,7 +68,8 @@ let loc expr =
   | Int (loc,_)   | Var (loc,_) | TVar (loc,_) | IVar (loc,_)
   | Const (loc,_) | Sym(loc,_) -> fst loc
   | And (loc,_,_) | Or (loc,_,_) | Not (loc,_)
-  | Let(loc,_,_) -> fst loc
+  | Let(loc,_,_)  | Assign(loc,_,_) | OpAssign(loc,_,_,_)
+  | OrAssign(loc,_,_) | AndAssign(loc,_,_) -> fst loc
   | Send (loc,_,_,_) -> fst loc
   | Tuple(loc,_) | Record(loc,_) | Begin (loc,_)
   | Quote(loc,_,_) | Lambda(loc,_,_) -> fst loc
