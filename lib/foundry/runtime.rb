@@ -168,12 +168,12 @@ module Foundry
       rtl = LLVM::Module.parse_bitcode(File.join(RTL_ROOT, 'testbench.bc'))
       rtl.link_into_and_destroy(linked_mod)
 
-      target = LLVM::Target.by_name('x86-64')
+      target = LLVM::Target.by_name('thumb')
       unless target.target_machine?
         raise ArgumentError, "Target #{target.name} does not have a TargetMachine available"
       end
 
-      machine = target.create_machine('x86_64-linux-gnu')
+      machine = target.create_machine('thumbv2-none-eabi', 'cortex-m3')
 
       builder = LLVM::PassManagerBuilder.new
       builder.opt_level          = 3     # -O3

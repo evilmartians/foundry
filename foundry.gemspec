@@ -18,14 +18,12 @@ Gem::Specification.new do |gem|
 
   gem.add_dependency "ansi"
   gem.add_dependency "trollop"
-  gem.add_dependency "furnace",               '= 0.4.0.beta.1'
-  gem.add_dependency "foundry-ruby_parser",   '= 3.1.1'
-  gem.add_dependency "ruby-llvm",             '= 3.2.0.beta.1'
+  gem.add_dependency "furnace",    '= 0.4.0.beta.2'
+  gem.add_dependency "parser",     '= 2.0.0.beta.5'
+  gem.add_dependency "ruby-llvm",  '= 3.2.0.beta.1'
   gem.add_dependency "json"
 
-  gem.add_development_dependency "rake",         '~> 10.0'
+  gem.add_development_dependency "rake",     '~> 10.0'
   gem.add_development_dependency "rspec"
   gem.add_development_dependency "simplecov"
-  gem.add_development_dependency "warbler"
-  gem.add_development_dependency "furnace-xray", '~> 1.1.0.pre1'
 end

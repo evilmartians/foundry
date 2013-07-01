@@ -50,8 +50,8 @@ module Foundry
           Type::Tuple.new(object.to_a.map { |obj| Type.of(obj) })
         elsif klass == VI::Binding
           object.__type__ # TODO refactor this somehow
-        elsif klass == VI::Proc
-          Type::Closure.new(klass)
+        #elsif klass == VI::Proc
+        #  Type::Closure.new(klass)
         else
           Type.klass(klass)
         end

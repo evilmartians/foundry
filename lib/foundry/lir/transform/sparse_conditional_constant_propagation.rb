@@ -28,7 +28,12 @@ module Foundry
           @cfg_reachable.add block
 
           block.each do |insn|
-            @values[insn] = evaluate(insn)
+            v = evaluate(insn)
+            if v.nil?
+              p insn
+              raise
+            end
+            @values[insn] = v
 
             insn.each_use do |use|
               if @cfg_reachable.include? use.basic_block
@@ -173,6 +178,13 @@ module Foundry
         else
           :BOT
         end
+
+      # when LIR::IntegerOpInsn
+      #   if insn.operands.all? &:constant?
+
+      #   else
+      #     :BOT
+      #   end
 
       when LIR::IsAInsn
         if insn.klass.constant? && !insn.object.type.variable?

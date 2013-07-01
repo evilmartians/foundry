@@ -133,13 +133,14 @@ module Foundry
     end
 
     def self.new_integer(value)
-      Integer.vm_new(value)
+      #Integer.vm_new(value)
+      new_machine_integer(value, true, 32)
     end
 
     def self.new_machine_integer(value, signed, width)
       Machine_Integer.reify(
           VMSymbol.new(:signed) => signed ? TRUE : FALSE,
-          VMSymbol.new(:width)  => new_integer(width)).
+          VMSymbol.new(:width)  => Integer.vm_new(width)).
         vm_new(value)
     end
 
