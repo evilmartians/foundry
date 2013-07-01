@@ -2,5 +2,5 @@
 
 set -e
 
-ocamlbuild -use-ocamlfind foundry_web.byte
-js_of_ocaml foundry_web.byte -o web/foundry.js
+ocamlbuild -use-ocamlfind foundryWeb.byte
+js_of_ocaml foundryWeb.byte -o web/foundry.js
