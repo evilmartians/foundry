@@ -216,12 +216,20 @@
                 { let (id_loc, id) = id in
                     Syntax.TypeArgKw (unary id_loc (Syntax.type_loc ty), id, ty) }
 
+     splice_ty: id=Id_LOCAL
+                { let (id_loc, id) = id in
+                    Syntax.Var (nullary id_loc, id) }
+              | lit=literal
+                { lit }
+
             ty: id=Id_CONST
                 { let (id_loc, id) = id in
                     Syntax.TypeConstr (unary id_loc id_loc, id, []) }
               | id=Id_CONST lp=Tk_LPAREN args_ty=separated_list(Tk_COMMA, pair_ty) rp=Tk_RPAREN
                 { let (id_loc, id) = id in
                     Syntax.TypeConstr (unary id_loc rp, id, args_ty) }
+              | expr=splice_ty
+                { Syntax.TypeSplice (nullary (Syntax.loc expr), expr) }
               | id=Id_TVAR
                 { let (id_loc, id) = id in
                     Syntax.TypeVar (nullary id_loc, id) }
@@ -373,6 +381,8 @@
   primary_noid: lit=literal
                 { lit }
 
+              | id=Id_TVAR
+                { let (loc, name) = id in Syntax.TVar (nullary loc, name) }
               | id=Id_IVAR
                 { let (loc, name) = id in Syntax.IVar (nullary loc, name) }
               | id=Id_CONST
@@ -402,6 +412,3 @@
               | lq=Vl_BEGIN elems=quote_elems rq=Vl_END
                 { let (lq_loc, kind) = lq in
                     Syntax.Quote (collection lq_loc rq, kind, elems) }
-
-              | id=Id_TVAR
-                { let (loc, name) = id in Syntax.TVar (nullary loc, name) }
