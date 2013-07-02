@@ -25,7 +25,8 @@
 (* Keywords *)
 %token <Location.t * string> Kw_TRUE Kw_FALSE Kw_NIL Kw_SELF Kw_AND Kw_OR Kw_NOT
 %token <Location.t * string> Kw_LET Kw_MUT Kw_AS Kw_TYPE Kw_META Kw_DYNAMIC
-%token <Location.t * string> Kw_WHILE Kw_DO Kw_IF Kw_THEN Kw_ELSE Kw_MATCH Kw_END
+%token <Location.t * string> Kw_WHILE Kw_DO Kw_IF Kw_THEN Kw_ELSE Kw_ELSIF
+%token <Location.t * string> Kw_MATCH Kw_RETURN Kw_END
 %token <Location.t * string> Kw_PUBLIC Kw_PACKAGE Kw_CLASS Kw_MIXIN Kw_IFACE Kw_DEF
 
 %token EOF
@@ -205,6 +206,36 @@
           args: args=separated_list(Tk_COMMA, arg)
                 { args }
 
+       pair_ty: id=Id_LABEL ty=ty
+                { let (id_loc, id) = id in
+                    (unary id_loc (Syntax.type_loc ty), id, ty) }
+
+        arg_ty: ty=ty
+                { Syntax.TypeArg (nullary (Syntax.type_loc ty), ty) }
+              | id=Id_LABEL ty=ty
+                { let (id_loc, id) = id in
+                    Syntax.TypeArgKw (unary id_loc (Syntax.type_loc ty), id, ty) }
+
+            ty: id=Id_CONST
+                { let (id_loc, id) = id in
+                    Syntax.TypeConstr (unary id_loc id_loc, id, []) }
+              | id=Id_CONST lp=Tk_LPAREN args_ty=separated_list(Tk_COMMA, pair_ty) rp=Tk_RPAREN
+                { let (id_loc, id) = id in
+                    Syntax.TypeConstr (unary id_loc rp, id, args_ty) }
+              | id=Id_TVAR
+                { let (id_loc, id) = id in
+                    Syntax.TypeVar (nullary id_loc, id) }
+              | lb=Tk_LBRACK elems_ty=separated_list(Tk_COMMA, ty) rb=Tk_RBRACK
+                { Syntax.TypeTuple (collection lb rb, elems_ty) }
+              | lc=Tk_LCURLY elems_ty=separated_list(Tk_COMMA, pair_ty) rc=Tk_RCURLY
+                { Syntax.TypeRecord (collection lc rc, elems_ty) }
+              | lp=Tk_LPAREN args_ty=separated_list(Tk_COMMA, arg_ty) rp=Tk_RPAREN
+                  op=Tk_ARROW return_ty=ty
+                { Syntax.TypeFunction (collection lp rp, args_ty, return_ty) }
+
+       ty_decl: op=Tk_COLON ty=ty
+                { ty }
+
        %inline
          binop: t=Tk_PLUS   | t=Tk_MINUS | t=Tk_STAR  | t=Tk_DIVIDE | t=Tk_PERCENT
               | t=Tk_DSTAR  | t=Tk_AMPER | t=Tk_PIPE  | t=Tk_LSHFT  | t=Tk_RSHFT
@@ -257,8 +288,9 @@
               | local=local
                 { local }
 
-     stmt_noid: kw=Kw_LET lhs=pattern op=Tk_ASGN rhs=expr
-                { Syntax.Let (binary (Syntax.pat_loc lhs) op (Syntax.loc rhs), lhs, rhs) }
+     stmt_noid: kw=Kw_LET lhs=pattern ty=option(ty_decl) op=Tk_ASGN rhs=expr
+                { Syntax.Let (binary (Syntax.pat_loc lhs) op (Syntax.loc rhs),
+                              lhs, ty, rhs) }
               | expr=expr_noid
                 { expr }
 
@@ -321,10 +353,14 @@
                     Syntax.Send (send_unary name_loc recv,
                                  recv, name ^ "@", []) }
 
-              | lam_args=f_lam_args block=block
+              | kw=Kw_TYPE ty=ty
+                { let (kw_loc, _) = kw in
+                    Syntax.Type (unary kw_loc (Syntax.type_loc ty), ty) }
+
+              | lam_args=f_lam_args ty=option(ty_decl) block=block
                 { let lp, args, rp = lam_args in
                     Syntax.Lambda (lambda lp rp block,
-                                   args, block) }
+                                   args, ty, block) }
 
               | prim=primary_noid
                 { prim }
@@ -334,20 +370,9 @@
               | local=local
                 { local }
 
-  primary_noid: kw=Kw_TRUE
-                { let (loc, _) = kw in Syntax.Self (nullary loc) }
-              | kw=Kw_FALSE
-                { let (loc, _) = kw in Syntax.Self (nullary loc) }
-              | kw=Kw_NIL
-                { let (loc, _) = kw in Syntax.Self (nullary loc) }
+  primary_noid: lit=literal
+                { lit }
 
-              | vl=Vl_INT
-                { let (loc, num) = vl in Syntax.Int (nullary loc, num) }
-              | vl=Vl_SYMBOL
-                { let (loc, sym) = vl in Syntax.Sym (nullary loc, sym) }
-
-              | id=Id_TVAR
-                { let (loc, name) = id in Syntax.TVar (nullary loc, name) }
               | id=Id_IVAR
                 { let (loc, name) = id in Syntax.IVar (nullary loc, name) }
               | id=Id_CONST
@@ -357,11 +382,26 @@
                 { Syntax.Tuple (collection lb rb, elems) }
               | lc=Tk_LCURLY elems=record_elems rc=Tk_RCURLY
                 { Syntax.Record (collection lc rc, elems) }
-              | lq=Vl_BEGIN elems=quote_elems rq=Vl_END
-                { let (lq_loc, kind) = lq in
-                    Syntax.Quote (collection lq_loc rq, kind, elems) }
 
               | lp=Tk_LPAREN stmts=compstmt_noid rp=Tk_RPAREN
                 { Syntax.Begin (collection lp rp, stmts) }
               | lp=Tk_LPAREN local=local rp=Tk_RPAREN
                 { Syntax.Begin (collection lp rp, [local])}
+
+       literal: kw=Kw_TRUE
+                { let (loc, _) = kw in Syntax.Truth (nullary loc) }
+              | kw=Kw_FALSE
+                { let (loc, _) = kw in Syntax.Lies (nullary loc) }
+              | kw=Kw_NIL
+                { let (loc, _) = kw in Syntax.Nil (nullary loc) }
+
+              | vl=Vl_INT
+                { let (loc, num) = vl in Syntax.Int (nullary loc, num) }
+              | vl=Vl_SYMBOL
+                { let (loc, sym) = vl in Syntax.Sym (nullary loc, sym) }
+              | lq=Vl_BEGIN elems=quote_elems rq=Vl_END
+                { let (lq_loc, kind) = lq in
+                    Syntax.Quote (collection lq_loc rq, kind, elems) }
+
+              | id=Id_TVAR
+                { let (loc, name) = id in Syntax.TVar (nullary loc, name) }

@@ -152,8 +152,8 @@ rule lex_code state = parse
 | ident as i ':'        { Parser.Id_LABEL (locate lexbuf, i) }
 | local as i            { Parser.Id_LOCAL (locate lexbuf, i) }
 | const as i            { Parser.Id_CONST (locate lexbuf, i) }
-| '@' local as i        { Parser.Id_IVAR  (locate lexbuf, i) }
-| '@' const as i        { Parser.Id_TVAR  (locate lexbuf, i) }
+| '@' ident as i        { Parser.Id_IVAR  (locate lexbuf, i) }
+| '\\' (ident as i)     { Parser.Id_TVAR  (locate lexbuf, i) }
 
 | eof                   { Parser.EOF }
 
