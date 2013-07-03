@@ -1,13 +1,15 @@
 open Sexplib.Std
 
 let parse str =
-  let lexbuf = (Lexing.from_string str)  in
+  let lexbuf = (Lexing.from_string str) in
   let lex    = Lexer.next (Lexer.create ()) in
+  let (|>) x f = f x in
 
   try
-    let ast = Parser.compstmt lex lexbuf in
-      let sexp = Syntax.sexp_of_expr ast in
-        Sexplib.Sexp.to_string_hum sexp ^ "\n"
+    Parser.toplevel lex lexbuf
+      |> List.map Syntax.sexp_of_expr
+      |> List.map Sexplib.Sexp.to_string_hum
+      |> List.fold_left (fun x y -> x ^ "\n" ^ y) ""
   with Parser.Error ->
     "Parse error\n"
 
