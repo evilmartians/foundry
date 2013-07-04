@@ -128,7 +128,7 @@
                 { let (id_loc, id) = id in
                     Syntax.PatImmutable (let_bind None None id_loc, id) }
               | kw=Kw_MUT id=Id_LOCAL
-                { let (kw_loc, _), (id_loc, id) = id, kw in
+                { let (kw_loc, _), (id_loc, id) = kw, id in
                     Syntax.PatMutable (let_bind None (Some kw_loc) id_loc, id) }
 
    pat_extract: ident=pat_ident

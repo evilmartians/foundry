@@ -1,6 +1,7 @@
 open Sexplib.Std
 
 type t = (int * int)
+with sexp_of
 
 type nullary      = t * unit
 

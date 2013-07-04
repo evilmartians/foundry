@@ -1,17 +1,26 @@
 open Sexplib.Std
 
-let parse str =
+let eval str =
+  let env = Vm.env_create () in
   let lexbuf = (Lexing.from_string str) in
   let lex    = Lexer.next (Lexer.create ()) in
   let (|>) x f = f x in
 
   try
-    Parser.toplevel lex lexbuf
-      |> List.map Syntax.sexp_of_expr
-      |> List.map Sexplib.Sexp.to_string_hum
-      |> List.fold_left (fun x y -> x ^ "\n" ^ y) ""
-  with Parser.Error ->
-    "Parse error\n"
+    (List.map (Vm.eval env) (Parser.toplevel lex lexbuf)
+    |> List.rev
+    |> List.hd
+    |> Vm.inspect) ^ "\n"
+  with Vm.Exc exc ->
+    let pointers =
+      let all_ranges = exc.Vm.ex_location :: exc.Vm.ex_highlights in
+        String.make (List.fold_left max 0 (List.map snd all_ranges) + 1) ' '
+    in
+      List.iter (fun (x, y) -> String.fill pointers x (y - x) '~') exc.Vm.ex_highlights;
+      (let x, y = exc.Vm.ex_location in
+        String.fill pointers x (y - x) '^');
+
+      str ^ "\n" ^ pointers ^ "\nError: " ^ exc.Vm.ex_message ^ "\n"
 
 module Html = Dom_html
 let doc = Html.document
@@ -40,15 +49,15 @@ let run _ =
 
   let textbox = Html.createTextarea doc in
   textbox##rows <- 10; textbox##cols <- 80;
-  textbox##value <- Js.string "2 + 2";
+  textbox##value <- Js.string "let x = [1,2]; let [y] = x";
   Dom.appendChild top textbox;
   Dom.appendChild top (Html.createBr doc);
 
   textbox##focus(); textbox##select();
   let parse_btn =
-    button "Parse"
+    button "Execute"
       (fun () ->
-         append (parse (Js.to_string textbox##value));
+         append (eval (Js.to_string textbox##value));
          textbox##focus(); textbox##select();
          doc##documentElement##scrollTop <- doc##body##scrollHeight)
   in
