@@ -7,16 +7,16 @@ with sexp_of
 
 type actual_arg =
   | ActualArg       of Location.nullary    * expr
-  | ActualSplat     of Location.operator   * expr
+  | ActualSplice    of Location.operator   * expr
   | ActualKwArg     of Location.operator   * string * expr
-  | ActualKwSplat   of Location.operator   * expr
+  | ActualKwSplice  of Location.operator   * expr
 and formal_arg =
   | FormalSelf      of Location.nullary
   | FormalArg       of Location.nullary    * string
-  | FormalSplat     of Location.operator   * string
+  | FormalRest      of Location.operator   * string
   | FormalKwArg     of Location.nullary    * string
   | FormalKwOptArg  of Location.operator   * string * expr
-  | FormalKwSplat   of Location.operator   * string
+  | FormalKwRest    of Location.operator   * string
 and pair_ty =          Location.operator   * string * ty
 and arg_ty =
   | TypeArg         of Location.nullary    * ty
@@ -30,10 +30,10 @@ and ty =
   | TypeSplice      of Location.nullary    * expr
 and tuple_elem =
   | TupleElem       of Location.nullary    * expr
-  | TupleSplat      of Location.operator   * expr
+  | TupleSplice     of Location.operator   * expr
 and record_elem =
   | RecordElem      of Location.operator   * string * expr
-  | RecordSplat     of Location.operator   * expr
+  | RecordSplice    of Location.operator   * expr
   | RecordPair      of Location.operator   * expr * expr
 and quote_elem =
   | QuoteString     of Location.nullary    * string

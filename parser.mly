@@ -99,7 +99,7 @@
     tuple_elem: expr=expr
                 { Syntax.TupleElem (nullary (Syntax.loc expr), expr) }
               | op=Tk_STAR expr=expr
-                { Syntax.TupleSplat (op_unary (fst op) expr, expr) }
+                { Syntax.TupleSplice (op_unary (fst op) expr, expr) }
 
    tuple_elems: elems=separated_list(Tk_COMMA, tuple_elem)
                 { elems }
@@ -110,7 +110,7 @@
               | lhs=expr tk=Tk_ROCKET rhs=expr
                 { Syntax.RecordPair (op_binary lhs tk rhs, lhs, rhs) }
               | op=Tk_DSTAR expr=expr
-                { Syntax.RecordSplat (op_unary (fst op) expr, expr) }
+                { Syntax.RecordSplice (op_unary (fst op) expr, expr) }
 
   record_elems: elems=separated_list(Tk_COMMA, record_elem)
                 { elems }
@@ -156,7 +156,7 @@
        %inline
   f_prefix_arg: op=Tk_STAR id=Id_LOCAL
                 { let (name_loc, name) = id in
-                    Syntax.FormalSplat (unary (fst op) name_loc, name) }
+                    Syntax.FormalRest (unary (fst op) name_loc, name) }
               | id=Id_LABEL default=option(expr)
                 { let (label_loc, label) = id in
                     match default with
@@ -166,7 +166,7 @@
                       Syntax.FormalKwArg (nullary label_loc, label) }
               | op=Tk_DSTAR id=Id_LOCAL
                 { let (name_loc, name) = id in
-                    Syntax.FormalKwSplat (unary (fst op) name_loc, name) }
+                    Syntax.FormalKwRest (unary (fst op) name_loc, name) }
 
          f_arg: arg=f_local_arg
               | arg=f_prefix_arg
@@ -196,12 +196,12 @@
            arg: expr=expr
                 { Syntax.ActualArg (nullary (Syntax.loc expr), expr) }
               | op=Tk_STAR expr=expr
-                { Syntax.ActualSplat (op_unary (fst op) expr, expr) }
+                { Syntax.ActualSplice (op_unary (fst op) expr, expr) }
               | id=Id_LABEL expr=expr
                 { let (label_loc, label) = id in
                     Syntax.ActualKwArg (op_unary label_loc expr, label, expr) }
               | op=Tk_DSTAR expr=expr
-                { Syntax.ActualKwSplat (op_unary (fst op) expr, expr) }
+                { Syntax.ActualKwSplice (op_unary (fst op) expr, expr) }
 
           args: args=separated_list(Tk_COMMA, arg)
                 { args }
