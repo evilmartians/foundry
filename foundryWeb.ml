@@ -1,7 +1,7 @@
 open Sexplib.Std
 
 let eval str =
-  let env = Vm.env_create () in
+  let env    = Vm.env_create () in
   let lexbuf = (Lexing.from_string str) in
   let lex    = Lexer.next (Lexer.create ()) in
   let (|>) x f = f x in

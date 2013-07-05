@@ -51,6 +51,7 @@ and local_env = {
   e_bindings      : binding Table.t;
 }
 and type_env =      typevar Table.t
+and const_env =     package list ref
 and lambda = {
   l_ty            : value;
   l_local_env     : local_env;
@@ -194,7 +195,7 @@ exception LEnvUnbound
 exception LEnvAlreadyBound of binding
 exception LEnvImmutable    of binding
 
-let lenv_create () =
+let lenv_create () : local_env =
   { e_parent   = None;
     e_bindings = Table.create [] }
 
@@ -234,11 +235,11 @@ let rec lenv_lookup env name =
 
 (* Type environment *)
 
-let tenv_create () =
+let tenv_create () : type_env =
   Table.create []
 
 let tenv_fork env =
-  Table.dup env
+  Table.copy env
 
 let tenv_resolve env name =
   match Table.get env name with
@@ -248,7 +249,52 @@ let tenv_resolve env name =
       Table.set env name tvar;
       tvar
 
+(* Constant environment *)
+
+exception CEnvUnbound
+exception CEnvAlreadyBound of value
+
+(* let cenv_toplevel =
+  { p_name      = "<toplevel>";
+    p_metaclass = metaclass_create ();
+    p_constants = Table.create () }
+ *)
+
+let cenv_create () : const_env =
+  (* ref [cenv_toplevel] *)
+  ref []
+
+let cenv_fork env =
+  ref !env
+
+let cenv_extend env pkg =
+  env := pkg :: !env
+
+let cenv_bind env name value =
+  match env with
+  | pkg :: rest
+  -> (match Table.get pkg.p_constants name with
+      | Some value -> raise (CEnvAlreadyBound value)
+      | None -> Table.set pkg.p_constants name value)
+  | []
+  -> assert false
+
+let cenv_lookup env name =
+  let rec lookup lst =
+    match lst with
+    | pkg :: rest
+    -> (match Table.get pkg.p_constants name with
+        | Some value -> value
+        | None -> lookup rest)
+    | []
+    -> raise CEnvUnbound
+
+  in lookup !env
+
 (* Eval helper routines *)
+
+let env_create () =
+  lenv_create (), tenv_create (), cenv_create ()
 
 let concat_tuple lhs rhs =
   match lhs, rhs with
@@ -289,7 +335,7 @@ and eval_record env elem =
      | Symbol(s) -> Record (Table.pair s (eval env v))
      | o -> exc_type "Symbol" o (Syntax.loc k))
 
-and eval_pattern ((lenv, tenv) as env) pat value =
+and eval_pattern ((lenv, tenv, cenv) as env) pat value =
   let bind name ~is_mutable ~value ~loc =
     try
       lenv_bind lenv name ~is_mutable ~value ~loc
@@ -315,7 +361,7 @@ and eval_pattern ((lenv, tenv) as env) pat value =
       | o -> exc_type "Tuple" o (Syntax.pat_loc pat))
   | _ -> assert false
 
-and eval_assign (lenv, tenv) lhs value =
+and eval_assign (lenv, tenv, cenv) lhs value =
   match lhs with
   | Syntax.Var((loc,_),name)
   -> (try
@@ -327,7 +373,7 @@ and eval_assign (lenv, tenv) lhs value =
         exc_fail ("Name " ^ name ^ " is not bound") loc [])
   | _ -> assert false
 
-and eval_type ((lenv, tenv) as env) expr =
+and eval_type ((lenv, tenv, cenv) as env) expr =
   let as_type expr =
     let ty = eval_type env expr in
       match ty with
@@ -366,7 +412,7 @@ and eval_type ((lenv, tenv) as env) expr =
   | Syntax.TypeSplice(_,expr)
   -> eval env expr
 
-and eval ((lenv, tenv) as env) expr =
+and eval ((lenv, tenv, cenv) as env) expr =
   match expr with
   | Syntax.Nil(_)   -> Nil
   | Syntax.Truth(_) -> Truth
@@ -400,7 +446,7 @@ and eval ((lenv, tenv) as env) expr =
         value)
   | Syntax.Lambda(_,_,Some ty_expr,_)
   -> (let tenv = tenv_fork tenv in
-        let ty = eval_type (lenv, tenv) ty_expr in
+        let ty = eval_type (lenv, tenv, cenv) ty_expr in
           match ty with
           | LambdaTy(_) | Tvar(_)
           -> Lambda { l_ty        = ty;
@@ -415,6 +461,6 @@ and eval ((lenv, tenv) as env) expr =
               l_type_env  = tenv;
               l_code      = expr }
   | Syntax.Type(_,ty_expr)
-  -> eval_type (lenv, (tenv_fork tenv)) ty_expr
+  -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
   | _
   -> failwith ("cannot eval " ^ Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr));

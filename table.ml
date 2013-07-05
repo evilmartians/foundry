@@ -12,6 +12,9 @@ let create lst =
     (fun table ->
       List.iter (fun (k, v) -> Hashtbl.replace table k v) lst)
 
+let copy table =
+  Hashtbl.copy table
+
 let set table k v =
   Hashtbl.replace table k v
 
@@ -28,9 +31,6 @@ let map ~f table =
   newtable (Hashtbl.length table)
     (fun table ->
       Hashtbl.iter (fun k v -> Hashtbl.add table k (f v)) table)
-
-let dup table =
-  map (fun x -> x) table
 
 let map_list ~f table =
   Hashtbl.fold (fun k v accum -> (f k v) :: accum) table []
