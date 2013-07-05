@@ -105,9 +105,9 @@ exception Exc of exc
 with sexp
 
 let lastvar = ref 0
-let genvar () =
+let genvar () : typevar =
   incr lastvar;
-  Tvar (!lastvar)
+  !lastvar
 
 let rec typeof value =
   match value with
@@ -234,8 +234,19 @@ let rec lenv_lookup env name =
 
 (* Type environment *)
 
-let tenv_create () : typevar Table.t =
+let tenv_create () =
   Table.create []
+
+let tenv_fork env =
+  Table.dup env
+
+let tenv_resolve env name =
+  match Table.get env name with
+  | Some tvar -> tvar
+  | None ->
+    let tvar = genvar () in
+      Table.set env name tvar;
+      tvar
 
 (* Eval helper routines *)
 
@@ -327,8 +338,8 @@ and eval_type ((lenv, tenv) as env) expr =
       | _ -> exc_type "type" ty (Syntax.ty_loc expr)
   in
   match expr with
-  | Syntax.TypeVar(_,n)
-  -> (* TODO TODO TODO *) genvar ()
+  | Syntax.TypeVar(_,name)
+  -> Tvar (tenv_resolve tenv name)
   | Syntax.TypeTuple(_,xs)
   -> TupleTy (List.map as_type xs)
   | Syntax.TypeRecord(_,xs)
@@ -388,21 +399,22 @@ and eval ((lenv, tenv) as env) expr =
         eval_assign env lhs value;
         value)
   | Syntax.Lambda(_,_,Some ty_expr,_)
-  -> (let ty = eval_type env ty_expr in
-        match ty with
-        | LambdaTy(_) | Tvar(_)
-        -> Lambda { l_ty        = ty;
-                    l_local_env = lenv;
-                    l_type_env  = tenv;
-                    l_code      = expr }
-        | _
-        -> exc_type "closure type" ty (Syntax.ty_loc ty_expr))
+  -> (let tenv = tenv_fork tenv in
+        let ty = eval_type (lenv, tenv) ty_expr in
+          match ty with
+          | LambdaTy(_) | Tvar(_)
+          -> Lambda { l_ty        = ty;
+                      l_local_env = lenv;
+                      l_type_env  = tenv;
+                      l_code      = expr }
+          | _
+          -> exc_type "closure type" ty (Syntax.ty_loc ty_expr))
   | Syntax.Lambda(_,_,None,_)
-  -> Lambda { l_ty        = genvar ();
+  -> Lambda { l_ty        = Tvar (genvar ());
               l_local_env = lenv;
               l_type_env  = tenv;
               l_code      = expr }
   | Syntax.Type(_,ty_expr)
-  -> eval_type env ty_expr
+  -> eval_type (lenv, (tenv_fork tenv)) ty_expr
   | _
   -> failwith ("cannot eval " ^ Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr));

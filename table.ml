@@ -12,25 +12,28 @@ let create lst =
     (fun table ->
       List.iter (fun (k, v) -> Hashtbl.replace table k v) lst)
 
-let set arg k v =
-  Hashtbl.replace arg k v
+let set table k v =
+  Hashtbl.replace table k v
 
-let get arg k =
-  if Hashtbl.mem arg k then
-    Some (Hashtbl.find arg k)
+let get table k =
+  if Hashtbl.mem table k then
+    Some (Hashtbl.find table k)
   else None
 
 let pair k v =
   newtable 1
     (fun table -> Hashtbl.add table k v)
 
-let map ~f arg =
-  newtable (Hashtbl.length arg)
+let map ~f table =
+  newtable (Hashtbl.length table)
     (fun table ->
-      Hashtbl.iter (fun k v -> Hashtbl.add table k (f v)) arg)
+      Hashtbl.iter (fun k v -> Hashtbl.add table k (f v)) table)
 
-let map_list ~f arg =
-  Hashtbl.fold (fun k v accum -> (f k v) :: accum) arg []
+let dup table =
+  map (fun x -> x) table
+
+let map_list ~f table =
+  Hashtbl.fold (fun k v accum -> (f k v) :: accum) table []
 
 let join l r =
   newtable (max (Hashtbl.length l) (Hashtbl.length r))
