@@ -6,6 +6,7 @@ with sexp_of
 type value =
 (* Primitives *)
 | Tvar          of typevar
+| TvarTy
 | Nil
 | NilTy
 | Truth
@@ -23,8 +24,8 @@ type value =
 (* Function type *)
 | Environment   of environment
 | EnvironmentTy of environment_ty
-| Closure       of closure
-| ClosureTy     of closure_ty
+| Lambda        of lambda
+| LambdaTy      of lambda_ty
 (* Packages *)
 | Package       of package
 (* User-defined types *)
@@ -49,15 +50,15 @@ and environment = {
   e_parent        : environment option;
   e_bindings      : binding Table.t;
 }
-and closure_ty = {
-  l_args_ty   : value;
-  l_kwargs_ty : value;
-  l_return_ty : value;
+and lambda_ty = {
+  l_args_ty       : value;
+  l_kwargs_ty     : value;
+  l_return_ty     : value;
 }
-and closure = {
-  l_ty        : closure_ty;
-  l_env       : environment;
-  l_code      : Syntax.expr;
+and lambda = {
+  l_ty            : value;
+  l_env           : environment;
+  l_code          : Syntax.expr;
 }
 and 'a specialized = 'a * value Table.t
 and package = {
@@ -80,7 +81,7 @@ and mixin = {
   m_methods   : imethod Table.t;
 }
 and imethod = {
-  im_body     : closure;
+  im_body     : lambda;
   im_dynamic  : bool;
 }
 and ivar_kind =
@@ -108,27 +109,70 @@ let genvar () =
 
 let rec typeof value =
   match value with
-  | Truth | Lies -> BooleanTy
-  | Nil          -> NilTy
+  | Truth | Lies  -> BooleanTy
+  | Nil           -> NilTy
 
-  | Int(_)       -> IntTy
-  | Symbol(_)    -> SymbolTy
-  | Tuple(xs)    -> TupleTy(List.map typeof xs)
-  | Record(xs)   -> RecordTy(Table.map (fun v -> typeof v) xs)
+  | Tvar(_)       -> TvarTy
+  | Int(_)        -> IntTy
+  | Symbol(_)     -> SymbolTy
+  | Tuple(xs)     -> TupleTy(List.map typeof xs)
+  | Record(xs)    -> RecordTy(Table.map (fun v -> typeof v) xs)
 
-  (* | Environment(e)
-  -> EnvironmentTy(None, Table.map (fun (_, m) -> m) e.e_bindings)
- *)
-  | Closure(c)   -> ClosureTy(c.l_ty)
+  | Lambda(c)     -> c.l_ty
 
   | Instance(k,_) -> Class(k)
-  | _ -> assert false
+  | _ -> failwith ("cannot typeof " ^ (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
 
 let string_of_value value =
    (Sexplib.Sexp.to_string_hum (sexp_of_value value))
 
+let inspect_literal_or value f =
+  match value with
+  | Truth     -> "true"
+  | Lies      -> "false"
+  | Nil       -> "nil"
+  | Int(n)    -> string_of_int n
+  | Symbol(s) -> ":" ^ s
+  | _         -> f value
+
+let rec inspect_value value =
+  inspect_literal_or value (fun x ->
+    match value with
+    | Tuple(xs)    -> "[" ^ (String.concat ", " (List.map inspect_value xs)) ^ "]"
+    | Record(xs)   -> "{" ^ (String.concat ", " (Table.map_list
+                                (fun k v -> k ^ ": " ^ (inspect_value v)) xs)) ^ "}"
+    | Lambda(lm)   -> "#<Lambda " ^ Location.at(Syntax.loc lm.l_code) ^ ">"
+    | _ -> (string_of_value value))
+
+let rec inspect_type_pair name ty =
+  name ^ ": " ^ (inspect_type ty)
+
+and inspect_type ty =
+  inspect_literal_or ty (fun x ->
+    match ty with
+    | TvarTy       -> "TypeVariable"
+    | BooleanTy    -> "Boolean"
+    | NilTy        -> "Nil"
+    | IntTy        -> "Integer"
+    | SymbolTy     -> "Symbol"
+    | TupleTy(xs)  -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
+    | RecordTy(xs) -> "{" ^ (String.concat ", " (Table.map_list inspect_type_pair xs)) ^ "}"
+    | LambdaTy(lm)
+    -> (let args_ty =
+          match lm.l_args_ty with
+          | TupleTy(xs) -> List.map inspect_type xs
+          | o -> ["*" ^ (inspect_type o)]
+        in let kwargs_ty =
+          match lm.l_kwargs_ty with
+          | RecordTy(xs) -> Table.map_list inspect_type_pair xs
+          | o -> ["**" ^ (inspect_type o)]
+        in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^
+           ") -> " ^ (inspect_type lm.l_return_ty))
+    | Tvar(tv)     -> "\\" ^ (string_of_int tv)
+    | _            -> "((" ^ (inspect_value ty) ^ "))")
+
 let inspect value =
-  (string_of_value value) ^ " : " ^ (string_of_value (typeof value))
+  (inspect_value value) ^ " : " ^ (inspect_type (typeof value))
 
 (* Exceptions *)
 
@@ -150,7 +194,7 @@ exception EnvImmutable    of binding
 
 let env_create () =
   { e_parent   = None;
-    e_bindings = Table.create () }
+    e_bindings = Table.create [] }
 
 let env_bind env name ~loc ~is_mutable ~value =
   match Table.get env.e_bindings name with
@@ -265,8 +309,48 @@ and eval_assign env lhs value =
         exc_fail ("Name " ^ name ^ " is not bound") loc [])
   | _ -> assert false
 
+and eval_type env expr =
+  let as_type expr =
+    let ty = eval_type env expr in
+      match ty with
+      | Tvar(_) | TvarTy | NilTy | BooleanTy
+      | IntTy | SymbolTy
+      | TupleTy(_) | RecordTy(_) | LambdaTy(_)
+      -> ty
+      | _ -> exc_type "type" ty (Syntax.ty_loc expr)
+  in
+  match expr with
+  | Syntax.TypeVar(_,n)
+  -> (* TODO TODO TODO *) genvar ()
+  | Syntax.TypeTuple(_,xs)
+  -> TupleTy (List.map as_type xs)
+  | Syntax.TypeRecord(_,xs)
+  -> RecordTy (Table.create (List.map (fun (_,k,v) -> k, as_type v) xs))
+  | Syntax.TypeFunction(_,all_args,ret)
+  -> (let args, kwargs =
+        List.fold_left (fun (args, kwargs) arg ->
+          match arg with
+          | Syntax.TypeArg(_,ty)     -> ((as_type ty) :: args), kwargs
+          | Syntax.TypeArgKw(_,n,ty) -> args, (n, (as_type ty)) :: kwargs)
+        ([], []) all_args
+      in LambdaTy {
+        l_args_ty   = TupleTy  args;
+        l_kwargs_ty = RecordTy (Table.create kwargs);
+        l_return_ty = as_type ret;
+      })
+  | Syntax.TypeConstr(_,name,args)
+  -> (match name with
+      | "Nil"     -> NilTy
+      | "True" | "False" -> BooleanTy
+      | "Integer" -> IntTy
+      | "Symbol"  -> SymbolTy
+      | _ -> failwith ("cannot type eval " ^ name ^ ": no general type constr support"))
+  | Syntax.TypeSplice(_,expr)
+  -> eval env expr
+
 and eval env expr =
   match expr with
+  | Syntax.Nil(_)   -> Nil
   | Syntax.Truth(_) -> Truth
   | Syntax.Lies(_)  -> Lies
   | Syntax.Int(_,x) -> Int(x)
@@ -274,7 +358,7 @@ and eval env expr =
   | Syntax.Tuple(_,xs)
   -> List.fold_left concat_tuple (Tuple []) (List.map (eval_tuple env) xs)
   | Syntax.Record(_,xs)
-  -> List.fold_left concat_record (Record (Table.create ())) (List.map (eval_record env) xs)
+  -> List.fold_left concat_record (Record (Table.create [])) (List.map (eval_record env) xs)
   | Syntax.Let(_,pat,_ty,expr)
   -> (let value = eval env expr in
         eval_pattern env pat (eval env expr);
@@ -284,9 +368,30 @@ and eval env expr =
         env_lookup env name
       with EnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") (Syntax.loc expr) [])
+  | Syntax.Self(loc)
+  -> (try
+        env_lookup env "self"
+      with EnvUnbound ->
+        exc_fail ("self is not bound. (self does not exist outside of methods)")
+                 (Syntax.loc expr) [])
   | Syntax.Assign(_,lhs,rhs)
   -> (let value = eval env rhs in
         eval_assign env lhs value;
         value)
+  | Syntax.Lambda(_,_,Some ty_expr,_)
+  -> (let ty = eval_type env ty_expr in
+        match ty with
+        | LambdaTy(_) | Tvar(_)
+        -> Lambda { l_ty   = ty;
+                    l_env  = env;
+                    l_code = expr }
+        | _
+        -> exc_type "closure type" ty (Syntax.ty_loc ty_expr))
+  | Syntax.Lambda(_,_,None,_)
+  -> Lambda { l_ty   = genvar ();
+              l_env  = env;
+              l_code = expr }
+  | Syntax.Type(_,ty_expr)
+  -> eval_type env ty_expr
   | _
   -> failwith ("cannot eval " ^ Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr));

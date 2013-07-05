@@ -42,6 +42,14 @@ let sexp_of_operator loc =
 let sexp_of_let_bind loc =
   Sexplib.Sexp.List []
 
+(* Queries *)
+
+let at loc =
+  let (l, r) = loc in
+    "at " ^ (string_of_int l) ^ ";" ^ (string_of_int r)
+
+(* Constructors *)
+
 let combine fst_loc snd_loc =
   let (f1, f2), (s1, s2) = fst_loc, snd_loc in
     (min f1 s1, max f2 s2)

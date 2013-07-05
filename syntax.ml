@@ -47,31 +47,31 @@ and pat_extract =
   | PatImplicit     of Location.nullary    * string * pattern
   | PatRename       of Location.operator   * string * pattern
 and expr =
-  | Self          of Location.nullary
-  | Truth         of Location.nullary (* true  *)
-  | Lies          of Location.nullary (* false *)
-  | Nil           of Location.nullary
-  | Int           of Location.nullary    * int
-  | Sym           of Location.nullary    * string
-  | Var           of Location.nullary    * string
-  | TVar          of Location.nullary    * string
-  | IVar          of Location.nullary    * string
-  | Const         of Location.nullary    * string
-  | And           of Location.operator   * expr * expr
-  | Or            of Location.operator   * expr * expr
-  | Not           of Location.operator   * expr
-  | Send          of Location.send       * expr * string * actual_arg list
-  | Tuple         of Location.collection * tuple_elem list
-  | Record        of Location.collection * record_elem list
-  | Quote         of Location.collection * quote * quote_elem list
-  | Begin         of Location.collection * expr list
-  | Lambda        of Location.collection * formal_arg list * ty option * expr
-  | Let           of Location.operator   * pattern * ty option * expr
-  | Assign        of Location.operator   * expr * expr
-  | OrAssign      of Location.operator   * expr * expr
-  | AndAssign     of Location.operator   * expr * expr
-  | OpAssign      of Location.operator   * expr * string * expr
-  | Type          of Location.operator   * ty
+  | Self            of Location.nullary
+  | Truth           of Location.nullary (* true  *)
+  | Lies            of Location.nullary (* false *)
+  | Nil             of Location.nullary
+  | Int             of Location.nullary    * int
+  | Sym             of Location.nullary    * string
+  | Var             of Location.nullary    * string
+  | TVar            of Location.nullary    * string
+  | IVar            of Location.nullary    * string
+  | Const           of Location.nullary    * string
+  | And             of Location.operator   * expr * expr
+  | Or              of Location.operator   * expr * expr
+  | Not             of Location.operator   * expr
+  | Send            of Location.send       * expr * string * actual_arg list
+  | Tuple           of Location.collection * tuple_elem list
+  | Record          of Location.collection * record_elem list
+  | Quote           of Location.collection * quote * quote_elem list
+  | Begin           of Location.collection * expr list
+  | Lambda          of Location.collection * formal_arg list * ty option * expr
+  | Let             of Location.operator   * pattern * ty option * expr
+  | Assign          of Location.operator   * expr * expr
+  | OrAssign        of Location.operator   * expr * expr
+  | AndAssign       of Location.operator   * expr * expr
+  | OpAssign        of Location.operator   * expr * string * expr
+  | Type            of Location.operator   * ty
 with sexp_of
 
 let loc expr =
@@ -91,7 +91,7 @@ let pat_loc pattern =
   | PatImmutable (loc,_) | PatMutable(loc,_) -> fst loc
   | PatRecord (loc,_) | PatTuple (loc,_) -> fst loc
 
-let type_loc ty =
+let ty_loc ty =
   match ty with
   | TypeConstr(loc,_,_) -> fst loc
   | TypeTuple(loc,_) | TypeRecord(loc,_) | TypeFunction(loc,_,_) -> fst loc

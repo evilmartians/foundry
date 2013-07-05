@@ -208,13 +208,13 @@
 
        pair_ty: id=Id_LABEL ty=ty
                 { let (id_loc, id) = id in
-                    (unary id_loc (Syntax.type_loc ty), id, ty) }
+                    (unary id_loc (Syntax.ty_loc ty), id, ty) }
 
         arg_ty: ty=ty
-                { Syntax.TypeArg (nullary (Syntax.type_loc ty), ty) }
+                { Syntax.TypeArg (nullary (Syntax.ty_loc ty), ty) }
               | id=Id_LABEL ty=ty
                 { let (id_loc, id) = id in
-                    Syntax.TypeArgKw (unary id_loc (Syntax.type_loc ty), id, ty) }
+                    Syntax.TypeArgKw (unary id_loc (Syntax.ty_loc ty), id, ty) }
 
      splice_ty: id=Id_LOCAL
                 { let (id_loc, id) = id in
@@ -363,7 +363,7 @@
 
               | kw=Kw_TYPE ty=ty
                 { let (kw_loc, _) = kw in
-                    Syntax.Type (unary kw_loc (Syntax.type_loc ty), ty) }
+                    Syntax.Type (unary kw_loc (Syntax.ty_loc ty), ty) }
 
               | lam_args=f_lam_args ty=option(ty_decl) block=block
                 { let lp, args, rp = lam_args in

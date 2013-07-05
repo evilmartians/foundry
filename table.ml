@@ -3,12 +3,14 @@ open Sexplib.Std
 type 'a t = (string, 'a) Hashtbl.t
 with sexp_of
 
-let newtable arg f =
-  let table = Hashtbl.create (Hashtbl.length arg) in
+let newtable len f =
+  let table = Hashtbl.create len in
     f table; table
 
-let create () =
-  Hashtbl.create 1
+let create lst =
+  newtable (List.length lst)
+    (fun table ->
+      List.iter (fun (k, v) -> Hashtbl.replace table k v) lst)
 
 let set arg k v =
   Hashtbl.replace arg k v
@@ -19,15 +21,19 @@ let get arg k =
   else None
 
 let pair k v =
-  let table = Hashtbl.create 1 in
-    Hashtbl.add table k v;
-    table
+  newtable 1
+    (fun table -> Hashtbl.add table k v)
 
-let map f arg =
-  newtable arg (fun table ->
-    Hashtbl.iter (fun k v -> Hashtbl.add table k (f v)) arg)
+let map ~f arg =
+  newtable (Hashtbl.length arg)
+    (fun table ->
+      Hashtbl.iter (fun k v -> Hashtbl.add table k (f v)) arg)
+
+let map_list ~f arg =
+  Hashtbl.fold (fun k v accum -> (f k v) :: accum) arg []
 
 let join l r =
-  newtable l (fun table ->
-    Hashtbl.iter (Hashtbl.add table) l;
-    Hashtbl.iter (Hashtbl.replace table) r)
+  newtable (max (Hashtbl.length l) (Hashtbl.length r))
+    (fun table ->
+      Hashtbl.iter (Hashtbl.add table) l;
+      Hashtbl.iter (Hashtbl.replace table) r)

@@ -21,6 +21,10 @@ let eval str =
         String.fill pointers x (y - x) '^');
 
       str ^ "\n" ^ pointers ^ "\nError: " ^ exc.Vm.ex_message ^ "\n"
+  with Parser.Error ->
+    "Parsing error"
+  with Failure msg ->
+    "Runtime failure: " ^ msg
 
 module Html = Dom_html
 let doc = Html.document
