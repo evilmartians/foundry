@@ -7,10 +7,12 @@ let newtable len f =
   let table = Hashtbl.create len in
     f table; table
 
+let fill table lst =
+  List.iter (fun (k, v) -> Hashtbl.replace table k v) lst
+
 let create lst =
   newtable (List.length lst)
-    (fun table ->
-      List.iter (fun (k, v) -> Hashtbl.replace table k v) lst)
+    (fun table -> fill table lst)
 
 let copy table =
   Hashtbl.copy table

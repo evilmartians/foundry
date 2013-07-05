@@ -13,7 +13,7 @@ type value =
 | Lies
 | BooleanTy
 | Int           of int
-| IntTy
+| IntegerTy
 | Symbol        of string
 | SymbolTy
 (* Product types *)
@@ -66,7 +66,7 @@ and lambda_ty = {
 and 'a specialized = 'a * value Table.t
 and package = {
   p_name      : string;
-  (* p_metaclass : klass; *)
+  p_metaclass : klass;
   p_constants : value Table.t;
 }
 and klass = {
@@ -76,8 +76,8 @@ and klass = {
   k_tvars     : tvar    Table.t;
   k_ivars     : ivar    Table.t;
   k_methods   : imethod Table.t;
-  k_prepended : mixin   list;
-  k_appended  : mixin   list;
+  mutable k_prepended : mixin list;
+  mutable k_appended  : mixin list;
 }
 and mixin = {
   m_name      : string;
@@ -106,15 +106,78 @@ with sexp_of
 exception Exc of exc
 with sexp
 
-let pToplevel = {
-    p_name      = "#<toplevel>";
-    p_constants = Table.create [
-      ("Nil",     NilTy);
-      ("Boolean", BooleanTy);
-      ("Integer", IntTy);
-      ("Symbol",  SymbolTy)
-    ]
-  }
+(* Class tooling & default virtual image *)
+
+let rec kClass =
+  { k_name      = "Class";
+    k_ancestor  = None;
+    k_metaclass = kmetaClass;
+    k_tvars     = Table.create [];
+    k_ivars     = Table.create [];
+    k_methods   = Table.create [];
+    k_prepended = [];
+    k_appended  = []; }
+and kmetaClass =
+  { k_name      = "meta:Class";
+    k_ancestor  = Some kClass;
+    k_metaclass = kClass;
+    k_tvars     = Table.create [];
+    k_ivars     = Table.create [];
+    k_methods   = Table.create [];
+    k_prepended = [];
+    k_appended  = []; }
+
+let new_metaclass ?ancestor name =
+  { k_name      = "meta:" ^ name;
+    k_ancestor  = ancestor;
+    k_metaclass = kClass;
+    k_tvars     = Table.create [];
+    k_ivars     = Table.create [];
+    k_methods   = Table.create [];
+    k_prepended = [];
+    k_appended  = []; }
+
+let new_class ?ancestor name =
+  let meta_ancestor =
+    match ancestor with
+    | Some klass -> klass.k_ancestor
+    | None -> None
+  in
+  { k_name      = name;
+    k_metaclass = (new_metaclass ?ancestor:meta_ancestor name);
+    k_ancestor  = ancestor;
+    k_tvars     = Table.create [];
+    k_ivars     = Table.create [];
+    k_methods   = Table.create [];
+    k_prepended = [];
+    k_appended  = []; }
+
+let kTypeVariable = new_class "TypeVariable"
+
+let kNil     = new_class "Nil"
+let kBoolean = new_class "Boolean"
+let kInteger = new_class "Integer"
+let kSymbol  = new_class "Symbol"
+
+let kMixin   = new_class "Mixin"
+let kPackage = new_class "Package"
+
+let new_package name =
+  { p_name      = name;
+    p_metaclass = new_metaclass ~ancestor:kPackage name;
+    p_constants = Table.create [] }
+
+let pToplevel = new_package "#<toplevel>"
+
+let () =
+  Table.fill pToplevel.p_constants [
+    ("Nil",     NilTy);
+    ("Boolean", BooleanTy);
+    ("Integer", IntegerTy);
+    ("Symbol",  SymbolTy)
+  ]
+
+(* Types and type variables *)
 
 let lastvar = ref 0
 let genvar () : tvar =
@@ -127,7 +190,7 @@ let rec typeof value =
   | Nil           -> NilTy
 
   | Tvar(_)       -> TvarTy
-  | Int(_)        -> IntTy
+  | Int(_)        -> IntegerTy
   | Symbol(_)     -> SymbolTy
   | Tuple(xs)     -> TupleTy(List.map typeof xs)
   | Record(xs)    -> RecordTy(Table.map (fun v -> typeof v) xs)
@@ -161,6 +224,11 @@ let rec inspect_value value =
                 (fun k v -> k ^ ": " ^ (inspect_value v)) xs)) ^ "}"
     | Lambda(lm)
     -> "#<Lambda " ^ Location.at(Syntax.loc lm.l_code) ^ ">"
+    | TvarTy     -> "TypeVariable"
+    | BooleanTy  -> "Boolean"
+    | NilTy      -> "Nil"
+    | IntegerTy  -> "Integer"
+    | SymbolTy   -> "Symbol"
     | TupleTy(_) | RecordTy(_) | LambdaTy(_)
     -> "type " ^ (inspect_type value)
     | _ -> (string_of_value value))
@@ -174,7 +242,7 @@ and inspect_type ty =
     | TvarTy       -> "TypeVariable"
     | BooleanTy    -> "Boolean"
     | NilTy        -> "Nil"
-    | IntTy        -> "Integer"
+    | IntegerTy    -> "Integer"
     | SymbolTy     -> "Symbol"
     | TupleTy(xs)  -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
     | RecordTy(xs) -> "{" ^ (String.concat ", " (Table.map_list inspect_type_pair xs)) ^ "}"
@@ -397,7 +465,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
     let ty = eval_type env expr in
       match ty with
       | Tvar(_) | TvarTy | NilTy | BooleanTy
-      | IntTy | SymbolTy
+      | IntegerTy | SymbolTy
       | TupleTy(_) | RecordTy(_) | LambdaTy(_)
       -> ty
       | _ -> exc_type "type" ty (Syntax.ty_loc expr)
@@ -432,7 +500,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
       | _
       -> (try
             match cenv_lookup cenv name with
-            | (NilTy | BooleanTy | IntTy | SymbolTy | TvarTy) as ty
+            | (NilTy | BooleanTy | IntegerTy | SymbolTy | TvarTy) as ty
             -> (match args with
                 | [] -> ty
                 | _  -> exc_fail ("Type " ^ name ^ " is not parametric") loc [])
