@@ -176,7 +176,10 @@ and inspect_type ty =
     | _            -> "((" ^ (inspect_value ty) ^ "))")
 
 let inspect value =
-  (inspect_value value) ^ " : " ^ (inspect_type (typeof value))
+  let ty =
+    try  (inspect_type (typeof value))
+    with Failure(_) -> "#<untypable value>"
+  in (inspect_value value) ^ " : " ^ ty
 
 (* Exceptions *)
 
