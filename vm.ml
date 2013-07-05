@@ -22,8 +22,8 @@ type value =
 | Record        of value Table.t
 | RecordTy      of value Table.t
 (* Function type *)
-| Environment   of environment
-| EnvironmentTy of environment_ty
+| Environment   of local_env
+| EnvironmentTy of local_env_ty
 | Lambda        of lambda
 | LambdaTy      of lambda_ty
 (* Packages *)
@@ -37,8 +37,8 @@ and binding_ty = {
   b_is_mutable_ty : bool;
   b_value_ty      : value;
 }
-and environment_ty = {
-  e_parent_ty     : environment_ty option;
+and local_env_ty = {
+  e_parent_ty     : local_env_ty option;
   e_bindings_ty   : binding_ty Table.t;
 }
 and binding = {
@@ -46,19 +46,21 @@ and binding = {
   b_is_mutable    : bool;
   b_value         : value;
 }
-and environment = {
-  e_parent        : environment option;
+and local_env = {
+  e_parent        : local_env option;
   e_bindings      : binding Table.t;
+}
+and type_env =      typevar Table.t
+and lambda = {
+  l_ty            : value;
+  l_local_env     : local_env;
+  l_type_env      : type_env;
+  l_code          : Syntax.expr;
 }
 and lambda_ty = {
   l_args_ty       : value;
   l_kwargs_ty     : value;
   l_return_ty     : value;
-}
-and lambda = {
-  l_ty            : value;
-  l_env           : environment;
-  l_code          : Syntax.expr;
 }
 and 'a specialized = 'a * value Table.t
 and package = {
@@ -186,20 +188,20 @@ let exc_fail message loc hilights =
 let exc_type expected obj loc =
   exc_fail (expected ^ " expected; " ^ (inspect obj) ^ " found") loc []
 
-(* Environments *)
+(* Local environment *)
 
-exception EnvUnbound
-exception EnvAlreadyBound of binding
-exception EnvImmutable    of binding
+exception LEnvUnbound
+exception LEnvAlreadyBound of binding
+exception LEnvImmutable    of binding
 
-let env_create () =
+let lenv_create () =
   { e_parent   = None;
     e_bindings = Table.create [] }
 
-let env_bind env name ~loc ~is_mutable ~value =
+let lenv_bind env name ~loc ~is_mutable ~value =
   match Table.get env.e_bindings name with
   | Some(b)
-  -> raise (EnvAlreadyBound b)
+  -> raise (LEnvAlreadyBound b)
   | None
   -> Table.set env.e_bindings name {
     b_location   = loc;
@@ -207,10 +209,10 @@ let env_bind env name ~loc ~is_mutable ~value =
     b_value      = value;
   }
 
-let rec env_mutate env name ~value =
+let rec lenv_mutate env name ~value =
   match Table.get env.e_bindings name with
   | Some({ b_is_mutable = false } as b)
-  -> raise (EnvImmutable b)
+  -> raise (LEnvImmutable b)
   | Some b
   -> Table.set env.e_bindings name {
     b_location   = b.b_location;
@@ -219,16 +221,21 @@ let rec env_mutate env name ~value =
   }
   | None
   -> match env.e_parent with
-     | Some parent -> env_mutate parent name value
-     | None -> raise EnvUnbound
+     | Some parent -> lenv_mutate parent name value
+     | None -> raise LEnvUnbound
 
-let rec env_lookup env name =
+let rec lenv_lookup env name =
   match Table.get env.e_bindings name with
   | Some({ b_value = value }) -> value
   | None
   -> match env.e_parent with
-     | Some parent -> env_lookup parent name
-     | None -> raise EnvUnbound
+     | Some parent -> lenv_lookup parent name
+     | None -> raise LEnvUnbound
+
+(* Type environment *)
+
+let tenv_create () : typevar Table.t =
+  Table.create []
 
 (* Eval helper routines *)
 
@@ -271,11 +278,11 @@ and eval_record env elem =
      | Symbol(s) -> Record (Table.pair s (eval env v))
      | o -> exc_type "Symbol" o (Syntax.loc k))
 
-and eval_pattern env pat value =
+and eval_pattern ((lenv, tenv) as env) pat value =
   let bind name ~is_mutable ~value ~loc =
     try
-      env_bind env name ~is_mutable ~value ~loc
-    with EnvAlreadyBound({ b_location = bound_loc }) ->
+      lenv_bind lenv name ~is_mutable ~value ~loc
+    with LEnvAlreadyBound({ b_location = bound_loc }) ->
       exc_fail ("Name " ^ name ^ " is already bound") loc [bound_loc]
   in
 
@@ -297,19 +304,19 @@ and eval_pattern env pat value =
       | o -> exc_type "Tuple" o (Syntax.pat_loc pat))
   | _ -> assert false
 
-and eval_assign env lhs value =
+and eval_assign (lenv, tenv) lhs value =
   match lhs with
   | Syntax.Var((loc,_),name)
   -> (try
-        env_mutate env name ~value:value
+        lenv_mutate lenv name ~value:value
       with
-      | EnvImmutable({ b_location = bound_loc }) ->
+      | LEnvImmutable({ b_location = bound_loc }) ->
         exc_fail ("Name " ^ name ^ " is bound as immutable") loc [bound_loc]
-      | EnvUnbound ->
+      | LEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") loc [])
   | _ -> assert false
 
-and eval_type env expr =
+and eval_type ((lenv, tenv) as env) expr =
   let as_type expr =
     let ty = eval_type env expr in
       match ty with
@@ -348,7 +355,7 @@ and eval_type env expr =
   | Syntax.TypeSplice(_,expr)
   -> eval env expr
 
-and eval env expr =
+and eval ((lenv, tenv) as env) expr =
   match expr with
   | Syntax.Nil(_)   -> Nil
   | Syntax.Truth(_) -> Truth
@@ -356,22 +363,24 @@ and eval env expr =
   | Syntax.Int(_,x) -> Int(x)
   | Syntax.Sym(_,x) -> Symbol(x)
   | Syntax.Tuple(_,xs)
-  -> List.fold_left concat_tuple (Tuple []) (List.map (eval_tuple env) xs)
+  -> List.fold_left concat_tuple
+        (Tuple []) (List.map (eval_tuple env) xs)
   | Syntax.Record(_,xs)
-  -> List.fold_left concat_record (Record (Table.create [])) (List.map (eval_record env) xs)
+  -> List.fold_left concat_record
+        (Record (Table.create [])) (List.map (eval_record env) xs)
   | Syntax.Let(_,pat,_ty,expr)
   -> (let value = eval env expr in
-        eval_pattern env pat (eval env expr);
+        eval_pattern env pat value;
         value)
   | Syntax.Var(loc,name)
   -> (try
-        env_lookup env name
-      with EnvUnbound ->
+        lenv_lookup lenv name
+      with LEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") (Syntax.loc expr) [])
   | Syntax.Self(loc)
   -> (try
-        env_lookup env "self"
-      with EnvUnbound ->
+        lenv_lookup lenv "self"
+      with LEnvUnbound ->
         exc_fail ("self is not bound. (self does not exist outside of methods)")
                  (Syntax.loc expr) [])
   | Syntax.Assign(_,lhs,rhs)
@@ -382,15 +391,17 @@ and eval env expr =
   -> (let ty = eval_type env ty_expr in
         match ty with
         | LambdaTy(_) | Tvar(_)
-        -> Lambda { l_ty   = ty;
-                    l_env  = env;
-                    l_code = expr }
+        -> Lambda { l_ty        = ty;
+                    l_local_env = lenv;
+                    l_type_env  = tenv;
+                    l_code      = expr }
         | _
         -> exc_type "closure type" ty (Syntax.ty_loc ty_expr))
   | Syntax.Lambda(_,_,None,_)
-  -> Lambda { l_ty   = genvar ();
-              l_env  = env;
-              l_code = expr }
+  -> Lambda { l_ty        = genvar ();
+              l_local_env = lenv;
+              l_type_env  = tenv;
+              l_code      = expr }
   | Syntax.Type(_,ty_expr)
   -> eval_type env ty_expr
   | _

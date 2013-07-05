@@ -1,6 +1,7 @@
 open Core.Std
 
-let env = Vm.env_create ()
+let lenv = Vm.lenv_create ()
+let tenv = Vm.tenv_create ()
 
 while true do
   let lexbuf = (Lexing.from_channel stdin) in
@@ -20,7 +21,7 @@ while true do
 *)
 
   try
-    List.map ~f:(Vm.eval env) (Parser.toplevel lex lexbuf)
+    List.map ~f:(Vm.eval (lenv, tenv)) (Parser.toplevel lex lexbuf)
     |> List.last_exn
     |> Vm.inspect
     |> print_endline
