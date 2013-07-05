@@ -1,11 +1,11 @@
 open Sexplib.Std
 
-type typevar = int
+type tvar = int
 with sexp_of
 
 type value =
 (* Primitives *)
-| Tvar          of typevar
+| Tvar          of tvar
 | TvarTy
 | Nil
 | NilTy
@@ -50,7 +50,7 @@ and local_env = {
   e_parent        : local_env option;
   e_bindings      : binding Table.t;
 }
-and type_env =      typevar Table.t
+and type_env =      tvar Table.t
 and const_env =     package list ref
 and lambda = {
   l_ty            : value;
@@ -66,13 +66,14 @@ and lambda_ty = {
 and 'a specialized = 'a * value Table.t
 and package = {
   p_name      : string;
-  p_metaclass : klass;
+  (* p_metaclass : klass; *)
   p_constants : value Table.t;
 }
 and klass = {
   k_name      : string;
   k_metaclass : klass;
   k_ancestor  : klass   option;
+  k_tvars     : tvar    Table.t;
   k_ivars     : ivar    Table.t;
   k_methods   : imethod Table.t;
   k_prepended : mixin   list;
@@ -106,7 +107,7 @@ exception Exc of exc
 with sexp
 
 let lastvar = ref 0
-let genvar () : typevar =
+let genvar () : tvar =
   incr lastvar;
   !lastvar
 
@@ -254,15 +255,13 @@ let tenv_resolve env name =
 exception CEnvUnbound
 exception CEnvAlreadyBound of value
 
-(* let cenv_toplevel =
+let cenv_toplevel =
   { p_name      = "<toplevel>";
-    p_metaclass = metaclass_create ();
-    p_constants = Table.create () }
- *)
+    (* p_metaclass = metaclass_create (); *)
+    p_constants = Table.create [] }
 
 let cenv_create () : const_env =
-  (* ref [cenv_toplevel] *)
-  ref []
+  ref [cenv_toplevel]
 
 let cenv_fork env =
   ref !env
@@ -271,7 +270,7 @@ let cenv_extend env pkg =
   env := pkg :: !env
 
 let cenv_bind env name value =
-  match env with
+  match !env with
   | pkg :: rest
   -> (match Table.get pkg.p_constants name with
       | Some value -> raise (CEnvAlreadyBound value)
@@ -371,6 +370,11 @@ and eval_assign (lenv, tenv, cenv) lhs value =
         exc_fail ("Name " ^ name ^ " is bound as immutable") loc [bound_loc]
       | LEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") loc [])
+  | Syntax.Const((loc,_),name)
+  -> (try
+        cenv_bind cenv name value
+      with CEnvAlreadyBound(value) ->
+        exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value)) loc [])
   | _ -> assert false
 
 and eval_type ((lenv, tenv, cenv) as env) expr =
@@ -440,6 +444,11 @@ and eval ((lenv, tenv, cenv) as env) expr =
       with LEnvUnbound ->
         exc_fail ("self is not bound. (self does not exist outside of methods)")
                  (Syntax.loc expr) [])
+  | Syntax.Const(loc,name)
+  -> (try
+        cenv_lookup cenv name
+      with CEnvUnbound ->
+        exc_fail ("Name " ^ name ^ " is not bound") (Syntax.loc expr) [])
   | Syntax.Assign(_,lhs,rhs)
   -> (let value = eval env rhs in
         eval_assign env lhs value;
