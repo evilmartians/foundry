@@ -106,6 +106,16 @@ with sexp_of
 exception Exc of exc
 with sexp
 
+let pToplevel = {
+    p_name      = "#<toplevel>";
+    p_constants = Table.create [
+      ("Nil",     NilTy);
+      ("Boolean", BooleanTy);
+      ("Integer", IntTy);
+      ("Symbol",  SymbolTy)
+    ]
+  }
+
 let lastvar = ref 0
 let genvar () : tvar =
   incr lastvar;
@@ -127,6 +137,8 @@ let rec typeof value =
   | Instance(k,_) -> Class(k)
   | _ -> failwith ("cannot typeof " ^ (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
 
+(* Inspecting types and values *)
+
 let string_of_value value =
    (Sexplib.Sexp.to_string_hum (sexp_of_value value))
 
@@ -142,13 +154,18 @@ let inspect_literal_or value f =
 let rec inspect_value value =
   inspect_literal_or value (fun x ->
     match value with
-    | Tuple(xs)    -> "[" ^ (String.concat ", " (List.map inspect_value xs)) ^ "]"
-    | Record(xs)   -> "{" ^ (String.concat ", " (Table.map_list
-                                (fun k v -> k ^ ": " ^ (inspect_value v)) xs)) ^ "}"
-    | Lambda(lm)   -> "#<Lambda " ^ Location.at(Syntax.loc lm.l_code) ^ ">"
+    | Tuple(xs)
+    -> "[" ^ (String.concat ", " (List.map inspect_value xs)) ^ "]"
+    | Record(xs)
+    -> "{" ^ (String.concat ", " (Table.map_list
+                (fun k v -> k ^ ": " ^ (inspect_value v)) xs)) ^ "}"
+    | Lambda(lm)
+    -> "#<Lambda " ^ Location.at(Syntax.loc lm.l_code) ^ ">"
+    | TupleTy(_) | RecordTy(_) | LambdaTy(_)
+    -> "type " ^ (inspect_type value)
     | _ -> (string_of_value value))
 
-let rec inspect_type_pair name ty =
+and inspect_type_pair name ty =
   name ^ ": " ^ (inspect_type ty)
 
 and inspect_type ty =
@@ -258,13 +275,8 @@ let tenv_resolve env name =
 exception CEnvUnbound
 exception CEnvAlreadyBound of value
 
-let cenv_toplevel =
-  { p_name      = "<toplevel>";
-    (* p_metaclass = metaclass_create (); *)
-    p_constants = Table.create [] }
-
 let cenv_create () : const_env =
-  ref [cenv_toplevel]
+  ref [pToplevel]
 
 let cenv_fork env =
   ref !env
@@ -409,13 +421,28 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
         l_kwargs_ty = RecordTy (Table.create kwargs);
         l_return_ty = as_type ret;
       })
-  | Syntax.TypeConstr(_,name,args)
+  | Syntax.TypeConstr((loc,_),name,args)
   -> (match name with
-      | "Nil"     -> NilTy
-      | "True" | "False" -> BooleanTy
-      | "Integer" -> IntTy
-      | "Symbol"  -> SymbolTy
-      | _ -> failwith ("cannot type eval " ^ name ^ ": no general type constr support"))
+      | "Tuple"
+      -> exc_fail "Use [...] syntax to construct tuple types" loc []
+      | "Record"
+      -> exc_fail "Use {...} syntax to construct record types" loc []
+      | "Lambda"
+      -> exc_fail "Use (...) -> ... syntax to construct lambda types" loc []
+      | _
+      -> (try
+            match cenv_lookup cenv name with
+            | (NilTy | BooleanTy | IntTy | SymbolTy | TvarTy) as ty
+            -> (match args with
+                | [] -> ty
+                | _  -> exc_fail ("Type " ^ name ^ " is not parametric") loc [])
+            | Class(_) as klass
+            -> failwith "cannot construct class types yet"
+            | value
+            -> exc_fail ("Name " ^ name ^ " is bound to " ^ (inspect value) ^
+                         " which is not a type") loc []
+          with CEnvUnbound ->
+            exc_fail ("Name " ^ name ^ " is unbound") loc []))
   | Syntax.TypeSplice(_,expr)
   -> eval env expr
 
@@ -432,6 +459,8 @@ and eval ((lenv, tenv, cenv) as env) expr =
   | Syntax.Record(_,xs)
   -> List.fold_left concat_record
         (Record (Table.create [])) (List.map (eval_record env) xs)
+  | Syntax.Type(_,ty_expr)
+  -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
   | Syntax.Let(_,pat,_ty,expr)
   -> (let value = eval env expr in
         eval_pattern env pat value;
@@ -472,7 +501,5 @@ and eval ((lenv, tenv, cenv) as env) expr =
               l_local_env = lenv;
               l_type_env  = tenv;
               l_code      = expr }
-  | Syntax.Type(_,ty_expr)
-  -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
   | _
   -> failwith ("cannot eval " ^ Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr));
