@@ -1,129 +1,51 @@
 open Sexplib.Std
 
-type t = (int * int)
-with sexp_of
+type t = int * int
+with sexp
 
-let implicit = (0, 0)
+let empty = (0, 0)
 
-type nullary      = t * unit
+let cur_pos  = ref 0
+let cur_line = ref 0
+let files    = ref []
+let lines    = ref []
 
-type collection_i = {
-  start           : t;
-  finish          : t;
-}
-type collection   = t * collection_i
+let start_file file line =
+  files    := (file, !cur_pos) :: !files;
+  lines    := (line, !cur_pos) :: !lines;
+  cur_line := line
 
-type operator_i   = {
-  operator        : t;
-}
-type operator     = t * operator_i
+let start_line pos =
+  cur_line := !cur_line + 1;
+  lines    := (!cur_line, !cur_pos + pos) :: !lines
 
-type send_i       = {
-  dot             : t option;
-  selector        : t option;
-  lparen          : t option;
-  rparen          : t option;
-}
-type send         = t * send_i
+let finish_file pos =
+  cur_pos  := !cur_pos + pos
 
-type let_bind_i   = {
-  mut             : t option;
-  rename          : t option;
-  identifier      : t;
-}
-type let_bind     = t * let_bind_i
+let make lft rgt =
+  (!cur_pos + lft, !cur_pos + rgt)
 
-let sexp_of_nullary loc =
-  Sexplib.Sexp.List []
-let sexp_of_collection loc =
-  Sexplib.Sexp.List []
-let sexp_of_send loc =
-  Sexplib.Sexp.List []
-let sexp_of_operator loc =
-  Sexplib.Sexp.List []
-let sexp_of_let_bind loc =
-  Sexplib.Sexp.List []
+let decompose loc =
+  let next pos (_, p) = p <= pos in
+  let file, _ = List.find (next (fst loc)) !files in
+  let find_line pos =
+    let line, start = List.find (next pos) !lines in
+      line, pos - start
+  in file, find_line (fst loc), find_line (snd loc)
 
-(* Queries *)
+let is_empty loc =
+  loc = empty
+
+let is_present loc =
+  loc <> empty
 
 let at loc =
-  let (l, r) = loc in
-    "at " ^ (string_of_int l) ^ ";" ^ (string_of_int r)
+  let file, (line1, col1), (line2, col2) = decompose loc in
+    "at " ^ file ^ ":" ^ (string_of_int line1) ^ ":" ^ (string_of_int col1)
 
-(* Constructors *)
-
-let combine fst_loc snd_loc =
+let join fst_loc snd_loc =
   let (f1, f2), (s1, s2) = fst_loc, snd_loc in
     (min f1 s1, max f2 s2)
 
-let nullary token =
-  (token, ())
-
-let collection start finish =
-  (combine start finish, {
-    start  = start;
-    finish = finish;
-  })
-
-let lambda start finish body =
-  (combine start body, {
-    start  = start;
-    finish = finish;
-  })
-
-let unary op arg =
-  (combine op arg,  { operator = op })
-
-let binary lhs op rhs =
-  (combine lhs rhs, { operator = op })
-
-let send_unary op arg =
-  (combine op arg,  {
-    dot      = None;
-    selector = Some op;
-    lparen   = None;
-    rparen   = None;
-  })
-
-let send_binary lhs op rhs =
-  (combine lhs rhs,  {
-    dot      = None;
-    selector = Some op;
-    lparen   = None;
-    rparen   = None;
-  })
-
-let send_method recv dot name lparen rparen =
-  (combine recv rparen, {
-    dot      = Some dot;
-    selector = Some name;
-    lparen   = Some lparen;
-    rparen   = Some rparen;
-  })
-
-let send_attr recv dot name =
-  (combine recv name, {
-    dot      = Some dot;
-    selector = Some name;
-    lparen   = None;
-    rparen   = None;
-  })
-
-let send_call recv lparen rparen =
-  (combine recv rparen, {
-    dot      = None;
-    selector = None;
-    lparen   = Some lparen;
-    rparen   = Some rparen;
-  })
-
-let let_bind mut rename ident =
-  let left =  match mut with
-              Some x -> x | None ->
-                match rename with
-                Some x -> x | None -> ident
-  in (combine left ident, {
-    mut        = mut;
-    rename     = rename;
-    identifier = ident;
-  })
+let find lst =
+  List.find is_present lst

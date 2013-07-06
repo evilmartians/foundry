@@ -1,10 +1,9 @@
-open Core.Std
-
 let env = Vm.env_create ()
 
 while true do
   let lexbuf = (Lexing.from_channel stdin) in
-  let lex    = Lexer.next (Lexer.create ()) in
+  let lex    = Lexer.next (Lexer.create "stdin" 1) in
+  let (|>) x f = f x in
 
 (*   lex lexbuf
     |> sexp_of_token
@@ -24,7 +23,7 @@ while true do
     |> Vm.inspect
     |> print_endline
   with Vm.Exc exc ->
-    let pointers =
+(*     let pointers =
       let all_ranges = exc.Vm.ex_location :: exc.Vm.ex_highlights in
         String.make (List.fold ~f:max ~init:0 (List.map all_ranges ~f:snd) + 1) ' '
     in
@@ -32,6 +31,7 @@ while true do
       (let x, y = exc.Vm.ex_location in
         String.fill pointers x (y - x) '^');
 
-      print_endline pointers;
+      print_endline pointers; *)
+      print_endline (Location.at (List.hd exc.Vm.ex_locations));
       print_endline ("Error: " ^ exc.Vm.ex_message)
 done

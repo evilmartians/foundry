@@ -32,39 +32,89 @@
 %token EOF
 
 %{
-  let nullary =
-    Location.nullary
-  let unary =
-    Location.unary
-  let binary =
-    Location.binary
+
+  (* Location tracking *)
+
+  module Loc = Location
+
+  let nullary token =
+    (token, ())
+
+  let unary op arg =
+    (Loc.join op arg,  { Syntax.operator = op })
+
+  let binary lhs op rhs =
+    (Loc.join lhs rhs, { Syntax.operator = op })
 
   let op_unary op arg =
-    Location.unary op (Syntax.loc arg)
+    unary op (Syntax.loc arg)
+
   let op_binary lhs op rhs =
-    Location.binary (Syntax.loc lhs) op (Syntax.loc rhs)
+    binary (Syntax.loc lhs) op (Syntax.loc rhs)
 
   let pat_unary op arg =
-    Location.unary op (Syntax.pat_loc arg)
+    unary op (Syntax.pat_loc arg)
 
-  let collection =
-    Location.collection
+  let collection start finish =
+    (Loc.join start finish, {
+      Syntax.start  = start;
+      Syntax.finish = finish;
+    })
+
   let lambda start finish body =
-    Location.lambda start finish (Syntax.loc body)
+    (Loc.join start (Syntax.loc body), {
+      Syntax.start  = start;
+      Syntax.finish = finish;
+    })
 
   let send_unary op arg =
-    Location.send_unary op (Syntax.loc arg)
-  let send_binary lhs op rhs =
-    Location.send_binary (Syntax.loc lhs) op (Syntax.loc rhs)
-  let send_method recv dot name lparen rparen =
-    Location.send_method (Syntax.loc recv) dot name lparen rparen
-  let send_attr recv dot name =
-    Location.send_attr (Syntax.loc recv) dot name
-  let send_call recv lparen rparen =
-    Location.send_call (Syntax.loc recv) lparen rparen
+    (Loc.join op (Syntax.loc arg),  {
+      Syntax.dot      = Loc.empty;
+      Syntax.selector = op;
+      Syntax.lparen   = Loc.empty;
+      Syntax.rparen   = Loc.empty;
+    })
 
-  let let_bind =
-    Location.let_bind
+  let send_binary lhs op rhs =
+    (Loc.join (Syntax.loc lhs) (Syntax.loc rhs),  {
+      Syntax.dot      = Loc.empty;
+      Syntax.selector = op;
+      Syntax.lparen   = Loc.empty;
+      Syntax.rparen   = Loc.empty;
+    })
+
+  let send_method recv dot name lparen rparen =
+    (Loc.join (Syntax.loc recv) rparen, {
+      Syntax.dot      = dot;
+      Syntax.selector = name;
+      Syntax.lparen   = lparen;
+      Syntax.rparen   = rparen;
+    })
+
+  let send_attr recv dot name =
+    (Loc.join (Syntax.loc recv) name, {
+      Syntax.dot      = dot;
+      Syntax.selector = name;
+      Syntax.lparen   = Loc.empty;
+      Syntax.rparen   = Loc.empty;
+    })
+
+  let send_call recv lparen rparen =
+    (Loc.join (Syntax.loc recv) rparen, {
+      Syntax.dot      = Loc.empty;
+      Syntax.selector = Loc.empty;
+      Syntax.lparen   = lparen;
+      Syntax.rparen   = rparen;
+    })
+
+  let let_bind mut rename ident =
+    let left =
+      Loc.find [mut; rename; ident]
+    in (Loc.join left ident, {
+      Syntax.mut        = mut;
+      Syntax.rename     = rename;
+      Syntax.identifier = ident;
+    })
 
   let arg expr =
     [Syntax.ActualArg (nullary (Syntax.loc expr), expr)]
@@ -126,10 +176,10 @@
 
      pat_ident: id=Id_LOCAL
                 { let (id_loc, id) = id in
-                    Syntax.PatImmutable (let_bind None None id_loc, id) }
+                    Syntax.PatImmutable (let_bind Loc.empty Loc.empty id_loc, id) }
               | kw=Kw_MUT id=Id_LOCAL
                 { let (kw_loc, _), (id_loc, id) = kw, id in
-                    Syntax.PatMutable (let_bind None (Some kw_loc) id_loc, id) }
+                    Syntax.PatMutable (let_bind Loc.empty kw_loc id_loc, id) }
 
    pat_extract: ident=pat_ident
                 { match ident with
@@ -399,10 +449,10 @@
               | prim=primary_noid
                 { prim }
 
-       primary: prim=primary_noid
+    /* primary: prim=primary_noid
                 { prim }
               | local=local
-                { local }
+                { local } */
 
   primary_noid: lit=literal
                 { lit }

@@ -6,7 +6,13 @@
   }
 
   let locate lexbuf =
-    (Lexing.lexeme_start lexbuf, Lexing.lexeme_end lexbuf)
+    Location.make (Lexing.lexeme_start lexbuf) (Lexing.lexeme_end lexbuf)
+
+  let newline lexbuf =
+    Location.start_line (Lexing.lexeme_start lexbuf)
+
+  let eof lexbuf =
+    Location.finish_file (Lexing.lexeme_start lexbuf)
 
   let lexeme =
     Lexing.lexeme
@@ -53,7 +59,8 @@ let symbol      = ':' method_name
 
 rule lex_code state = parse
 | w_space      { lex_code state lexbuf }
-| w_newline    { Lexing.new_line lexbuf; lex_code state lexbuf }
+| w_newline    { newline lexbuf;
+                 lex_code state lexbuf }
 
 (* Punctuation *)
 | operator as op '=' { Parser.Tk_OP_ASGN (locate lexbuf, op) }
@@ -155,7 +162,7 @@ rule lex_code state = parse
 | '@'  (ident as i)     { Parser.Id_IVAR  (locate lexbuf, i) }
 | '\\' (ident as i)     { Parser.Id_TVAR  (locate lexbuf, i) }
 
-| eof                   { Parser.EOF }
+| eof                   { eof lexbuf; Parser.EOF }
 
 and lex_string state = parse
 | '\''                  { goto state lex_code;
@@ -163,7 +170,8 @@ and lex_string state = parse
 | "\\\\"                { Parser.Vl_STRING (locate lexbuf, "\\") }
 | "\\'"                 { Parser.Vl_STRING (locate lexbuf, "'") }
 | [^'\'' '\\']+ as v    { Parser.Vl_STRING (locate lexbuf, v) }
-| eof                   { Parser.EOF }
+
+| eof                   { eof lexbuf; Parser.EOF }
 
 and lex_string_interp state = parse
 | '"'                   { goto state lex_code;
@@ -175,12 +183,15 @@ and lex_string_interp state = parse
                           Parser.Vl_UNQUOTE (locate lexbuf) }
 | '#'                   { Parser.Vl_STRING (locate lexbuf, "#") }
 | [^'"' '#' '\\']+ as v { Parser.Vl_STRING (locate lexbuf, v) }
-| eof                   { Parser.EOF }
+
+| eof                   { eof lexbuf; Parser.EOF }
 
 {
   (* Public API *)
-  let create () =
-    { lexer_stack = [lex_code]; curly_stack = [1] }
+  let create file line =
+    Location.start_file file line;
+    { lexer_stack = [lex_code];
+      curly_stack = [1] }
 
   let next state lexbuf =
     (List.hd state.lexer_stack) state lexbuf

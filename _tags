@@ -1,3 +1,2 @@
 true:use_menhir,debug,thread,syntax(camlp4o),package(sexplib.syntax),package(extlib)
 <foundryWeb.*>:package(js_of_ocaml),package(js_of_ocaml.syntax)
-<foundry.*>:package(core)

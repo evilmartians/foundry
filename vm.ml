@@ -97,8 +97,7 @@ and ivar = {
 }
 and exc = {
   ex_message      : string;
-  ex_location     : int * int;
-  ex_highlights   : (int * int) list;
+  ex_locations    : Location.t list;
 }
 with sexp_of
 
@@ -272,15 +271,14 @@ let inspect value =
 
 (* Exceptions *)
 
-let exc_fail message loc hilights =
+let exc_fail message locations =
   raise (Exc {
     ex_message    = message;
-    ex_location   = loc;
-    ex_highlights = hilights;
+    ex_locations  = locations;
   })
 
 let exc_type expected obj loc =
-  exc_fail (expected ^ " expected; " ^ (inspect obj) ^ " found") loc []
+  exc_fail (expected ^ " expected; " ^ (inspect obj) ^ " found") [loc]
 
 (* Local environment *)
 
@@ -384,7 +382,7 @@ let env_create () =
   let lenv = lenv_create None
   in lenv_bind lenv "self" ~value:(Package pToplevel)
                            ~is_mutable:false
-                           ~loc:Location.implicit;
+                           ~loc:Location.empty;
      lenv, tenv_create (), cenv_create ()
 
 let concat_tuple lhs rhs =
@@ -436,7 +434,7 @@ and eval_pattern ((lenv, tenv, cenv) as env) pat value =
     try
       lenv_bind lenv name ~is_mutable ~value ~loc
     with LEnvAlreadyBound({ b_location = bound_loc }) ->
-      exc_fail ("Name " ^ name ^ " is already bound") loc [bound_loc]
+      exc_fail ("Name " ^ name ^ " is already bound") [loc; bound_loc]
   in
 
   match pat with
@@ -453,7 +451,7 @@ and eval_pattern ((lenv, tenv, cenv) as env) pat value =
             exc_fail ("Tuple " ^ (inspect value) ^ " of length " ^
                       (string_of_int (List.length xs)) ^
                       " does not match pattern of length " ^
-                      (string_of_int (List.length pats))) loc [])
+                      (string_of_int (List.length pats))) [loc])
       | o -> exc_type "Tuple" o (Syntax.pat_loc pat))
   | _ -> assert false
 
@@ -464,14 +462,14 @@ and eval_assign (lenv, tenv, cenv) lhs value =
         lenv_mutate lenv name ~value:value
       with
       | LEnvImmutable({ b_location = bound_loc }) ->
-        exc_fail ("Name " ^ name ^ " is bound as immutable") loc [bound_loc]
+        exc_fail ("Name " ^ name ^ " is bound as immutable") [loc; bound_loc]
       | LEnvUnbound ->
-        exc_fail ("Name " ^ name ^ " is not bound") loc [])
+        exc_fail ("Name " ^ name ^ " is not bound") [loc])
   | Syntax.Const((loc,_),name)
   -> (try
         cenv_bind cenv name value
       with CEnvAlreadyBound(value) ->
-        exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value)) loc [])
+        exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value)) [loc])
   | _ -> assert false
 
 and eval_type ((lenv, tenv, cenv) as env) expr =
@@ -507,18 +505,18 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
   | Syntax.TypeConstr((loc,_),name,args)
   -> (match name with
       | "Tuple"
-      -> exc_fail "Use [...] syntax to construct tuple types" loc []
+      -> exc_fail "Use [...] syntax to construct tuple types" [loc]
       | "Record"
-      -> exc_fail "Use {...} syntax to construct record types" loc []
+      -> exc_fail "Use {...} syntax to construct record types" [loc]
       | "Lambda"
-      -> exc_fail "Use (...) -> ... syntax to construct lambda types" loc []
+      -> exc_fail "Use (...) -> ... syntax to construct lambda types" [loc]
       | _
       -> (try
             match cenv_lookup cenv name with
             | (NilTy | BooleanTy | IntegerTy | SymbolTy | TvarTy) as ty
             -> (match args with
                 | [] -> ty
-                | _  -> exc_fail ("Type " ^ name ^ " is not parametric") loc [])
+                | _  -> exc_fail ("Type " ^ name ^ " is not parametric") [loc])
             | Class(klass,specz)
             -> (let new_specz =
                   Table.create (List.map
@@ -527,13 +525,13 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
                         name, eval_type env expr
                       else
                         exc_fail ("Type " ^ klass.k_name ^
-                                  " is not parametric by " ^ name) loc []) args)
+                                  " is not parametric by " ^ name) [loc]) args)
                 in Class(klass, Table.join specz new_specz))
             | value
             -> exc_fail ("Name " ^ name ^ " is bound to " ^ (inspect value) ^
-                         " which is not a type") loc []
+                         " which is not a type") [loc]
           with CEnvUnbound ->
-            exc_fail ("Name " ^ name ^ " is unbound") loc []))
+            exc_fail ("Name " ^ name ^ " is unbound") [loc]))
   | Syntax.TypeSplice(_,expr)
   -> eval_expr env expr
 
@@ -572,14 +570,14 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   -> (try
         lenv_lookup lenv name
       with LEnvUnbound ->
-        exc_fail ("Name " ^ name ^ " is not bound") (Syntax.loc expr) [])
+        exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
   | Syntax.Self(loc)
   -> lenv_lookup lenv "self"
   | Syntax.Const(loc,name)
   -> (try
         cenv_lookup cenv name
       with CEnvUnbound ->
-        exc_fail ("Name " ^ name ^ " is not bound") (Syntax.loc expr) [])
+        exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
   | Syntax.Assign(_,lhs,rhs)
   -> (let value = eval_expr env rhs in
         eval_assign env lhs value;
@@ -625,11 +623,11 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
               exc_fail ("Cannot reopen " ^ name ^ ": it " ^
                         (inspect_ancestor klass.k_ancestor) ^
                         ", and the definition " ^
-                        (inspect_ancestor ancestor)) loc []) (* TODO loc *)
+                        (inspect_ancestor ancestor)) [loc]) (* TODO loc *)
         (* Not a class *)
         | Some value
         -> exc_fail ("Cannot reopen " ^ name ^ ": it is bound to " ^
-                     (inspect value) ^ ", which is not a class") loc []
+                     (inspect value) ^ ", which is not a class") [loc]
         (* No class present, create one and inherit specializations from
            its ancestor *)
         | None
@@ -647,7 +645,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       | Some meth
       -> exc_fail ("Cannot define method " ^ name ^ " on " ^
                    (inspect_value (lenv_lookup lenv "self")) ^
-                   ": it is already defined") loc [meth.im_body.l_location]
+                   ": it is already defined") [loc; meth.im_body.l_location]
       | None
       -> (let tenv, ty = eval_closure_ty env ty_expr in
           Table.set klass.k_methods name {
@@ -669,7 +667,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       -> exc_fail ("Cannot define @" ^ name ^ " on " ^
                    (inspect_value (lenv_lookup lenv "self")) ^
                    ": it is already defined with type " ^
-                   (inspect_type ivar.iv_ty)) loc [ivar.iv_location]
+                   (inspect_type ivar.iv_ty)) [loc; ivar.iv_location]
       | None
       -> (Table.set klass.k_ivars name {
             iv_location = loc;

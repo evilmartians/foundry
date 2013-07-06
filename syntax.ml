@@ -1,93 +1,132 @@
 open Sexplib.Std
 
+(* Enumerations *)
+
 type quote =
   | Qu_STRING
   | Qu_SYMBOL
-with sexp_of
+with sexp
 
 type ivar_kind =
   | IVarImmutable
   | IVarMutable
   | IVarMetaMutable
-with sexp_of
+with sexp
+
+(* Location records *)
+
+type nullary      = Location.t * unit
+with sexp
+
+type collection_i = {
+  start           : Location.t;
+  finish          : Location.t;
+}
+and  collection   = Location.t * collection_i
+with sexp
+
+type operator_i   = {
+  operator        : Location.t;
+}
+and  operator     = Location.t * operator_i
+with sexp
+
+type send_i       = {
+  dot             : Location.t;
+  selector        : Location.t;
+  lparen          : Location.t;
+  rparen          : Location.t;
+}
+and  send         = Location.t * send_i
+with sexp
+
+type let_bind_i   = {
+  mut             : Location.t;
+  rename          : Location.t;
+  identifier      : Location.t;
+}
+and  let_bind     = Location.t * let_bind_i
+with sexp
+
+(* AST nodes *)
 
 type actual_arg =
-  | ActualArg       of Location.nullary    * expr
-  | ActualSplice    of Location.operator   * expr
-  | ActualKwArg     of Location.operator   * string * expr
-  | ActualKwSplice  of Location.operator   * expr
+  | ActualArg       of nullary    * expr
+  | ActualSplice    of operator   * expr
+  | ActualKwArg     of operator   * string * expr
+  | ActualKwSplice  of operator   * expr
 and actual_args = actual_arg list
 and formal_arg =
-  | FormalSelf      of Location.nullary
-  | FormalArg       of Location.nullary    * string
-  | FormalRest      of Location.operator   * string
-  | FormalKwArg     of Location.nullary    * string
-  | FormalKwOptArg  of Location.operator   * string * expr
-  | FormalKwRest    of Location.operator   * string
+  | FormalSelf      of nullary
+  | FormalArg       of nullary    * string
+  | FormalRest      of operator   * string
+  | FormalKwArg     of nullary    * string
+  | FormalKwOptArg  of operator   * string * expr
+  | FormalKwRest    of operator   * string
 and formal_args = formal_arg list
-and pair_ty =          Location.operator   * string * ty
+and pair_ty =          operator   * string * ty
 and arg_ty =
-  | TypeArg         of Location.nullary    * ty
-  | TypeArgKw       of Location.operator   * string * ty
+  | TypeArg         of nullary    * ty
+  | TypeArgKw       of operator   * string * ty
 and ty =
-  | TypeConstr      of Location.operator   * string * pair_ty list
-  | TypeTuple       of Location.collection * ty list
-  | TypeRecord      of Location.collection * pair_ty list
-  | TypeFunction    of Location.collection * arg_ty list * ty
-  | TypeVar         of Location.nullary    * string
-  | TypeSplice      of Location.nullary    * expr
+  | TypeConstr      of operator   * string * pair_ty list
+  | TypeTuple       of collection * ty list
+  | TypeRecord      of collection * pair_ty list
+  | TypeFunction    of collection * arg_ty list * ty
+  | TypeVar         of nullary    * string
+  | TypeSplice      of nullary    * expr
 and tuple_elem =
-  | TupleElem       of Location.nullary    * expr
-  | TupleSplice     of Location.operator   * expr
+  | TupleElem       of nullary    * expr
+  | TupleSplice     of operator   * expr
 and tuple_elems = tuple_elem list
 and record_elem =
-  | RecordElem      of Location.operator   * string * expr
-  | RecordSplice    of Location.operator   * expr
-  | RecordPair      of Location.operator   * expr * expr
+  | RecordElem      of operator   * string * expr
+  | RecordSplice    of operator   * expr
+  | RecordPair      of operator   * expr * expr
 and record_elems = record_elem list
 and quote_elem =
-  | QuoteString     of Location.nullary    * string
-  | QuoteSplice     of Location.collection * expr
+  | QuoteString     of nullary    * string
+  | QuoteSplice     of collection * expr
 and quote_elems = quote_elem list
 and pattern =
-  | PatImmutable    of Location.let_bind   * string
-  | PatMutable      of Location.let_bind   * string
-  | PatTuple        of Location.collection * pattern list
-  | PatRecord       of Location.collection * pat_extract list
+  | PatImmutable    of let_bind   * string
+  | PatMutable      of let_bind   * string
+  | PatTuple        of collection * pattern list
+  | PatRecord       of collection * pat_extract list
 and pat_extract =
-  | PatImplicit     of Location.nullary    * string * pattern
-  | PatRename       of Location.operator   * string * pattern
+  | PatImplicit     of nullary    * string * pattern
+  | PatRename       of operator   * string * pattern
 and expr =
-  | Self            of Location.nullary
-  | Truth           of Location.nullary (* true  *)
-  | Lies            of Location.nullary (* false *)
-  | Nil             of Location.nullary
-  | Int             of Location.nullary    * int
-  | Sym             of Location.nullary    * string
-  | Var             of Location.nullary    * string
-  | TVar            of Location.nullary    * string
-  | IVar            of Location.nullary    * string
-  | Const           of Location.nullary    * string
-  | And             of Location.operator   * expr * expr
-  | Or              of Location.operator   * expr * expr
-  | Not             of Location.operator   * expr
-  | Send            of Location.send       * expr * string * actual_args
-  | Tuple           of Location.collection * tuple_elems
-  | Record          of Location.collection * record_elems
-  | Quote           of Location.collection * quote * quote_elems
-  | Begin           of Location.collection * exprs
-  | Lambda          of Location.collection * formal_args * ty option * expr
-  | Let             of Location.operator   * pattern * ty option * expr
-  | Assign          of Location.operator   * expr * expr
-  | OrAssign        of Location.operator   * expr * expr
-  | AndAssign       of Location.operator   * expr * expr
-  | OpAssign        of Location.operator   * expr * string * expr
-  | Type            of Location.operator   * ty
-  | Class           of Location.nullary    * string * expr option * exprs
-  | DefMethod       of Location.nullary    * string * formal_args * ty option * exprs
-  | DefIVar         of Location.nullary    * string * ivar_kind * ty
+  | Self            of nullary
+  | Truth           of nullary (* true  *)
+  | Lies            of nullary (* false *)
+  | Nil             of nullary
+  | Int             of nullary    * int
+  | Sym             of nullary    * string
+  | Var             of nullary    * string
+  | TVar            of nullary    * string
+  | IVar            of nullary    * string
+  | Const           of nullary    * string
+  | And             of operator   * expr * expr
+  | Or              of operator   * expr * expr
+  | Not             of operator   * expr
+  | Send            of send       * expr * string * actual_args
+  | Tuple           of collection * tuple_elems
+  | Record          of collection * record_elems
+  | Quote           of collection * quote * quote_elems
+  | Begin           of collection * exprs
+  | Lambda          of collection * formal_args * ty option * expr
+  | Let             of operator   * pattern * ty option * expr
+  | Assign          of operator   * expr * expr
+  | OrAssign        of operator   * expr * expr
+  | AndAssign       of operator   * expr * expr
+  | OpAssign        of operator   * expr * string * expr
+  | Type            of operator   * ty
+  | Class           of nullary    * string * expr option * exprs
+  | DefMethod       of nullary    * string * formal_args * ty option * exprs
+  | DefIVar         of nullary    * string * ivar_kind * ty
 and exprs = expr list
-with sexp_of
+with sexp
 
 let loc expr =
   match expr with
