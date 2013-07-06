@@ -304,10 +304,27 @@
      stmt_noid: kw=Kw_LET lhs=pattern ty=option(ty_decl) op=Tk_ASGN rhs=expr
                 { Syntax.Let (binary (Syntax.pat_loc lhs) op (Syntax.loc rhs),
                               lhs, ty, rhs) }
+                /* TODO refactor */
               | kw=Kw_CLASS id=Id_CONST anc=ancestor stmts=compstmt kwend=Kw_END
                 { let anc_loc, anc = Option.map fst anc, Option.map snd anc in
                     Syntax.Class (nullary (fst id),
                                   snd id, anc, stmts) }
+                /* TODO refactor */
+              | kw=Kw_DEF id=method_name
+                  lp=Tk_LPAREN args=f_args rp=Tk_RPAREN
+                  ty=option(ty_decl) Tk_SEMI stmts=compstmt kwend=Kw_END
+                { Syntax.DefMethod (nullary (fst id),
+                                    (snd id), args, ty, stmts) }
+                /* TODO refactor */
+              | kw=Kw_DEF id=Id_IVAR ty=ty_decl
+                { Syntax.DefIVar (nullary (fst id),
+                                  (snd id), Syntax.IVarImmutable, ty) }
+              | kw=Kw_DEF Kw_MUT id=Id_IVAR ty=ty_decl
+                { Syntax.DefIVar (nullary (fst id),
+                                  (snd id), Syntax.IVarMutable, ty) }
+              | kw=Kw_DEF Kw_META id=Id_IVAR ty=ty_decl
+                { Syntax.DefIVar (nullary (fst id),
+                                  (snd id), Syntax.IVarMetaMutable, ty) }
               | expr=expr_noid
                 { expr }
 

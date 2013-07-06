@@ -5,11 +5,18 @@ type quote =
   | Qu_SYMBOL
 with sexp_of
 
+type ivar_kind =
+  | IVarImmutable
+  | IVarMutable
+  | IVarMetaMutable
+with sexp_of
+
 type actual_arg =
   | ActualArg       of Location.nullary    * expr
   | ActualSplice    of Location.operator   * expr
   | ActualKwArg     of Location.operator   * string * expr
   | ActualKwSplice  of Location.operator   * expr
+and actual_args = actual_arg list
 and formal_arg =
   | FormalSelf      of Location.nullary
   | FormalArg       of Location.nullary    * string
@@ -17,6 +24,7 @@ and formal_arg =
   | FormalKwArg     of Location.nullary    * string
   | FormalKwOptArg  of Location.operator   * string * expr
   | FormalKwRest    of Location.operator   * string
+and formal_args = formal_arg list
 and pair_ty =          Location.operator   * string * ty
 and arg_ty =
   | TypeArg         of Location.nullary    * ty
@@ -31,13 +39,16 @@ and ty =
 and tuple_elem =
   | TupleElem       of Location.nullary    * expr
   | TupleSplice     of Location.operator   * expr
+and tuple_elems = tuple_elem list
 and record_elem =
   | RecordElem      of Location.operator   * string * expr
   | RecordSplice    of Location.operator   * expr
   | RecordPair      of Location.operator   * expr * expr
+and record_elems = record_elem list
 and quote_elem =
   | QuoteString     of Location.nullary    * string
   | QuoteSplice     of Location.collection * expr
+and quote_elems = quote_elem list
 and pattern =
   | PatImmutable    of Location.let_bind   * string
   | PatMutable      of Location.let_bind   * string
@@ -60,26 +71,30 @@ and expr =
   | And             of Location.operator   * expr * expr
   | Or              of Location.operator   * expr * expr
   | Not             of Location.operator   * expr
-  | Send            of Location.send       * expr * string * actual_arg list
-  | Tuple           of Location.collection * tuple_elem list
-  | Record          of Location.collection * record_elem list
-  | Quote           of Location.collection * quote * quote_elem list
-  | Begin           of Location.collection * expr list
-  | Lambda          of Location.collection * formal_arg list * ty option * expr
+  | Send            of Location.send       * expr * string * actual_args
+  | Tuple           of Location.collection * tuple_elems
+  | Record          of Location.collection * record_elems
+  | Quote           of Location.collection * quote * quote_elems
+  | Begin           of Location.collection * exprs
+  | Lambda          of Location.collection * formal_args * ty option * expr
   | Let             of Location.operator   * pattern * ty option * expr
   | Assign          of Location.operator   * expr * expr
   | OrAssign        of Location.operator   * expr * expr
   | AndAssign       of Location.operator   * expr * expr
   | OpAssign        of Location.operator   * expr * string * expr
   | Type            of Location.operator   * ty
-  | Class           of Location.nullary    * string * expr option * expr list
+  | Class           of Location.nullary    * string * expr option * exprs
+  | DefMethod       of Location.nullary    * string * formal_args * ty option * exprs
+  | DefIVar         of Location.nullary    * string * ivar_kind * ty
+and exprs = expr list
 with sexp_of
 
 let loc expr =
   match expr with
   | Self (loc)    | Truth (loc) | Lies (loc)   | Nil (loc)
   | Int (loc,_)   | Var (loc,_) | TVar (loc,_) | IVar (loc,_)
-  | Const (loc,_) | Sym(loc,_) | Class(loc,_,_,_) -> fst loc
+  | Const (loc,_) | Sym(loc,_) | Class(loc,_,_,_)
+  | DefMethod(loc,_,_,_,_) | DefIVar(loc,_,_,_) -> fst loc
   | And (loc,_,_) | Or (loc,_,_) | Not (loc,_)
   | Let(loc,_,_,_)  | Assign(loc,_,_) | OpAssign(loc,_,_,_)
   | OrAssign(loc,_,_) | AndAssign(loc,_,_) | Type(loc,_) -> fst loc

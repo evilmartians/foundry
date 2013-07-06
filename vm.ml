@@ -65,41 +65,38 @@ and lambda_ty = {
 }
 and 'a specialized = 'a * value Table.t
 and package = {
-  p_name      : string;
-  p_metaclass : klass;
-  p_constants : value Table.t;
+  p_name          : string;
+  p_metaclass     : klass;
+  p_constants     : value Table.t;
 }
 and klass = {
-  k_name      : string;
-  k_metaclass : klass;
-  k_ancestor  : klass   option;
-  k_tvars     : tvar    Table.t;
-  k_ivars     : ivar    Table.t;
-  k_methods   : imethod Table.t;
+  k_name          : string;
+  k_metaclass     : klass;
+  k_ancestor      : klass   option;
+  k_tvars         : tvar    Table.t;
+  k_ivars         : ivar    Table.t;
+  k_methods       : imethod Table.t;
   mutable k_prepended : mixin list;
   mutable k_appended  : mixin list;
 }
 and mixin = {
-  m_name      : string;
-  m_metaclass : klass;
-  m_methods   : imethod Table.t;
+  m_name          : string;
+  m_metaclass     : klass;
+  m_methods       : imethod Table.t;
 }
 and imethod = {
-  im_body     : lambda;
-  im_dynamic  : bool;
+  im_body         : lambda;
+  im_dynamic      : bool;
 }
-and ivar_kind =
-| IvarImmutable
-| IvarMutable
-| IvarMetaMutable
 and ivar = {
-  iv_ty       : value;
-  iv_kind     : ivar_kind;
+  iv_location     : Location.t;
+  iv_kind         : Syntax.ivar_kind;
+  iv_ty           : value;
 }
 and exc = {
-  ex_message    : string;
-  ex_location   : int * int;
-  ex_highlights : (int * int) list;
+  ex_message      : string;
+  ex_location     : int * int;
+  ex_highlights   : (int * int) list;
 }
 with sexp_of
 
@@ -197,6 +194,7 @@ let rec typeof value =
 
   | Lambda(c)     -> c.l_ty
 
+  | Package(_)    -> Class(kPackage, Table.create [])
   | Class(k,_)    -> Class(kClass, Table.create [])
   | Instance(k,_) -> Class(k)
   | _ -> failwith ("cannot typeof " ^ (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
@@ -233,6 +231,7 @@ let rec inspect_value value =
     | TupleTy(_) | RecordTy(_) | LambdaTy(_)
     -> "type " ^ (inspect_type value)
     | Class(k,_) -> k.k_name
+    | Package(p) -> p.p_name
     | _ -> (string_of_value value))
 
 and inspect_type_pair name ty =
@@ -380,7 +379,9 @@ let cenv_lookup env name =
 (* Eval helper routines *)
 
 let env_create () =
-  lenv_create None, tenv_create (), cenv_create ()
+  let lenv = lenv_create None
+  in lenv_bind lenv "self" ~value:(Package pToplevel) ~is_mutable:false ~loc:(0,0);
+     lenv, tenv_create (), cenv_create ()
 
 let concat_tuple lhs rhs =
   match lhs, rhs with
@@ -393,6 +394,11 @@ let concat_record lhs rhs =
   | Record(l), Record(r)
   -> Record(Table.join l r)
   | _ -> assert false
+
+let check_class lenv loc =
+  match lenv_lookup lenv "self" with
+  | Class (klass,_) -> klass
+  | value -> exc_type "class" value loc
 
 (* E V A L *)
 
@@ -471,6 +477,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
       | Tvar(_) | TvarTy | NilTy | BooleanTy
       | IntegerTy | SymbolTy
       | TupleTy(_) | RecordTy(_) | LambdaTy(_)
+      | Class(_,_)
       -> ty
       | _ -> exc_type "type" ty (Syntax.ty_loc expr)
   in
@@ -526,6 +533,18 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
   | Syntax.TypeSplice(_,expr)
   -> eval_expr env expr
 
+and eval_closure_ty (lenv, tenv, cenv) expr =
+  Option.map_default (fun ty_expr ->
+    let tenv = tenv_fork tenv in
+      let ty = eval_type (lenv, tenv, cenv) ty_expr in
+        match ty with
+        | LambdaTy(_) | Tvar(_)
+        -> tenv, ty
+        | _
+        -> exc_type "closure type" ty (Syntax.ty_loc ty_expr))
+    (tenv, Tvar (genvar ()))
+    expr
+
 and eval_expr ((lenv, tenv, cenv) as env) expr =
   match expr with
   | Syntax.Nil(_)   -> Nil
@@ -551,11 +570,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       with LEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") (Syntax.loc expr) [])
   | Syntax.Self(loc)
-  -> (try
-        lenv_lookup lenv "self"
-      with LEnvUnbound ->
-        exc_fail ("self is not bound. (self does not exist outside of methods)")
-                 (Syntax.loc expr) [])
+  -> lenv_lookup lenv "self"
   | Syntax.Const(loc,name)
   -> (try
         cenv_lookup cenv name
@@ -565,22 +580,12 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   -> (let value = eval_expr env rhs in
         eval_assign env lhs value;
         value)
-  | Syntax.Lambda(_,_,Some ty_expr,_)
-  -> (let tenv = tenv_fork tenv in
-        let ty = eval_type (lenv, tenv, cenv) ty_expr in
-          match ty with
-          | LambdaTy(_) | Tvar(_)
-          -> Lambda { l_ty        = ty;
-                      l_local_env = lenv;
-                      l_type_env  = tenv;
-                      l_code      = expr }
-          | _
-          -> exc_type "closure type" ty (Syntax.ty_loc ty_expr))
-  | Syntax.Lambda(_,_,None,_)
-  -> Lambda { l_ty        = Tvar (genvar ());
-              l_local_env = lenv;
-              l_type_env  = tenv;
-              l_code      = expr }
+  | Syntax.Lambda(_,_,ty_expr,_)
+  -> (let tenv, ty = eval_closure_ty env ty_expr in
+        Lambda { l_ty        = ty;
+                 l_local_env = lenv;
+                 l_type_env  = tenv;
+                 l_code      = expr })
   | Syntax.Class((loc,_),name,ancestor,body)
   -> (let ancestor, specz =
         (* Extract ancestor class object and ancestor specialization table *)
@@ -628,6 +633,23 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       let lenv = lenv_create (Some lenv) in
         lenv_bind lenv "self" ~value:klass ~is_mutable:false ~loc:loc;
           eval (lenv, tenv, cenv) body)
+  | Syntax.DefMethod((loc,_),name,args,ty_expr,body)
+  -> Nil
+  | Syntax.DefIVar((loc,_),name,kind,ty_expr)
+  -> (let klass = check_class lenv loc in
+      match Table.get klass.k_ivars name with
+      | Some ivar
+      -> exc_fail ("Cannot define @" ^ name ^ " on " ^
+                   (inspect_value (lenv_lookup lenv "self")) ^
+                   ": it is already defined with type " ^
+                   (inspect_type ivar.iv_ty)) loc [ivar.iv_location]
+      | None
+      -> (Table.set klass.k_ivars name {
+            iv_location = loc;
+            iv_ty       = eval_type env ty_expr;
+            iv_kind     = kind;
+          });
+      Nil)
   | _
   -> failwith ("cannot eval " ^ Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr));
 
