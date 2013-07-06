@@ -46,9 +46,9 @@ let ident       = id_alpha id_alnum*
 let local       = id_lower id_alnum*
 let const       = id_upper id_alnum*
 
-let operator    = ['+' '-' '*' '/' '%' '&' '|' '<' '>' '~'] |
-                  "<=" | ">=" | "==" | "<=>" | "<<" | ">>" | ">>>"
-let method_name = local | operator
+let operator    = ['+' '-' '*' '/' '%' '&' '|' '~'] |
+                  "<<" | ">>" | ">>>"
+let method_name = local | operator | '<' | '>' | "<=" | ">=" | "==" | "<=>"
 let symbol      = ':' method_name
 
 rule lex_code state = parse
@@ -137,7 +137,7 @@ rule lex_code state = parse
 
 (* Values *)
 | digits as v             { Parser.Vl_INT    (locate lexbuf, int_of_string v) }
-| digits id_alpha         { failwith "trailing junk in identifier" }
+| digits id_alpha         { failwith "trailing junk in a number" }
 | ':' (method_name as v)  { Parser.Vl_SYMBOL (locate lexbuf, v) }
 | '\''                    { goto state lex_string;
                             Parser.Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING) }
