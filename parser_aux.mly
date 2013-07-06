@@ -282,6 +282,11 @@
               | /* nothing */
                 { [] }
 
+      ancestor: tk=Tk_LT expr=expr Tk_SEMI
+                { Some (fst tk, expr)}
+              | Tk_SEMI
+                { None }
+
           stmt: stmt=stmt_noid
                 { stmt }
               | lhs=lhs op=Tk_ASGN rhs=stmt
@@ -299,6 +304,10 @@
      stmt_noid: kw=Kw_LET lhs=pattern ty=option(ty_decl) op=Tk_ASGN rhs=expr
                 { Syntax.Let (binary (Syntax.pat_loc lhs) op (Syntax.loc rhs),
                               lhs, ty, rhs) }
+              | kw=Kw_CLASS id=Id_CONST anc=ancestor stmts=compstmt kwend=Kw_END
+                { let anc_loc, anc = Option.map fst anc, Option.map snd anc in
+                    Syntax.Class (nullary (fst id),
+                                  snd id, anc, stmts) }
               | expr=expr_noid
                 { expr }
 

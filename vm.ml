@@ -197,6 +197,7 @@ let rec typeof value =
 
   | Lambda(c)     -> c.l_ty
 
+  | Class(k,_)    -> Class(kClass, Table.create [])
   | Instance(k,_) -> Class(k)
   | _ -> failwith ("cannot typeof " ^ (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
 
@@ -231,6 +232,7 @@ let rec inspect_value value =
     | SymbolTy   -> "Symbol"
     | TupleTy(_) | RecordTy(_) | LambdaTy(_)
     -> "type " ^ (inspect_type value)
+    | Class(k,_) -> k.k_name
     | _ -> (string_of_value value))
 
 and inspect_type_pair name ty =
@@ -244,6 +246,7 @@ and inspect_type ty =
     | NilTy        -> "Nil"
     | IntegerTy    -> "Integer"
     | SymbolTy     -> "Symbol"
+    | Tvar(tv)     -> "\\" ^ (string_of_int tv)
     | TupleTy(xs)  -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
     | RecordTy(xs) -> "{" ^ (String.concat ", " (Table.map_list inspect_type_pair xs)) ^ "}"
     | LambdaTy(lm)
@@ -257,7 +260,7 @@ and inspect_type ty =
           | o -> ["**" ^ (inspect_type o)]
         in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^
            ") -> " ^ (inspect_type lm.l_return_ty))
-    | Tvar(tv)     -> "\\" ^ (string_of_int tv)
+    | Class(k,_)   -> k.k_name
     | _            -> "((" ^ (inspect_value ty) ^ "))")
 
 let inspect value =
@@ -284,8 +287,8 @@ exception LEnvUnbound
 exception LEnvAlreadyBound of binding
 exception LEnvImmutable    of binding
 
-let lenv_create () : local_env =
-  { e_parent   = None;
+let lenv_create parent : local_env =
+  { e_parent   = parent;
     e_bindings = Table.create [] }
 
 let lenv_bind env name ~loc ~is_mutable ~value =
@@ -353,13 +356,14 @@ let cenv_extend env pkg =
   env := pkg :: !env
 
 let cenv_bind env name value =
-  match !env with
-  | pkg :: rest
-  -> (match Table.get pkg.p_constants name with
-      | Some value -> raise (CEnvAlreadyBound value)
-      | None -> Table.set pkg.p_constants name value)
-  | []
-  -> assert false
+  let pkg = List.hd !env in
+    match Table.get pkg.p_constants name with
+    | Some value -> raise (CEnvAlreadyBound value)
+    | None -> Table.set pkg.p_constants name value
+
+let cenv_peek env name =
+  let pkg = List.hd !env in
+    Table.get pkg.p_constants name
 
 let cenv_lookup env name =
   let rec lookup lst =
@@ -376,7 +380,7 @@ let cenv_lookup env name =
 (* Eval helper routines *)
 
 let env_create () =
-  lenv_create (), tenv_create (), cenv_create ()
+  lenv_create None, tenv_create (), cenv_create ()
 
 let concat_tuple lhs rhs =
   match lhs, rhs with
@@ -395,26 +399,26 @@ let concat_record lhs rhs =
 let rec eval_tuple env elem =
   match elem with
   | Syntax.TupleElem(_,expr)
-  -> Tuple [eval env expr]
+  -> Tuple [eval_expr env expr]
 
   | Syntax.TupleSplice(_,expr)
-  -> (match (eval env expr) with
+  -> (match (eval_expr env expr) with
       | Tuple(_) as t -> t
       | o -> exc_type "Tuple" o (Syntax.loc expr))
 
 and eval_record env elem =
   match elem with
   | Syntax.RecordElem(_,k,v)
-  -> Record (Table.pair k (eval env v))
+  -> Record (Table.pair k (eval_expr env v))
 
   | Syntax.RecordSplice(_,expr)
-  -> (match (eval env expr) with
+  -> (match (eval_expr env expr) with
      | Record(_) as r -> r
      | o -> exc_type "Record" o (Syntax.loc expr))
 
   | Syntax.RecordPair(_,k,v)
-  -> (match (eval env k) with
-     | Symbol(s) -> Record (Table.pair s (eval env v))
+  -> (match (eval_expr env k) with
+     | Symbol(s) -> Record (Table.pair s (eval_expr env v))
      | o -> exc_type "Symbol" o (Syntax.loc k))
 
 and eval_pattern ((lenv, tenv, cenv) as env) pat value =
@@ -512,9 +516,9 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
           with CEnvUnbound ->
             exc_fail ("Name " ^ name ^ " is unbound") loc []))
   | Syntax.TypeSplice(_,expr)
-  -> eval env expr
+  -> eval_expr env expr
 
-and eval ((lenv, tenv, cenv) as env) expr =
+and eval_expr ((lenv, tenv, cenv) as env) expr =
   match expr with
   | Syntax.Nil(_)   -> Nil
   | Syntax.Truth(_) -> Truth
@@ -530,7 +534,7 @@ and eval ((lenv, tenv, cenv) as env) expr =
   | Syntax.Type(_,ty_expr)
   -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
   | Syntax.Let(_,pat,_ty,expr)
-  -> (let value = eval env expr in
+  -> (let value = eval_expr env expr in
         eval_pattern env pat value;
         value)
   | Syntax.Var(loc,name)
@@ -550,7 +554,7 @@ and eval ((lenv, tenv, cenv) as env) expr =
       with CEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") (Syntax.loc expr) [])
   | Syntax.Assign(_,lhs,rhs)
-  -> (let value = eval env rhs in
+  -> (let value = eval_expr env rhs in
         eval_assign env lhs value;
         value)
   | Syntax.Lambda(_,_,Some ty_expr,_)
@@ -569,5 +573,43 @@ and eval ((lenv, tenv, cenv) as env) expr =
               l_local_env = lenv;
               l_type_env  = tenv;
               l_code      = expr }
+  | Syntax.Class((loc,_),name,ancestor,body)
+  -> (let ancestor =
+        Option.map (fun ancestor ->
+          match eval_expr env ancestor with
+          | Class (klass,_) -> klass
+          | value -> exc_type "inheritable class" value (Syntax.loc ancestor))
+        ancestor
+      in
+      let klass =
+        match cenv_peek cenv name with
+        | Some (Class (klass,_) as value) when klass.k_ancestor = ancestor
+        -> value
+        | Some (Class (klass,_) as value) when ancestor = None
+        -> value
+        | Some (Class (klass,_))
+        -> (let inspect_ancestor ancestor =
+              match ancestor with
+              | Some klass -> "has ancestor " ^ klass.k_name
+              | None -> "does not have an ancestor"
+            in
+              exc_fail ("Cannot reopen " ^ name ^ ": it " ^
+                        (inspect_ancestor klass.k_ancestor) ^
+                        ", and the definition " ^
+                        (inspect_ancestor ancestor)) loc []) (* TODO loc *)
+        | Some value
+        -> exc_fail ("Cannot reopen " ^ name ^ ": it is bound to " ^
+                     (inspect value) ^ ", which is not a class") loc []
+        | None
+        -> (let value = Class (new_class ?ancestor name, Table.create [])
+            in cenv_bind cenv name value; value)
+      in
+      let lenv = lenv_create (Some lenv) in
+        lenv_bind lenv "self" ~value:klass ~is_mutable:false ~loc:loc;
+          eval (lenv, tenv, cenv) body)
   | _
   -> failwith ("cannot eval " ^ Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr));
+
+and eval env exprs =
+  Option.default Nil
+    (List.fold_left (fun _ expr -> Some (eval_expr env expr)) None exprs)

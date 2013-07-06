@@ -11,7 +11,8 @@ let eval str =
     |> List.rev
     |> List.hd
     |> Vm.inspect) ^ "\n"
-  with Vm.Exc exc ->
+  with
+  | Vm.Exc exc ->
     let pointers =
       let all_ranges = exc.Vm.ex_location :: exc.Vm.ex_highlights in
         String.make (List.fold_left max 0 (List.map snd all_ranges) + 1) ' '
@@ -21,9 +22,9 @@ let eval str =
         String.fill pointers x (y - x) '^');
 
       str ^ "\n" ^ pointers ^ "\nError: " ^ exc.Vm.ex_message ^ "\n"
-  with Parser.Error ->
+  | Parser.Error ->
     "Parsing error"
-  with Failure msg ->
+  | Failure msg ->
     "Runtime failure: " ^ msg
 
 module Html = Dom_html

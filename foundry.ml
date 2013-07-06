@@ -20,8 +20,7 @@ while true do
 *)
 
   try
-    List.map ~f:(Vm.eval env) (Parser.toplevel lex lexbuf)
-    |> List.last_exn
+    Vm.eval env (Parser.toplevel lex lexbuf)
     |> Vm.inspect
     |> print_endline
   with Vm.Exc exc ->

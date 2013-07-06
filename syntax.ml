@@ -72,13 +72,14 @@ and expr =
   | AndAssign       of Location.operator   * expr * expr
   | OpAssign        of Location.operator   * expr * string * expr
   | Type            of Location.operator   * ty
+  | Class           of Location.nullary    * string * expr option * expr list
 with sexp_of
 
 let loc expr =
   match expr with
   | Self (loc)    | Truth (loc) | Lies (loc)   | Nil (loc)
   | Int (loc,_)   | Var (loc,_) | TVar (loc,_) | IVar (loc,_)
-  | Const (loc,_) | Sym(loc,_) -> fst loc
+  | Const (loc,_) | Sym(loc,_) | Class(loc,_,_,_) -> fst loc
   | And (loc,_,_) | Or (loc,_,_) | Not (loc,_)
   | Let(loc,_,_,_)  | Assign(loc,_,_) | OpAssign(loc,_,_,_)
   | OrAssign(loc,_,_) | AndAssign(loc,_,_) | Type(loc,_) -> fst loc
