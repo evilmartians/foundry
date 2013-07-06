@@ -3,6 +3,8 @@ open Sexplib.Std
 type t = (int * int)
 with sexp_of
 
+let implicit = (0, 0)
+
 type nullary      = t * unit
 
 type collection_i = {

@@ -53,10 +53,12 @@ and local_env = {
 and type_env =      tvar Table.t
 and const_env =     package list ref
 and lambda = {
+  l_location      : Location.t;
   l_ty            : value;
   l_local_env     : local_env;
   l_type_env      : type_env;
-  l_code          : Syntax.expr;
+  l_args          : Syntax.formal_args;
+  l_code          : Syntax.exprs;
 }
 and lambda_ty = {
   l_args_ty       : value;
@@ -222,7 +224,7 @@ let rec inspect_value value =
     -> "{" ^ (String.concat ", " (Table.map_list
                 (fun k v -> k ^ ": " ^ (inspect_value v)) xs)) ^ "}"
     | Lambda(lm)
-    -> "#<Lambda " ^ Location.at(Syntax.loc lm.l_code) ^ ">"
+    -> "#<Lambda " ^ Location.at(lm.l_location) ^ ">"
     | TvarTy     -> "TypeVariable"
     | BooleanTy  -> "Boolean"
     | NilTy      -> "Nil"
@@ -380,7 +382,9 @@ let cenv_lookup env name =
 
 let env_create () =
   let lenv = lenv_create None
-  in lenv_bind lenv "self" ~value:(Package pToplevel) ~is_mutable:false ~loc:(0,0);
+  in lenv_bind lenv "self" ~value:(Package pToplevel)
+                           ~is_mutable:false
+                           ~loc:Location.implicit;
      lenv, tenv_create (), cenv_create ()
 
 let concat_tuple lhs rhs =
@@ -580,12 +584,16 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   -> (let value = eval_expr env rhs in
         eval_assign env lhs value;
         value)
-  | Syntax.Lambda(_,_,ty_expr,_)
+  | Syntax.Lambda(_,args,ty_expr,body)
   -> (let tenv, ty = eval_closure_ty env ty_expr in
-        Lambda { l_ty        = ty;
-                 l_local_env = lenv;
-                 l_type_env  = tenv;
-                 l_code      = expr })
+        Lambda {
+          l_location  = Syntax.loc expr;
+          l_ty        = ty;
+          l_local_env = lenv;
+          l_type_env  = tenv;
+          l_args      = args;
+          l_code      = [body]
+        })
   | Syntax.Class((loc,_),name,ancestor,body)
   -> (let ancestor, specz =
         (* Extract ancestor class object and ancestor specialization table *)
@@ -634,7 +642,26 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
         lenv_bind lenv "self" ~value:klass ~is_mutable:false ~loc:loc;
           eval (lenv, tenv, cenv) body)
   | Syntax.DefMethod((loc,_),name,args,ty_expr,body)
-  -> Nil
+  -> (let klass = check_class lenv loc in
+      match Table.get klass.k_methods name with
+      | Some meth
+      -> exc_fail ("Cannot define method " ^ name ^ " on " ^
+                   (inspect_value (lenv_lookup lenv "self")) ^
+                   ": it is already defined") loc [meth.im_body.l_location]
+      | None
+      -> (let tenv, ty = eval_closure_ty env ty_expr in
+          Table.set klass.k_methods name {
+            im_dynamic  = false; (* TODO dynamic *)
+            im_body     = {
+              l_location  = loc;
+              l_ty        = ty;
+              l_local_env = lenv;
+              l_type_env  = tenv;
+              l_args      = args;
+              l_code      = body;
+            }
+          });
+      Nil)
   | Syntax.DefIVar((loc,_),name,kind,ty_expr)
   -> (let klass = check_class lenv loc in
       match Table.get klass.k_ivars name with
