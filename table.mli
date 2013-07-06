@@ -13,3 +13,10 @@ val exists   : 'a t -> string -> bool
 val map      : f:('a -> 'b) -> 'a t -> 'b t
 val map_list : f:(string -> 'a -> 'b) -> 'a t -> 'b list
 val join     : 'a t -> 'a t -> 'a t
+
+val equal_keys    : 'a t -> 'b t -> bool
+
+(* diff_keys table other: Returns the keys in other which are not present in table *)
+val diff_keys     : 'a t -> 'b t -> string list
+(* includes_keys table other: Checks that all keys in other are present in table *)
+val includes_keys : 'a t -> 'b t -> bool

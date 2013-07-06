@@ -508,8 +508,16 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
             -> (match args with
                 | [] -> ty
                 | _  -> exc_fail ("Type " ^ name ^ " is not parametric") loc [])
-            | Class(_) as klass
-            -> failwith "cannot construct class types yet"
+            | Class(klass,specz)
+            -> (let new_specz =
+                  Table.create (List.map
+                    (fun ((loc,_), name, expr) ->
+                      if Table.exists klass.k_tvars name then
+                        name, eval_type env expr
+                      else
+                        exc_fail ("Type " ^ klass.k_name ^
+                                  " is not parametric by " ^ name) loc []) args)
+                in Class(klass, Table.join specz new_specz))
             | value
             -> exc_fail ("Name " ^ name ^ " is bound to " ^ (inspect value) ^
                          " which is not a type") loc []
@@ -574,19 +582,27 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
               l_type_env  = tenv;
               l_code      = expr }
   | Syntax.Class((loc,_),name,ancestor,body)
-  -> (let ancestor =
-        Option.map (fun ancestor ->
-          match eval_expr env ancestor with
-          | Class (klass,_) -> klass
-          | value -> exc_type "inheritable class" value (Syntax.loc ancestor))
-        ancestor
+  -> (let ancestor, specz =
+        (* Extract ancestor class object and ancestor specialization table *)
+        match ancestor with
+        | Some expr
+        -> (match eval_expr env expr with
+            | Class (klass,specz) -> Some klass, Some specz
+            | value -> exc_type "inheritable class" value (Syntax.loc expr))
+        | None
+        -> None, None
       in
+      (* Check if we should extend existing class, or create a new one
+         and bind it *)
       let klass =
         match cenv_peek cenv name with
+        (* There's an existing one, and it is compatible *)
         | Some (Class (klass,_) as value) when klass.k_ancestor = ancestor
         -> value
         | Some (Class (klass,_) as value) when ancestor = None
         -> value
+        (* There's an existing one, and it is not compatible with
+           the present definition *)
         | Some (Class (klass,_))
         -> (let inspect_ancestor ancestor =
               match ancestor with
@@ -597,13 +613,18 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
                         (inspect_ancestor klass.k_ancestor) ^
                         ", and the definition " ^
                         (inspect_ancestor ancestor)) loc []) (* TODO loc *)
+        (* Not a class *)
         | Some value
         -> exc_fail ("Cannot reopen " ^ name ^ ": it is bound to " ^
                      (inspect value) ^ ", which is not a class") loc []
+        (* No class present, create one and inherit specializations from
+           its ancestor *)
         | None
-        -> (let value = Class (new_class ?ancestor name, Table.create [])
-            in cenv_bind cenv name value; value)
+        -> (let specz = Option.map_default Table.copy (Table.create []) specz
+            in let value = Class (new_class ?ancestor name, specz)
+               in cenv_bind cenv name value; value)
       in
+      (* Evaluate class body in a context where self is bound to the class *)
       let lenv = lenv_create (Some lenv) in
         lenv_bind lenv "self" ~value:klass ~is_mutable:false ~loc:loc;
           eval (lenv, tenv, cenv) body)

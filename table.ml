@@ -1,4 +1,5 @@
 open Sexplib.Std
+open ExtList
 
 type 'a t = (string, 'a) Hashtbl.t
 with sexp_of
@@ -36,3 +37,30 @@ let join l r =
     (fun table ->
       Hashtbl.iter (Hashtbl.add table) l;
       Hashtbl.iter (Hashtbl.replace table) r)
+
+let extract_keys table =
+  List.sort (List.of_enum (ExtHashtbl.Hashtbl.keys table))
+
+let equal_keys table other =
+  (extract_keys table) = (extract_keys other)
+
+let diff_keys table other =
+  List.fold_left2
+    (fun accum tk ok ->
+      if tk = ok then accum else ok :: accum)
+    [] (extract_keys table) (extract_keys other)
+
+let includes_keys table other =
+  let rec zip table other =
+    match table, other with
+    (* keys match -- ok *)
+    | kt :: trest, ko :: orest when kt = ko
+    -> zip trest orest
+    (* keys do not match -- skip the key from table *)
+    | _  :: trest, _  :: orest
+    -> zip trest other
+    (* table is empty, but there are keys in other -- not includes *)
+    | [], _ :: _ -> false
+    (* other is empty, and there may or may not be keys in table -- includes *)
+    | _,  []     -> true
+  in zip (extract_keys table) (extract_keys other)
