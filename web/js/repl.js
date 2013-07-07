@@ -66,6 +66,29 @@ $(function() {
 
   var currentDiagnostic = null;
 
+  function expandDiagnostic(diagnostic) {
+    currentDiagnostic = {
+      transientMarks: [],
+      widget:         null,
+      mainMark:       diagnostic.mainMark,
+      source:         diagnostic
+    };
+
+    var line  = diagnostic.mainMark.find().from.line;
+
+    for(var i = 1; i < diagnostic.locations.length; i++) {
+      var m = mark(diagnostic.locations[i], i + 1)
+      currentDiagnostic.transientMarks.push(m);
+
+      var markerLine   = m.find().from.line;
+      var marker = renderDiagnosticMarker(i + 1);
+      editor.setGutterMarker(markerLine, 'diag-gutter', marker);
+    }
+
+    var widget = renderDiagnosticWidget(diagnostic);
+    currentDiagnostic.widget = editor.addLineWidget(line, widget);
+  }
+
   editor.on("change", function() {
     if(currentDiagnostic) {
       var range = currentDiagnostic.mainMark.find();
@@ -116,35 +139,22 @@ $(function() {
       diagnostics.forEach(function(diagnostic, index) {
         if(diagnostic.locations.length > 0) {
           var range = mark(diagnostic.locations[0], 1);
-          var line  = range.find().from.line;
-
           diagnostics[index].mainMark = range;
 
           CodeMirror.on(range, "beforeCursorEnter", function() {
             if(currentDiagnostic) return;
 
-            currentDiagnostic = {
-              transientMarks: [],
-              widget:         null,
-              mainMark:       range,
-              source:         diagnostic
-            };
-
-            for(var i = 1; i < diagnostic.locations.length; i++) {
-              var m = mark(diagnostic.locations[i], i + 1)
-              currentDiagnostic.transientMarks.push(m);
-
-              var markerLine   = m.find().from.line;
-              var marker = renderDiagnosticMarker(i + 1);
-              editor.setGutterMarker(markerLine, 'diag-gutter', marker);
-            }
-
-            var widget = renderDiagnosticWidget(diagnostic);
-            currentDiagnostic.widget = editor.addLineWidget(line, widget);
+            expandDiagnostic(diagnostic);
           });
 
           if(index == 0) {
-            editor.setCursor(range.find().from);
+            var cursor = editor.getCursor(), target = range.find().from;
+            if(cursor.line != target.line || cursor.ch != target.ch) {
+              editor.setCursor(range.find().from);
+            } else {
+              expandDiagnostic(diagnostic);
+            }
+
             editor.focus();
           }
         }
