@@ -15,7 +15,11 @@ codemirror: true
 
   <div class="span9">
     <h3>Compiler</h3>
+    <button class="btn btn-primary" id="repl-run">Run & compile</button>
     <div id="repl-editor"></div>
-    <button class="btn btn-primary" id="repl-run">Run</button>
+    <div class="alert alert-success" id="repl-output">
+      <button type="button" class="close">&times;</button>
+      <span class="output"></span>
+    </div>
   </div>
 </div>

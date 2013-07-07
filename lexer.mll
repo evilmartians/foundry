@@ -9,7 +9,7 @@
     Location.make (Lexing.lexeme_start lexbuf) (Lexing.lexeme_end lexbuf)
 
   let newline lexbuf =
-    Location.start_line (Lexing.lexeme_start lexbuf)
+    Location.start_line (Lexing.lexeme_end lexbuf)
 
   let eof lexbuf =
     Location.finish_file (Lexing.lexeme_start lexbuf)

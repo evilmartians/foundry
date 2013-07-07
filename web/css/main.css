@@ -1,5 +1,22 @@
 /* REPL */
 
 .CodeMirror {
-  margin-bottom: 1em;
+  margin: 1em 0 1em 0;
+}
+
+.CodeMirror .diag-1 {
+  /*box-shadow: 0 0 2px 2px red;*/
+  background: url(../img/underline-red.png) repeat-x bottom;
+}
+
+.CodeMirror .diag-2 {
+  box-shadow: 0 0 2px 2px orange;
+}
+
+.CodeMirror .diag-3 {
+  box-shadow: 0 0 2px 2px magenta;
+}
+
+#repl-output .output {
+  font-family: monospace;
 }

@@ -16,8 +16,8 @@ let start_file file line =
   cur_line := line
 
 let start_line pos =
-  cur_line := !cur_line + 1;
-  lines    := (!cur_line, !cur_pos + pos) :: !lines
+  lines    := (!cur_line, !cur_pos + pos) :: !lines;
+  cur_line := !cur_line + 1
 
 let finish_file pos =
   cur_pos  := !cur_pos + pos
@@ -25,13 +25,19 @@ let finish_file pos =
 let make lft rgt =
   (!cur_pos + lft, !cur_pos + rgt)
 
+let next_pos target (_, pos) =
+  pos <= target
+
 let decompose loc =
-  let next pos (_, p) = p <= pos in
-  let file, _ = List.find (next (fst loc)) !files in
+  let file, _ = List.find (next_pos (fst loc)) !files in
   let find_line pos =
-    let line, start = List.find (next pos) !lines in
+    let line, start = List.find (next_pos pos) !lines in
       line, pos - start
   in file, find_line (fst loc), find_line (snd loc)
+
+let unpack loc =
+  let file, p = List.find (next_pos (fst loc)) !files
+  in file, (fst loc) - p, (snd loc) - p
 
 let is_empty loc =
   loc = empty

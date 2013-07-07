@@ -1,4 +1,4 @@
-type diagnostic = string * Location.t * Location.t list
+type diagnostic = string * Location.t list
 
 type result =
   | Output      of string
@@ -8,13 +8,13 @@ type result =
 let eval str =
   let env    = Vm.env_create () in
   let lexbuf = (Lexing.from_string str) in
-  let lex    = Lexer.next (Lexer.create ()) in
+  let lex    = Lexer.next (Lexer.create "input" 1) in
 
   try
     Output (Vm.inspect (Vm.eval env (Parser.toplevel lex lexbuf)))
   with
   | Vm.Exc exc ->
-    Diagnostics [exc.Vm.ex_message, exc.Vm.ex_location, exc.Vm.ex_highlights]
+    Diagnostics [exc.Vm.ex_message, exc.Vm.ex_locations]
   | Parser.Error ->
     Error "Cannot parse"
   | Failure msg ->
@@ -22,6 +22,9 @@ let eval str =
 
 let js_eval input =
   let inject = Js.Unsafe.inject
+  in
+  let array f lst =
+    Array.of_list (List.map f lst)
   in
   let return ty value =
     Js.Unsafe.obj [|
@@ -36,16 +39,22 @@ let js_eval input =
 
     | Diagnostics lst
     -> (let js_of_loc loc =
-          Js.array [| (fst loc); (snd loc) |]
+          let f, p1, p2 = Location.unpack loc in
+            Js.Unsafe.obj [|
+              ("file", inject (Js.string f));
+              ("from", inject p1);
+              ("to",   inject p2)
+            |]
         in let diags =
-          Js.array (Array.of_list (List.map
-            (fun (msg, loc, hilights) ->
-              let msg = Js.string msg in
-              let loc = js_of_loc loc in
-              let hilights =
-                Js.array (Array.of_list (List.map js_of_loc hilights))
-              in Js.array [| inject msg; inject loc; inject hilights |])
-            lst))
+          Js.array (array
+            (fun (message, locations) ->
+              let message = Js.string message in
+              let locations = Js.array (array js_of_loc locations) in
+                Js.Unsafe.obj [|
+                  ("message",   inject message);
+                  ("locations", inject locations)
+                |])
+            lst)
         in return "diagnostics" diags)
 
     | Error desc
