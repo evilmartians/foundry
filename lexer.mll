@@ -17,8 +17,9 @@
     Parser.EOF
 
   let unexpected lexbuf =
+    let error = Unexpected (lexeme lexbuf, locate lexbuf) in
     let _ = eof lexbuf in
-    raise (Unexpected (lexeme lexbuf, locate lexbuf))
+    raise error
 
   (* State management *)
 

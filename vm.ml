@@ -277,8 +277,8 @@ let exc_fail message locations =
     ex_locations  = locations;
   })
 
-let exc_type expected obj loc =
-  exc_fail (expected ^ " expected; " ^ (inspect obj) ^ " found") [loc]
+let exc_type expected obj =
+  exc_fail (expected ^ " expected; " ^ (inspect obj) ^ " found")
 
 (* Local environment *)
 
@@ -400,7 +400,7 @@ let concat_record lhs rhs =
 let check_class lenv loc =
   match lenv_lookup lenv "self" with
   | Class (klass,_) -> klass
-  | value -> exc_type "class" value loc
+  | value -> exc_type "class" value [loc]
 
 (* E V A L *)
 
@@ -412,7 +412,7 @@ let rec eval_tuple env elem =
   | Syntax.TupleSplice(_,expr)
   -> (match (eval_expr env expr) with
       | Tuple(_) as t -> t
-      | o -> exc_type "Tuple" o (Syntax.loc expr))
+      | o -> exc_type "Tuple" o [Syntax.loc expr])
 
 and eval_record env elem =
   match elem with
@@ -422,14 +422,14 @@ and eval_record env elem =
   | Syntax.RecordSplice(_,expr)
   -> (match (eval_expr env expr) with
      | Record(_) as r -> r
-     | o -> exc_type "Record" o (Syntax.loc expr))
+     | o -> exc_type "Record" o [Syntax.loc expr])
 
   | Syntax.RecordPair(_,k,v)
   -> (match (eval_expr env k) with
      | Symbol(s) -> Record (Table.pair s (eval_expr env v))
-     | o -> exc_type "Symbol" o (Syntax.loc k))
+     | o -> exc_type "Symbol" o [Syntax.loc k])
 
-and eval_pattern ((lenv, tenv, cenv) as env) pat value =
+and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
   let bind name ~is_mutable ~value ~loc =
     try
       lenv_bind lenv name ~is_mutable ~value ~loc
@@ -437,7 +437,7 @@ and eval_pattern ((lenv, tenv, cenv) as env) pat value =
       exc_fail ("Name " ^ name ^ " is already bound") [loc; bound_loc]
   in
 
-  match pat with
+  match lhs with
   | Syntax.PatImmutable((loc,_),name)
   -> bind name ~is_mutable:false ~value ~loc
   | Syntax.PatMutable((loc,_),name)
@@ -452,7 +452,7 @@ and eval_pattern ((lenv, tenv, cenv) as env) pat value =
                       (string_of_int (List.length xs)) ^
                       " does not match pattern of length " ^
                       (string_of_int (List.length pats))) [loc])
-      | o -> exc_type "Tuple" o (Syntax.pat_loc pat))
+      | o -> exc_type "Tuple" o [Syntax.pat_loc lhs])
   | _ -> assert false
 
 and eval_assign (lenv, tenv, cenv) lhs value =
@@ -481,7 +481,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
       | TupleTy(_) | RecordTy(_) | LambdaTy(_)
       | Class(_,_)
       -> ty
-      | _ -> exc_type "type" ty (Syntax.ty_loc expr)
+      | _ -> exc_type "type" ty [Syntax.ty_loc expr]
   in
   match expr with
   | Syntax.TypeVar(_,name)
@@ -543,7 +543,7 @@ and eval_closure_ty (lenv, tenv, cenv) expr =
         | LambdaTy(_) | Tvar(_)
         -> tenv, ty
         | _
-        -> exc_type "closure type" ty (Syntax.ty_loc ty_expr))
+        -> exc_type "closure type" ty [Syntax.ty_loc ty_expr])
     (tenv, Tvar (genvar ()))
     expr
 
@@ -599,7 +599,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
         | Some expr
         -> (match eval_expr env expr with
             | Class (klass,specz) -> Some klass, Some specz
-            | value -> exc_type "inheritable class" value (Syntax.loc expr))
+            | value -> exc_type "inheritable class" value [Syntax.loc expr])
         | None
         -> None, None
       in
