@@ -5,16 +5,36 @@
 }
 
 .CodeMirror .diag-1 {
-  /*box-shadow: 0 0 2px 2px red;*/
   background: url(../img/underline-red.png) repeat-x bottom;
 }
 
 .CodeMirror .diag-2 {
-  box-shadow: 0 0 2px 2px orange;
+  background: url(../img/underline-orange.png) repeat-x bottom;
 }
 
 .CodeMirror .diag-3 {
-  box-shadow: 0 0 2px 2px magenta;
+  background: url(../img/underline-pink.png) repeat-x bottom;
+}
+
+.CodeMirror .diag-marker {
+  position: absolute;
+  border-radius: 50%;
+  top: 6px;
+  left: 5px;
+  width: 6px;
+  height: 6px;
+}
+
+.CodeMirror .diag-marker-1 {
+  background: red;
+}
+
+.CodeMirror .diag-marker-2 {
+  background: orange;
+}
+
+.CodeMirror .diag-marker-3 {
+  background: magenta;
 }
 
 #repl-output .output {

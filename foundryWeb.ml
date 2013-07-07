@@ -15,6 +15,8 @@ let eval str =
   with
   | Vm.Exc exc ->
     Diagnostics [exc.Vm.ex_message, exc.Vm.ex_locations]
+  | Lexer.Unexpected (str, loc) ->
+    Diagnostics ["Unexpected character " ^ str, [loc]]
   | Parser.Error ->
     Error "Cannot parse"
   | Failure msg ->

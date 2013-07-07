@@ -1,9 +1,10 @@
 {
-  (* Internal API: state management *)
-  type state = {
-    mutable lexer_stack : (state -> Lexing.lexbuf -> Parser.token) list;
-    mutable curly_stack : int list
-  }
+  exception Unexpected of string * Location.t
+
+  (* Token helpers *)
+
+  let lexeme =
+    Lexing.lexeme
 
   let locate lexbuf =
     Location.make (Lexing.lexeme_start lexbuf) (Lexing.lexeme_end lexbuf)
@@ -12,10 +13,19 @@
     Location.start_line (Lexing.lexeme_end lexbuf)
 
   let eof lexbuf =
-    Location.finish_file (Lexing.lexeme_start lexbuf)
+    Location.finish_file (Lexing.lexeme_start lexbuf);
+    Parser.EOF
 
-  let lexeme =
-    Lexing.lexeme
+  let unexpected lexbuf =
+    let _ = eof lexbuf in
+    raise (Unexpected (lexeme lexbuf, locate lexbuf))
+
+  (* State management *)
+
+  type state = {
+    mutable lexer_stack : (state -> Lexing.lexbuf -> Parser.token) list;
+    mutable curly_stack : int list
+  }
 
   let goto state next_lexer =
     state.lexer_stack <- next_lexer :: List.tl state.lexer_stack
@@ -162,7 +172,8 @@ rule lex_code state = parse
 | '@'  (ident as i)     { Parser.Id_IVAR  (locate lexbuf, i) }
 | '\\' (ident as i)     { Parser.Id_TVAR  (locate lexbuf, i) }
 
-| eof                   { eof lexbuf; Parser.EOF }
+| _                     { unexpected lexbuf }
+| eof                   { eof lexbuf }
 
 and lex_string state = parse
 | '\''                  { goto state lex_code;
@@ -171,7 +182,7 @@ and lex_string state = parse
 | "\\'"                 { Parser.Vl_STRING (locate lexbuf, "'") }
 | [^'\'' '\\']+ as v    { Parser.Vl_STRING (locate lexbuf, v) }
 
-| eof                   { eof lexbuf; Parser.EOF }
+| eof                   { eof lexbuf }
 
 and lex_string_interp state = parse
 | '"'                   { goto state lex_code;
@@ -184,7 +195,7 @@ and lex_string_interp state = parse
 | '#'                   { Parser.Vl_STRING (locate lexbuf, "#") }
 | [^'"' '#' '\\']+ as v { Parser.Vl_STRING (locate lexbuf, v) }
 
-| eof                   { eof lexbuf; Parser.EOF }
+| eof                   { eof lexbuf }
 
 {
   (* Public API *)

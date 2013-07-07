@@ -10,6 +10,7 @@ $(function() {
     matchBrackets:      true,
     autoCloseBrackets:  true,
     styleActiveLine:    true,
+    gutters:            ['diag-gutter'],
 
     extraKeys: {
       "Tab": function(cm) {
@@ -50,6 +51,19 @@ $(function() {
     return widget[0];
   }
 
+  function renderDiagnosticMarker(index) {
+    var marker = $('<div class="diag-marker diag-marker-' + index + '"></div>');
+    return marker[0];
+  }
+
+  function renderMainDiagnosticMarkers() {
+    diagnostics.forEach(function(diagnostic) {
+      var line   = diagnostic.mainMark.find().from.line;
+      var marker = renderDiagnosticMarker(1);
+      editor.setGutterMarker(line, 'diag-gutter', marker);
+    })
+  }
+
   var currentDiagnostic = null;
 
   editor.on("change", function() {
@@ -78,6 +92,7 @@ $(function() {
     }
     currentDiagnostic = null;
 
+    editor.clearGutter('diag-gutter');
     editor.getAllMarks().forEach(function(mark) {
       mark.clear();
     });
@@ -101,6 +116,9 @@ $(function() {
       diagnostics.forEach(function(diagnostic, index) {
         if(diagnostic.locations.length > 0) {
           var range = mark(diagnostic.locations[0], 1);
+          var line  = range.find().from.line;
+
+          diagnostics[index].mainMark = range;
 
           CodeMirror.on(range, "beforeCursorEnter", function() {
             if(currentDiagnostic) return;
@@ -113,12 +131,15 @@ $(function() {
             };
 
             for(var i = 1; i < diagnostic.locations.length; i++) {
-              currentDiagnostic.transientMarks.
-                push(mark(diagnostic.locations[i], i + 1));
+              var m = mark(diagnostic.locations[i], i + 1)
+              currentDiagnostic.transientMarks.push(m);
+
+              var markerLine   = m.find().from.line;
+              var marker = renderDiagnosticMarker(i + 1);
+              editor.setGutterMarker(markerLine, 'diag-gutter', marker);
             }
 
             var widget = renderDiagnosticWidget(diagnostic);
-            var line = range.find().to.line;
             currentDiagnostic.widget = editor.addLineWidget(line, widget);
           });
 
@@ -128,6 +149,8 @@ $(function() {
           }
         }
       });
+
+      renderMainDiagnosticMarkers();
     } else if(result.type == "error") {
       $("#repl-output .output").text("Shit broke in a mundane way: " + result.value);
       $("#repl-output").addClass("alert-error").show();
