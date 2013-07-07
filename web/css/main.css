@@ -18,19 +18,18 @@
 
 .CodeMirror .diag-marker {
   position: absolute;
-  border-radius: 50%;
   top: 6px;
   left: 5px;
-  width: 6px;
-  height: 6px;
+  border-radius: 50%;
+  border: 3px solid;
 }
 
 .CodeMirror .diag-marker-1 {
-  background: red;
+  border-color: red;
 }
 
 .CodeMirror .diag-marker-2 {
-  background: orange;
+  border-color: orange;
 }
 
 .CodeMirror .diag-marker-3 {

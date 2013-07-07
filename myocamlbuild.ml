@@ -9,5 +9,7 @@ dispatch begin function
         Seq [Cmd (S[A"js_of_ocaml"; Px(env "%.byte")])]
       end;
     flag ["ocaml"; "byte"; "compile"] (S[A"-I"; P"lib"]);
+  | After_rules ->
+    ocaml_lib "ucs/src/ucs";
   | _ -> ()
 end;;

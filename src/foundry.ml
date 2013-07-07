@@ -1,5 +1,7 @@
 let env = Vm.env_create ()
 
+let u = Unicode.adopt_utf8s "хуй"
+
 while true do
   let lexbuf = (Lexing.from_channel stdin) in
   let lex    = Lexer.next (Lexer.create "stdin" 1) in

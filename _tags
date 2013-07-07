@@ -1,2 +1,10 @@
-true:use_menhir,debug,thread,syntax(camlp4o),package(sexplib.syntax),package(extlib)
-<foundryWeb.*>:package(js_of_ocaml),package(js_of_ocaml.syntax)
+true:use_menhir
+
+<ucs/lib>:include
+<ucs/lib/*.ml*>:package(extlib)
+
+<src{,/lang,/support}>:include
+<src/**/*.ml*>:use_ucs,syntax(camlp4o),package(sexplib.syntax),package(extlib)
+
+<src/foundryWeb.*>:package(js_of_ocaml),package(js_of_ocaml.syntax)
+<src/{foundry.native,foundryWeb.byte}>:package(sexplib),package(sexplib.syntax),package(extlib)
