@@ -33,33 +33,5 @@ dispatch begin function
     dep ["ocaml"; "menhir";   "use_utf8str_safe"] ["ucs/lib/pa_utf8str_safe.cmo"];
     dep ["ocaml"; "ocamldep"; "use_utf8str_safe"] ["ucs/lib/pa_utf8str_safe.cmo"];
 
-    (* === MERR === *)
-
-    rule "merr: mly.in -> mly"
-      ~deps:["%.mly.in"]
-      ~prod:"%.mly"
-      begin fun env build ->
-        Seq [Cmd (S[ A"sed"; A"-e"; A"s/^\\(%token[^\"]*\\w\\+\\)\\s*\".*\"$/\\1/";
-                     Px(env "%.mly.in"); Sh">"; Px(env "%.mly") ])]
-      end;
-
-    rule "merr: terminals.mly.in -> tokens.ml, tokens.mli"
-      ~deps:["%_terminals.mly"]
-      ~prods:["%_tokens.ml"; "%_tokens.mli"]
-      begin fun env build ->
-        Seq [Cmd (S[ V"MENHIR"; A"--only-tokens"; A"-b"; Px(env "%_tokens");
-                     Px(env "%_terminals.mly") ])]
-      end;
-
-    rule "merr: mly -> ml"
-      ~deps:["%_nonterminals.mly"; "%_terminals.mly"]
-      ~prods:["%_parser.ml"; "%_parser.mli"]
-      begin fun env build ->
-        Seq [Cmd (S[ V"MENHIR"; A"--external-tokens"; Px("E_tokens");
-                     Px(env "%_nonterminals.mly");
-                     Px(env "%_terminals.mly");
-                     A"-b"; Px(env "%_parser") ])]
-      end
-
   | _ -> ()
 end;;
