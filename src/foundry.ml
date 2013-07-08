@@ -9,12 +9,7 @@ while true do
   let parse    = MenhirLib.Convert.Simplified.traditional2revised Parser.toplevel in
   let (|>) x f = f x in
 
-(*   lex lexbuf
-    |> sexp_of_token
-    |> Sexp.to_string_hum
-    |> print_endline
-
-  let print_stmt stmt =
+(* let print_stmt stmt =
     stmt
     |> Syntax.sexp_of_expr
     |> Sexp.to_string_hum

@@ -5,6 +5,10 @@ true:use_menhir,debug
 "ucs/lib/pa_utf8str.ml":use_camlp4,camlp4of
 "ucs/lib/pa_utf8str_safe.ml":use_camlp4,camlp4of
 
+<merr/merr>:include
+<merr/merr/*.ml*>:syntax(camlp4o),package(extlib),package(sexplib),package(sexplib.syntax)
+<merr/merr/merr.native>:package(extlib),package(sexplib)
+
 <src{,/lang,/support}>:include
 <src/**/*.ml*>:use_ucs,syntax(camlp4o),package(menhirLib),package(ulex),package(sexplib.syntax),package(extlib)
 <src/**/*.ml>:use_utf8str

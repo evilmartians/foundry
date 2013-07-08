@@ -617,6 +617,18 @@ module Std = struct
   let failwith (v : utf8s) =
     failwith (v :> latin1s)
 
+  module Char = struct
+    let chr  = char_of_int
+    let code = int_of_char
+
+    let escaped (chr : char) =
+      let val = code chr in
+        if val > 0xffff then
+          (Printf.printf "\\u{%06x}" val)
+        else
+          (Printf.printf "\\u%04x" val)
+  end
+
   module String = struct
     let concat (sep : utf8s) (lst : utf8s list) =
       assert_utf8s (String.concat (sep :> latin1s) (lst :> latin1s list))

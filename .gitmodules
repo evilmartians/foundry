@@ -1,3 +1,6 @@
 [submodule "menhir"]
 	path = menhir
-	url = https://github.com/pippijn/menhir.git
+	url = https://github.com/whitequark/menhir.git
+[submodule "merr"]
+	path = merr
+	url = https://github.com/whitequark/merr.git
