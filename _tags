@@ -1,4 +1,4 @@
-true:use_menhir
+true:use_menhir,debug
 
 <ucs/lib>:include
 <ucs/lib/*.ml*>:package(extlib),package(sexplib)

@@ -7,7 +7,7 @@ dispatch begin function
       ~deps:["%.byte"]
       ~prod:"%.js"
       begin fun env build ->
-        Seq [Cmd (S[A"js_of_ocaml"; Px(env "%.byte")])]
+        Seq [Cmd (S[A"js_of_ocaml"; A"-pretty"; A"-noinline"; Px(env "%.byte")])]
       end;
 
     (* Build dependencies in the source tree *)
