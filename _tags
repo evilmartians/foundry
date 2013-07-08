@@ -1,14 +1,14 @@
 true:use_menhir,debug
+<**/*.mly>:explain
 
 <ucs/lib>:include
 <ucs/lib/*.ml*>:package(extlib),package(sexplib)
 "ucs/lib/pa_utf8str.ml":use_camlp4,camlp4of
-"ucs/lib/pa_utf8str_safe.ml":use_camlp4,camlp4of
 
 <src{,/lang,/support}>:include
-<src/**/*.ml*>:use_ucs,syntax(camlp4o),package(menhirLib),package(ulex),package(sexplib.syntax),package(extlib)
+<src/**/*.ml*>:syntax(camlp4o),package(menhirLib),package(ulex),package(sexplib.syntax),package(extlib)
 <src/**/*.ml>:use_utf8str
-<src/**/{parser.ml,parser_aux.mly}>:explain,use_utf8str_safe,-use_utf8str,-package(ulex)
+"src/lang/parser.ml":-use_utf8str,-package(ulex)
 
 <src/foundryWeb.*>:package(js_of_ocaml),package(js_of_ocaml.syntax)
 <src/foundryWeb.ml>:use_utf8str_safe,-use_utf8str

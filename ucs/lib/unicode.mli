@@ -118,6 +118,8 @@ module Std : sig
   type latin1s = string
   type string  = utf8s
 
+  val u : latin1s -> utf8s
+
   val string_of_bool   : bool -> string
   val bool_of_string   : string -> bool
 

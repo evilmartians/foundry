@@ -584,6 +584,8 @@ module Std = struct
   type latin1s = string
   type string  = utf8s
 
+  let u = adopt_utf8s
+
   let string_of_bool v =
     assert_utf8s (string_of_bool v)
   let bool_of_string (v : utf8s) =
@@ -622,11 +624,11 @@ module Std = struct
     let code = int_of_char
 
     let escaped (chr : char) =
-      let val = code chr in
-        if val > 0xffff then
-          (Printf.printf "\\u{%06x}" val)
+      let v = code chr in
+        if v > 0xffff then
+          (Printf.printf "\\u{%06x}" v)
         else
-          (Printf.printf "\\u%04x" val)
+          (Printf.printf "\\u%04x" v)
   end
 
   module String = struct
