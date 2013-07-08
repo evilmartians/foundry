@@ -1,5 +1,8 @@
 open Ocamlbuild_plugin;;
 
+Command.setup_virtual_command_solver "MENHIR"
+  (fun () -> S[P(Sys.getpwd () ^ "/menhir-bin/bin/menhir")]);;
+
 dispatch begin function
   | After_rules ->
     (* Compile foundryWeb.js from bytecode foundryWeb.byte *)
@@ -24,7 +27,7 @@ dispatch begin function
     (* Running ocamldep on ocaml code that is tagged with use_utf8str{,safe}
        will require the cmo. Note that you only need this declaration when the
        syntax extension is part of the sources to be compiled with ocamlbuild. *)
-    dep ["ocaml"; "ocamldep"; "use_utf8str"] ["ucs/lib/pa_utf8str.cmo"];
+    dep ["ocaml"; "ocamldep"; "use_utf8str"]      ["ucs/lib/pa_utf8str.cmo"];
     dep ["ocaml"; "menhir";   "use_utf8str_safe"] ["ucs/lib/pa_utf8str_safe.cmo"];
     dep ["ocaml"; "ocamldep"; "use_utf8str_safe"] ["ucs/lib/pa_utf8str_safe.cmo"];
 
