@@ -3,8 +3,10 @@ open Unicode.Std
 let env = Vm.env_create ()
 
 while true do
-  let lexbuf = (Lexing.from_channel stdin) in
-  let lex    = Lexer.next (Lexer.create "stdin" 1) in
+  let lexbuf   = Ulexing.from_utf8_channel stdin in
+  let lexstate = Lexer.create "stdin" 1 in
+  let lex ()   = Lexer.next lexstate lexbuf in
+  let parse    = MenhirLib.Convert.Simplified.traditional2revised Parser.toplevel in
   let (|>) x f = f x in
 
 (*   lex lexbuf
@@ -21,7 +23,7 @@ while true do
 *)
 
   try
-    Vm.eval env (Parser.toplevel lex lexbuf)
+    Vm.eval env (parse lex)
     |> Vm.inspect
     |> print_endline
   with Vm.Exc exc ->

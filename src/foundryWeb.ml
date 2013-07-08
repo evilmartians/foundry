@@ -8,12 +8,14 @@ type result =
   | Error       of string
 
 let eval str =
-  let env    = Vm.env_create () in
-  let lexbuf = (Lexing.from_string str) in
-  let lex    = Lexer.next (Lexer.create u"input" 1) in
+  let env      = Vm.env_create () in
+  let lexbuf   = Ulexing.from_utf8_string str in
+  let lexstate = Lexer.create u"input" 1 in
+  let lex ()   = Lexer.next lexstate lexbuf in
+  let parse    = MenhirLib.Convert.Simplified.traditional2revised Parser.toplevel in
 
   try
-    Output (Vm.inspect (Vm.eval env (Parser.toplevel lex lexbuf)))
+    Output (Vm.inspect (Vm.eval env (parse lex)))
   with
   | Vm.Exc exc ->
     Diagnostics [exc.Vm.ex_message, exc.Vm.ex_locations]
