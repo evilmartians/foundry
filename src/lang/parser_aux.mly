@@ -1,13 +1,13 @@
 (* Values *)
-%token <Location.t * int>          Vl_INT
-%token <Location.t * string>       Vl_SYMBOL
-%token <Location.t * Syntax.quote> Vl_BEGIN
-%token <Location.t * string>       Vl_STRING
-%token <Location.t>                Vl_UNQUOTE Vl_QUOTE Vl_END
+%token <Location.t * int>           Vl_INT
+%token <Location.t * Unicode.utf8s> Vl_SYMBOL
+%token <Location.t * Syntax.quote>  Vl_BEGIN
+%token <Location.t * Unicode.utf8s> Vl_STRING
+%token <Location.t>                 Vl_UNQUOTE Vl_QUOTE Vl_END
 
 (* Identifiers *)
-%token <Location.t * string> Id_LOCAL Id_CONST Id_LABEL
-%token <Location.t * string> Id_IVAR Id_TVAR
+%token <Location.t * Unicode.utf8s> Id_LOCAL Id_CONST Id_LABEL
+%token <Location.t * Unicode.utf8s> Id_IVAR Id_TVAR
 
 (* Punctuation *)
 %token <Location.t> Tk_LPAREN Tk_RPAREN Tk_LCURLY Tk_RCURLY Tk_LBRACK Tk_RBRACK
@@ -15,23 +15,24 @@
 %token <Location.t> Tk_DOT Tk_COLON Tk_DCOLON Tk_COMMA Tk_SEMI Tk_DSEMI
 
 (* Operators *)
-%token <Location.t>          Tk_OR_ASGN Tk_AND_ASGN
-%token <Location.t * string> Tk_OP_ASGN
-%token <Location.t * string> Tk_PLUS Tk_MINUS Tk_STAR Tk_DSTAR Tk_DIVIDE Tk_PERCENT
-%token <Location.t * string> Tk_AMPER Tk_PIPE Tk_LSHFT Tk_RSHFT Tk_ARSHFT Tk_TILDE
-%token <Location.t * string> Tk_EQ Tk_LT Tk_GT Tk_LEQ Tk_GEQ Tk_CMP
-%token <Location.t * string> Tk_UPLUS Tk_UMINUS Tk_UTILDE
+%token <Location.t>                 Tk_OR_ASGN Tk_AND_ASGN
+%token <Location.t * Unicode.utf8s> Tk_OP_ASGN
+%token <Location.t * Unicode.utf8s> Tk_PLUS Tk_MINUS Tk_STAR Tk_DSTAR Tk_DIVIDE Tk_PERCENT
+%token <Location.t * Unicode.utf8s> Tk_AMPER Tk_PIPE Tk_LSHFT Tk_RSHFT Tk_ARSHFT Tk_TILDE
+%token <Location.t * Unicode.utf8s> Tk_EQ Tk_LT Tk_GT Tk_LEQ Tk_GEQ Tk_CMP
+%token <Location.t * Unicode.utf8s> Tk_UPLUS Tk_UMINUS Tk_UTILDE
 
 (* Keywords *)
-%token <Location.t * string> Kw_TRUE Kw_FALSE Kw_NIL Kw_SELF Kw_AND Kw_OR Kw_NOT
-%token <Location.t * string> Kw_LET Kw_MUT Kw_AS Kw_TYPE Kw_META Kw_DYNAMIC
-%token <Location.t * string> Kw_WHILE Kw_DO Kw_IF Kw_THEN Kw_ELSE Kw_ELSIF
-%token <Location.t * string> Kw_MATCH Kw_RETURN Kw_END
-%token <Location.t * string> Kw_PUBLIC Kw_PACKAGE Kw_CLASS Kw_MIXIN Kw_IFACE Kw_DEF
+%token <Location.t * Unicode.utf8s> Kw_TRUE Kw_FALSE Kw_NIL Kw_SELF Kw_AND Kw_OR Kw_NOT
+%token <Location.t * Unicode.utf8s> Kw_LET Kw_MUT Kw_AS Kw_TYPE Kw_META Kw_DYNAMIC
+%token <Location.t * Unicode.utf8s> Kw_WHILE Kw_DO Kw_IF Kw_THEN Kw_ELSE Kw_ELSIF
+%token <Location.t * Unicode.utf8s> Kw_MATCH Kw_RETURN Kw_END
+%token <Location.t * Unicode.utf8s> Kw_PUBLIC Kw_PACKAGE Kw_CLASS Kw_MIXIN Kw_IFACE Kw_DEF
 
 %token EOF
 
 %{
+  open Unicode.Std
 
   (* Location tracking *)
 
@@ -392,7 +393,7 @@
 
               | recv=expr lb=Tk_LBRACK args=args rb=Tk_RBRACK
                 { Syntax.Send (send_call recv lb rb,
-                               recv, "[]", args) }
+                               recv, u"[]", args) }
 
           expr: expr=expr_noid
                 { expr }
@@ -423,7 +424,7 @@
 
               | recv=expr lb=Tk_LBRACK args=args rb=Tk_RBRACK
                 { Syntax.Send (send_call recv lb rb,
-                               recv, "[]", args) }
+                               recv, u"[]", args) }
 
               | lhs=expr op=binop rhs=expr
                 { let (name_loc, name) = op in
@@ -435,7 +436,7 @@
               | op=Tk_TILDE recv=expr
                 { let (name_loc, name) = op in
                     Syntax.Send (send_unary name_loc recv,
-                                 recv, name ^ "@", []) }
+                                 recv, name ^ u"@", []) }
 
               | kw=Kw_TYPE ty=ty
                 { let (kw_loc, _) = kw in

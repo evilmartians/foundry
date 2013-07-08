@@ -1,3 +1,5 @@
+open Unicode.Std
+
 type 'a t
 with sexp_of
 

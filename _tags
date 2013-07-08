@@ -1,10 +1,15 @@
 true:use_menhir
 
 <ucs/lib>:include
-<ucs/lib/*.ml*>:package(extlib)
+<ucs/lib/*.ml*>:package(extlib),package(sexplib)
+"ucs/lib/pa_utf8str.ml":use_camlp4,camlp4of
+"ucs/lib/pa_utf8str_safe.ml":use_camlp4,camlp4of
 
 <src{,/lang,/support}>:include
 <src/**/*.ml*>:use_ucs,syntax(camlp4o),package(sexplib.syntax),package(extlib)
+<src/**/*.ml>:use_utf8str
+<src/**/{parser.ml,parser_aux.mly,lexer.ml,lexer.mll}>:use_utf8str_safe,-use_utf8str
 
 <src/foundryWeb.*>:package(js_of_ocaml),package(js_of_ocaml.syntax)
-<src/{foundry.native,foundryWeb.byte}>:package(sexplib),package(sexplib.syntax),package(extlib)
+<src/foundryWeb.ml>:use_utf8str_safe,-use_utf8str
+<src/{foundry.native,foundryWeb.byte}>:package(sexplib),package(extlib)

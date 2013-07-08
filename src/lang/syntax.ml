@@ -1,4 +1,5 @@
 open Sexplib.Std
+open Unicode.Std
 
 (* Enumerations *)
 

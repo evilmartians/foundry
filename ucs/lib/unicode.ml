@@ -483,6 +483,9 @@ let adopt_utf8s s =
   validate_utf8s 0 s;
   s
 
+let assert_utf8s s =
+  (s :> utf8s)
+
 let rec validate_utf16s s =
   match s with
   | [] -> ()
@@ -563,3 +566,68 @@ let list_of_utf16s s =
 
 let utf32s_of_list = identity
 let list_of_utf32s = identity
+
+(*************************************************
+ * :: Unicode.Std
+ *************************************************)
+
+module Std = struct
+  type latin1c = char
+  type char    = utf32
+
+  let char_of_int v =
+    (v :> char)
+  let int_of_char (v : utf32) =
+    (v :> int)
+
+  type latin1s = string
+  type string  = utf8s
+
+  let string_of_bool v =
+    assert_utf8s (string_of_bool v)
+  let bool_of_string (v : utf8s) =
+    bool_of_string (v :> latin1s)
+
+  let string_of_int v =
+    assert_utf8s (string_of_int v)
+  let int_of_string (v : utf8s) =
+    int_of_string (v :> latin1s)
+
+  let string_of_float v =
+    assert_utf8s (string_of_float v)
+  let float_of_string (v : utf8s) =
+    float_of_string (v :> latin1s)
+
+  let string_of_sexp v =
+    assert_utf8s (Sexplib.Std.string_of_sexp v)
+  let sexp_of_string (v : utf8s) =
+    Sexplib.Std.sexp_of_string (v :> latin1s)
+
+  let (^) (lhs : utf8s) (rhs : utf8s) =
+    assert_utf8s ((lhs :> latin1s) ^ (rhs :> latin1s))
+
+  let print_string (v : utf8s) =
+    print_string (v :> latin1s)
+  let print_endline (v : utf8s) =
+    print_endline (v :> latin1s)
+
+  let invalid_arg (v : utf8s) =
+    invalid_arg (v :> latin1s)
+  let failwith (v : utf8s) =
+    failwith (v :> latin1s)
+
+  module String = struct
+    let concat (sep : utf8s) (lst : utf8s list) =
+      assert_utf8s (String.concat (sep :> latin1s) (lst :> latin1s list))
+
+    let make length chr =
+      let chr    = utf8s_of_utf32 chr in
+      let chrlen = String.length chr in
+      let str    = String.create (chrlen * length) in
+      let rec blit pos count =
+        if count = 0 then str
+        else (String.blit chr 0 str pos chrlen;
+              blit (pos + chrlen) (count - 1))
+      in blit 0 length
+  end
+end

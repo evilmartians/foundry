@@ -1,4 +1,5 @@
 open Sexplib.Std
+open Unicode.Std
 open ExtList
 
 type 'a t = (string, 'a) Hashtbl.t

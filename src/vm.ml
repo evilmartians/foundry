@@ -1,4 +1,5 @@
 open Sexplib.Std
+open Unicode.Std
 
 type tvar = int
 with sexp_of
@@ -198,12 +199,15 @@ let rec typeof value =
   | Package(_)    -> Class(kPackage, Table.create [])
   | Class(k,_)    -> Class(kClass, Table.create [])
   | Instance(k,_) -> Class(k)
-  | _ -> failwith ("cannot typeof " ^ (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
+  | _ -> failwith ("cannot typeof " ^
+                   (Unicode.assert_utf8s
+                    (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
 
 (* Inspecting types and values *)
 
 let string_of_value value =
-   (Sexplib.Sexp.to_string_hum (sexp_of_value value))
+   (Unicode.assert_utf8s
+    (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
 
 let inspect_literal_or value f =
   match value with
@@ -503,13 +507,13 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
         l_return_ty = as_type ret;
       })
   | Syntax.TypeConstr((loc,_),name,args)
-  -> (match name with
+  -> (match name with (* TODO TODO TODO !!!
       | "Tuple"
       -> exc_fail "Use [...] syntax to construct tuple types" [loc]
       | "Record"
       -> exc_fail "Use {...} syntax to construct record types" [loc]
       | "Lambda"
-      -> exc_fail "Use (...) -> ... syntax to construct lambda types" [loc]
+      -> exc_fail "Use (...) -> ... syntax to construct lambda types" [loc] *)
       | _
       -> (try
             match cenv_lookup cenv name with
@@ -553,7 +557,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Truth(_) -> Truth
   | Syntax.Lies(_)  -> Lies
   | Syntax.Int(_,x) -> Int(x)
-  | Syntax.Sym(_,x) -> Symbol(x)
+  (* | Syntax.Sym(_,x) -> Symbol(x) *)
   | Syntax.Tuple(_,xs)
   -> List.fold_left concat_tuple
         (Tuple []) (List.map (eval_tuple env) xs)
@@ -676,7 +680,9 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
           });
       Nil)
   | _
-  -> failwith ("cannot eval " ^ Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr));
+  -> failwith ("cannot eval " ^
+               (Unicode.assert_utf8s
+                (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));
 
 and eval env exprs =
   Option.default Nil

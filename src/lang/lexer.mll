@@ -1,10 +1,12 @@
 {
+  open Unicode.Std
+
   exception Unexpected of string * Location.t
 
   (* Token helpers *)
 
-  let lexeme =
-    Lexing.lexeme
+  let lexeme lexbuf =
+    (Unicode.adopt_utf8s (Lexing.lexeme lexbuf))
 
   let locate lexbuf =
     Location.make (Lexing.lexeme_start lexbuf) (Lexing.lexeme_end lexbuf)
@@ -74,9 +76,9 @@ rule lex_code state = parse
                  lex_code state lexbuf }
 
 (* Punctuation *)
-| operator as op '=' { Parser.Tk_OP_ASGN (locate lexbuf, op) }
-| "and="    { Parser.Tk_AND_ASGN (locate lexbuf) }
-| "or="     { Parser.Tk_OR_ASGN  (locate lexbuf) }
+| operator as op '='  { Parser.Tk_OP_ASGN  (locate lexbuf, (Unicode.adopt_utf8s op)) }
+| "and="              { Parser.Tk_AND_ASGN (locate lexbuf) }
+| "or="               { Parser.Tk_OR_ASGN  (locate lexbuf) }
 
 | '{'       { ignore (curly state 1);
               Parser.Tk_LCURLY   (locate lexbuf) }
@@ -154,9 +156,9 @@ rule lex_code state = parse
 | "return"  { Parser.Kw_RETURN  (locate lexbuf, lexeme lexbuf) }
 
 (* Values *)
-| digits as v             { Parser.Vl_INT    (locate lexbuf, int_of_string v) }
-| digits id_alpha         { failwith "trailing junk in a number" }
-| ':' (method_name as v)  { Parser.Vl_SYMBOL (locate lexbuf, v) }
+| digits as v             { Parser.Vl_INT    (locate lexbuf, Pervasives.int_of_string v) }
+| digits id_alpha         { failwith u"trailing junk in a number" }
+| ':' (method_name as v)  { Parser.Vl_SYMBOL (locate lexbuf, (Unicode.adopt_utf8s v)) }
 | '\''                    { goto state lex_string;
                             Parser.Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING) }
 | '"'                     { goto state lex_string_interp;
@@ -167,34 +169,36 @@ rule lex_code state = parse
                             Parser.Vl_BEGIN  (locate lexbuf, Syntax.Qu_SYMBOL) }
 
 (* Identifiers *)
-| ident as i ':'        { Parser.Id_LABEL (locate lexbuf, i) }
-| local as i            { Parser.Id_LOCAL (locate lexbuf, i) }
-| const as i            { Parser.Id_CONST (locate lexbuf, i) }
-| '@'  (ident as i)     { Parser.Id_IVAR  (locate lexbuf, i) }
-| '\\' (ident as i)     { Parser.Id_TVAR  (locate lexbuf, i) }
+| ident as i ':'        { Parser.Id_LABEL (locate lexbuf, (Unicode.adopt_utf8s i)) }
+| local as i            { Parser.Id_LOCAL (locate lexbuf, (Unicode.adopt_utf8s i)) }
+| const as i            { Parser.Id_CONST (locate lexbuf, (Unicode.adopt_utf8s i)) }
+| '@'  (ident as i)     { Parser.Id_IVAR  (locate lexbuf, (Unicode.adopt_utf8s i)) }
+| '\\' (ident as i)     { Parser.Id_TVAR  (locate lexbuf, (Unicode.adopt_utf8s i)) }
 
 | _                     { unexpected lexbuf }
 | eof                   { eof lexbuf }
 
 and lex_string state = parse
 | '\''                  { goto state lex_code;
-                          Parser.Vl_END (locate lexbuf) }
-| "\\\\"                { Parser.Vl_STRING (locate lexbuf, "\\") }
-| "\\'"                 { Parser.Vl_STRING (locate lexbuf, "'") }
-| [^'\'' '\\']+ as v    { Parser.Vl_STRING (locate lexbuf, v) }
+                          Parser.Vl_END    (locate lexbuf) }
+| "\\\\"                { Parser.Vl_STRING (locate lexbuf, u"\\") }
+| "\\'"                 { Parser.Vl_STRING (locate lexbuf, u"'") }
+| [^'\'' '\\']+ as v    { Parser.Vl_STRING (locate lexbuf, (Unicode.adopt_utf8s v)) }
 
 | eof                   { eof lexbuf }
 
 and lex_string_interp state = parse
 | '"'                   { goto state lex_code;
                           Parser.Vl_END (locate lexbuf) }
-| "\\\\"                { Parser.Vl_STRING (locate lexbuf, "\\") }
-| "\\\""                { Parser.Vl_STRING (locate lexbuf, "\"") }
-| "\\" (_ as v)         { Parser.Vl_STRING (locate lexbuf, String.make 1 v) }
+| "\\\\"                { Parser.Vl_STRING  (locate lexbuf, u"\\") }
+| "\\\""                { Parser.Vl_STRING  (locate lexbuf, u"\"") }
+| "\\" (_ as v)         { let v = Pervasives.int_of_char v in
+                          let v = char_of_int v in
+                          Parser.Vl_STRING  (locate lexbuf, String.make 1 v) }
 | "#{"                  { push state lex_code; ignore (curly state 1);
                           Parser.Vl_UNQUOTE (locate lexbuf) }
-| '#'                   { Parser.Vl_STRING (locate lexbuf, "#") }
-| [^'"' '#' '\\']+ as v { Parser.Vl_STRING (locate lexbuf, v) }
+| '#'                   { Parser.Vl_STRING  (locate lexbuf, u"#") }
+| [^'"' '#' '\\']+ as v { Parser.Vl_STRING  (locate lexbuf, (Unicode.adopt_utf8s v)) }
 
 | eof                   { eof lexbuf }
 

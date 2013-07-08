@@ -1,3 +1,5 @@
+open Unicode.Std
+
 type state
 
 val create : string -> int -> state

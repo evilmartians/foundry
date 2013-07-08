@@ -1,0 +1,3 @@
+<lib>:include
+<lib/*.ml*>:package(extlib)
+<lib/pa_utf8str{,_safe}.ml>:use_camlp4,camlp4of

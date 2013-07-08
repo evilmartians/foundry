@@ -18,6 +18,9 @@ val adopt_utf8s : string -> utf8s
 val adopt_utf16s : int list -> utf16s
 val adopt_utf32s : int list -> utf32s
 
+(* Import without validation. Use with care! *)
+val assert_utf8s : string -> utf8s
+
 (* List of characters to string *)
 val utf8s_of_list : utf8 list -> utf8s
 val utf16s_of_list : utf16 list -> utf16s
@@ -102,3 +105,41 @@ val xstring_of_utf16  : utf16  -> string
 val xstring_of_utf16s : utf16s -> string
 val xstring_of_utf32  : utf32  -> string
 val xstring_of_utf32s : utf32s -> string
+
+(* A standard library overlay *)
+
+module Std : sig
+  type latin1c = char
+  type char    = utf32
+
+  val char_of_int      : int -> char
+  val int_of_char      : char -> int
+
+  type latin1s = string
+  type string  = utf8s
+
+  val string_of_bool   : bool -> string
+  val bool_of_string   : string -> bool
+
+  val string_of_int    : int -> string
+  val int_of_string    : string -> int
+
+  val string_of_float  : float -> string
+  val float_of_string  : string -> float
+
+  val string_of_sexp   : Sexplib.Sexp.t -> string
+  val sexp_of_string   : string -> Sexplib.Sexp.t
+
+  val (^) : string -> string -> string
+
+  val print_string  : string -> unit
+  val print_endline : string -> unit
+
+  val invalid_arg   : string -> 'a
+  val failwith      : string -> 'a
+
+  module String : sig
+    val make   : int -> char -> string
+    val concat : string -> string list -> string
+  end
+end

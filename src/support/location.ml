@@ -1,4 +1,5 @@
 open Sexplib.Std
+open Unicode.Std
 
 type t = int * int
 with sexp

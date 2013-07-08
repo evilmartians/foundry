@@ -1,6 +1,6 @@
-let env = Vm.env_create ()
+open Unicode.Std
 
-let u = Unicode.adopt_utf8s "хуй"
+let env = Vm.env_create ()
 
 while true do
   let lexbuf = (Lexing.from_channel stdin) in
