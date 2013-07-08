@@ -1,0 +1,3 @@
+[submodule "menhir"]
+	path = menhir
+	url = https://github.com/pippijn/menhir.git
