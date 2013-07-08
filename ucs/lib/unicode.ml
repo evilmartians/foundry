@@ -473,6 +473,7 @@ let rec validate_utf8s i s =
   if i < String.length s then (
     assert (not (is_trail_byte s.[i]));
     let length = utf8_length s.[i] in
+    assert (i + length < (String.length s));
     for j = 1 to length do
       assert (is_trail_byte s.[i + j])
     done;
