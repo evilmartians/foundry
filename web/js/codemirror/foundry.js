@@ -41,6 +41,8 @@ CodeMirror.defineMode('foundry', function(config) {
       } else if(stream.match(/[{}\[\]()]/, true)) {
         if(stream.current() == "{") {
           state.indentation += config.indentUnit;
+        } else if(stream.current() == "}") {
+          state.indentation -= config.indentUnit;
         }
 
         return "bracket";
@@ -60,6 +62,8 @@ CodeMirror.defineMode('foundry', function(config) {
 
           if(match[0] == "def") {
             state.inDef = true;
+          } else if(dedentWords[stream.current()]) {
+            state.indentation -= config.indentUnit;
           }
 
           return "keyword";

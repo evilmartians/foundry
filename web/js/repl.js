@@ -74,7 +74,7 @@ Highlight.prototype = {
   drawWidgets: function() {
     var line = this.line();
 
-    if(line) {
+    if(line !== undefined) {
       var marker = $('<div class="diag-marker diag-marker-' + this.order + '"></div>');
       this.editor.setGutterMarker(line, 'diag-gutter', marker[0]);
     }
@@ -91,7 +91,7 @@ Highlight.prototype = {
 
     var line = this.line();
 
-    if(line && this.lineWidget) {
+    if(line !== undefined && this.lineWidget) {
       var widget = this.lineWidget();
       this.cmWidget = this.editor.addLineWidget(line, widget);
     }
@@ -315,8 +315,8 @@ DiagnosticManager.prototype = {
 
 $(function() {
   var editor = CodeMirror($('#repl-editor')[0], {
-    value: //"def foo() : Integer\n  2 + 2\nend",
-      "class A;\n  def @foo : Symbol;\n\n  def @foo : Integer;\nend",
+    value: (window.localStorage["code"] ||
+      "class A;\n  def @foo : Symbol;\n\n  def @foo : Integer;\nend"),
 
     mode:               'foundry',
     theme:              'monokai',
@@ -361,6 +361,9 @@ $(function() {
 
     /* Compile */
     var code = editor.getValue(), result;
+
+    window.localStorage["code"] = code;
+
     try {
       result = foundryEval(code);
     } catch(e) {
