@@ -10,7 +10,7 @@ type result =
 let eval str =
   let env      = Vm.env_create () in
   let lexbuf   = Ulexing.from_utf8_string str in
-  let lexstate = Lexer.create u"input" 1 in
+  let lexstate = Lexer.create (u"input") 1 in
   let lex ()   = Lexer.next lexstate lexbuf in
   let parse    = MenhirLib.Convert.Simplified.traditional2revised Parser.toplevel in
 
@@ -21,8 +21,9 @@ let eval str =
     Diagnostics [exc.Vm.ex_message, exc.Vm.ex_locations]
   | Lexer.Unexpected (str, loc) ->
     Diagnostics [u"Unexpected character " ^ str, [loc]]
-  | Parser.Error ->
-    Error u"Cannot parse"
+  | Parser.StateError (token, state) ->
+    Diagnostics [Unicode.assert_utf8s (Parser_errors.message state token),
+                 [Parser_desc.loc_of_token token]]
   | Failure msg ->
     Error (Unicode.assert_utf8s msg)
 

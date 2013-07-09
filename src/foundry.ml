@@ -30,7 +30,9 @@ while true do
       (let x, y = exc.Vm.ex_location in
         String.fill pointers x (y - x) '^');
 
-      print_endline pointers; *)
+      print_endline pointers;
+ *)
       print_endline (Location.at (List.hd exc.Vm.ex_locations));
       print_endline ("Error: " ^ exc.Vm.ex_message)
+
 done

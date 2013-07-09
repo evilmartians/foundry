@@ -80,7 +80,7 @@ CodeMirror.defineMode('foundry', function(config) {
         stream.skipToEnd();
         return "comment";
       } else {
-        stream.skipToEnd();
+        stream.eat(/./);
         return "error";
       }
     },

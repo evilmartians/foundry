@@ -1,4 +1,5 @@
 open Unicode.Std
+open Parser_tokens
 
 exception Unexpected of string * Location.t
 
@@ -19,18 +20,22 @@ let newline lexbuf =
   Location.start_line (Ulexing.lexeme_end lexbuf)
 
 let eof lexbuf =
-  Location.finish_file (Ulexing.lexeme_start lexbuf);
-  Parser.EOF
+  let location =
+    Location.make (Ulexing.lexeme_start lexbuf - 1) (Ulexing.lexeme_end lexbuf)
+  in
+  let eof = EOF (location) in
+    Location.finish_file (Ulexing.lexeme_start lexbuf);
+    eof
 
 let unexpected lexbuf =
   let error = Unexpected (lexeme lexbuf, locate lexbuf) in
-  let _ = eof lexbuf in
-  raise error
+    Location.finish_file (Ulexing.lexeme_start lexbuf);
+    raise error
 
 (* State management *)
 
 type state = {
-  mutable lexer_stack : (state -> Ulexing.lexbuf -> Parser.token) list;
+  mutable lexer_stack : (state -> Ulexing.lexbuf -> token) list;
   mutable curly_stack : int list
 }
 
@@ -79,127 +84,127 @@ let rec lex_code state = lexer
                  lex_code state lexbuf
 
 (* Punctuation *)
-| operator '=' -> Parser.Tk_OP_ASGN  (locate lexbuf, sub_lexeme lexbuf 0 (-2))
-| "and="       -> Parser.Tk_AND_ASGN (locate lexbuf)
-| "or="        -> Parser.Tk_OR_ASGN  (locate lexbuf)
+| operator '=' -> Tk_OP_ASGN  (locate lexbuf, sub_lexeme lexbuf 0 (-2))
+| "and="       -> Tk_AND_ASGN (locate lexbuf)
+| "or="        -> Tk_OR_ASGN  (locate lexbuf)
 
 | '{'      -> ignore (curly state 1);
-              Parser.Tk_LCURLY   (locate lexbuf)
+              Tk_LCURLY   (locate lexbuf)
 | '}'      -> if (curly state (-1)) = 0 then begin
                 pop state;
-                Parser.Vl_QUOTE  (locate lexbuf)
+                Vl_QUOTE  (locate lexbuf)
               end else
-                Parser.Tk_RCURLY (locate lexbuf)
+                Tk_RCURLY (locate lexbuf)
 
-| '('      -> Parser.Tk_LPAREN  (locate lexbuf)
-| ')'      -> Parser.Tk_RPAREN  (locate lexbuf)
-| '['      -> Parser.Tk_LBRACK  (locate lexbuf)
-| ']'      -> Parser.Tk_RBRACK  (locate lexbuf)
-| '='      -> Parser.Tk_ASGN    (locate lexbuf)
-| '.'      -> Parser.Tk_DOT     (locate lexbuf)
-| ':'      -> Parser.Tk_COLON   (locate lexbuf)
-| "::"     -> Parser.Tk_DCOLON  (locate lexbuf)
-| ';'      -> Parser.Tk_SEMI    (locate lexbuf)
-| ";;"     -> Parser.Tk_DSEMI   (locate lexbuf)
-| ','      -> Parser.Tk_COMMA   (locate lexbuf)
-| "->"     -> Parser.Tk_ARROW   (locate lexbuf)
-| "=>"     -> Parser.Tk_ROCKET  (locate lexbuf)
+| '('      -> Tk_LPAREN  (locate lexbuf)
+| ')'      -> Tk_RPAREN  (locate lexbuf)
+| '['      -> Tk_LBRACK  (locate lexbuf)
+| ']'      -> Tk_RBRACK  (locate lexbuf)
+| '='      -> Tk_ASGN    (locate lexbuf)
+| '.'      -> Tk_DOT     (locate lexbuf)
+| ':'      -> Tk_COLON   (locate lexbuf)
+| "::"     -> Tk_DCOLON  (locate lexbuf)
+| ';'      -> Tk_SEMI    (locate lexbuf)
+| ";;"     -> Tk_DSEMI   (locate lexbuf)
+| ','      -> Tk_COMMA   (locate lexbuf)
+| "->"     -> Tk_ARROW   (locate lexbuf)
+| "=>"     -> Tk_ROCKET  (locate lexbuf)
 
 (* Operators *)
-| "+@"     -> Parser.Tk_UPLUS   (locate lexbuf, lexeme lexbuf)
-| "-@"     -> Parser.Tk_UMINUS  (locate lexbuf, lexeme lexbuf)
-| "~@"     -> Parser.Tk_UTILDE  (locate lexbuf, lexeme lexbuf)
-| '+'      -> Parser.Tk_PLUS    (locate lexbuf, lexeme lexbuf)
-| '-'      -> Parser.Tk_MINUS   (locate lexbuf, lexeme lexbuf)
-| '*'      -> Parser.Tk_STAR    (locate lexbuf, lexeme lexbuf)
-| "**"     -> Parser.Tk_DSTAR   (locate lexbuf, lexeme lexbuf)
-| '/'      -> Parser.Tk_DIVIDE  (locate lexbuf, lexeme lexbuf)
-| '%'      -> Parser.Tk_PERCENT (locate lexbuf, lexeme lexbuf)
-| '&'      -> Parser.Tk_AMPER   (locate lexbuf, lexeme lexbuf)
-| '|'      -> Parser.Tk_PIPE    (locate lexbuf, lexeme lexbuf)
-| '~'      -> Parser.Tk_TILDE   (locate lexbuf, lexeme lexbuf)
-| "<<"     -> Parser.Tk_LSHFT   (locate lexbuf, lexeme lexbuf)
-| ">>"     -> Parser.Tk_RSHFT   (locate lexbuf, lexeme lexbuf)
-| ">>>"    -> Parser.Tk_TILDE   (locate lexbuf, lexeme lexbuf)
-| "=="     -> Parser.Tk_EQ      (locate lexbuf, lexeme lexbuf)
-| "<="     -> Parser.Tk_LEQ     (locate lexbuf, lexeme lexbuf)
-| '<'      -> Parser.Tk_LT      (locate lexbuf, lexeme lexbuf)
-| '>'      -> Parser.Tk_GT      (locate lexbuf, lexeme lexbuf)
-| ">="     -> Parser.Tk_GEQ     (locate lexbuf, lexeme lexbuf)
-| "<=>"    -> Parser.Tk_CMP     (locate lexbuf, lexeme lexbuf)
+| "+@"     -> Tk_UPLUS   (locate lexbuf, lexeme lexbuf)
+| "-@"     -> Tk_UMINUS  (locate lexbuf, lexeme lexbuf)
+| "~@"     -> Tk_UTILDE  (locate lexbuf, lexeme lexbuf)
+| '+'      -> Tk_PLUS    (locate lexbuf, lexeme lexbuf)
+| '-'      -> Tk_MINUS   (locate lexbuf, lexeme lexbuf)
+| '*'      -> Tk_STAR    (locate lexbuf, lexeme lexbuf)
+| "**"     -> Tk_DSTAR   (locate lexbuf, lexeme lexbuf)
+| '/'      -> Tk_DIVIDE  (locate lexbuf, lexeme lexbuf)
+| '%'      -> Tk_PERCENT (locate lexbuf, lexeme lexbuf)
+| '&'      -> Tk_AMPER   (locate lexbuf, lexeme lexbuf)
+| '|'      -> Tk_PIPE    (locate lexbuf, lexeme lexbuf)
+| '~'      -> Tk_TILDE   (locate lexbuf, lexeme lexbuf)
+| "<<"     -> Tk_LSHFT   (locate lexbuf, lexeme lexbuf)
+| ">>"     -> Tk_RSHFT   (locate lexbuf, lexeme lexbuf)
+| ">>>"    -> Tk_TILDE   (locate lexbuf, lexeme lexbuf)
+| "=="     -> Tk_EQ      (locate lexbuf, lexeme lexbuf)
+| "<="     -> Tk_LEQ     (locate lexbuf, lexeme lexbuf)
+| '<'      -> Tk_LT      (locate lexbuf, lexeme lexbuf)
+| '>'      -> Tk_GT      (locate lexbuf, lexeme lexbuf)
+| ">="     -> Tk_GEQ     (locate lexbuf, lexeme lexbuf)
+| "<=>"    -> Tk_CMP     (locate lexbuf, lexeme lexbuf)
 
 (* Keywords *)
-| "true"   -> Parser.Kw_TRUE    (locate lexbuf, lexeme lexbuf)
-| "false"  -> Parser.Kw_FALSE   (locate lexbuf, lexeme lexbuf)
-| "nil"    -> Parser.Kw_NIL     (locate lexbuf, lexeme lexbuf)
-| "self"   -> Parser.Kw_SELF    (locate lexbuf, lexeme lexbuf)
-| "and"    -> Parser.Kw_AND     (locate lexbuf, lexeme lexbuf)
-| "or"     -> Parser.Kw_OR      (locate lexbuf, lexeme lexbuf)
-| "not"    -> Parser.Kw_NOT     (locate lexbuf, lexeme lexbuf)
-| "let"    -> Parser.Kw_LET     (locate lexbuf, lexeme lexbuf)
-| "mut"    -> Parser.Kw_MUT     (locate lexbuf, lexeme lexbuf)
-| "while"  -> Parser.Kw_WHILE   (locate lexbuf, lexeme lexbuf)
-| "do"     -> Parser.Kw_DO      (locate lexbuf, lexeme lexbuf)
-| "if"     -> Parser.Kw_IF      (locate lexbuf, lexeme lexbuf)
-| "elsif"  -> Parser.Kw_ELSIF   (locate lexbuf, lexeme lexbuf)
-| "then"   -> Parser.Kw_THEN    (locate lexbuf, lexeme lexbuf)
-| "else"   -> Parser.Kw_ELSE    (locate lexbuf, lexeme lexbuf)
-| "match"  -> Parser.Kw_MATCH   (locate lexbuf, lexeme lexbuf)
-| "end"    -> Parser.Kw_END     (locate lexbuf, lexeme lexbuf)
-| "as"     -> Parser.Kw_AS      (locate lexbuf, lexeme lexbuf)
-| "meta"   -> Parser.Kw_META    (locate lexbuf, lexeme lexbuf)
-| "type"   -> Parser.Kw_TYPE    (locate lexbuf, lexeme lexbuf)
-| "public" -> Parser.Kw_PUBLIC  (locate lexbuf, lexeme lexbuf)
-| "dynamic"-> Parser.Kw_DYNAMIC (locate lexbuf, lexeme lexbuf)
-| "package"-> Parser.Kw_PACKAGE (locate lexbuf, lexeme lexbuf)
-| "class"  -> Parser.Kw_CLASS   (locate lexbuf, lexeme lexbuf)
-| "mixin"  -> Parser.Kw_MIXIN   (locate lexbuf, lexeme lexbuf)
-| "iface"  -> Parser.Kw_IFACE   (locate lexbuf, lexeme lexbuf)
-| "def"    -> Parser.Kw_DEF     (locate lexbuf, lexeme lexbuf)
-| "return" -> Parser.Kw_RETURN  (locate lexbuf, lexeme lexbuf)
+| "true"   -> Kw_TRUE    (locate lexbuf, lexeme lexbuf)
+| "false"  -> Kw_FALSE   (locate lexbuf, lexeme lexbuf)
+| "nil"    -> Kw_NIL     (locate lexbuf, lexeme lexbuf)
+| "self"   -> Kw_SELF    (locate lexbuf, lexeme lexbuf)
+| "and"    -> Kw_AND     (locate lexbuf, lexeme lexbuf)
+| "or"     -> Kw_OR      (locate lexbuf, lexeme lexbuf)
+| "not"    -> Kw_NOT     (locate lexbuf, lexeme lexbuf)
+| "let"    -> Kw_LET     (locate lexbuf, lexeme lexbuf)
+| "mut"    -> Kw_MUT     (locate lexbuf, lexeme lexbuf)
+| "while"  -> Kw_WHILE   (locate lexbuf, lexeme lexbuf)
+| "do"     -> Kw_DO      (locate lexbuf, lexeme lexbuf)
+| "if"     -> Kw_IF      (locate lexbuf, lexeme lexbuf)
+| "elsif"  -> Kw_ELSIF   (locate lexbuf, lexeme lexbuf)
+| "then"   -> Kw_THEN    (locate lexbuf, lexeme lexbuf)
+| "else"   -> Kw_ELSE    (locate lexbuf, lexeme lexbuf)
+| "match"  -> Kw_MATCH   (locate lexbuf, lexeme lexbuf)
+| "end"    -> Kw_END     (locate lexbuf, lexeme lexbuf)
+| "as"     -> Kw_AS      (locate lexbuf, lexeme lexbuf)
+| "meta"   -> Kw_META    (locate lexbuf, lexeme lexbuf)
+| "type"   -> Kw_TYPE    (locate lexbuf, lexeme lexbuf)
+| "public" -> Kw_PUBLIC  (locate lexbuf, lexeme lexbuf)
+| "dynamic"-> Kw_DYNAMIC (locate lexbuf, lexeme lexbuf)
+| "package"-> Kw_PACKAGE (locate lexbuf, lexeme lexbuf)
+| "class"  -> Kw_CLASS   (locate lexbuf, lexeme lexbuf)
+| "mixin"  -> Kw_MIXIN   (locate lexbuf, lexeme lexbuf)
+| "iface"  -> Kw_IFACE   (locate lexbuf, lexeme lexbuf)
+| "def"    -> Kw_DEF     (locate lexbuf, lexeme lexbuf)
+| "return" -> Kw_RETURN  (locate lexbuf, lexeme lexbuf)
 
 (* Values *)
-| digits          -> Parser.Vl_INT    (locate lexbuf, int_of_string (lexeme lexbuf))
+| digits          -> Vl_INT    (locate lexbuf, int_of_string (lexeme lexbuf))
 | digits id_alpha -> failwith "trailing junk in a number"
-| ':' method_name -> Parser.Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 (-1))
+| ':' method_name -> Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 (-1))
 | '\''            -> goto state lex_string;
-                     Parser.Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING)
+                     Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING)
 | '"'             -> goto state lex_string_interp;
-                     Parser.Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING)
+                     Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING)
 | ":'"            -> goto state lex_string;
-                     Parser.Vl_BEGIN  (locate lexbuf, Syntax.Qu_SYMBOL)
+                     Vl_BEGIN  (locate lexbuf, Syntax.Qu_SYMBOL)
 | ":\""           -> goto state lex_string_interp;
-                     Parser.Vl_BEGIN  (locate lexbuf, Syntax.Qu_SYMBOL)
+                     Vl_BEGIN  (locate lexbuf, Syntax.Qu_SYMBOL)
 
 (* Identifiers *)
-| ident ':'       -> Parser.Id_LABEL (locate lexbuf, sub_lexeme lexbuf 0 (-2))
-| local           -> Parser.Id_LOCAL (locate lexbuf, lexeme lexbuf)
-| const           -> Parser.Id_CONST (locate lexbuf, lexeme lexbuf)
-| '@'  ident      -> Parser.Id_IVAR  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
-| '\\' ident      -> Parser.Id_TVAR  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
+| ident ':'       -> Id_LABEL (locate lexbuf, sub_lexeme lexbuf 0 (-2))
+| local           -> Id_LOCAL (locate lexbuf, lexeme lexbuf)
+| const           -> Id_CONST (locate lexbuf, lexeme lexbuf)
+| '@'  ident      -> Id_IVAR  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
+| '\\' ident      -> Id_TVAR  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
 
 | _               -> unexpected lexbuf
 | eof             -> eof lexbuf
 
 and lex_string state = lexer
 | '\''            -> goto state lex_code;
-                     Parser.Vl_END    (locate lexbuf)
-| "\\\\"          -> Parser.Vl_STRING (locate lexbuf, "\\")
-| "\\'"           -> Parser.Vl_STRING (locate lexbuf, "'")
-| [^'\'' '\\']+   -> Parser.Vl_STRING (locate lexbuf, lexeme lexbuf)
+                     Vl_END    (locate lexbuf)
+| "\\\\"          -> Vl_STRING (locate lexbuf, "\\")
+| "\\'"           -> Vl_STRING (locate lexbuf, "'")
+| [^'\'' '\\']+   -> Vl_STRING (locate lexbuf, lexeme lexbuf)
 
 | eof             -> eof lexbuf
 
 and lex_string_interp state = lexer
 | '"'               -> goto state lex_code;
-                       Parser.Vl_END (locate lexbuf)
-| "\\\\"            -> Parser.Vl_STRING  (locate lexbuf, "\\")
-| "\\\""            -> Parser.Vl_STRING  (locate lexbuf, "\"")
-| "\\" _            -> Parser.Vl_STRING  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
+                       Vl_END (locate lexbuf)
+| "\\\\"            -> Vl_STRING  (locate lexbuf, "\\")
+| "\\\""            -> Vl_STRING  (locate lexbuf, "\"")
+| "\\" _            -> Vl_STRING  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
 | "#{"              -> push state lex_code; ignore (curly state 1);
-                       Parser.Vl_UNQUOTE (locate lexbuf)
-| '#'               -> Parser.Vl_STRING  (locate lexbuf, "#")
-| [^'"' '#' '\\']+  -> Parser.Vl_STRING  (locate lexbuf, lexeme lexbuf)
+                       Vl_UNQUOTE (locate lexbuf)
+| '#'               -> Vl_STRING  (locate lexbuf, "#")
+| [^'"' '#' '\\']+  -> Vl_STRING  (locate lexbuf, lexeme lexbuf)
 
 | eof               -> eof lexbuf
 

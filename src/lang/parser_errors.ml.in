@@ -1,0 +1,15 @@
+open Parser_tokens
+open Parser_desc
+
+module Tokens = Parser_tokens
+
+let message = function
+| "class" -> function
+  | _   -> "Class name should be a constant (not %s)."
+(*| "mixin" -> function
+  | _ -> "Mixin name cannot be %s."
+| "package" -> function
+  | _ -> "Package name cannot be %s."
+| "iface" -> function
+  | _ -> "Interface name cannot be %s."
+*)

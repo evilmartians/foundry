@@ -323,14 +323,14 @@
                 { Syntax.Let (binary (Syntax.pat_loc lhs) op (Syntax.loc rhs),
                               lhs, ty, rhs) }
                 /* TODO refactor */
-              | kw=Kw_CLASS id=Id_CONST anc=ancestor stmts=compstmt kwend=Kw_END
+              | kw=Kw_CLASS id=Id_CONST anc=ancestor stmts=compstmt Kw_END
                 { let anc_loc, anc = Option.map fst anc, Option.map snd anc in
                     Syntax.Class (nullary (fst id),
                                   snd id, anc, stmts) }
                 /* TODO refactor */
               | kw=Kw_DEF id=method_name
                   lp=Tk_LPAREN args=f_args rp=Tk_RPAREN
-                  ty=option(ty_decl) Tk_SEMI stmts=compstmt kwend=Kw_END
+                  ty=option(ty_decl) Tk_SEMI stmts=compstmt Kw_END
                 { Syntax.DefMethod (nullary (fst id),
                                     (snd id), args, ty, stmts) }
                 /* TODO refactor */
