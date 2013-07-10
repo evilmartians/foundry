@@ -1,7 +1,5 @@
 _build/
-*.sublime-*
 *.native
 *.byte
 *.conflicts
-web/foundry.js
 menhir-bin/

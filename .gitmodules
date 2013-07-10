@@ -4,3 +4,6 @@
 [submodule "merr"]
 	path = merr
 	url = https://github.com/pippijn/merr.git
+[submodule "web"]
+	path = web
+	url = git@github.com:whitequark/foundry-web
