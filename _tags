@@ -8,8 +8,9 @@ true:use_menhir,debug
 <src{,/lang,/support}>:include
 <src/**/*.ml*>:syntax(camlp4o),package(menhirLib),package(ulex),package(sexplib.syntax),package(extlib)
 <src/**/*.ml>:use_utf8str
+<src/lang/parser*.ml>:-use_utf8str
 "src/lang/parser.mlypack":dump,external_tokens(Parser_tokens)
-<src/lang/parser{,_errors,_desc}.ml>:-use_utf8str,-package(ulex)
+"src/lang/parser.ml":-package(ulex)
 
 <src/foundryWeb.*>:package(js_of_ocaml),package(js_of_ocaml.syntax)
 <src/foundryWeb.ml>:-use_utf8str

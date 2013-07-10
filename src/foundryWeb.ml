@@ -1,10 +1,8 @@
 open Unicode.Std
 
-type diagnostic = string * Location.t list
-
 type result =
   | Output      of string
-  | Diagnostics of diagnostic list
+  | Diagnostics of Diagnostic.t list
   | Error       of string
 
 let process code ~do_eval =
@@ -15,11 +13,15 @@ let process code ~do_eval =
 
   try
     let ast = parse lex in
-      if do_eval then
-        let env = Vm.env_create () in
-          Output (Vm.inspect (Vm.eval env ast))
-      else
-        Output (u"")
+      match Verifier.check ast with
+      | [] ->
+        if do_eval then
+          let env = Vm.env_create () in
+            Output (Vm.inspect (Vm.eval env ast))
+        else
+          Output (u"")
+      | problems ->
+        Diagnostics problems
   with
   | Lexer.Unexpected (chr, loc) ->
     Diagnostics [u"Unexpected character " ^ chr, [loc]]

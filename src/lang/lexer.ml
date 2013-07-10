@@ -165,7 +165,7 @@ let rec lex_code state = lexer
 
 (* Values *)
 | digits          -> Vl_INT    (locate lexbuf, int_of_string (lexeme lexbuf))
-| digits id_alpha -> failwith "trailing junk in a number"
+| digits id_alpha -> failwith  "trailing junk in a number"
 | ':' method_name -> Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 (-1))
 | '\''            -> goto state lex_string;
                      Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING)
