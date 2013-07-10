@@ -9,6 +9,7 @@ val fill     : 'a t -> (string * 'a) list -> unit
 val copy     : 'a t -> 'a t
 
 val get      : 'a t -> string -> 'a option
+val get_exn  : 'a t -> string -> 'a
 val set      : 'a t -> string -> 'a -> unit
 val exists   : 'a t -> string -> bool
 

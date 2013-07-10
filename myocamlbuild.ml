@@ -15,20 +15,15 @@ dispatch begin function
 
     (* === UNICODE === *)
 
-    (* Add pa_utf8str{,safe}.cmo to the ocaml pre-processor
-       when use_utf8str{,safe} is set *)
-    flag ["ocaml";"compile"; "use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
-    flag ["ocaml";"ocamldep";"use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
+    (* Add pa_utf8str.cmo to the ocaml pre-processor when use_utf8str is set *)
+    flag ["ocaml"; "compile"; "use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
+    flag ["ocaml"; "ocamldep"; "use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
+    flag ["ocaml"; "infer_interface"; "use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
 
-    flag ["ocaml";"compile"; "use_utf8str_safe"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str_safe.cmo"]);
-    flag ["ocaml";"ocamldep";"use_utf8str_safe"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str_safe.cmo"]);
-
-    (* Running ocamldep on ocaml code that is tagged with use_utf8str{,safe}
+    (* Running ocamldep on ocaml code that is tagged with use_utf8str
        will require the cmo. Note that you only need this declaration when the
        syntax extension is part of the sources to be compiled with ocamlbuild. *)
-    dep ["ocaml"; "ocamldep"; "use_utf8str"]      ["ucs/lib/pa_utf8str.cmo"];
-    dep ["ocaml"; "menhir";   "use_utf8str_safe"] ["ucs/lib/pa_utf8str_safe.cmo"];
-    dep ["ocaml"; "ocamldep"; "use_utf8str_safe"] ["ucs/lib/pa_utf8str_safe.cmo"];
+    dep ["ocaml"; "ocamldep"; "use_utf8str"] ["ucs/lib/pa_utf8str.cmo"];
 
     (* === MENHIR AND MERR == *)
 

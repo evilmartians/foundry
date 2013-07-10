@@ -17,7 +17,7 @@ let process code ~do_eval =
       | [] ->
         if do_eval then
           let env = Vm.env_create () in
-            Output (Vm.inspect (Vm.eval env ast))
+            Output (Rt.inspect (Vm.eval env ast))
         else
           Output (u"")
       | problems ->
@@ -32,8 +32,8 @@ let process code ~do_eval =
     | _
     -> Diagnostics [Unicode.assert_utf8s (Parser_errors.message state token),
                    [Parser_desc.loc_of_token token]])
-  | Vm.Exc exc ->
-    Diagnostics [exc.Vm.ex_message, exc.Vm.ex_locations]
+  | Rt.Exc exc ->
+    Diagnostics [exc.Rt.ex_message, exc.Rt.ex_locations]
   | Failure msg ->
     Error (Unicode.assert_utf8s msg)
 

@@ -81,6 +81,7 @@ let name_of_token = function
   | Tk_UMINUS _ -> "Tk_UMINUS"
   | Tk_ROCKET _ -> "Tk_ROCKET"
   | Kw_OR _ -> "Kw_OR"
+  | Kw_INVOKE _ -> "Kw_INVOKE"
 
 let loc_of_token token =
   match token with
@@ -146,6 +147,7 @@ let loc_of_token token =
   | Kw_META (loc, _) -> loc
   | Kw_MATCH (loc, _) -> loc
   | Kw_LET (loc, _) -> loc
+  | Kw_INVOKE (loc, _) -> loc
   | Kw_IFACE (loc, _) -> loc
   | Kw_IF (loc, _) -> loc
   | Kw_FALSE (loc, _) -> loc

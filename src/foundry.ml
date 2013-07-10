@@ -19,9 +19,9 @@ while true do
 
   try
     Vm.eval env (parse lex)
-    |> Vm.inspect
+    |> Rt.inspect
     |> print_endline
-  with Vm.Exc exc ->
+  with Rt.Exc exc ->
 (*     let pointers =
       let all_ranges = exc.Vm.ex_location :: exc.Vm.ex_highlights in
         String.make (List.fold ~f:max ~init:0 (List.map all_ranges ~f:snd) + 1) ' '
@@ -32,7 +32,7 @@ while true do
 
       print_endline pointers;
  *)
-      print_endline (Location.at (List.hd exc.Vm.ex_locations));
-      print_endline ("Error: " ^ exc.Vm.ex_message)
+      print_endline (Location.at (List.hd exc.Rt.ex_locations));
+      print_endline ("Error: " ^ exc.Rt.ex_message)
 
 done

@@ -83,6 +83,7 @@
 %token <Location.t * Unicode.utf8s> Kw_MIXIN   "mixin"
 %token <Location.t * Unicode.utf8s> Kw_IFACE   "iface"
 %token <Location.t * Unicode.utf8s> Kw_DEF     "def"
+%token <Location.t * Unicode.utf8s> Kw_INVOKE  "invokeprimitive"
 
 %token <Location.t> EOF "end of input"
 

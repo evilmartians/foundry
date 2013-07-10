@@ -235,9 +235,15 @@ and check_expr cx expr =
   | DefIVar(_,_,_,ty)
   -> check_ty cx ty
   | Lambda(_,f_args,ty,expr)
-  -> (check_lambda cx f_args ty [expr])
+  -> check_lambda cx f_args ty [expr]
   | DefMethod(_,_,f_args,ty,exprs)
-  -> (check_lambda cx f_args ty exprs)
+  -> check_lambda cx f_args ty exprs
+  | InvokePrimitive((loc,_),name,exprs)
+  -> (if Primitive.exists name (List.length exprs) then
+        check_expr cx @: exprs
+      else
+        ["Unknown primitive `" ^ name ^ "/" ^
+          (string_of_int (List.length exprs)) ^ "'.", [loc]])
 
 let check ast =
   let context = {

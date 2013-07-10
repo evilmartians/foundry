@@ -163,6 +163,8 @@ let rec lex_code state = lexer
 | "def"    -> Kw_DEF     (locate lexbuf, lexeme lexbuf)
 | "return" -> Kw_RETURN  (locate lexbuf, lexeme lexbuf)
 
+| "invokeprimitive" -> Kw_INVOKE (locate lexbuf, lexeme lexbuf)
+
 (* Values *)
 | digits          -> Vl_INT    (locate lexbuf, int_of_string (lexeme lexbuf))
 | digits id_alpha -> failwith  "trailing junk in a number"

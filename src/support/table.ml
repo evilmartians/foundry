@@ -22,6 +22,8 @@ let set = Hashtbl.replace
 
 let get = ExtHashtbl.Hashtbl.find_option
 
+let get_exn = Hashtbl.find
+
 let exists = Hashtbl.mem
 
 let pair k v =

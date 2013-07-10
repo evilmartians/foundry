@@ -1,288 +1,6 @@
 open Sexplib.Std
 open Unicode.Std
-
-type tvar = int
-with sexp_of
-
-type value =
-(* Primitives *)
-| Tvar          of tvar
-| TvarTy
-| Nil
-| NilTy
-| Truth
-| Lies
-| BooleanTy
-| Int           of int
-| IntegerTy
-| Symbol        of string
-| SymbolTy
-(* Product types *)
-| Tuple         of value list
-| TupleTy       of value list
-| Record        of value Table.t
-| RecordTy      of value Table.t
-(* Function type *)
-| Environment   of local_env
-| EnvironmentTy of local_env_ty
-| Lambda        of lambda
-| LambdaTy      of lambda_ty
-(* Packages *)
-| Package       of package
-(* User-defined types *)
-| Class         of klass specialized
-| Mixin         of mixin specialized
-| Instance      of klass specialized * value Table.t
-and binding_ty = {
-  b_location_ty   : Location.t;
-  b_is_mutable_ty : bool;
-  b_value_ty      : value;
-}
-and local_env_ty = {
-  e_parent_ty     : local_env_ty option;
-  e_bindings_ty   : binding_ty Table.t;
-}
-and binding = {
-  b_location      : Location.t;
-  b_is_mutable    : bool;
-  b_value         : value;
-}
-and local_env = {
-  e_parent        : local_env option;
-  e_bindings      : binding Table.t;
-}
-and type_env =      tvar Table.t
-and const_env =     package list ref
-and lambda = {
-  l_location      : Location.t;
-  l_ty            : value;
-  l_local_env     : local_env;
-  l_type_env      : type_env;
-  l_args          : Syntax.formal_args;
-  l_code          : Syntax.exprs;
-}
-and lambda_ty = {
-  l_args_ty       : value;
-  l_kwargs_ty     : value;
-  l_return_ty     : value;
-}
-and 'a specialized = 'a * value Table.t
-and package = {
-  p_name          : string;
-  p_metaclass     : klass;
-  p_constants     : value Table.t;
-}
-and klass = {
-  k_name          : string;
-  k_metaclass     : klass;
-  k_ancestor      : klass   option;
-  k_tvars         : tvar    Table.t;
-  k_ivars         : ivar    Table.t;
-  k_methods       : imethod Table.t;
-  mutable k_prepended : mixin list;
-  mutable k_appended  : mixin list;
-}
-and mixin = {
-  m_name          : string;
-  m_metaclass     : klass;
-  m_methods       : imethod Table.t;
-}
-and imethod = {
-  im_body         : lambda;
-  im_dynamic      : bool;
-}
-and ivar = {
-  iv_location     : Location.t;
-  iv_kind         : Syntax.ivar_kind;
-  iv_ty           : value;
-}
-and exc = {
-  ex_message      : string;
-  ex_locations    : Location.t list;
-}
-with sexp_of
-
-exception Exc of exc
-with sexp
-
-(* Class tooling & default virtual image *)
-
-let rec kClass =
-  { k_name      = "Class";
-    k_ancestor  = None;
-    k_metaclass = kmetaClass;
-    k_tvars     = Table.create [];
-    k_ivars     = Table.create [];
-    k_methods   = Table.create [];
-    k_prepended = [];
-    k_appended  = []; }
-and kmetaClass =
-  { k_name      = "meta:Class";
-    k_ancestor  = Some kClass;
-    k_metaclass = kClass;
-    k_tvars     = Table.create [];
-    k_ivars     = Table.create [];
-    k_methods   = Table.create [];
-    k_prepended = [];
-    k_appended  = []; }
-
-let new_metaclass ?ancestor name =
-  { k_name      = "meta:" ^ name;
-    k_ancestor  = ancestor;
-    k_metaclass = kClass;
-    k_tvars     = Table.create [];
-    k_ivars     = Table.create [];
-    k_methods   = Table.create [];
-    k_prepended = [];
-    k_appended  = []; }
-
-let new_class ?ancestor name =
-  let meta_ancestor =
-    match ancestor with
-    | Some klass -> klass.k_ancestor
-    | None -> None
-  in
-  { k_name      = name;
-    k_metaclass = (new_metaclass ?ancestor:meta_ancestor name);
-    k_ancestor  = ancestor;
-    k_tvars     = Table.create [];
-    k_ivars     = Table.create [];
-    k_methods   = Table.create [];
-    k_prepended = [];
-    k_appended  = []; }
-
-let kTypeVariable = new_class "TypeVariable"
-
-let kNil     = new_class "Nil"
-let kBoolean = new_class "Boolean"
-let kInteger = new_class "Integer"
-let kSymbol  = new_class "Symbol"
-
-let kMixin   = new_class "Mixin"
-let kPackage = new_class "Package"
-
-let new_package name =
-  { p_name      = name;
-    p_metaclass = new_metaclass ~ancestor:kPackage name;
-    p_constants = Table.create [] }
-
-let pToplevel = new_package "#<toplevel>"
-
-let () =
-  Table.fill pToplevel.p_constants [
-    ("Nil",     NilTy);
-    ("Boolean", BooleanTy);
-    ("Integer", IntegerTy);
-    ("Symbol",  SymbolTy)
-  ]
-
-(* Types and type variables *)
-
-let lastvar = ref 0
-let genvar () : tvar =
-  incr lastvar;
-  !lastvar
-
-let rec typeof value =
-  match value with
-  | Truth | Lies  -> BooleanTy
-  | Nil           -> NilTy
-
-  | Tvar(_)       -> TvarTy
-  | Int(_)        -> IntegerTy
-  | Symbol(_)     -> SymbolTy
-  | Tuple(xs)     -> TupleTy(List.map typeof xs)
-  | Record(xs)    -> RecordTy(Table.map (fun v -> typeof v) xs)
-
-  | Lambda(c)     -> c.l_ty
-
-  | Package(_)    -> Class(kPackage, Table.create [])
-  | Class(k,_)    -> Class(kClass, Table.create [])
-  | Instance(k,_) -> Class(k)
-  | _ -> failwith ("cannot typeof " ^
-                   (Unicode.assert_utf8s
-                    (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
-
-(* Inspecting types and values *)
-
-let string_of_value value =
-   (Unicode.assert_utf8s
-    (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
-
-let inspect_literal_or value f =
-  match value with
-  | Truth     -> "true"
-  | Lies      -> "false"
-  | Nil       -> "nil"
-  | Int(n)    -> string_of_int n
-  | Symbol(s) -> ":" ^ s
-  | _         -> f value
-
-let rec inspect_value value =
-  inspect_literal_or value (fun x ->
-    match value with
-    | Tuple(xs)
-    -> "[" ^ (String.concat ", " (List.map inspect_value xs)) ^ "]"
-    | Record(xs)
-    -> "{" ^ (String.concat ", " (Table.map_list
-                (fun k v -> k ^ ": " ^ (inspect_value v)) xs)) ^ "}"
-    | Lambda(lm)
-    -> "#<Lambda " ^ Location.at(lm.l_location) ^ ">"
-    | TvarTy     -> "TypeVariable"
-    | BooleanTy  -> "Boolean"
-    | NilTy      -> "Nil"
-    | IntegerTy  -> "Integer"
-    | SymbolTy   -> "Symbol"
-    | TupleTy(_) | RecordTy(_) | LambdaTy(_)
-    -> "type " ^ (inspect_type value)
-    | Class(k,_) -> k.k_name
-    | Package(p) -> p.p_name
-    | _ -> (string_of_value value))
-
-and inspect_type_pair name ty =
-  name ^ ": " ^ (inspect_type ty)
-
-and inspect_type ty =
-  inspect_literal_or ty (fun x ->
-    match ty with
-    | TvarTy       -> "TypeVariable"
-    | BooleanTy    -> "Boolean"
-    | NilTy        -> "Nil"
-    | IntegerTy    -> "Integer"
-    | SymbolTy     -> "Symbol"
-    | Tvar(tv)     -> "\\" ^ (string_of_int tv)
-    | TupleTy(xs)  -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
-    | RecordTy(xs) -> "{" ^ (String.concat ", " (Table.map_list inspect_type_pair xs)) ^ "}"
-    | LambdaTy(lm)
-    -> (let args_ty =
-          match lm.l_args_ty with
-          | TupleTy(xs) -> List.map inspect_type xs
-          | o -> ["*" ^ (inspect_type o)]
-        in let kwargs_ty =
-          match lm.l_kwargs_ty with
-          | RecordTy(xs) -> Table.map_list inspect_type_pair xs
-          | o -> ["**" ^ (inspect_type o)]
-        in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^
-           ") -> " ^ (inspect_type lm.l_return_ty))
-    | Class(k,_)   -> k.k_name
-    | _            -> "((" ^ (inspect_value ty) ^ "))")
-
-let inspect value =
-  let ty =
-    try  (inspect_type (typeof value))
-    with Failure(_) -> "#<untypable value>"
-  in (inspect_value value) ^ " : " ^ ty
-
-(* Exceptions *)
-
-let exc_fail message locations =
-  raise (Exc {
-    ex_message    = message;
-    ex_locations  = locations;
-  })
-
-let exc_type expected obj =
-  exc_fail (expected ^ " expected; " ^ (inspect obj) ^ " found")
+open Rt
 
 (* Local environment *)
 
@@ -336,7 +54,7 @@ let tenv_resolve env name =
   match Table.get env name with
   | Some tvar -> tvar
   | None ->
-    let tvar = genvar () in
+    let tvar = Rt.genvar () in
       Table.set env name tvar;
       tvar
 
@@ -346,7 +64,7 @@ exception CEnvUnbound
 exception CEnvAlreadyBound of value
 
 let cenv_create () : const_env =
-  ref [pToplevel]
+  ref [!roots.pToplevel]
 
 let cenv_fork env =
   ref !env
@@ -378,9 +96,11 @@ let cenv_lookup env name =
 
 (* Eval helper routines *)
 
+type env = local_env * type_env * const_env
+
 let env_create () =
   let lenv = lenv_create None
-  in lenv_bind lenv "self" ~value:(Package pToplevel)
+  in lenv_bind lenv "self" ~value:(Package !roots.pToplevel)
                            ~is_mutable:false
                            ~loc:Location.empty;
      lenv, tenv_create (), cenv_create ()
@@ -651,6 +371,9 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
             iv_kind     = kind;
           });
       Nil)
+  | Syntax.InvokePrimitive(_,name,args)
+  -> (let args = List.map (eval_expr env) args in
+        Primitive.invoke name args)
   | _
   -> failwith ("cannot eval " ^
                (Unicode.assert_utf8s
