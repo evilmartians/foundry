@@ -623,15 +623,21 @@ module Std = struct
     let chr  = char_of_int
     let code = int_of_char
 
-    let escaped (chr : char) =
+    let escaped chr =
       let v = code chr in
         if v > 0xffff then
-          (Printf.printf "\\u{%06x}" v)
+          (Printf.sprintf "\\u{%06x}" v)
         else
-          (Printf.printf "\\u%04x" v)
+          (Printf.sprintf "\\u%04x" v)
   end
 
   module String = struct
+    let get str pos =
+      List.nth (utf32s_of_utf8s str) pos
+
+    let set str pos chr =
+      raise (Invalid_argument "String.set does not work on utf8s")
+
     let concat (sep : utf8s) (lst : utf8s list) =
       assert_utf8s (String.concat (sep :> latin1s) (lst :> latin1s list))
 

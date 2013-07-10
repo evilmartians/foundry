@@ -140,7 +140,17 @@ module Std : sig
   val invalid_arg   : string -> 'a
   val failwith      : string -> 'a
 
+  module Char : sig
+    val chr     : int -> char
+    val code    : char -> int
+
+    val escaped : char -> utf8s
+  end
+
   module String : sig
+    val get    : string -> int -> char
+    val set    : string -> int -> char -> unit
+
     val make   : int -> char -> string
     val concat : string -> string list -> string
   end

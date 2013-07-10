@@ -24,8 +24,9 @@ let process code ~do_eval =
       | problems ->
         Diagnostics problems
   with
-  | Lexer.Unexpected (chr, loc) ->
-    Diagnostics [u"Unexpected character " ^ chr, [loc]]
+  | Lexer.Unexpected (loc, chr) ->
+    Diagnostics [u"Unexpected character " ^ (Char.escaped chr) ^
+                 u" (" ^ (String.make 1 chr) ^ u")", [loc]]
   | Parser.StateError (token, state) ->
     (match token with
     | Parser_tokens.EOF _ when not do_eval

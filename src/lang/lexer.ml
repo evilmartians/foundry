@@ -1,7 +1,7 @@
 open Unicode.Std
 open Parser_tokens
 
-exception Unexpected of string * Location.t
+exception Unexpected of Location.t * char
 
 (* Token helpers *)
 
@@ -9,8 +9,11 @@ let lexeme lexbuf =
   (Unicode.adopt_utf8s (Ulexing.utf8_lexeme lexbuf))
 
 let sub_lexeme lexbuf from to_ =
-  let len = if to_ <= 0 then (Ulexing.lexeme_length lexbuf) + to_
-                        else to_ - from
+  let from = if from < 0 then (Ulexing.lexeme_length lexbuf) + from
+                         else from
+  in
+  let len  = if to_ <= 0 then (Ulexing.lexeme_length lexbuf) + to_
+                         else to_ - from
   in (Unicode.adopt_utf8s (Ulexing.utf8_sub_lexeme lexbuf from len))
 
 let locate lexbuf =
@@ -28,7 +31,7 @@ let eof lexbuf =
     eof
 
 let unexpected lexbuf =
-  let error = Unexpected (lexeme lexbuf, locate lexbuf) in
+  let error = Unexpected (locate lexbuf, (lexeme lexbuf).[0]) in
     Location.finish_file (Ulexing.lexeme_start lexbuf);
     raise error
 
@@ -161,13 +164,14 @@ let rec lex_code state = lexer
 | "mixin"  -> Kw_MIXIN   (locate lexbuf, lexeme lexbuf)
 | "iface"  -> Kw_IFACE   (locate lexbuf, lexeme lexbuf)
 | "def"    -> Kw_DEF     (locate lexbuf, lexeme lexbuf)
+| "new"    -> Kw_NEW     (locate lexbuf, lexeme lexbuf)
 | "return" -> Kw_RETURN  (locate lexbuf, lexeme lexbuf)
 
 | "invokeprimitive" -> Kw_INVOKE (locate lexbuf, lexeme lexbuf)
 
 (* Values *)
 | digits          -> Vl_INT    (locate lexbuf, int_of_string (lexeme lexbuf))
-| digits id_alpha -> failwith  "trailing junk in a number"
+| digits id_alpha -> raise (Unexpected (locate lexbuf, (sub_lexeme lexbuf (-1) (-1)).[0]))
 | ':' method_name -> Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 0)
 | '\''            -> goto state lex_string;
                      Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING)
