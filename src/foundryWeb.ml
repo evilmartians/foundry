@@ -15,10 +15,11 @@ let process code ~do_eval =
     let ast = parse lex in
       match Verifier.check ast with
       | [] ->
-        if do_eval then
+        if do_eval then begin
+          Rt.reset ();
           let env = Vm.env_create () in
             Output (Rt.inspect (Vm.eval env ast))
-        else
+        end else
           Output (u"")
       | problems ->
         Diagnostics problems

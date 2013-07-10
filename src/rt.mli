@@ -107,11 +107,12 @@ with sexp
 val exc_fail      : string -> Location.t list -> 'a
 val exc_type      : string -> value -> Location.t list -> 'a
 
-val genvar        : unit  -> tvar
 val typeof        : value -> value
 val inspect_value : value -> string
 val inspect_type  : value -> string
 val inspect       : value -> string
+
+val genvar        : unit -> tvar
 
 type roots = {
   kClass          : klass;
@@ -127,6 +128,8 @@ type roots = {
 }
 
 val roots         : roots ref
+
+val reset         : unit -> unit
 
 val new_class     : ?ancestor:klass -> string -> klass
 val new_package   : string -> package

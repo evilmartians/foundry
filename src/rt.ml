@@ -107,6 +107,12 @@ with sexp
 
 (* Class tooling & default virtual image *)
 
+let lastvar = ref 0
+
+let genvar () : tvar =
+  incr lastvar;
+  !lastvar
+
 type roots = {
   kClass          : klass;
   kTypeVariable   : klass;
@@ -189,6 +195,10 @@ let rec make_roots () =
 
 let roots = ref (make_roots ())
 
+let reset () =
+  roots   := make_roots ();
+  lastvar := 0
+
 let new_class ?ancestor name =
   let meta_ancestor =
     Option.map_default (fun k -> k.k_ancestor) None ancestor
@@ -203,11 +213,6 @@ let new_package name =
   }
 
 (* Types and type variables *)
-
-let lastvar = ref 0
-let genvar () : tvar =
-  incr lastvar;
-  !lastvar
 
 let rec typeof value =
   match value with
