@@ -286,10 +286,6 @@ let exc_type expected obj =
 
 (* Local environment *)
 
-exception LEnvUnbound
-exception LEnvAlreadyBound of binding
-exception LEnvImmutable    of binding
-
 let lenv_create parent : local_env =
   { e_parent   = parent;
     e_bindings = Table.create [] }
@@ -297,7 +293,7 @@ let lenv_create parent : local_env =
 let lenv_bind env name ~loc ~is_mutable ~value =
   match Table.get env.e_bindings name with
   | Some(b)
-  -> raise (LEnvAlreadyBound b)
+  -> assert false
   | None
   -> Table.set env.e_bindings name {
     b_location   = loc;
@@ -307,8 +303,8 @@ let lenv_bind env name ~loc ~is_mutable ~value =
 
 let rec lenv_mutate env name ~value =
   match Table.get env.e_bindings name with
-  | Some({ b_is_mutable = false } as b)
-  -> raise (LEnvImmutable b)
+  | Some({ b_is_mutable = false })
+  -> assert false
   | Some b
   -> Table.set env.e_bindings name {
     b_location   = b.b_location;
@@ -318,7 +314,7 @@ let rec lenv_mutate env name ~value =
   | None
   -> match env.e_parent with
      | Some parent -> lenv_mutate parent name value
-     | None -> raise LEnvUnbound
+     | None -> assert false
 
 let rec lenv_lookup env name =
   match Table.get env.e_bindings name with
@@ -326,7 +322,7 @@ let rec lenv_lookup env name =
   | None
   -> match env.e_parent with
      | Some parent -> lenv_lookup parent name
-     | None -> raise LEnvUnbound
+     | None -> assert false
 
 (* Type environment *)
 
@@ -434,18 +430,11 @@ and eval_record env elem =
      | o -> exc_type "Symbol" o [Syntax.loc k])
 
 and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
-  let bind name ~is_mutable ~value ~loc =
-    try
-      lenv_bind lenv name ~is_mutable ~value ~loc
-    with LEnvAlreadyBound({ b_location = bound_loc }) ->
-      exc_fail ("Name " ^ name ^ " is already bound") [loc; bound_loc]
-  in
-
   match lhs with
   | Syntax.PatImmutable((loc,_),name)
-  -> bind name ~is_mutable:false ~value ~loc
+  -> lenv_bind lenv name ~is_mutable:false ~value ~loc
   | Syntax.PatMutable((loc,_),name)
-  -> bind name ~is_mutable:true ~value ~loc
+  -> lenv_bind lenv name ~is_mutable:true ~value ~loc
   | Syntax.PatTuple((loc,_),pats)
   -> (match value with
       | Tuple(xs)
@@ -462,13 +451,7 @@ and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
 and eval_assign (lenv, tenv, cenv) lhs value =
   match lhs with
   | Syntax.Var((loc,_),name)
-  -> (try
-        lenv_mutate lenv name ~value:value
-      with
-      | LEnvImmutable({ b_location = bound_loc }) ->
-        exc_fail ("Name " ^ name ^ " is bound as immutable") [loc; bound_loc]
-      | LEnvUnbound ->
-        exc_fail ("Name " ^ name ^ " is not bound") [loc])
+  -> lenv_mutate lenv name ~value:value
   | Syntax.Const((loc,_),name)
   -> (try
         cenv_bind cenv name value
@@ -507,35 +490,27 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
         l_return_ty = as_type ret;
       })
   | Syntax.TypeConstr((loc,_),name,args)
-  -> (match name with (* TODO TODO TODO !!!
-      | "Tuple"
-      -> exc_fail "Use [...] syntax to construct tuple types" [loc]
-      | "Record"
-      -> exc_fail "Use {...} syntax to construct record types" [loc]
-      | "Lambda"
-      -> exc_fail "Use (...) -> ... syntax to construct lambda types" [loc] *)
-      | _
-      -> (try
-            match cenv_lookup cenv name with
-            | (NilTy | BooleanTy | IntegerTy | SymbolTy | TvarTy) as ty
-            -> (match args with
-                | [] -> ty
-                | _  -> exc_fail ("Type " ^ name ^ " is not parametric") [loc])
-            | Class(klass,specz)
-            -> (let new_specz =
-                  Table.create (List.map
-                    (fun ((loc,_), name, expr) ->
-                      if Table.exists klass.k_tvars name then
-                        name, eval_type env expr
-                      else
-                        exc_fail ("Type " ^ klass.k_name ^
-                                  " is not parametric by " ^ name) [loc]) args)
-                in Class(klass, Table.join specz new_specz))
-            | value
-            -> exc_fail ("Name " ^ name ^ " is bound to " ^ (inspect value) ^
-                         " which is not a type") [loc]
-          with CEnvUnbound ->
-            exc_fail ("Name " ^ name ^ " is unbound") [loc]))
+  -> (try
+        match cenv_lookup cenv name with
+        | (NilTy | BooleanTy | IntegerTy | SymbolTy | TvarTy) as ty
+        -> (match args with
+            | [] -> ty
+            | _  -> exc_fail ("Type " ^ name ^ " is not parametric") [loc])
+        | Class(klass,specz)
+        -> (let new_specz =
+              Table.create (List.map
+                (fun ((loc,_), name, expr) ->
+                  if Table.exists klass.k_tvars name then
+                    name, eval_type env expr
+                  else
+                    exc_fail ("Type " ^ klass.k_name ^
+                              " is not parametric by " ^ name) [loc]) args)
+            in Class(klass, Table.join specz new_specz))
+        | value
+        -> exc_fail ("Name " ^ name ^ " is bound to " ^ (inspect value) ^
+                     " which is not a type") [loc]
+      with CEnvUnbound ->
+        exc_fail ("Name " ^ name ^ " is unbound") [loc])
   | Syntax.TypeSplice(_,expr)
   -> eval_expr env expr
 
@@ -571,10 +546,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
         eval_pattern env pat value;
         value)
   | Syntax.Var(loc,name)
-  -> (try
-        lenv_lookup lenv name
-      with LEnvUnbound ->
-        exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
+  -> lenv_lookup lenv name
   | Syntax.Self(loc)
   -> lenv_lookup lenv "self"
   | Syntax.Const(loc,name)

@@ -60,6 +60,7 @@ and actual_args = actual_arg list
 and formal_arg =
   | FormalSelf      of nullary
   | FormalArg       of nullary    * string
+  | FormalOptArg    of operator   * string * expr
   | FormalRest      of operator   * string
   | FormalKwArg     of nullary    * string
   | FormalKwOptArg  of operator   * string * expr
@@ -111,11 +112,11 @@ and expr =
   | And             of operator   * expr * expr
   | Or              of operator   * expr * expr
   | Not             of operator   * expr
-  | Send            of send       * expr * string * actual_args
   | Tuple           of collection * tuple_elems
   | Record          of collection * record_elems
   | Quote           of collection * quote * quote_elems
   | Begin           of collection * exprs
+  | Send            of send       * expr * string * actual_args
   | Lambda          of collection * formal_args * ty option * expr
   | Let             of operator   * pattern * ty option * expr
   | Assign          of operator   * expr * expr

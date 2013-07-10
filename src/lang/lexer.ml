@@ -9,8 +9,8 @@ let lexeme lexbuf =
   (Unicode.adopt_utf8s (Ulexing.utf8_lexeme lexbuf))
 
 let sub_lexeme lexbuf from to_ =
-  let len = if to_ < 0 then (Ulexing.lexeme_length lexbuf) + to_
-                       else to_ - from
+  let len = if to_ <= 0 then (Ulexing.lexeme_length lexbuf) + to_
+                        else to_ - from
   in (Unicode.adopt_utf8s (Ulexing.utf8_sub_lexeme lexbuf from len))
 
 let locate lexbuf =
@@ -84,7 +84,7 @@ let rec lex_code state = lexer
                  lex_code state lexbuf
 
 (* Punctuation *)
-| operator '=' -> Tk_OP_ASGN  (locate lexbuf, sub_lexeme lexbuf 0 (-2))
+| operator '=' -> Tk_OP_ASGN  (locate lexbuf, sub_lexeme lexbuf 0 (-1))
 | "and="       -> Tk_AND_ASGN (locate lexbuf)
 | "or="        -> Tk_OR_ASGN  (locate lexbuf)
 
@@ -166,7 +166,7 @@ let rec lex_code state = lexer
 (* Values *)
 | digits          -> Vl_INT    (locate lexbuf, int_of_string (lexeme lexbuf))
 | digits id_alpha -> failwith  "trailing junk in a number"
-| ':' method_name -> Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 (-1))
+| ':' method_name -> Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 0)
 | '\''            -> goto state lex_string;
                      Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING)
 | '"'             -> goto state lex_string_interp;
@@ -177,11 +177,11 @@ let rec lex_code state = lexer
                      Vl_BEGIN  (locate lexbuf, Syntax.Qu_SYMBOL)
 
 (* Identifiers *)
-| ident ':'       -> Id_LABEL (locate lexbuf, sub_lexeme lexbuf 0 (-2))
+| ident ':'       -> Id_LABEL (locate lexbuf, sub_lexeme lexbuf 0 (-1))
 | local           -> Id_LOCAL (locate lexbuf, lexeme lexbuf)
 | const           -> Id_CONST (locate lexbuf, lexeme lexbuf)
-| '@'  ident      -> Id_IVAR  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
-| '\\' ident      -> Id_TVAR  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
+| '@'  ident      -> Id_IVAR  (locate lexbuf, sub_lexeme lexbuf 1 0)
+| '\\' ident      -> Id_TVAR  (locate lexbuf, sub_lexeme lexbuf 1 0)
 
 | _               -> unexpected lexbuf
 | eof             -> eof lexbuf
@@ -200,7 +200,7 @@ and lex_string_interp state = lexer
                        Vl_END (locate lexbuf)
 | "\\\\"            -> Vl_STRING  (locate lexbuf, "\\")
 | "\\\""            -> Vl_STRING  (locate lexbuf, "\"")
-| "\\" _            -> Vl_STRING  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
+| "\\" _            -> Vl_STRING  (locate lexbuf, sub_lexeme lexbuf 1 0)
 | "#{"              -> push state lex_code; ignore (curly state 1);
                        Vl_UNQUOTE (locate lexbuf)
 | '#'               -> Vl_STRING  (locate lexbuf, "#")
