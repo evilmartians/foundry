@@ -5,10 +5,20 @@ module Tokens = Parser_tokens
 
 let message = function
 | "class" -> function
-  | _   -> "Class name should be a constant (not %s)."
+  | _ -> "Class name should be a constant (not %s)."
+
 | "def" -> function
   | _ -> "`def' keyword can define instance variables and methods (not %s)."
-(*| "mixin" -> function
+| "def foo" -> function
+  | _ -> "Function name should be followed by parentheses, even empty (not %s)."
+
+| "1 +" | "1 -" | "1 *" | "1 /" | "1 %" | "1 &" | "1 |" | "1 <<"
+| "1 >>" | "1 >>>" | "1 ==" | "1 <" | "1 >" | "1 <=" | "1 >=" | "1 <=>"
+| "~" | "-" | "+" -> function
+  | _ -> "Operator should be followed by an expression (not %s)."
+
+(*
+| "mixin" -> function
   | _ -> "Mixin name cannot be %s."
 | "package" -> function
   | _ -> "Package name cannot be %s."

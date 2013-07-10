@@ -19,14 +19,16 @@ CodeMirror.defineMode('foundry', function(config) {
   return {
     startState: function() {
       return {
-        indentation: 0,
-        inDef:       false
+        indentation:  0,
+        indentedLine: false,
+        inDef:        false
       };
     },
 
     token: function(stream, state) {
       if(stream.sol()) {
-        state.indentation = stream.indentation();
+        state.indentation  = stream.indentation();
+        state.indentedLine = false;
       }
 
       if(stream.match(/[ \t]+/, true)) {
@@ -41,7 +43,8 @@ CodeMirror.defineMode('foundry', function(config) {
       } else if(stream.match(/[{}\[\]()]/, true)) {
         if(stream.current() == "{") {
           state.indentation += config.indentUnit;
-        } else if(stream.current() == "}") {
+          state.indentedLine = true;
+        } else if(stream.current() == "}" && state.indentedLine) {
           state.indentation -= config.indentUnit;
         }
 
@@ -58,18 +61,20 @@ CodeMirror.defineMode('foundry', function(config) {
         if(keywords[match[0]] && !wasInDef) {
           if(indentWords[stream.current()]) {
             state.indentation += config.indentUnit;
+            state.indentedLine = true;
+          } else if(dedentWords[stream.current()] && state.indentedLine) {
+            state.indentation -= config.indentUnit;
           }
 
           if(match[0] == "def") {
             state.inDef = true;
-          } else if(dedentWords[stream.current()]) {
-            state.indentation -= config.indentUnit;
           }
 
           return "keyword";
         } else {
           if(wasInDef) {
             state.indentation += config.indentUnit;
+            state.indentedLine = true;
             return "variable";
           } else {
             return null;

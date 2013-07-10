@@ -7,27 +7,35 @@ type result =
   | Diagnostics of diagnostic list
   | Error       of string
 
-let eval str =
-  let env      = Vm.env_create () in
-  let lexbuf   = Ulexing.from_utf8_string str in
+let process code ~do_eval =
+  let lexbuf   = Ulexing.from_utf8_string code in
   let lexstate = Lexer.create (u"input") 1 in
   let lex ()   = Lexer.next lexstate lexbuf in
   let parse    = MenhirLib.Convert.Simplified.traditional2revised Parser.toplevel in
 
   try
-    Output (Vm.inspect (Vm.eval env (parse lex)))
+    let ast = parse lex in
+      if do_eval then
+        let env = Vm.env_create () in
+          Output (Vm.inspect (Vm.eval env ast))
+      else
+        Output (u"")
   with
+  | Lexer.Unexpected (chr, loc) ->
+    Diagnostics [u"Unexpected character " ^ chr, [loc]]
+  | Parser.StateError (token, state) ->
+    (match token with
+    | Parser_tokens.EOF _ when not do_eval
+    -> Output (u"")
+    | _
+    -> Diagnostics [Unicode.assert_utf8s (Parser_errors.message state token),
+                   [Parser_desc.loc_of_token token]])
   | Vm.Exc exc ->
     Diagnostics [exc.Vm.ex_message, exc.Vm.ex_locations]
-  | Lexer.Unexpected (str, loc) ->
-    Diagnostics [u"Unexpected character " ^ str, [loc]]
-  | Parser.StateError (token, state) ->
-    Diagnostics [Unicode.assert_utf8s (Parser_errors.message state token),
-                 [Parser_desc.loc_of_token token]]
   | Failure msg ->
     Error (Unicode.assert_utf8s msg)
 
-let js_eval input =
+let js_eval input do_eval =
   let inject = Js.Unsafe.inject
   in
   let js_string str =
@@ -42,8 +50,9 @@ let js_eval input =
       ("value", inject value)
     |]
   in
-  let input = Js.to_string input in
-    match eval input with
+  let input   = Js.to_string input in
+  let do_eval = Js.to_bool do_eval in
+    match process input ~do_eval with
     | Output value
     -> return "output" (js_string value)
 
@@ -71,4 +80,4 @@ let js_eval input =
     -> return "error" (js_string desc)
 
 let _ =
-  (Js.Unsafe.coerce Dom_html.window)##foundryEval <- Js.wrap_callback js_eval
+  (Js.Unsafe.coerce Dom_html.window)##foundryProcess <- Js.wrap_callback js_eval

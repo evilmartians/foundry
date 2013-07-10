@@ -125,7 +125,7 @@ let rec lex_code state = lexer
 | '~'      -> Tk_TILDE   (locate lexbuf, lexeme lexbuf)
 | "<<"     -> Tk_LSHFT   (locate lexbuf, lexeme lexbuf)
 | ">>"     -> Tk_RSHFT   (locate lexbuf, lexeme lexbuf)
-| ">>>"    -> Tk_TILDE   (locate lexbuf, lexeme lexbuf)
+| ">>>"    -> Tk_ARSHFT  (locate lexbuf, lexeme lexbuf)
 | "=="     -> Tk_EQ      (locate lexbuf, lexeme lexbuf)
 | "<="     -> Tk_LEQ     (locate lexbuf, lexeme lexbuf)
 | '<'      -> Tk_LT      (locate lexbuf, lexeme lexbuf)

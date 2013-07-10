@@ -354,6 +354,51 @@ $(function() {
     $("#repl-output").hide();
   });
 
+  function analyze(gotoError) {
+    /* Reset */
+    diagnostics.clear();
+
+    /* Analyze */
+    var code = editor.getValue(), result;
+
+    try {
+      var result = foundryProcess(code, false);
+    } catch(e) {
+      return;
+    }
+
+    /* Display */
+    if(result.type == "diagnostics") {
+      result.value.forEach(function(desc, index) {
+        var diagnostic = diagnostics.addDiagnostic(desc.message, desc.locations);
+
+        if(gotoError && index == 0){
+          diagnostic.focus();
+        } else {
+          var cursor  = editor.indexFromPos(editor.getCursor());
+          var mainLoc = desc.locations[0];
+
+          if(cursor >= mainLoc.from && cursor <= mainLoc.to) {
+            diagnostic.expand();
+          }
+        }
+      });
+    }
+  }
+
+  var analyzeTimer = null;
+
+  editor.on('change', function() {
+    if(analyzeTimer) {
+      clearTimeout(analyzeTimer);
+    }
+
+    analyzeTimer = setTimeout(function() {
+      analyze();
+      analyzeTimer = null;
+    }, 300);
+  })
+
   function compile() {
     /* Reset */
     diagnostics.clear();
@@ -365,7 +410,7 @@ $(function() {
     window.localStorage["code"] = code;
 
     try {
-      result = foundryEval(code);
+      result = foundryProcess(code, true);
     } catch(e) {
       $("#repl-output .output").text("Shit broke really hard: " + e.toString());
       $("#repl-output").addClass("alert-error").show();
@@ -390,5 +435,6 @@ $(function() {
     }
   };
 
+  analyze(true);
   $("#repl-run").click(compile);
 });
