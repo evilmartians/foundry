@@ -606,6 +606,11 @@ module Std = struct
   let sexp_of_string (v : utf8s) =
     Sexplib.Std.sexp_of_string (v :> latin1s)
 
+  let string_of_sexp v =
+    assert_utf8s (Sexplib.Std.string_of_sexp v)
+  let sexp_of_string (v : utf8s) =
+    Sexplib.Std.sexp_of_string (v :> latin1s)
+
   let (^) (lhs : utf8s) (rhs : utf8s) =
     assert_utf8s ((lhs :> latin1s) ^ (rhs :> latin1s))
 
@@ -650,5 +655,21 @@ module Std = struct
         else (String.blit chr 0 str pos chrlen;
               blit (pos + chrlen) (count - 1))
       in blit 0 length
+  end
+
+  module Fy_big_int = struct
+    include Fy_big_int
+
+    let string_of_big_int v =
+      assert_utf8s (Fy_big_int.string_of_big_int v)
+    let big_int_of_string v =
+      Fy_big_int.big_int_of_string (v :> latin1s)
+
+    let sexp_of_big_int v =
+      Sexplib.Sexp.Atom (Fy_big_int.string_of_big_int v)
+    let big_int_of_sexp v =
+      match v with
+      | Sexplib.Sexp.Atom a -> Fy_big_int.big_int_of_string a
+      | _ -> assert false
   end
 end

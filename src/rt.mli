@@ -1,4 +1,5 @@
 open Unicode.Std
+open Fy_big_int
 
 type tvar
 with sexp_of
@@ -12,7 +13,7 @@ type value =
 | Truth
 | Lies
 | BooleanTy
-| Int           of int
+| Integer       of big_int
 | IntegerTy
 | Symbol        of string
 | SymbolTy

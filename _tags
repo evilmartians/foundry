@@ -2,5 +2,5 @@ true: debug, use_menhir
 
 <**/*>: -include, -traverse
 
-<{src,ucs,merr}>: traverse
-<src>: include
+<{ucs,merr}>: traverse
+<{src,ocaml-num}>: include

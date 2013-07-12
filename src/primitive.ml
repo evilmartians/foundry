@@ -1,9 +1,10 @@
 open Unicode.Std
+open Fy_big_int
 open Rt
 
 let int_binop op =
   let f args =
-    let Int(lhs), Int(rhs) = args in Int(op lhs rhs)
+    let Integer(lhs), Integer(rhs) = args in Integer(op lhs rhs)
   in f
 
 let prim0 = Table.create []
@@ -11,11 +12,11 @@ let prim0 = Table.create []
 let prim1 = Table.create []
 
 let prim2 = Table.create [
-  "int_add", int_binop (+);
-  "int_sub", int_binop (-);
-  "int_mul", int_binop ( * );
-  "int_div", int_binop (/);
-  "int_mod", int_binop (mod);
+  "int_add", int_binop add_big_int;
+  "int_sub", int_binop sub_big_int;
+  "int_mul", int_binop mult_big_int;
+  "int_div", int_binop div_big_int;
+  "int_mod", int_binop mod_big_int;
 ]
 
 let exists name arity =

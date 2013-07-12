@@ -1,5 +1,6 @@
 open Sexplib.Std
 open Unicode.Std
+open Fy_big_int
 
 (* Enumerations *)
 
@@ -104,7 +105,7 @@ and expr =
   | Truth           of nullary (* true  *)
   | Lies            of nullary (* false *)
   | Nil             of nullary
-  | Int             of nullary    * int
+  | Int             of nullary    * big_int
   | Sym             of nullary    * string
   | Var             of nullary    * string
   | TVar            of nullary    * string

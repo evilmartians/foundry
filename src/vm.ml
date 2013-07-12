@@ -288,7 +288,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Nil(_)   -> Nil
   | Syntax.Truth(_) -> Truth
   | Syntax.Lies(_)  -> Lies
-  | Syntax.Int(_,x) -> Int(x)
+  | Syntax.Int(_,x) -> Integer(x)
   | Syntax.Sym(_,x) -> Symbol(x)
 
   | Syntax.Tuple(_,xs)

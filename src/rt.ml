@@ -1,5 +1,6 @@
 open Sexplib.Std
 open Unicode.Std
+open Fy_big_int
 
 type tvar = int
 with sexp_of
@@ -13,7 +14,7 @@ type value =
 | Truth
 | Lies
 | BooleanTy
-| Int           of int
+| Integer       of big_int
 | IntegerTy
 | Symbol        of string
 | SymbolTy
@@ -227,7 +228,7 @@ let rec typeof value =
   | Nil           -> NilTy
 
   | Tvar(_)       -> TvarTy
-  | Int(_)        -> IntegerTy
+  | Integer(_)    -> IntegerTy
   | Symbol(_)     -> SymbolTy
   | Tuple(xs)     -> TupleTy(List.map typeof xs)
   | Record(xs)    -> RecordTy(Table.map (fun v -> typeof v) xs)
@@ -267,12 +268,12 @@ let string_of_value value =
 
 let inspect_literal_or value f =
   match value with
-  | Truth     -> "true"
-  | Lies      -> "false"
-  | Nil       -> "nil"
-  | Int(n)    -> string_of_int n
-  | Symbol(s) -> ":" ^ s
-  | _         -> f value
+  | Truth      -> "true"
+  | Lies       -> "false"
+  | Nil        -> "nil"
+  | Integer(n) -> string_of_big_int n
+  | Symbol(s)  -> ":" ^ s
+  | _          -> f value
 
 let rec inspect_value value =
   inspect_literal_or value (fun x ->

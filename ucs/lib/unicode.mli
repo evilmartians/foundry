@@ -154,4 +154,16 @@ module Std : sig
     val make   : int -> char -> string
     val concat : string -> string list -> string
   end
+
+  module Fy_big_int : sig
+    type big_int = Fy_big_int.big_int
+
+    include module type of Fy_big_int with type big_int := big_int
+
+    val string_of_big_int : big_int -> string
+    val big_int_of_string : string -> big_int
+
+    val big_int_of_sexp   : Sexplib.Sexp.t -> big_int
+    val sexp_of_big_int   : big_int -> Sexplib.Sexp.t
+  end
 end

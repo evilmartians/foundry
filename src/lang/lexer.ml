@@ -1,4 +1,5 @@
 open Unicode.Std
+open Fy_big_int
 open Parser_tokens
 
 exception Unexpected of Location.t * char
@@ -169,7 +170,7 @@ let rec lex_code state = lexer
 | "invokeprimitive" -> Kw_INVOKE (locate lexbuf, lexeme lexbuf)
 
 (* Values *)
-| digits          -> Vl_INT    (locate lexbuf, int_of_string (lexeme lexbuf))
+| digits          -> Vl_INT    (locate lexbuf, big_int_of_string (lexeme lexbuf))
 | digits id_alpha -> raise (Unexpected (locate lexbuf, (sub_lexeme lexbuf (-1) (-1)).[0]))
 | ':' method_name -> Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 (-1))
 | '\''            -> goto state lex_string;
