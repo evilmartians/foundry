@@ -459,20 +459,57 @@ and eval_lambda body args kwargs =
   let cenv = cenv_fork   body.l_const_env in
   let env  = (lenv, tenv, cenv) in
 
-  let rec bind_args f_args args =
-    match f_args with
-    | Syntax.FormalSelf((loc,_)) :: f_rest
-    -> (match args with
-        | arg :: rest
-        -> lenv_bind lenv "self" ~loc:loc ~is_mutable:false ~value:arg;
-           bind_args f_rest rest)
-    | Syntax.FormalArg((loc,_),name) :: f_rest
-    -> (match args with
-        | arg :: rest
-        -> lenv_bind lenv name ~loc:loc ~is_mutable:false ~value:arg)
-    | [] -> ()
+  let rec bind name ~loc ~value ~f_rest ~rest ~kwseen =
+    lenv_bind lenv name ~loc ~is_mutable:false ~value;
+    bind_args f_rest rest kwseen
+
+  and bind_args f_args args kwseen =
+    match f_args, args with
+    | Syntax.FormalSelf((loc,_)) :: f_rest,
+      value :: rest
+    -> bind "self" ~loc ~value ~f_rest ~rest ~kwseen
+
+    | Syntax.FormalArg((loc,_),name) :: f_rest,
+      value :: rest
+    | Syntax.FormalOptArg((loc,_),name,_) :: f_rest,
+      value :: rest
+    -> bind name ~loc ~value ~f_rest ~rest ~kwseen
+
+    | Syntax.FormalOptArg((loc,_),name,expr) :: f_rest,
+      []
+    -> bind name ~loc ~value:(eval_expr env expr) ~f_rest ~rest:[] ~kwseen
+
+    | Syntax.FormalRest((loc,_),name) :: f_rest,
+      rest
+    -> bind name ~loc ~value:(Tuple rest) ~f_rest ~rest:[] ~kwseen
+
+    | Syntax.FormalKwArg((loc,_),name) :: f_rest,
+      rest
+    -> (let value =
+          match Table.get kwargs name with
+          | Some v -> v
+        in bind name ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
+
+    | Syntax.FormalKwOptArg((loc,_),name,expr) :: f_rest,
+      rest
+    -> (let value =
+          match Table.get kwargs name with
+          | Some v -> v
+          | None   -> eval_expr env expr
+        in bind name ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
+
+    | Syntax.FormalKwRest((loc,_),name) :: f_rest,
+      rest
+    -> (let value  = Record (Table.except_keys kwargs kwseen) in
+        let kwseen = Table.keys kwargs in
+          bind name ~loc ~value ~f_rest ~rest ~kwseen)
+
+    | [], []
+    -> (if kwseen <> (Table.keys kwargs) then
+          assert false
+        else ())
   in
-    bind_args body.l_args args;
+    bind_args body.l_args args [];
     eval env body.l_code
 
 and eval env exprs =

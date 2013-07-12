@@ -178,13 +178,16 @@
               | id=Id_LABEL default=option(expr)
                 { let (label_loc, label) = id in
                     match default with
-                    | Some expr ->
-                      Syntax.FormalKwOptArg (op_unary label_loc expr, label, expr)
-                    | None ->
-                      Syntax.FormalKwArg (nullary label_loc, label) }
+                    | Some expr
+                    -> Syntax.FormalKwOptArg (op_unary label_loc expr, label, expr)
+                    | None
+                    -> Syntax.FormalKwArg (nullary label_loc, label) }
               | op=Tk_DSTAR id=Id_LOCAL
                 { let (name_loc, name) = id in
                     Syntax.FormalKwRest (unary (fst op) name_loc, name) }
+              | id=Id_LOCAL op=Tk_ASGN expr=expr
+                { let (name_loc, name) = id in
+                    Syntax.FormalOptArg (binary name_loc op (Syntax.loc expr), name, expr) }
 
          f_arg: arg=f_local_arg
               | arg=f_prefix_arg

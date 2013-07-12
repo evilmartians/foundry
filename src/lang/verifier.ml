@@ -134,6 +134,7 @@ and check_lambda cx f_args ty exprs =
              [loc; optloc]])
         | None, None
         -> check_formal_args args ~opt ~rest ~kwrest)
+
     | FormalOptArg((loc,_),name,expr) :: args
     -> (let ds = bind name ~loc ~is_mutable:false in
         ds @ let ds = check_expr cx expr in
@@ -157,14 +158,27 @@ and check_lambda cx f_args ty exprs =
 
     | FormalKwArg((loc,_),name) :: args
     -> (let ds = bind name ~loc ~is_mutable:false in
-        ds @ check_formal_args args ~opt ~rest ~kwrest)
-    | FormalKwOptArg((_,loc),name,expr) :: args
-    -> (let ds = bind name ~loc:loc.operator ~is_mutable:false in
-        ds @ let ds = check_expr cx expr in
-          ds @ check_formal_args args ~opt ~rest ~kwrest)
+         ds @ match kwrest with
+        | None
+        -> ds @ check_formal_args args ~opt ~rest ~kwrest
+        | Some kwrestloc
+        -> (ignore (check_formal_args args ~opt ~rest ~kwrest);
+            ["Keyword argument cannot follow a keyword rest argument.",
+             [loc; kwrestloc]]))
+
+    | FormalKwOptArg((loc,_),name,expr) :: args
+    -> (let ds = bind name ~loc:loc ~is_mutable:false in
+         ds @ match kwrest with
+        | None
+        -> ds @ check_formal_args args ~opt ~rest ~kwrest
+        | Some kwrestloc
+        -> (ignore (check_formal_args args ~opt ~rest ~kwrest);
+            ["Optional keyword argument cannot follow a keyword rest argument.",
+             [loc; kwrestloc]]))
+
     | FormalKwRest((loc,_),name) :: args
     -> (let ds = bind name ~loc ~is_mutable:false in
-        ds @ match rest with
+        ds @ match kwrest with
         | None
         -> ds @ check_formal_args args ~opt ~rest ~kwrest:(Some loc)
         | Some kwrestloc
@@ -226,6 +240,8 @@ and check_expr cx expr =
         | ActualArg(_,expr)     | ActualSplice(_,expr)
         | ActualKwArg(_,_,expr) | ActualKwSplice(_,expr)
         -> check_expr cx expr
+        | ActualKwPair(_,lhs,rhs)
+        -> check_expr cx @: [lhs; rhs]
       in
       let ds = check_expr cx expr in
         ds @ (check_arg @: args))

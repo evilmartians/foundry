@@ -41,17 +41,22 @@ let join l r =
       Hashtbl.iter (Hashtbl.add table) l;
       Hashtbl.iter (Hashtbl.replace table) r)
 
-let extract_keys table =
+let keys table =
   List.sort (List.of_enum (ExtHashtbl.Hashtbl.keys table))
 
+let except_keys table keys =
+  let table = copy table in
+    List.iter (fun k -> Hashtbl.remove table k) keys;
+    table
+
 let equal_keys table other =
-  (extract_keys table) = (extract_keys other)
+  (keys table) = (keys other)
 
 let diff_keys table other =
   List.fold_left2
     (fun accum tk ok ->
       if tk = ok then accum else ok :: accum)
-    [] (extract_keys table) (extract_keys other)
+    [] (keys table) (keys other)
 
 let includes_keys table other =
   let rec zip table other =
@@ -66,4 +71,4 @@ let includes_keys table other =
     | [], _ :: _ -> false
     (* other is empty, and there may or may not be keys in table -- includes *)
     | _,  []     -> true
-  in zip (extract_keys table) (extract_keys other)
+  in zip (keys table) (keys other)

@@ -4,7 +4,9 @@ open Rt
 
 let int_binop op =
   let f args =
-    let Integer(lhs), Integer(rhs) = args in Integer(op lhs rhs)
+    match args with
+    | Integer(lhs), Integer(rhs) -> Integer(op lhs rhs)
+    | _ -> assert false
   in f
 
 let prim0 = Table.create []

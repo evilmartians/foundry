@@ -17,6 +17,11 @@ val map      : f:('a -> 'b) -> 'a t -> 'b t
 val map_list : f:(string -> 'a -> 'b) -> 'a t -> 'b list
 val join     : 'a t -> 'a t -> 'a t
 
+val keys     : 'a t -> string list
+
+val except_keys   : 'a t -> string list -> 'a t
+
+(* equal_keys table other: Checks that table and other have the same set of keys *)
 val equal_keys    : 'a t -> 'b t -> bool
 
 (* diff_keys table other: Returns the keys in other which are not present in table *)
