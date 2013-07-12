@@ -83,6 +83,7 @@ let name_of_token = function
   | Kw_OR _ -> "Kw_OR"
   | Kw_INVOKE _ -> "Kw_INVOKE"
   | Kw_NEW _ -> "Kw_NEW"
+  | Tk_CARET _ -> "Tk_CARET"
 
 let loc_of_token token =
   match token with
@@ -127,6 +128,7 @@ let loc_of_token token =
   | Tk_COMMA (loc) -> loc
   | Tk_COLON (loc) -> loc
   | Tk_CMP (loc, _) -> loc
+  | Tk_CARET (loc, _) -> loc
   | Tk_ASGN (loc) -> loc
   | Tk_ARSHFT (loc, _) -> loc
   | Tk_ARROW (loc) -> loc

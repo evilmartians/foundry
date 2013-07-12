@@ -41,6 +41,7 @@
 %token <Location.t * Unicode.utf8s> Tk_PERCENT "`%'"
 %token <Location.t * Unicode.utf8s> Tk_AMPER   "`&'"
 %token <Location.t * Unicode.utf8s> Tk_PIPE    "`|'"
+%token <Location.t * Unicode.utf8s> Tk_CARET   "`^'"
 %token <Location.t * Unicode.utf8s> Tk_LSHFT   "`<<'"
 %token <Location.t * Unicode.utf8s> Tk_RSHFT   "`>>'"
 %token <Location.t * Unicode.utf8s> Tk_ARSHFT  "`>>>'"

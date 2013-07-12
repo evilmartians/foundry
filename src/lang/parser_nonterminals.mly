@@ -96,7 +96,7 @@
 %left     Tk_STAR Tk_DIVIDE Tk_PERCENT
 %left     Tk_DSTAR
 %left     Tk_LSHFT Tk_RSHFT Tk_ARSHFT
-%left     Tk_AMPER Tk_PIPE
+%left     Tk_AMPER Tk_PIPE Tk_CARET
 %right    Tk_TILDE Tk_UPLUS Tk_UMINUS
 %nonassoc Tk_LBRACK Tk_DOT
 
@@ -266,7 +266,7 @@
          binop: t=Tk_PLUS   | t=Tk_MINUS | t=Tk_STAR  | t=Tk_DIVIDE | t=Tk_PERCENT
               | t=Tk_DSTAR  | t=Tk_AMPER | t=Tk_PIPE  | t=Tk_LSHFT  | t=Tk_RSHFT
               | t=Tk_ARSHFT | t=Tk_EQ    | t=Tk_LT    | t=Tk_GT     | t=Tk_LEQ
-              | t=Tk_GEQ    | t=Tk_CMP
+              | t=Tk_GEQ    | t=Tk_CMP   | t=Tk_CARET
                 { t }
 
        %inline

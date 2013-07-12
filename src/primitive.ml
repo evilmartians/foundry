@@ -17,6 +17,13 @@ let prim2 = Table.create [
   "int_mul", int_binop mult_big_int;
   "int_div", int_binop div_big_int;
   "int_mod", int_binop mod_big_int;
+  "int_and", int_binop and_big_int;
+  "int_or",  int_binop or_big_int;
+  "int_xor", int_binop xor_big_int;
+  "int_shl", int_binop (fun lhs rhs -> shift_left_big_int  lhs (int_of_big_int rhs));
+  "int_shr", int_binop (fun lhs rhs -> shift_right_big_int lhs (int_of_big_int rhs));
+  "int_cmp", int_binop (fun lhs rhs -> big_int_of_int (compare_big_int lhs rhs));
+  "int_exp", int_binop power_big_int_positive_big_int;
 ]
 
 let exists name arity =

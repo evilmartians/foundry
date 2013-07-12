@@ -125,6 +125,7 @@ let rec lex_code state = lexer
 | '%'      -> Tk_PERCENT (locate lexbuf, lexeme lexbuf)
 | '&'      -> Tk_AMPER   (locate lexbuf, lexeme lexbuf)
 | '|'      -> Tk_PIPE    (locate lexbuf, lexeme lexbuf)
+| '^'      -> Tk_CARET   (locate lexbuf, lexeme lexbuf)
 | '~'      -> Tk_TILDE   (locate lexbuf, lexeme lexbuf)
 | "<<"     -> Tk_LSHFT   (locate lexbuf, lexeme lexbuf)
 | ">>"     -> Tk_RSHFT   (locate lexbuf, lexeme lexbuf)
