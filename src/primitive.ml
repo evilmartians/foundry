@@ -1,16 +1,21 @@
 open Unicode.Std
 open Rt
 
-let prim_int_add args =
-  let Int(lhs), Int(rhs) = args in
-    Int(lhs + rhs)
+let int_binop op =
+  let f args =
+    let Int(lhs), Int(rhs) = args in Int(op lhs rhs)
+  in f
 
 let prim0 = Table.create []
 
 let prim1 = Table.create []
 
 let prim2 = Table.create [
-  "int_add", prim_int_add;
+  "int_add", int_binop (+);
+  "int_sub", int_binop (-);
+  "int_mul", int_binop ( * );
+  "int_div", int_binop (/);
+  "int_mod", int_binop (mod);
 ]
 
 let exists name arity =

@@ -5,6 +5,7 @@ with sexp
 
 val empty       : t
 
+val reset       : unit -> unit
 val start_file  : string -> int -> unit
 val start_line  : int -> unit
 val finish_file : int -> unit

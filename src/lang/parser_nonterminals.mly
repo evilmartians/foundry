@@ -278,7 +278,7 @@
               | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE   | t=Kw_END    | t=Kw_PACKAGE
               | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE  | t=Kw_DEF    | t=Kw_PUBLIC
               | t=Kw_DO    | t=Kw_WHILE | t=Kw_AS     | t=Kw_RETURN | t=Kw_ELSIF
-              | t=Kw_MATCH | t=Kw_META  | t=Kw_INVOKE
+              | t=Kw_MATCH | t=Kw_META  | t=Kw_INVOKE | t=Kw_NEW
               | t=Id_LOCAL | t=unop     | t=binop
                 { t }
 
@@ -331,8 +331,9 @@
               | kw=Kw_DEF id=method_name
                   lp=Tk_LPAREN args=f_args rp=Tk_RPAREN
                   ty=option(ty_decl) Tk_SEMI stmts=compstmt Kw_END
-                { Syntax.DefMethod (nullary (fst id),
-                                    (snd id), args, ty, stmts) }
+                { let self = Syntax.FormalSelf (nullary Loc.empty) in
+                    Syntax.DefMethod (nullary (fst id),
+                                      (snd id), self :: args, ty, stmts) }
                 /* TODO refactor */
               | kw=Kw_DEF id=Id_IVAR ty=ty_decl
                 { Syntax.DefIVar (nullary (fst id),

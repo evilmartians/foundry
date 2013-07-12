@@ -11,6 +11,12 @@ let cur_line = ref 0
 let files    = ref []
 let lines    = ref []
 
+let reset () =
+  cur_pos  := 0;
+  cur_line := 0;
+  files    := [];
+  lines    := []
+
 let start_file file line =
   files    := (file, !cur_pos) :: !files;
   lines    := (line, !cur_pos) :: !lines;

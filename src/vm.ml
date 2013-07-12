@@ -1,5 +1,6 @@
 open Sexplib.Std
 open Unicode.Std
+open ExtList
 open Rt
 
 (* Local environment *)
@@ -246,38 +247,83 @@ and eval_closure_ty (lenv, tenv, cenv) expr =
     (tenv, Tvar (genvar ()))
     expr
 
+and eval_args env lst =
+  let rec eval_args args =
+    match args with
+    | Syntax.ActualArg(_,arg) :: rest
+    -> eval_expr env arg :: eval_args rest
+
+    | Syntax.ActualSplice(_,arg) :: rest
+    -> (match (eval_expr env arg) with
+        | Tuple(t) -> t @ eval_args rest
+        | o        -> exc_type "Tuple" o [Syntax.loc arg])
+
+    | _ :: rest -> eval_args rest
+    | []        -> []
+  in
+  let rec eval_kwargs args table =
+    match args with
+    | Syntax.ActualKwArg(_,k,v) :: rest
+    -> Table.set table k (eval_expr env v);
+       eval_kwargs rest table
+
+    | Syntax.ActualKwSplice(_,expr) :: rest
+    -> (match (eval_expr env expr) with
+        | Record(r) -> eval_kwargs rest (Table.join table r)
+        | o         -> exc_type "Record" o [Syntax.loc expr])
+
+    | Syntax.ActualKwPair(_,k,v) :: rest
+    -> (match (eval_expr env k) with
+        | Symbol(k) -> Table.set table k (eval_expr env v);
+                       eval_kwargs rest table
+        | o         -> exc_type "Symbol" o [Syntax.loc k])
+
+    | _ :: rest -> eval_kwargs rest table
+    | []        -> table
+  in
+  eval_args lst, eval_kwargs lst (Table.create [])
+
 and eval_expr ((lenv, tenv, cenv) as env) expr =
   match expr with
   | Syntax.Nil(_)   -> Nil
   | Syntax.Truth(_) -> Truth
   | Syntax.Lies(_)  -> Lies
   | Syntax.Int(_,x) -> Int(x)
-  (* | Syntax.Sym(_,x) -> Symbol(x) *)
+  | Syntax.Sym(_,x) -> Symbol(x)
+
   | Syntax.Tuple(_,xs)
   -> List.fold_left concat_tuple
         (Tuple []) (List.map (eval_tuple env) xs)
+
   | Syntax.Record(_,xs)
   -> List.fold_left concat_record
         (Record (Table.create [])) (List.map (eval_record env) xs)
+
   | Syntax.Type(_,ty_expr)
   -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
+
   | Syntax.Let(_,pat,_ty,expr)
   -> (let value = eval_expr env expr in
         eval_pattern env pat value;
         value)
+
   | Syntax.Var(loc,name)
   -> lenv_lookup lenv name
+
   | Syntax.Self(loc)
   -> lenv_lookup lenv "self"
+
   | Syntax.Const(loc,name)
   -> (try
         cenv_lookup cenv name
       with CEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
+
   | Syntax.Assign(_,lhs,rhs)
   -> (let value = eval_expr env rhs in
         eval_assign env lhs value;
         value)
+
   | Syntax.Lambda(_,args,ty_expr,body)
   -> (let tenv, ty = eval_closure_ty env ty_expr in
         Lambda {
@@ -285,9 +331,11 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
           l_ty        = ty;
           l_local_env = lenv;
           l_type_env  = tenv;
+          l_const_env = cenv;
           l_args      = args;
           l_code      = [body]
         })
+
   | Syntax.Class((loc,_),name,ancestor,body)
   -> (let ancestor, specz =
         (* Extract ancestor class object and ancestor specialization table *)
@@ -304,13 +352,13 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       let klass =
         match cenv_peek cenv name with
         (* There's an existing one, and it is compatible *)
-        | Some (Class (klass,_) as value) when klass.k_ancestor = ancestor
+        | Some(Class (klass,_) as value) when klass.k_ancestor = ancestor
         -> value
-        | Some (Class (klass,_) as value) when ancestor = None
+        | Some(Class (klass,_) as value) when ancestor = None
         -> value
         (* There's an existing one, and it is not compatible with
            the present definition *)
-        | Some (Class (klass,_))
+        | Some(Class (klass,_))
         -> (let inspect_ancestor ancestor =
               match ancestor with
               | Some klass -> "has ancestor " ^ klass.k_name
@@ -320,6 +368,16 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
                         (inspect_ancestor klass.k_ancestor) ^
                         ", and the definition " ^
                         (inspect_ancestor ancestor)) [loc]) (* TODO loc *)
+        (* Special classes *)
+        | Some(TvarTy as value)      | Some(BooleanTy as value)
+        | Some(NilTy as value)       | Some(IntegerTy as value)
+        | Some(SymbolTy as value)    | Some(TupleTy(_) as value)
+        | Some(RecordTy(_) as value) | Some(LambdaTy(_) as value)
+        -> (match ancestor with
+            | Some klass
+            -> exc_fail ("Cannot reopen internal class " ^ name ^ " with an ancestor.") [loc]
+            | None
+            -> Class (klassof value, Table.create []))
         (* Not a class *)
         | Some value
         -> exc_fail ("Cannot reopen " ^ name ^ ": it is bound to " ^
@@ -335,6 +393,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       let lenv = lenv_create (Some lenv) in
         lenv_bind lenv "self" ~value:klass ~is_mutable:false ~loc:loc;
           eval (lenv, tenv, cenv) body)
+
   | Syntax.DefMethod((loc,_),name,args,ty_expr,body)
   -> (let klass = check_class lenv loc in
       match Table.get klass.k_methods name with
@@ -351,11 +410,13 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
               l_ty        = ty;
               l_local_env = lenv;
               l_type_env  = tenv;
+              l_const_env = cenv;
               l_args      = args;
               l_code      = body;
             }
           });
       Nil)
+
   | Syntax.DefIVar((loc,_),name,kind,ty_expr)
   -> (let klass = check_class lenv loc in
       match Table.get klass.k_ivars name with
@@ -371,13 +432,48 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
             iv_kind     = kind;
           });
       Nil)
+
   | Syntax.InvokePrimitive(_,name,args)
   -> (let args = List.map (eval_expr env) args in
         Primitive.invoke name args)
+
+  | Syntax.Send((_,loc),recv,name,args)
+  -> (let recv = eval_expr env recv in
+      let ty   = typeof recv in
+      let args, kwargs = eval_args env args in
+      let method_table = (klassof ty).k_methods in
+        match Table.get method_table name with
+        | None
+        -> exc_fail ("Undefined instance method " ^ (inspect_type ty) ^
+                     "#" ^ name ^ " for " ^ (inspect_value recv)) [loc.Syntax.selector]
+        | Some meth
+        -> eval_lambda meth.im_body (recv :: args) kwargs)
   | _
   -> failwith ("cannot eval " ^
                (Unicode.assert_utf8s
                 (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));
+
+and eval_lambda body args kwargs =
+  let lenv = lenv_create (Some body.l_local_env) in
+  let tenv = tenv_fork   body.l_type_env  in
+  let cenv = cenv_fork   body.l_const_env in
+  let env  = (lenv, tenv, cenv) in
+
+  let rec bind_args f_args args =
+    match f_args with
+    | Syntax.FormalSelf((loc,_)) :: f_rest
+    -> (match args with
+        | arg :: rest
+        -> lenv_bind lenv "self" ~loc:loc ~is_mutable:false ~value:arg;
+           bind_args f_rest rest)
+    | Syntax.FormalArg((loc,_),name) :: f_rest
+    -> (match args with
+        | arg :: rest
+        -> lenv_bind lenv name ~loc:loc ~is_mutable:false ~value:arg)
+    | [] -> ()
+  in
+    bind_args body.l_args args;
+    eval env body.l_code
 
 and eval env exprs =
   Option.default Nil

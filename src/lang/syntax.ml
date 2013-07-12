@@ -55,6 +55,7 @@ type actual_arg =
   | ActualArg       of nullary    * expr
   | ActualSplice    of operator   * expr
   | ActualKwArg     of operator   * string * expr
+  | ActualKwPair    of operator   * expr   * expr
   | ActualKwSplice  of operator   * expr
 and actual_args = actual_arg list
 and formal_arg =
@@ -83,8 +84,8 @@ and tuple_elem =
 and tuple_elems = tuple_elem list
 and record_elem =
   | RecordElem      of operator   * string * expr
-  | RecordSplice    of operator   * expr
   | RecordPair      of operator   * expr * expr
+  | RecordSplice    of operator   * expr
 and record_elems = record_elem list
 and quote_elem =
   | QuoteString     of nullary    * string

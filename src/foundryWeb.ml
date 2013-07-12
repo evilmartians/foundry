@@ -6,6 +6,8 @@ type result =
   | Error       of string
 
 let process code ~do_eval =
+  Location.reset ();
+
   let lexbuf   = Ulexing.from_utf8_string code in
   let lexstate = Lexer.create (u"input") 1 in
   let lex ()   = Lexer.next lexstate lexbuf in

@@ -57,6 +57,7 @@ and lambda = {
   l_ty            : value;
   l_local_env     : local_env;
   l_type_env      : type_env;
+  l_const_env     : const_env;
   l_args          : Syntax.formal_args;
   l_code          : Syntax.exprs;
 }
@@ -108,6 +109,8 @@ val exc_fail      : string -> Location.t list -> 'a
 val exc_type      : string -> value -> Location.t list -> 'a
 
 val typeof        : value -> value
+val klassof       : value -> klass
+
 val inspect_value : value -> string
 val inspect_type  : value -> string
 val inspect       : value -> string
@@ -121,6 +124,9 @@ type roots = {
   kBoolean        : klass;
   kInteger        : klass;
   kSymbol         : klass;
+  kTuple          : klass;
+  kRecord         : klass;
+  kLambda         : klass;
   kMixin          : klass;
   kPackage        : klass;
 

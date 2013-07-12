@@ -58,6 +58,7 @@ and lambda = {
   l_ty            : value;
   l_local_env     : local_env;
   l_type_env      : type_env;
+  l_const_env     : const_env;
   l_args          : Syntax.formal_args;
   l_code          : Syntax.exprs;
 }
@@ -120,6 +121,9 @@ type roots = {
   kBoolean        : klass;
   kInteger        : klass;
   kSymbol         : klass;
+  kTuple          : klass;
+  kRecord         : klass;
+  kLambda         : klass;
   kMixin          : klass;
   kPackage        : klass;
 
@@ -177,6 +181,9 @@ let rec make_roots () =
     kBoolean      = new_class "Boolean";
     kInteger      = new_class "Integer";
     kSymbol       = new_class "Symbol";
+    kTuple        = new_class "Tuple";
+    kRecord       = new_class "Record";
+    kLambda       = new_class "Lambda";
 
     pToplevel     = {
       p_name      = "toplevel";
@@ -212,7 +219,7 @@ let new_package name =
     p_constants = Table.create [];
   }
 
-(* Types and type variables *)
+(* Types and classes *)
 
 let rec typeof value =
   match value with
@@ -231,6 +238,24 @@ let rec typeof value =
   | Class(k,_)    -> Class(!roots.kClass, Table.create [])
   | Instance(k,_) -> Class(k)
   | _ -> failwith ("cannot typeof " ^
+                   (Unicode.assert_utf8s
+                    (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
+
+let klassof value =
+  match value with
+  | BooleanTy     -> !roots.kBoolean
+  | NilTy         -> !roots.kNil
+
+  | TvarTy        -> !roots.kTypeVariable
+  | IntegerTy     -> !roots.kInteger
+  | SymbolTy      -> !roots.kSymbol
+  | TupleTy(_)    -> !roots.kTuple
+  | RecordTy(_)   -> !roots.kRecord
+
+  | LambdaTy(_)   -> !roots.kLambda
+
+  | Class(k,_)    -> k
+  | _ -> failwith ("cannot klassof " ^
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
 
