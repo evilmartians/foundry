@@ -1,0 +1,8 @@
+<{support,lang}>: include
+
+<**/*.{ml,mli,mly*}>: use_utf8str, syntax(camlp4o), package(sexplib.syntax), package(extlib)
+
+<foundryWeb.ml>: -use_utf8str, package(js_of_ocaml.syntax)
+<foundryWeb.{ml,byte}>: package(sexplib), package(extlib), package(menhirLib), package(ulex), package(js_of_ocaml)
+
+<foundry{,Merr}.{ml,native}>: package(sexplib), package(extlib), package(menhirLib), package(ulex)

@@ -1,0 +1,5 @@
+<lexer.{ml,mli}>: package(ulex)
+
+<parser*.{ml,mly*}>: -use_utf8str
+<parser.mlypack>: explain, dump, external_tokens(Parser_tokens)
+
