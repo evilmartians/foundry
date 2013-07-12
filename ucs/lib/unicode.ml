@@ -657,7 +657,7 @@ module Std = struct
       in blit 0 length
   end
 
-  module Fy_big_int = struct
+  module Big_int = struct
     include Fy_big_int
 
     let string_of_big_int v =

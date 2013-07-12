@@ -1,5 +1,5 @@
 open Unicode.Std
-open Fy_big_int
+open Big_int
 open Rt
 
 let int_binop op =

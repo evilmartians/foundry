@@ -1,6 +1,6 @@
 open Sexplib.Std
 open Unicode.Std
-open Fy_big_int
+open Big_int
 
 (* Enumerations *)
 

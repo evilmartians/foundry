@@ -1,6 +1,6 @@
 open Sexplib.Std
 open Unicode.Std
-open Fy_big_int
+open Big_int
 
 type tvar = int
 with sexp_of

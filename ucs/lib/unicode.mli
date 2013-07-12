@@ -155,7 +155,7 @@ module Std : sig
     val concat : string -> string list -> string
   end
 
-  module Fy_big_int : sig
+  module Big_int : sig
     type big_int = Fy_big_int.big_int
 
     include module type of Fy_big_int with type big_int := big_int
