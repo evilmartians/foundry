@@ -109,8 +109,9 @@ with sexp
 val exc_fail      : string -> Location.t list -> 'a
 val exc_type      : string -> value -> Location.t list -> 'a
 
-val typeof        : value -> value
-val klassof       : value -> klass
+val type_of_value  : value -> value
+val klass_of_type  : value -> klass
+val klass_of_value : ?dispatch:bool -> value -> klass
 
 val inspect_value : value -> string
 val inspect_type  : value -> string

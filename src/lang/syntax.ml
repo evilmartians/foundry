@@ -128,6 +128,7 @@ and expr =
   | Type            of operator   * ty
   | Class           of nullary    * string * expr option * exprs
   | DefMethod       of nullary    * string * formal_args * ty option * exprs
+  | DefSelfMethod   of nullary    * string * formal_args * ty option * exprs
   | DefIVar         of nullary    * string * ivar_kind * ty
   | InvokePrimitive of nullary    * string * expr list
 and exprs = expr list
@@ -138,7 +139,8 @@ let loc expr =
   | Self (loc)    | Truth (loc) | Lies (loc)   | Nil (loc)
   | Int (loc,_)   | Var (loc,_) | TVar (loc,_) | IVar (loc,_)
   | Const (loc,_) | Sym(loc,_) | Class(loc,_,_,_)
-  | DefMethod(loc,_,_,_,_) | DefIVar(loc,_,_,_)
+  | DefMethod(loc,_,_,_,_) | DefSelfMethod(loc,_,_,_,_)
+  | DefIVar(loc,_,_,_)
   | InvokePrimitive(loc,_,_) -> fst loc
   | And (loc,_,_) | Or (loc,_,_) | Not (loc,_)
   | Let(loc,_,_,_)  | Assign(loc,_,_) | OpAssign(loc,_,_,_)

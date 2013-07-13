@@ -337,6 +337,12 @@
                 { let self = Syntax.FormalSelf (nullary Loc.empty) in
                     Syntax.DefMethod (nullary (fst id),
                                       (snd id), self :: args, ty, stmts) }
+              | kw=Kw_DEF self=Kw_SELF dot=Tk_DOT id=method_name
+                  lp=Tk_LPAREN args=f_args rp=Tk_RPAREN
+                  ty=option(ty_decl) Tk_SEMI stmts=compstmt Kw_END
+                { let self = Syntax.FormalSelf (nullary Loc.empty) in
+                    Syntax.DefSelfMethod (nullary (fst id),
+                                      (snd id), self :: args, ty, stmts) }
                 /* TODO refactor */
               | kw=Kw_DEF id=Id_IVAR ty=ty_decl
                 { Syntax.DefIVar (nullary (fst id),

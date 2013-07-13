@@ -222,7 +222,7 @@ let new_package name =
 
 (* Types and classes *)
 
-let rec typeof value =
+let rec type_of_value value =
   match value with
   | Truth | Lies  -> BooleanTy
   | Nil           -> NilTy
@@ -230,20 +230,20 @@ let rec typeof value =
   | Tvar(_)       -> TvarTy
   | Integer(_)    -> IntegerTy
   | Symbol(_)     -> SymbolTy
-  | Tuple(xs)     -> TupleTy(List.map typeof xs)
-  | Record(xs)    -> RecordTy(Table.map (fun v -> typeof v) xs)
+  | Tuple(xs)     -> TupleTy(List.map type_of_value xs)
+  | Record(xs)    -> RecordTy(Table.map (fun v -> type_of_value v) xs)
 
   | Lambda(c)     -> c.l_ty
 
   | Package(_)    -> Class(!roots.kPackage, Table.create [])
   | Class(k,_)    -> Class(!roots.kClass, Table.create [])
   | Instance(k,_) -> Class(k)
-  | _ -> failwith ("cannot typeof " ^
+  | _ -> failwith ("type_of_value " ^
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
 
-let klassof value =
-  match value with
+let klass_of_type ty =
+  match ty with
   | BooleanTy     -> !roots.kBoolean
   | NilTy         -> !roots.kNil
 
@@ -256,7 +256,29 @@ let klassof value =
   | LambdaTy(_)   -> !roots.kLambda
 
   | Class(k,_)    -> k
-  | _ -> failwith ("cannot klassof " ^
+  | _ -> failwith ("klass_of_type " ^
+                   (Unicode.assert_utf8s
+                    (Sexplib.Sexp.to_string_hum (sexp_of_value ty))))
+
+let klass_of_value ?(dispatch=false) value =
+  match value with
+  | Truth | Lies  -> !roots.kBoolean
+  | Nil           -> !roots.kNil
+
+  | Tvar(_)       -> !roots.kTypeVariable
+  | Integer(_)    -> !roots.kInteger
+  | Symbol(_)     -> !roots.kSymbol
+  | Tuple(_)      -> !roots.kTuple
+  | Record(_)     -> !roots.kRecord
+
+  | Lambda(_)     -> !roots.kLambda
+
+  | Instance((k,_),_) -> k
+  | Class(k,_)    -> if dispatch then k.k_metaclass else !roots.kClass
+  | Package(p)    -> if dispatch then p.p_metaclass else !roots.kPackage
+  | Mixin(m,_)    -> if dispatch then m.m_metaclass else !roots.kMixin
+
+  | _ -> failwith ("klass_of_value " ^
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
 
@@ -326,7 +348,7 @@ and inspect_type ty =
 
 let inspect value =
   let ty =
-    try  (inspect_type (typeof value))
+    try  (inspect_type (type_of_value value))
     with Failure(_) -> "#<untypable value>"
   in (inspect_value value) ^ " : " ^ ty
 

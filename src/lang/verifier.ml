@@ -253,6 +253,7 @@ and check_expr cx expr =
   | Lambda(_,f_args,ty,expr)
   -> check_lambda cx f_args ty [expr]
   | DefMethod(_,_,f_args,ty,exprs)
+  | DefSelfMethod(_,_,f_args,ty,exprs)
   -> check_lambda cx f_args ty exprs
   | InvokePrimitive((loc,_),name,exprs)
   -> (if Primitive.exists name (List.length exprs) then

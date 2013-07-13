@@ -118,10 +118,29 @@ let concat_record lhs rhs =
   -> Record(Table.join l r)
   | _ -> assert false
 
-let check_class lenv loc =
-  match lenv_lookup lenv "self" with
-  | Class (klass,_) -> klass
-  | value -> exc_type "class" value [loc]
+let define_method obj name body loc =
+  match obj with
+  | Class (klass,_)
+  -> (match Table.get klass.k_methods name with
+      | Some meth
+      -> exc_fail ("Cannot define method " ^ name ^ " on " ^ (inspect_value obj) ^
+                   ": it is already defined") [loc; meth.im_body.l_location]
+      | None
+      -> Table.set klass.k_methods name body)
+  | value -> exc_type "Class" value [loc]
+
+let define_ivar obj name body loc =
+  match obj with
+  | Class (klass,_)
+  -> (match Table.get klass.k_ivars name with
+      | Some ivar
+      -> exc_fail ("Cannot define @" ^ name ^ " on " ^
+                   (inspect_value obj) ^
+                   ": it is already defined with type " ^
+                   (inspect_type ivar.iv_ty)) [loc; ivar.iv_location]
+      | None
+      -> Table.set klass.k_ivars name body)
+  | value -> exc_type "Class" value [loc]
 
 (* E V A L *)
 
@@ -377,7 +396,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
             | Some klass
             -> exc_fail ("Cannot reopen internal class " ^ name ^ " with an ancestor.") [loc]
             | None
-            -> Class (klassof value, Table.create []))
+            -> Class (klass_of_value value, Table.create []))
         (* Not a class *)
         | Some value
         -> exc_fail ("Cannot reopen " ^ name ^ ": it is bound to " ^
@@ -395,43 +414,52 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
           eval (lenv, tenv, cenv) body)
 
   | Syntax.DefMethod((loc,_),name,args,ty_expr,body)
-  -> (let klass = check_class lenv loc in
-      match Table.get klass.k_methods name with
-      | Some meth
-      -> exc_fail ("Cannot define method " ^ name ^ " on " ^
-                   (inspect_value (lenv_lookup lenv "self")) ^
-                   ": it is already defined") [loc; meth.im_body.l_location]
-      | None
-      -> (let tenv, ty = eval_closure_ty env ty_expr in
-          Table.set klass.k_methods name {
-            im_dynamic  = false; (* TODO dynamic *)
-            im_body     = {
-              l_location  = loc;
-              l_ty        = ty;
-              l_local_env = lenv;
-              l_type_env  = tenv;
-              l_const_env = cenv;
-              l_args      = args;
-              l_code      = body;
-            }
-          });
+  -> (let definee  =
+        match lenv_lookup lenv "self" with
+        | Package(p) when p == !roots.pToplevel
+        -> Class(p.p_metaclass, Table.create [])
+        | other
+        -> other
+      in
+      let tenv, ty = eval_closure_ty env ty_expr in
+        define_method definee name {
+          im_dynamic  = false;
+          im_body     = {
+            l_location  = loc;
+            l_ty        = ty;
+            l_local_env = lenv;
+            l_type_env  = tenv;
+            l_const_env = cenv;
+            l_args      = args;
+            l_code      = body;
+          }
+        } loc;
+      Nil)
+
+  | Syntax.DefSelfMethod((loc,_),name,args,ty_expr,body)
+  -> (let tenv, ty = eval_closure_ty env ty_expr in
+      let definee  = Class (klass_of_value ~dispatch:true (lenv_lookup lenv "self"),
+                            Table.create []) in
+        define_method definee name {
+          im_dynamic  = false;
+          im_body     = {
+            l_location  = loc;
+            l_ty        = ty;
+            l_local_env = lenv;
+            l_type_env  = tenv;
+            l_const_env = cenv;
+            l_args      = args;
+            l_code      = body;
+          }
+        } loc;
       Nil)
 
   | Syntax.DefIVar((loc,_),name,kind,ty_expr)
-  -> (let klass = check_class lenv loc in
-      match Table.get klass.k_ivars name with
-      | Some ivar
-      -> exc_fail ("Cannot define @" ^ name ^ " on " ^
-                   (inspect_value (lenv_lookup lenv "self")) ^
-                   ": it is already defined with type " ^
-                   (inspect_type ivar.iv_ty)) [loc; ivar.iv_location]
-      | None
-      -> (Table.set klass.k_ivars name {
-            iv_location = loc;
-            iv_ty       = eval_type env ty_expr;
-            iv_kind     = kind;
-          });
-      Nil)
+  -> (define_ivar (lenv_lookup lenv "self") name {
+        iv_location = loc;
+        iv_ty       = eval_type env ty_expr;
+        iv_kind     = kind;
+      } loc; Nil)
 
   | Syntax.InvokePrimitive(_,name,args)
   -> (let args = List.map (eval_expr env) args in
@@ -439,15 +467,15 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
 
   | Syntax.Send((_,loc),recv,name,args)
   -> (let recv = eval_expr env recv in
-      let ty   = typeof recv in
       let args, kwargs = eval_args env args in
-      let method_table = (klassof ty).k_methods in
+      let method_table = (klass_of_value ~dispatch:true recv).k_methods in
         match Table.get method_table name with
         | None
-        -> exc_fail ("Undefined instance method " ^ (inspect_type ty) ^
+        -> exc_fail ("Undefined instance method " ^ (inspect_type (type_of_value recv)) ^
                      "#" ^ name ^ " for " ^ (inspect_value recv)) [loc.Syntax.selector]
         | Some meth
         -> eval_lambda meth.im_body (recv :: args) kwargs)
+
   | _
   -> failwith ("cannot eval " ^
                (Unicode.assert_utf8s
