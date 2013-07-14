@@ -183,7 +183,7 @@ and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
             exc_fail ("Tuple " ^ (inspect value) ^ " of length " ^
                       (string_of_int (List.length xs)) ^
                       " does not match pattern of length " ^
-                      (string_of_int (List.length pats))) [loc])
+                      (string_of_int (List.length pats)) ^ ".") [loc])
       | o -> exc_type "Tuple" o [Syntax.pat_loc lhs])
 
   | _ -> assert false
@@ -196,7 +196,7 @@ and eval_assign (lenv, tenv, cenv) lhs value =
   -> (try
         cenv_bind cenv name value
       with CEnvAlreadyBound(value) ->
-        exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value)) [loc])
+        exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value) ^ ".") [loc])
   | _ -> assert false
 
 and eval_type ((lenv, tenv, cenv) as env) expr =
@@ -343,6 +343,13 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
         eval_assign env lhs value;
         value)
 
+  | Syntax.OpAssign((loc,_),lhs,meth,rhs)
+  -> (let value  = eval_expr env lhs in
+      let arg    = eval_expr env rhs in
+      let result = eval_send value meth ~args:[arg] ~kwargs:(Table.create []) ~loc in
+        eval_assign env lhs result;
+        result)
+
   | Syntax.Lambda(_,args,ty_expr,body)
   -> (let tenv, ty = eval_closure_ty env ty_expr in
         Lambda {
@@ -468,18 +475,21 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Send((_,loc),recv,name,args)
   -> (let recv = eval_expr env recv in
       let args, kwargs = eval_args env args in
-      let method_table = (klass_of_value ~dispatch:true recv).k_methods in
-        match Table.get method_table name with
-        | None
-        -> exc_fail ("Undefined instance method " ^ (inspect_type (type_of_value recv)) ^
-                     "#" ^ name ^ " for " ^ (inspect_value recv)) [loc.Syntax.selector]
-        | Some meth
-        -> eval_lambda meth.im_body (recv :: args) kwargs)
+        eval_send recv name ~args ~kwargs ~loc:loc.Syntax.selector)
 
   | _
   -> failwith ("cannot eval " ^
                (Unicode.assert_utf8s
                 (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));
+
+and eval_send recv name ~args ~kwargs ~loc =
+  let method_table = (klass_of_value ~dispatch:true recv).k_methods in
+    match Table.get method_table name with
+    | None
+    -> exc_fail ("Undefined instance method " ^ (inspect_type (type_of_value recv)) ^
+                 "#" ^ name ^ " for " ^ (inspect_value recv) ^ ".") [loc]
+    | Some meth
+    -> eval_lambda meth.im_body (recv :: args) kwargs
 
 and eval_lambda body args kwargs =
   let lenv = lenv_create (Some body.l_local_env) in
