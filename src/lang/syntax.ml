@@ -9,6 +9,11 @@ type quote =
   | Qu_SYMBOL
 with sexp
 
+type lvar_kind =
+  | LVarImmutable
+  | LVarMutable
+with sexp
+
 type ivar_kind =
   | IVarImmutable
   | IVarMutable
@@ -59,14 +64,15 @@ type actual_arg =
   | ActualKwPair    of operator   * expr   * expr
   | ActualKwSplice  of operator   * expr
 and actual_args = actual_arg list
+and local_var   = lvar_kind * string
 and formal_arg =
   | FormalSelf      of nullary
-  | FormalArg       of nullary    * string
-  | FormalOptArg    of operator   * string * expr
-  | FormalRest      of operator   * string
-  | FormalKwArg     of nullary    * string
-  | FormalKwOptArg  of operator   * string * expr
-  | FormalKwRest    of operator   * string
+  | FormalArg       of nullary    * local_var
+  | FormalOptArg    of operator   * local_var * expr
+  | FormalRest      of operator   * local_var
+  | FormalKwArg     of nullary    * local_var
+  | FormalKwOptArg  of operator   * local_var * expr
+  | FormalKwRest    of operator   * local_var
 and formal_args = formal_arg list
 and pair_ty =          operator   * string * ty
 and arg_ty =
@@ -93,13 +99,10 @@ and quote_elem =
   | QuoteSplice     of collection * expr
 and quote_elems = quote_elem list
 and pattern =
-  | PatImmutable    of let_bind   * string
-  | PatMutable      of let_bind   * string
+  | PatVariable     of let_bind   * local_var
   | PatTuple        of collection * pattern list
   | PatRecord       of collection * pat_extract list
-and pat_extract =
-  | PatImplicit     of nullary    * string * pattern
-  | PatRename       of operator   * string * pattern
+and pat_extract =      let_bind   * local_var * pattern
 and expr =
   | Self            of nullary
   | Truth           of nullary (* true  *)
@@ -151,7 +154,7 @@ let loc expr =
 
 let pat_loc pattern =
   match pattern with
-  | PatImmutable (loc,_) | PatMutable(loc,_) -> fst loc
+  | PatVariable (loc,_) -> fst loc
   | PatRecord (loc,_) | PatTuple (loc,_) -> fst loc
 
 let ty_loc ty =

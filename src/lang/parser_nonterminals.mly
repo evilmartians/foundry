@@ -144,20 +144,28 @@
 
      pat_ident: id=Id_LOCAL
                 { let (id_loc, id) = id in
-                    Syntax.PatImmutable (let_bind Loc.empty Loc.empty id_loc, id) }
+                    Syntax.PatVariable (let_bind Loc.empty Loc.empty id_loc,
+                                        (Syntax.LVarImmutable, id)) }
               | kw=Kw_MUT id=Id_LOCAL
                 { let (kw_loc, _), (id_loc, id) = kw, id in
-                    Syntax.PatMutable (let_bind Loc.empty kw_loc id_loc, id) }
+                    Syntax.PatVariable (let_bind kw_loc Loc.empty id_loc,
+                                        (Syntax.LVarMutable, id)) }
 
-   pat_extract: ident=pat_ident
-                { match ident with
-                  | Syntax.PatImmutable(loc, name)
-                  | Syntax.PatMutable(loc, name) ->
-                    Syntax.PatImplicit (nullary (fst loc), name, ident)
+   pat_extract: pat=pat_ident
+                { match pat with
+                  | Syntax.PatVariable(loc, var) ->
+                    let_bind Loc.empty Loc.empty (Syntax.pat_loc pat),
+                      var, pat
                   | _ -> assert false }
-              | label=Id_LABEL pattern=pattern
+              | label=Id_LABEL pat=pattern
                 { let (label_loc, label) = label in
-                    Syntax.PatRename (pat_unary label_loc pattern, label, pattern) }
+                    let_bind Loc.empty label_loc (Syntax.pat_loc pat),
+                      (Syntax.LVarImmutable, label), pat }
+              | kw=Kw_MUT label=Id_LABEL pat=pattern
+                { let (kw_loc, kw)       = kw in
+                  let (label_loc, label) = label in
+                    let_bind kw_loc label_loc (Syntax.pat_loc pat),
+                      (Syntax.LVarImmutable, label), pat }
 
        pattern: ident=pat_ident
                 { ident }
@@ -169,25 +177,39 @@
        %inline
    f_local_arg: id=Id_LOCAL
                 { let (name_loc, name) = id in
-                    Syntax.FormalArg (nullary name_loc, name) }
+                    Syntax.FormalArg (nullary name_loc, (Syntax.LVarImmutable, name)) }
 
        %inline
-  f_prefix_arg: op=Tk_STAR id=Id_LOCAL
+         f_mut: Kw_MUT
+                { Syntax.LVarMutable }
+              | /* nothing */
+                { Syntax.LVarImmutable }
+
+       %inline
+  f_prefix_arg: Kw_MUT id=Id_LOCAL
                 { let (name_loc, name) = id in
-                    Syntax.FormalRest (unary (fst op) name_loc, name) }
-              | id=Id_LABEL default=option(expr)
+                    Syntax.FormalArg (nullary name_loc, (Syntax.LVarMutable, name)) }
+              | op=Tk_STAR mut=f_mut id=Id_LOCAL
+                { let (name_loc, name) = id in
+                    Syntax.FormalRest (unary (fst op) name_loc,
+                                       (mut, name)) }
+              | mut=f_mut id=Id_LABEL default=option(expr)
                 { let (label_loc, label) = id in
                     match default with
                     | Some expr
-                    -> Syntax.FormalKwOptArg (op_unary label_loc expr, label, expr)
+                    -> Syntax.FormalKwOptArg (op_unary label_loc expr,
+                                              (mut, label), expr)
                     | None
-                    -> Syntax.FormalKwArg (nullary label_loc, label) }
-              | op=Tk_DSTAR id=Id_LOCAL
+                    -> Syntax.FormalKwArg (nullary label_loc,
+                                           (mut, label)) }
+              | op=Tk_DSTAR mut=f_mut id=Id_LOCAL
                 { let (name_loc, name) = id in
-                    Syntax.FormalKwRest (unary (fst op) name_loc, name) }
-              | id=Id_LOCAL op=Tk_ASGN expr=expr
+                    Syntax.FormalKwRest (unary (fst op) name_loc,
+                                         (mut, name)) }
+              | mut=f_mut id=Id_LOCAL op=Tk_ASGN expr=expr
                 { let (name_loc, name) = id in
-                    Syntax.FormalOptArg (binary name_loc op (Syntax.loc expr), name, expr) }
+                    Syntax.FormalOptArg (binary name_loc op (Syntax.loc expr),
+                                         (mut, name), expr) }
 
          f_arg: arg=f_local_arg
               | arg=f_prefix_arg

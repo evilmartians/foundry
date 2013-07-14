@@ -44,7 +44,7 @@ and local_env_ty = {
 }
 and binding = {
   b_location      : Location.t;
-  b_is_mutable    : bool;
+  b_kind          : Syntax.lvar_kind;
   b_value         : value;
 }
 and local_env = {

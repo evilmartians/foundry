@@ -3,7 +3,7 @@ open Syntax
 
 type binding = {
   location    : Location.t;
-  is_mutable  : bool;
+  kind        : Syntax.lvar_kind;
 }
 
 type static_env = {
@@ -29,33 +29,25 @@ let rec lookup env name =
             | None -> None
 
 let rec check_pattern cx pat =
-  let is_mutable pat =
-    match pat with
-    | PatImmutable _ -> false
-    | PatMutable _ -> true
-    | _ -> assert false
-  in
-  let bind name ~loc ~is_mutable =
+  let bind (kind, name) loc =
     match lookup cx.env name with
     | Some binding
     -> ["Local variable `" ^ name ^ "' is already bound.",
         [loc; binding.location]]
     | None
     -> Table.set cx.env.bindings name
-          { location = loc; is_mutable = is_mutable; };
+          { location = loc; kind = kind; };
        []
   in
   match pat with
-  | PatImmutable((loc,_),name) | PatMutable((loc,_),name)
-  -> bind name ~loc ~is_mutable:(is_mutable pat)
+  | PatVariable((loc,_),lvar)
+  -> bind lvar loc
   | PatTuple(_,pats)
   -> check_pattern cx @: pats
   | PatRecord(_,pats)
-  -> (let rec check_elem elem =
-        match elem with
-        | PatImplicit(_,_,pat) | PatRename(_,_,pat)
-        -> check_pattern cx pat
-      in check_elem @: pats)
+  -> (fun ((loc,_),lvar,pat) ->
+        let ds = bind lvar loc in
+          ds @ check_pattern cx pat) @: pats
 
 and check_ty cx ty =
   match ty with
@@ -87,9 +79,10 @@ and check_assign cx lhs rhs =
   | Var((loc,_),name)
   -> (match lookup cx.env name with
       | Some binding
-      -> (if binding.is_mutable then
+      -> (match binding.kind with
+          | Syntax.LVarMutable ->
             []
-          else
+          | Syntax.LVarImmutable ->
             ["Local variable `" ^ name ^ "' is not mutable. " ^
              "(Try `let mut " ^ name ^ "' instead?)",
              [loc; binding.location]])
@@ -106,14 +99,14 @@ and check_lambda cx f_args ty exprs =
             bindings = Table.create [] }
   }
   in
-  let bind name ~loc ~is_mutable =
+  let bind (kind, name) ~loc =
     match lookup cx.env name with
     | Some binding
     -> ["Argument name `" ^ name ^ "' is already bound.",
         [loc; binding.location]]
     | None
     -> Table.set cx.env.bindings name
-          { location = loc; is_mutable = is_mutable; };
+          { location = loc; kind = kind; };
        []
   in
   let rec check_formal_args args ~opt ~rest ~kwrest =
@@ -121,8 +114,8 @@ and check_lambda cx f_args ty exprs =
     | FormalSelf(_) :: args
     -> check_formal_args args ~opt ~rest ~kwrest
 
-    | FormalArg((loc,_),name) :: args
-    -> (let ds = bind name ~loc ~is_mutable:false in
+    | FormalArg((loc,_),lvar) :: args
+    -> (let ds = bind lvar ~loc in
         ds @ match rest, opt with
         | Some restloc, _
         -> (ignore (check_formal_args args ~opt ~rest ~kwrest);
@@ -135,8 +128,8 @@ and check_lambda cx f_args ty exprs =
         | None, None
         -> check_formal_args args ~opt ~rest ~kwrest)
 
-    | FormalOptArg((loc,_),name,expr) :: args
-    -> (let ds = bind name ~loc ~is_mutable:false in
+    | FormalOptArg((loc,_),lvar,expr) :: args
+    -> (let ds = bind lvar ~loc in
         ds @ let ds = check_expr cx expr in
           match rest with
           | None
@@ -146,8 +139,8 @@ and check_lambda cx f_args ty exprs =
               ["Optional argument cannot follow a rest argument.",
                [loc; restloc]]))
 
-    | FormalRest((loc,_),name) :: args
-    -> (let ds = bind name ~loc ~is_mutable:false in
+    | FormalRest((loc,_),lvar) :: args
+    -> (let ds = bind lvar ~loc in
         ds @ match rest with
         | None
         -> check_formal_args args ~opt ~rest:(Some loc) ~kwrest
@@ -156,8 +149,8 @@ and check_lambda cx f_args ty exprs =
             ["Rest argument can only be specified once.",
              [loc; restloc]]))
 
-    | FormalKwArg((loc,_),name) :: args
-    -> (let ds = bind name ~loc ~is_mutable:false in
+    | FormalKwArg((loc,_),lvar) :: args
+    -> (let ds = bind lvar ~loc in
          ds @ match kwrest with
         | None
         -> ds @ check_formal_args args ~opt ~rest ~kwrest
@@ -166,8 +159,8 @@ and check_lambda cx f_args ty exprs =
             ["Keyword argument cannot follow a keyword rest argument.",
              [loc; kwrestloc]]))
 
-    | FormalKwOptArg((loc,_),name,expr) :: args
-    -> (let ds = bind name ~loc:loc ~is_mutable:false in
+    | FormalKwOptArg((loc,_),lvar,expr) :: args
+    -> (let ds = bind lvar ~loc:loc in
          ds @ match kwrest with
         | None
         -> ds @ check_formal_args args ~opt ~rest ~kwrest
@@ -176,8 +169,8 @@ and check_lambda cx f_args ty exprs =
             ["Optional keyword argument cannot follow a keyword rest argument.",
              [loc; kwrestloc]]))
 
-    | FormalKwRest((loc,_),name) :: args
-    -> (let ds = bind name ~loc ~is_mutable:false in
+    | FormalKwRest((loc,_),lvar) :: args
+    -> (let ds = bind lvar ~loc in
         ds @ match kwrest with
         | None
         -> ds @ check_formal_args args ~opt ~rest ~kwrest:(Some loc)

@@ -9,26 +9,26 @@ let lenv_create parent : local_env =
   { e_parent   = parent;
     e_bindings = Table.create [] }
 
-let lenv_bind env name ~loc ~is_mutable ~value =
+let lenv_bind env name ~kind ~value ~loc =
   match Table.get env.e_bindings name with
   | Some(b)
   -> assert false
   | None
   -> Table.set env.e_bindings name {
-    b_location   = loc;
-    b_is_mutable = is_mutable;
-    b_value      = value;
+    b_location = loc;
+    b_kind     = kind;
+    b_value    = value;
   }
 
 let rec lenv_mutate env name ~value =
   match Table.get env.e_bindings name with
-  | Some({ b_is_mutable = false })
+  | Some({ b_kind = Syntax.LVarImmutable })
   -> assert false
   | Some b
   -> Table.set env.e_bindings name {
-    b_location   = b.b_location;
-    b_is_mutable = true;
-    b_value      = value;
+    b_location = b.b_location;
+    b_kind     = Syntax.LVarMutable;
+    b_value    = value;
   }
   | None
   -> match env.e_parent with
@@ -102,7 +102,7 @@ type env = local_env * type_env * const_env
 let env_create () =
   let lenv = lenv_create None
   in lenv_bind lenv "self" ~value:(Package !roots.pToplevel)
-                           ~is_mutable:false
+                           ~kind:Syntax.LVarImmutable
                            ~loc:Location.empty;
      lenv, tenv_create (), cenv_create ()
 
@@ -171,10 +171,9 @@ and eval_record env elem =
 
 and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
   match lhs with
-  | Syntax.PatImmutable((loc,_),name)
-  -> lenv_bind lenv name ~is_mutable:false ~value ~loc
-  | Syntax.PatMutable((loc,_),name)
-  -> lenv_bind lenv name ~is_mutable:true ~value ~loc
+  | Syntax.PatVariable((loc,_),(kind,name))
+  -> lenv_bind lenv name ~kind ~value ~loc
+
   | Syntax.PatTuple((loc,_),pats)
   -> (match value with
       | Tuple(xs)
@@ -186,6 +185,7 @@ and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
                       " does not match pattern of length " ^
                       (string_of_int (List.length pats))) [loc])
       | o -> exc_type "Tuple" o [Syntax.pat_loc lhs])
+
   | _ -> assert false
 
 and eval_assign (lenv, tenv, cenv) lhs value =
@@ -410,7 +410,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       in
       (* Evaluate class body in a context where self is bound to the class *)
       let lenv = lenv_create (Some lenv) in
-        lenv_bind lenv "self" ~value:klass ~is_mutable:false ~loc:loc;
+        lenv_bind lenv "self" ~value:klass ~kind:Syntax.LVarImmutable ~loc:loc;
           eval (lenv, tenv, cenv) body)
 
   | Syntax.DefMethod((loc,_),name,args,ty_expr,body)
@@ -487,50 +487,50 @@ and eval_lambda body args kwargs =
   let cenv = cenv_fork   body.l_const_env in
   let env  = (lenv, tenv, cenv) in
 
-  let rec bind name ~loc ~value ~f_rest ~rest ~kwseen =
-    lenv_bind lenv name ~loc ~is_mutable:false ~value;
+  let rec bind (kind, name) ~loc ~value ~f_rest ~rest ~kwseen =
+    lenv_bind lenv name ~loc ~kind ~value;
     bind_args f_rest rest kwseen
 
   and bind_args f_args args kwseen =
     match f_args, args with
     | Syntax.FormalSelf((loc,_)) :: f_rest,
       value :: rest
-    -> bind "self" ~loc ~value ~f_rest ~rest ~kwseen
+    -> bind (Syntax.LVarImmutable, "self") ~loc ~value ~f_rest ~rest ~kwseen
 
-    | Syntax.FormalArg((loc,_),name) :: f_rest,
+    | Syntax.FormalArg((loc,_),lvar) :: f_rest,
       value :: rest
-    | Syntax.FormalOptArg((loc,_),name,_) :: f_rest,
+    | Syntax.FormalOptArg((loc,_),lvar,_) :: f_rest,
       value :: rest
-    -> bind name ~loc ~value ~f_rest ~rest ~kwseen
+    -> bind lvar ~loc ~value ~f_rest ~rest ~kwseen
 
-    | Syntax.FormalOptArg((loc,_),name,expr) :: f_rest,
+    | Syntax.FormalOptArg((loc,_),lvar,expr) :: f_rest,
       []
-    -> bind name ~loc ~value:(eval_expr env expr) ~f_rest ~rest:[] ~kwseen
+    -> bind lvar ~loc ~value:(eval_expr env expr) ~f_rest ~rest:[] ~kwseen
 
-    | Syntax.FormalRest((loc,_),name) :: f_rest,
+    | Syntax.FormalRest((loc,_),lvar) :: f_rest,
       rest
-    -> bind name ~loc ~value:(Tuple rest) ~f_rest ~rest:[] ~kwseen
+    -> bind lvar ~loc ~value:(Tuple rest) ~f_rest ~rest:[] ~kwseen
 
-    | Syntax.FormalKwArg((loc,_),name) :: f_rest,
+    | Syntax.FormalKwArg((loc,_),((_,name) as lvar)) :: f_rest,
       rest
     -> (let value =
           match Table.get kwargs name with
           | Some v -> v
-        in bind name ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
+        in bind lvar ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
 
-    | Syntax.FormalKwOptArg((loc,_),name,expr) :: f_rest,
+    | Syntax.FormalKwOptArg((loc,_),((_,name) as lvar),expr) :: f_rest,
       rest
     -> (let value =
           match Table.get kwargs name with
           | Some v -> v
           | None   -> eval_expr env expr
-        in bind name ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
+        in bind lvar ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
 
-    | Syntax.FormalKwRest((loc,_),name) :: f_rest,
+    | Syntax.FormalKwRest((loc,_),((name,_) as lvar)) :: f_rest,
       rest
     -> (let value  = Record (Table.except_keys kwargs kwseen) in
         let kwseen = Table.keys kwargs in
-          bind name ~loc ~value ~f_rest ~rest ~kwseen)
+          bind lvar ~loc ~value ~f_rest ~rest ~kwseen)
 
     | [], []
     -> (if kwseen <> (Table.keys kwargs) then
