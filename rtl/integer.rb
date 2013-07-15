@@ -1,53 +1,53 @@
-class Integer;
-  def +(other);
+class Integer
+  def +(other)
     invokeprimitive int_add(self, other)
-  end;
+  end
 
-  def -(other);
+  def -(other)
     invokeprimitive int_sub(self, other)
-  end;
+  end
 
-  def *(other);
+  def *(other)
     invokeprimitive int_mul(self, other)
-  end;
+  end
 
-  def /(other);
+  def /(other)
     invokeprimitive int_div(self, other)
-  end;
+  end
 
-  def %(other);
+  def %(other)
     invokeprimitive int_mod(self, other)
-  end;
+  end
 
-  def **(power);
+  def **(power)
     invokeprimitive int_exp(self, power)
-  end;
+  end
 
-  def -@();
+  def -@()
     0 - self
-  end;
+  end
 
-  def &(other);
+  def &(other)
     invokeprimitive int_and(self, other)
-  end;
+  end
 
-  def |(other);
+  def |(other)
     invokeprimitive int_or(self, other)
-  end;
+  end
 
-  def ^(other);
+  def ^(other)
     invokeprimitive int_xor(self, other)
-  end;
+  end
 
-  def >>(bits);
+  def >>(bits)
     invokeprimitive int_shr(self, bits)
-  end;
+  end
 
-  def <<(bits);
+  def <<(bits)
     invokeprimitive int_shl(self, bits)
-  end;
+  end
 
-  def ~@();
+  def ~@()
     -self - 1
   end
-end;
+end

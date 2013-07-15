@@ -9,8 +9,6 @@ let message = function
 
 | "def" -> function
   | _ -> "`def' keyword can define instance variables and methods (not %s)."
-| "def foo" -> function
-  | _ -> "Function name should be followed by parentheses, even empty (not %s)."
 
 | "1 +" | "1 -" | "1 *" | "1 /" | "1 %" | "1 &" | "1 |" | "1 <<"
 | "1 >>" | "1 >>>" | "1 ==" | "1 <" | "1 >" | "1 <=" | "1 >=" | "1 <=>"

@@ -40,7 +40,8 @@ let unexpected lexbuf =
 
 type state = {
   mutable lexer_stack : (state -> Ulexing.lexbuf -> token) list;
-  mutable curly_stack : int list
+  mutable curly_stack : int list;
+  mutable is_begin    : bool;
 }
 
 let goto state next_lexer =
@@ -63,6 +64,11 @@ let curly state change =
       state.curly_stack <- new_curlies :: rest;
       new_curlies
 
+let expr_begin state is_begin =
+  state.is_begin <- is_begin
+
+(* Lexer state machine *)
+
 let regexp w_space     = [' ' '\t']+
 let regexp w_newline   = '\n' | "\r\n"
 let regexp w_any       = w_space | w_newline
@@ -83,112 +89,142 @@ let regexp method_name = local | operator | '<' | '>' | "<=" | ">=" | "==" | "<=
 
 let rec lex_code state = lexer
 | w_space     -> lex_code state lexbuf
-| w_newline   -> newline lexbuf;
-                 lex_code state lexbuf
+| w_newline   -> (newline lexbuf;
+                  if state.is_begin then
+                    lex_code state lexbuf
+                  else begin
+                    expr_begin state true;
+                    Tk_NEWLINE (locate lexbuf)
+                  end)
 
 (* Punctuation *)
-| operator '=' -> Tk_OP_ASGN  (locate lexbuf, sub_lexeme lexbuf 0 (-1))
-| "and="       -> Tk_AND_ASGN (locate lexbuf)
-| "or="        -> Tk_OR_ASGN  (locate lexbuf)
+| operator '=' -> expr_begin state true; Tk_OP_ASGN  (locate lexbuf, sub_lexeme lexbuf 0 (-1))
+| "and="       -> expr_begin state true; Tk_AND_ASGN (locate lexbuf)
+| "or="        -> expr_begin state true; Tk_OR_ASGN  (locate lexbuf)
 
 | '{'      -> ignore (curly state 1);
+              expr_begin state true;
               Tk_LCURLY   (locate lexbuf)
-| '}'      -> if (curly state (-1)) = 0 then begin
+
+| '}'      -> expr_begin state false;
+              if (curly state (-1)) = 0 then begin
                 pop state;
                 Vl_QUOTE  (locate lexbuf)
               end else
                 Tk_RCURLY (locate lexbuf)
 
-| '('      -> Tk_LPAREN  (locate lexbuf)
-| ')'      -> Tk_RPAREN  (locate lexbuf)
-| '['      -> Tk_LBRACK  (locate lexbuf)
-| ']'      -> Tk_RBRACK  (locate lexbuf)
-| '='      -> Tk_ASGN    (locate lexbuf)
-| '.'      -> Tk_DOT     (locate lexbuf)
-| ':'      -> Tk_COLON   (locate lexbuf)
-| "::"     -> Tk_DCOLON  (locate lexbuf)
-| ';'      -> Tk_SEMI    (locate lexbuf)
-| ";;"     -> Tk_DSEMI   (locate lexbuf)
-| ','      -> Tk_COMMA   (locate lexbuf)
-| "->"     -> Tk_ARROW   (locate lexbuf)
-| "=>"     -> Tk_ROCKET  (locate lexbuf)
+| '('      -> expr_begin state true;  Tk_LPAREN  (locate lexbuf)
+| ')'      -> expr_begin state false; Tk_RPAREN  (locate lexbuf)
+| '['      -> expr_begin state true;  Tk_LBRACK  (locate lexbuf)
+| ']'      -> expr_begin state false; Tk_RBRACK  (locate lexbuf)
+| '='      -> expr_begin state true;  Tk_ASGN    (locate lexbuf)
+| '.'      -> expr_begin state true;  Tk_DOT     (locate lexbuf)
+| ':'      -> expr_begin state true;  Tk_COLON   (locate lexbuf)
+| "::"     -> expr_begin state true;  Tk_DCOLON  (locate lexbuf)
+| ';'      -> expr_begin state true;  Tk_SEMI    (locate lexbuf)
+| ";;"     -> expr_begin state true;  Tk_DSEMI   (locate lexbuf)
+| ','      -> expr_begin state true;  Tk_COMMA   (locate lexbuf)
+| "->"     -> expr_begin state true;  Tk_ARROW   (locate lexbuf)
+| "=>"     -> expr_begin state true;  Tk_ROCKET  (locate lexbuf)
 
 (* Operators *)
-| "+@"     -> Tk_UPLUS   (locate lexbuf, lexeme lexbuf)
-| "-@"     -> Tk_UMINUS  (locate lexbuf, lexeme lexbuf)
-| "~@"     -> Tk_UTILDE  (locate lexbuf, lexeme lexbuf)
-| '+'      -> Tk_PLUS    (locate lexbuf, lexeme lexbuf)
-| '-'      -> Tk_MINUS   (locate lexbuf, lexeme lexbuf)
-| '*'      -> Tk_STAR    (locate lexbuf, lexeme lexbuf)
-| "**"     -> Tk_DSTAR   (locate lexbuf, lexeme lexbuf)
-| '/'      -> Tk_DIVIDE  (locate lexbuf, lexeme lexbuf)
-| '%'      -> Tk_PERCENT (locate lexbuf, lexeme lexbuf)
-| '&'      -> Tk_AMPER   (locate lexbuf, lexeme lexbuf)
-| '|'      -> Tk_PIPE    (locate lexbuf, lexeme lexbuf)
-| '^'      -> Tk_CARET   (locate lexbuf, lexeme lexbuf)
-| '~'      -> Tk_TILDE   (locate lexbuf, lexeme lexbuf)
-| "<<"     -> Tk_LSHFT   (locate lexbuf, lexeme lexbuf)
-| ">>"     -> Tk_RSHFT   (locate lexbuf, lexeme lexbuf)
-| ">>>"    -> Tk_ARSHFT  (locate lexbuf, lexeme lexbuf)
-| "=="     -> Tk_EQ      (locate lexbuf, lexeme lexbuf)
-| "<="     -> Tk_LEQ     (locate lexbuf, lexeme lexbuf)
-| '<'      -> Tk_LT      (locate lexbuf, lexeme lexbuf)
-| '>'      -> Tk_GT      (locate lexbuf, lexeme lexbuf)
-| ">="     -> Tk_GEQ     (locate lexbuf, lexeme lexbuf)
-| "<=>"    -> Tk_CMP     (locate lexbuf, lexeme lexbuf)
+| "+@"     -> expr_begin state false; Tk_UPLUS   (locate lexbuf, lexeme lexbuf)
+| "-@"     -> expr_begin state false; Tk_UMINUS  (locate lexbuf, lexeme lexbuf)
+| "~@"     -> expr_begin state false; Tk_UTILDE  (locate lexbuf, lexeme lexbuf)
+| '+'      -> expr_begin state true;  Tk_PLUS    (locate lexbuf, lexeme lexbuf)
+| '-'      -> expr_begin state true;  Tk_MINUS   (locate lexbuf, lexeme lexbuf)
+| '*'      -> expr_begin state true;  Tk_STAR    (locate lexbuf, lexeme lexbuf)
+| "**"     -> expr_begin state true;  Tk_DSTAR   (locate lexbuf, lexeme lexbuf)
+| '/'      -> expr_begin state true;  Tk_DIVIDE  (locate lexbuf, lexeme lexbuf)
+| '%'      -> expr_begin state true;  Tk_PERCENT (locate lexbuf, lexeme lexbuf)
+| '&'      -> expr_begin state true;  Tk_AMPER   (locate lexbuf, lexeme lexbuf)
+| '|'      -> expr_begin state true;  Tk_PIPE    (locate lexbuf, lexeme lexbuf)
+| '^'      -> expr_begin state true;  Tk_CARET   (locate lexbuf, lexeme lexbuf)
+| '~'      -> expr_begin state true;  Tk_TILDE   (locate lexbuf, lexeme lexbuf)
+| "<<"     -> expr_begin state true;  Tk_LSHFT   (locate lexbuf, lexeme lexbuf)
+| ">>"     -> expr_begin state true;  Tk_RSHFT   (locate lexbuf, lexeme lexbuf)
+| ">>>"    -> expr_begin state true;  Tk_ARSHFT  (locate lexbuf, lexeme lexbuf)
+| "=="     -> expr_begin state true;  Tk_EQ      (locate lexbuf, lexeme lexbuf)
+| "<="     -> expr_begin state true;  Tk_LEQ     (locate lexbuf, lexeme lexbuf)
+| '<'      -> expr_begin state true;  Tk_LT      (locate lexbuf, lexeme lexbuf)
+| '>'      -> expr_begin state true;  Tk_GT      (locate lexbuf, lexeme lexbuf)
+| ">="     -> expr_begin state true;  Tk_GEQ     (locate lexbuf, lexeme lexbuf)
+| "<=>"    -> expr_begin state true;  Tk_CMP     (locate lexbuf, lexeme lexbuf)
 
 (* Keywords *)
-| "true"   -> Kw_TRUE    (locate lexbuf, lexeme lexbuf)
-| "false"  -> Kw_FALSE   (locate lexbuf, lexeme lexbuf)
-| "nil"    -> Kw_NIL     (locate lexbuf, lexeme lexbuf)
-| "self"   -> Kw_SELF    (locate lexbuf, lexeme lexbuf)
-| "and"    -> Kw_AND     (locate lexbuf, lexeme lexbuf)
-| "or"     -> Kw_OR      (locate lexbuf, lexeme lexbuf)
-| "not"    -> Kw_NOT     (locate lexbuf, lexeme lexbuf)
-| "let"    -> Kw_LET     (locate lexbuf, lexeme lexbuf)
-| "mut"    -> Kw_MUT     (locate lexbuf, lexeme lexbuf)
-| "while"  -> Kw_WHILE   (locate lexbuf, lexeme lexbuf)
-| "do"     -> Kw_DO      (locate lexbuf, lexeme lexbuf)
-| "if"     -> Kw_IF      (locate lexbuf, lexeme lexbuf)
-| "elsif"  -> Kw_ELSIF   (locate lexbuf, lexeme lexbuf)
-| "then"   -> Kw_THEN    (locate lexbuf, lexeme lexbuf)
-| "else"   -> Kw_ELSE    (locate lexbuf, lexeme lexbuf)
-| "match"  -> Kw_MATCH   (locate lexbuf, lexeme lexbuf)
-| "end"    -> Kw_END     (locate lexbuf, lexeme lexbuf)
-| "as"     -> Kw_AS      (locate lexbuf, lexeme lexbuf)
-| "meta"   -> Kw_META    (locate lexbuf, lexeme lexbuf)
-| "type"   -> Kw_TYPE    (locate lexbuf, lexeme lexbuf)
-| "public" -> Kw_PUBLIC  (locate lexbuf, lexeme lexbuf)
-| "dynamic"-> Kw_DYNAMIC (locate lexbuf, lexeme lexbuf)
-| "package"-> Kw_PACKAGE (locate lexbuf, lexeme lexbuf)
-| "class"  -> Kw_CLASS   (locate lexbuf, lexeme lexbuf)
-| "mixin"  -> Kw_MIXIN   (locate lexbuf, lexeme lexbuf)
-| "iface"  -> Kw_IFACE   (locate lexbuf, lexeme lexbuf)
-| "def"    -> Kw_DEF     (locate lexbuf, lexeme lexbuf)
-| "new"    -> Kw_NEW     (locate lexbuf, lexeme lexbuf)
-| "return" -> Kw_RETURN  (locate lexbuf, lexeme lexbuf)
+| "true"   -> expr_begin state false; Kw_TRUE    (locate lexbuf, lexeme lexbuf)
+| "false"  -> expr_begin state false; Kw_FALSE   (locate lexbuf, lexeme lexbuf)
+| "nil"    -> expr_begin state false; Kw_NIL     (locate lexbuf, lexeme lexbuf)
+| "self"   -> expr_begin state false; Kw_SELF    (locate lexbuf, lexeme lexbuf)
+| "and"    -> expr_begin state true;  Kw_AND     (locate lexbuf, lexeme lexbuf)
+| "or"     -> expr_begin state true;  Kw_OR      (locate lexbuf, lexeme lexbuf)
+| "not"    -> expr_begin state true;  Kw_NOT     (locate lexbuf, lexeme lexbuf)
+| "let"    -> expr_begin state true;  Kw_LET     (locate lexbuf, lexeme lexbuf)
+| "mut"    -> expr_begin state true;  Kw_MUT     (locate lexbuf, lexeme lexbuf)
+| "while"  -> expr_begin state true;  Kw_WHILE   (locate lexbuf, lexeme lexbuf)
+| "do"     -> expr_begin state true;  Kw_DO      (locate lexbuf, lexeme lexbuf)
+| "if"     -> expr_begin state true;  Kw_IF      (locate lexbuf, lexeme lexbuf)
+| "elsif"  -> expr_begin state true;  Kw_ELSIF   (locate lexbuf, lexeme lexbuf)
+| "then"   -> expr_begin state true;  Kw_THEN    (locate lexbuf, lexeme lexbuf)
+| "else"   -> expr_begin state true;  Kw_ELSE    (locate lexbuf, lexeme lexbuf)
+| "match"  -> expr_begin state true;  Kw_MATCH   (locate lexbuf, lexeme lexbuf)
+| "end"    -> expr_begin state false; Kw_END     (locate lexbuf, lexeme lexbuf)
+| "as"     -> expr_begin state true;  Kw_AS      (locate lexbuf, lexeme lexbuf)
+| "meta"   -> expr_begin state true;  Kw_META    (locate lexbuf, lexeme lexbuf)
+| "type"   -> expr_begin state true;  Kw_TYPE    (locate lexbuf, lexeme lexbuf)
+| "public" -> expr_begin state true;  Kw_PUBLIC  (locate lexbuf, lexeme lexbuf)
+| "dynamic"-> expr_begin state true;  Kw_DYNAMIC (locate lexbuf, lexeme lexbuf)
+| "package"-> expr_begin state true;  Kw_PACKAGE (locate lexbuf, lexeme lexbuf)
+| "class"  -> expr_begin state true;  Kw_CLASS   (locate lexbuf, lexeme lexbuf)
+| "mixin"  -> expr_begin state true;  Kw_MIXIN   (locate lexbuf, lexeme lexbuf)
+| "iface"  -> expr_begin state true;  Kw_IFACE   (locate lexbuf, lexeme lexbuf)
+| "def"    -> expr_begin state true;  Kw_DEF     (locate lexbuf, lexeme lexbuf)
+| "new"    -> expr_begin state true;  Kw_NEW     (locate lexbuf, lexeme lexbuf)
+| "return" -> expr_begin state false; Kw_RETURN  (locate lexbuf, lexeme lexbuf)
 
-| "invokeprimitive" -> Kw_INVOKE (locate lexbuf, lexeme lexbuf)
+| "invokeprimitive" ->
+              expr_begin state true; Kw_INVOKE (locate lexbuf, lexeme lexbuf)
 
 (* Values *)
-| digits          -> Vl_INT    (locate lexbuf, big_int_of_string (lexeme lexbuf))
+| digits          -> expr_begin state false;
+                     Vl_INT    (locate lexbuf, big_int_of_string (lexeme lexbuf))
+
 | digits id_alpha -> raise (Unexpected (locate lexbuf, (sub_lexeme lexbuf (-1) (-1)).[0]))
-| ':' method_name -> Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 (-1))
-| '\''            -> goto state lex_string;
+
+| ':' method_name -> expr_begin state false;
+                     Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 (-1))
+
+| '\''            -> expr_begin state false;
+                     goto state lex_string;
                      Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING)
-| '"'             -> goto state lex_string_interp;
+
+| '"'             -> expr_begin state false;
+                     goto state lex_string_interp;
                      Vl_BEGIN  (locate lexbuf, Syntax.Qu_STRING)
-| ":'"            -> goto state lex_string;
+
+| ":'"            -> expr_begin state false;
+                     goto state lex_string;
                      Vl_BEGIN  (locate lexbuf, Syntax.Qu_SYMBOL)
-| ":\""           -> goto state lex_string_interp;
+
+| ":\""           -> expr_begin state false;
+                     goto state lex_string_interp;
                      Vl_BEGIN  (locate lexbuf, Syntax.Qu_SYMBOL)
 
 (* Identifiers *)
-| ident ':'       -> Id_LABEL (locate lexbuf, sub_lexeme lexbuf 0 (-1))
-| local           -> Id_LOCAL (locate lexbuf, lexeme lexbuf)
-| const           -> Id_CONST (locate lexbuf, lexeme lexbuf)
-| '@'  ident      -> Id_IVAR  (locate lexbuf, sub_lexeme lexbuf 1 0)
-| '\\' ident      -> Id_TVAR  (locate lexbuf, sub_lexeme lexbuf 1 0)
+| ident ':'       -> expr_begin state true;
+                     Id_LABEL (locate lexbuf, sub_lexeme lexbuf 0 (-1))
+
+| local           -> expr_begin state false;
+                     Id_LOCAL (locate lexbuf, lexeme lexbuf)
+
+| const           -> expr_begin state false;
+                     Id_CONST (locate lexbuf, lexeme lexbuf)
+
+| '@'  ident      -> expr_begin state false;
+                     Id_IVAR  (locate lexbuf, sub_lexeme lexbuf 1 0)
+
+| '\\' ident      -> expr_begin state false;
+                     Id_TVAR  (locate lexbuf, sub_lexeme lexbuf 1 0)
 
 | _               -> unexpected lexbuf
 | eof             -> eof lexbuf
@@ -219,7 +255,8 @@ and lex_string_interp state = lexer
 let create file line =
   Location.start_file file line;
   { lexer_stack = [lex_code];
-    curly_stack = [1] }
+    curly_stack = [1];
+    is_begin    = true }
 
 let next state lexbuf =
   (List.hd state.lexer_stack) state lexbuf, Lexing.dummy_pos, Lexing.dummy_pos

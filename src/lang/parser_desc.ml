@@ -84,6 +84,7 @@ let name_of_token = function
   | Kw_INVOKE _ -> "Kw_INVOKE"
   | Kw_NEW _ -> "Kw_NEW"
   | Tk_CARET _ -> "Tk_CARET"
+  | Tk_NEWLINE _ -> "Tk_NEWLINE"
 
 let loc_of_token token =
   match token with
@@ -110,6 +111,7 @@ let loc_of_token token =
   | Tk_PERCENT (loc, _) -> loc
   | Tk_OR_ASGN (loc) -> loc
   | Tk_OP_ASGN (loc, _) -> loc
+  | Tk_NEWLINE (loc) -> loc
   | Tk_MINUS (loc, _) -> loc
   | Tk_LT (loc, _) -> loc
   | Tk_LSHFT (loc, _) -> loc

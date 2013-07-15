@@ -87,6 +87,8 @@
 %token <Location.t * Unicode.utf8s> Kw_NEW     "new"
 %token <Location.t * Unicode.utf8s> Kw_INVOKE  "invokeprimitive"
 
+%token <Location.t> Tk_NEWLINE "new line"
+
 %token <Location.t> EOF "end of input"
 
 %%
