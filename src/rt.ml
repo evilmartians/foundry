@@ -278,6 +278,14 @@ let klass_of_value ?(dispatch=false) value =
   | Package(p)    -> if dispatch then p.p_metaclass else !roots.kPackage
   | Mixin(m,_)    -> if dispatch then m.m_metaclass else !roots.kMixin
 
+  | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
+  | TupleTy(_) | RecordTy(_) | LambdaTy(_)
+  -> (let klass = klass_of_type value in
+        if dispatch then
+          klass.k_metaclass
+        else
+          klass)
+
   | _ -> failwith ("klass_of_value " ^
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
