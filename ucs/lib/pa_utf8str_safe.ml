@@ -1,7 +1,7 @@
 open Camlp4
 
 module Id = struct
-  let name = "pa_utf8str"
+  let name = "pa_utf8str_safe"
   let version = "1.0"
 end
 
@@ -13,7 +13,7 @@ module Make (Syntax : Sig.Camlp4Syntax) = struct
     GLOBAL: expr;
 
     expr: LEVEL "simple"
-    [ [ s = STRING ->
+    [ [ "u"; s = STRING ->
         let s = Scanf.unescaped s in
           <:expr< (Unicode.assert_utf8s $`str:s$) >>
       ]

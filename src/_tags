@@ -1,4 +1,4 @@
-<{support,lang}>: include
+<{support,lang,ir}>: include
 
 <**/*.{ml,mli,mly*}>: use_utf8str, syntax(camlp4o), package(sexplib.syntax), package(extlib)
 

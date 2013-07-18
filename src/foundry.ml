@@ -18,9 +18,8 @@ while true do
 *)
 
   try
-    Vm.eval env (parse lex)
-    |> Rt.inspect
-    |> print_endline
+    ignore (Vm.eval env (parse lex));
+    print_endline (IrPrinter.print_roots !Rt.roots)
   with Rt.Exc exc ->
 (*     let pointers =
       let all_ranges = exc.Vm.ex_location :: exc.Vm.ex_highlights in

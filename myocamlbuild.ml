@@ -10,7 +10,7 @@ dispatch begin function
       ~deps:["%.byte"]
       ~prod:"%.js"
       begin fun env build ->
-        Seq [Cmd (S[A"js_of_ocaml"; A"-pretty"; A"-noinline"; Px(env "%.byte")])]
+        Seq [Cmd (S[A"js_of_ocaml"; A"-pretty"; A"-noinline"; A"-debuginfo"; Px(env "%.byte")])]
       end;
 
     (* === UNICODE === *)
@@ -20,10 +20,15 @@ dispatch begin function
     flag ["ocaml"; "ocamldep"; "use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
     flag ["ocaml"; "infer_interface"; "use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
 
+    flag ["ocaml"; "compile"; "use_utf8str_safe"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str_safe.cmo"]);
+    flag ["ocaml"; "ocamldep"; "use_utf8str_safe"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str_safe.cmo"]);
+    flag ["ocaml"; "infer_interface"; "use_utf8str_safe"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str_safe.cmo"]);
+
     (* Running ocamldep on ocaml code that is tagged with use_utf8str
        will require the cmo. Note that you only need this declaration when the
        syntax extension is part of the sources to be compiled with ocamlbuild. *)
     dep ["ocaml"; "ocamldep"; "use_utf8str"] ["ucs/lib/pa_utf8str.cmo"];
+    dep ["ocaml"; "ocamldep"; "use_utf8str_safe"] ["ucs/lib/pa_utf8str_safe.cmo"];
 
     (* === MENHIR AND MERR == *)
 

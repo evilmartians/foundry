@@ -1,7 +1,7 @@
 open Unicode.Std
 open Big_int
 
-type tvar
+type tvar = private int
 with sexp_of
 
 type value =

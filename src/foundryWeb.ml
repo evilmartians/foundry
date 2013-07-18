@@ -19,8 +19,11 @@ let process code ~do_eval =
       | [] ->
         if do_eval then begin
           Rt.reset ();
-          let env = Vm.env_create () in
-            Output (Rt.inspect (Vm.eval env ast))
+          let env    = Vm.env_create () in
+          let result = Vm.eval env ast  in
+            (* Output (Rt.inspect result) *)
+            Output (IrPrinter.print_roots !Rt.roots)
+
         end else
           Output (u"")
       | problems ->
