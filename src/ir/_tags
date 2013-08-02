@@ -1,1 +1,6 @@
 <irSupport.ml>: -use_utf8str
+
+<irLexer.{ml,mli}>: package(ulex)
+
+<irParser*.{ml,mly*}>: -use_utf8str
+<irParser.mlypack>: explain, dump, external_tokens(IrParser_tokens)

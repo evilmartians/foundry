@@ -199,7 +199,7 @@ and print_ivar env ivar =
     match ivar.iv_kind with
     | Syntax.IVarImmutable   -> "immutable"
     | Syntax.IVarMutable     -> "mutable"
-    | Syntax.IVarMetaMutable -> "mutable"
+    | Syntax.IVarMetaMutable -> "meta_mutable"
   in
   (print_loc ivar.iv_location) ^ " " ^
     kind ^ " " ^

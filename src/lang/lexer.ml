@@ -84,7 +84,7 @@ let regexp local       = id_lower id_alnum*
 let regexp const       = id_upper id_alnum*
 
 let regexp operator    = ['+' '-' '*' '/' '%' '&' '|' '~'] |
-                  "<<" | ">>" | ">>>"
+                         "<<" | ">>" | ">>>"
 let regexp method_name = local | operator | '<' | '>' | "<=" | ">=" | "==" | "<=>"
 
 let rec lex_code state = lexer
