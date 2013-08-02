@@ -15,17 +15,23 @@ module Make =
       {
         values  = ValueHashtbl.create 10;
         names   = Hashtbl.create 10;
-        next_id = 1;
+        next_id = 0;
       }
 
     let bind env value name =
       let name =
-        if Hashtbl.mem env.names name then
-          let mangled = name ^ "." ^ (string_of_int env.next_id) in
-            assert (not (Hashtbl.mem env.names mangled));
+        let mangled =
+          if name = "" then begin
             env.next_id <- env.next_id + 1;
-            mangled
-        else name
+            string_of_int env.next_id
+          end else if Hashtbl.mem env.names name then begin
+            env.next_id <- env.next_id + 1;
+            name ^ "." ^ (string_of_int env.next_id)
+          end else
+            name
+        in
+        assert (not (Hashtbl.mem env.names mangled));
+        mangled
       in begin
         ValueHashtbl.add env.values value name;
         Hashtbl.add env.names name ();

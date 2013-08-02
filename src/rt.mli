@@ -60,7 +60,7 @@ and lambda = {
   l_type_env      : type_env;
   l_const_env     : const_env;
   l_args          : Syntax.formal_args;
-  l_code          : Syntax.exprs;
+  l_body          : Syntax.exprs;
 }
 and lambda_ty = {
   l_args_ty       : value;

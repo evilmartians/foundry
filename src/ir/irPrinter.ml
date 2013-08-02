@@ -1,18 +1,27 @@
 open Unicode.Std
+open Big_int
 open Rt
 
-type ir_value =
-| IRClass   of klass
-| IRPackage of package
+type named_value =
+| NamedClass     of klass
+| NamedMixin     of mixin
+| NamedPackage   of package
+| NamedInstance  of value Table.t (* compared by identity of their ivar tables *)
+| NamedLambda    of lambda
+| NamedLocalEnv  of local_env
 
 module ValueIdentity =
 struct
-  type t = ir_value
+  type t = named_value
 
   let equal a b =
     match a, b with
-    | IRClass(a),   IRClass(b)   -> a == b
-    | IRPackage(a), IRPackage(b) -> a == b
+    | NamedClass(a),     NamedClass(b)    -> a == b
+    | NamedPackage(a),   NamedPackage(b)  -> a == b
+    | NamedMixin(a),     NamedMixin(b)    -> a == b
+    | NamedInstance(a),  NamedInstance(b) -> a == b
+    | NamedLambda(a),    NamedLambda(b)   -> a == b
+    | NamedLocalEnv(a),  NamedLocalEnv(b) -> a == b
     | _, _ -> false
 
   let hash = Hashtbl.hash
@@ -29,6 +38,12 @@ let print_ident str =
   if IrSupport.is_printable str
   then str
   else print_string str
+
+(* Locations *)
+
+let print_loc (loc : Location.t) =
+  let beg, nnd = (loc :> int * int)
+  in "(" ^ (string_of_int beg) ^ " " ^ (string_of_int nnd) ^ ")"
 
 (* Names *)
 
@@ -82,26 +97,174 @@ let with_lookup env value name printer =
         name
       )
 
-let rec print_klass env klass =
-  with_lookup env (IRClass klass) (Global ("c." ^ klass.k_name))
+let print_table prefix table f =
+  (String.concat ","
+    (Table.map_list (fun key value ->
+      "\n  " ^ prefix ^ (print_string key) ^ " = " ^ (f value))
+    table)) ^ (if Table.empty table then "" else "\n" ^ prefix)
+
+let print_seq elems xfrm =
+  String.concat ", "
+    (List.map xfrm elems)
+
+let print_assoc elems xfrm =
+  String.concat ", "
+    (Table.map_list (fun key value ->
+      (print_string key) ^ " = " ^ (xfrm value))
+    elems)
+
+let print_some is_empty f =
+  if is_empty then
+    ""
+  else
+    f ()
+
+let rec print_value env value =
+  match value with
+  | Tvar(tv)          -> print_tvar env tv
+  | TvarTy            -> "type tvar"
+  | Nil               -> "nil"
+  | NilTy             -> "type nil"
+  | Truth             -> "true"
+  | Lies              -> "false"
+  | BooleanTy         -> "type boolean"
+  | Integer(n)        -> "int " ^ (string_of_big_int n)
+  | IntegerTy         -> "type int"
+  | Symbol(s)         -> "symbol " ^ (print_string s)
+  | SymbolTy          -> "type symbol"
+  | Tuple(xs)         -> "[" ^ (print_seq xs (print_value env)) ^ "]"
+  | TupleTy(xs)       -> "type [" ^ (print_seq xs (print_value env)) ^ "]"
+  | Record(xs)        -> "{" ^ (print_assoc xs (print_value env)) ^ "}"
+  | RecordTy(xs)      -> "type {" ^ (print_assoc xs (print_value env)) ^ "}"
+  | Environment(e)    -> "environment " ^ (print_name (print_local_env env e))
+  | EnvironmentTy(et) -> assert false (* not yet *)
+  | Lambda(l)         -> "lambda " ^ (print_name (print_lambda env l))
+  | LambdaTy(lt)      -> "type lambda (" ^
+                           (print_value env lt.l_args_ty) ^ ", " ^
+                           (print_value env lt.l_kwargs_ty) ^ ") -> " ^
+                           (print_value env lt.l_return_ty)
+  | Class(k,sp)       -> "class " ^ (print_name (print_klass env k)) ^
+                           "{" ^(print_assoc sp (print_value env))  ^ "}"
+  | Mixin(k,sp)       -> "mixin " ^ (print_name (print_mixin env k)) ^
+                           "{" ^(print_assoc sp (print_value env))  ^ "}"
+  | Package(p)        -> "package " ^ (print_name (print_package env p))
+  | Instance(c,iv)    -> "instance " ^ (print_name (print_instance env c iv))
+
+and print_klass env klass =
+  with_lookup env (NamedClass klass) (Global ("c." ^ klass.k_name))
     (fun () ->
       "class " ^ (print_string klass.k_name) ^ " {\n" ^
         "  metaclass " ^ (print_name (print_klass env klass.k_metaclass)) ^ "\n" ^
         (Option.map_default (fun klass ->
             "  ancestor " ^ (print_name (print_klass env klass)) ^ "\n")
           "" klass.k_ancestor) ^
-        "  type_variables {}\n" ^
-        "  instance_variables {}\n" ^
-        "  methods {}\n" ^
+        (print_some (Table.empty klass.k_tvars) (fun () ->
+          "  type_variables {" ^
+            (print_table "  " klass.k_tvars (print_tvar env)) ^
+          "}\n")) ^
+        (print_some (Table.empty klass.k_ivars) (fun () ->
+          "  instance_variables {" ^
+            (print_table "  " klass.k_ivars (print_ivar env)) ^
+          "}\n")) ^
+        (print_some (Table.empty klass.k_methods) (fun () ->
+          "  methods {" ^
+            (print_table "  " klass.k_methods (print_method env)) ^
+          "}\n")) ^
+        (print_some (klass.k_prepended = []) (fun () ->
+          "  prepended [" ^
+            (print_seq klass.k_prepended
+              (fun mixin -> print_name (print_mixin env mixin))) ^ "]\n")) ^
+        (print_some (klass.k_appended = []) (fun () ->
+          "  appended ["  ^
+            (print_seq klass.k_appended
+              (fun mixin -> print_name (print_mixin env mixin))) ^ "]\n")) ^
       "}")
 
-let print_package env package =
-  with_lookup env (IRPackage package) (Global ("p." ^ package.p_name))
+and print_mixin env mixin =
+  with_lookup env (NamedMixin mixin) (Global ("m." ^ mixin.m_name))
+    (fun () ->
+      "mixin " ^ (print_string mixin.m_name) ^ " {\n" ^
+        "  metaclass " ^ (print_name (print_klass env mixin.m_metaclass)) ^ "\n" ^
+        (print_some (Table.empty mixin.m_methods) (fun () ->
+          "  methods {" ^
+            (print_table "  " mixin.m_methods (print_method env)) ^
+          "}\n")) ^
+      "}")
+
+and print_tvar env tvar =
+  "tvar " ^ (string_of_int (tvar :> int))
+
+and print_ivar env ivar =
+  let kind =
+    match ivar.iv_kind with
+    | Syntax.IVarImmutable   -> "immutable"
+    | Syntax.IVarMutable     -> "mutable"
+    | Syntax.IVarMetaMutable -> "mutable"
+  in
+  (print_loc ivar.iv_location) ^ " " ^
+    kind ^ " " ^
+    (print_value env ivar.iv_ty)
+
+and print_method env meth =
+  (if meth.im_dynamic then "dynamic " else "") ^
+    (print_name (print_lambda env meth.im_body))
+
+and print_lambda env lam =
+  with_lookup env (NamedLambda lam) (Global "") (fun () ->
+    "lambda {\n" ^
+      "  location " ^ (print_loc lam.l_location) ^ "\n" ^
+      "  type " ^ (print_value env lam.l_ty) ^ "\n" ^
+      "  local_env " ^ (print_name (print_local_env env lam.l_local_env)) ^ "\n" ^
+      "  type_env {" ^
+        (print_table "  " lam.l_type_env (print_tvar env)) ^
+      "}\n" ^
+      "  const_env [" ^
+        (print_seq !(lam.l_const_env)
+          (fun pkg -> print_name (print_package env pkg))) ^
+      "]\n" ^
+      "  args " ^ (Unicode.adopt_utf8s
+          (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_formal_args lam.l_args))) ^ "\n" ^
+      "  body " ^ (Unicode.adopt_utf8s
+          (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_exprs lam.l_body))) ^ "\n" ^
+    "}")
+
+and print_local_env env lenv =
+  with_lookup env (NamedLocalEnv lenv) (Global (""))
+    (fun () ->
+      "environment {\n" ^
+        (Option.map_default (fun parent ->
+            "  parent " ^ (print_name (print_local_env env parent)) ^ "\n")
+          "" lenv.e_parent) ^
+        "  bindings {" ^
+          (print_table "  " lenv.e_bindings (fun v ->
+            (print_loc v.b_location) ^ " " ^
+            (match v.b_kind with
+            | Syntax.LVarImmutable -> "immutable"
+            | Syntax.LVarMutable   -> "mutable") ^ " " ^
+            (print_value env v.b_value))) ^
+        "}\n" ^
+      "}")
+
+and print_package env package =
+  with_lookup env (NamedPackage package) (Global ("p." ^ package.p_name))
     (fun () ->
       "package " ^ (print_string package.p_name) ^ " {\n" ^
         "  metaclass " ^ (print_name (print_klass env package.p_metaclass)) ^ "\n" ^
-        "  constants {}\n" ^
+        (print_some (Table.empty package.p_constants) (fun () ->
+          "  constants {" ^
+            (print_table "  " package.p_constants (print_value env)) ^
+          "}\n"
+        )) ^
       "}")
+
+and print_instance env (klass, sp) ivars =
+  with_lookup env (NamedInstance ivars) (Global "")
+    (fun () ->
+      "instance " ^ (print_name (print_klass env klass)) ^
+        "{" ^ (print_assoc sp (print_value env)) ^ "} {\n" ^
+        (print_table "  " ivars (print_value env)) ^
+      "}"
+    )
 
 let print_roots roots =
   let env = create_env () in

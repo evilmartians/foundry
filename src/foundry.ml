@@ -7,7 +7,6 @@ while true do
   let lexstate = Lexer.create "stdin" 1 in
   let lex ()   = Lexer.next lexstate lexbuf in
   let parse    = MenhirLib.Convert.Simplified.traditional2revised Parser.toplevel in
-  let (|>) x f = f x in
 
 (* let print_stmt stmt =
     stmt

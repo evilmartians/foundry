@@ -26,6 +26,9 @@ let get_exn = Hashtbl.find
 
 let exists = Hashtbl.mem
 
+let empty table =
+  Hashtbl.length table = 0
+
 let pair k v =
   newtable 1
     (fun table -> Hashtbl.add table k v)

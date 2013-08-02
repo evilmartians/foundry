@@ -221,10 +221,10 @@ let rec lex_code state = lexer
                      Id_CONST (locate lexbuf, lexeme lexbuf)
 
 | '@'  ident      -> expr_begin state false;
-                     Id_IVAR  (locate lexbuf, sub_lexeme lexbuf 1 0)
+                     Id_IVAR  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
 
 | '\\' ident      -> expr_begin state false;
-                     Id_TVAR  (locate lexbuf, sub_lexeme lexbuf 1 0)
+                     Id_TVAR  (locate lexbuf, sub_lexeme lexbuf 1 (-1))
 
 | _               -> unexpected lexbuf
 | eof             -> eof lexbuf

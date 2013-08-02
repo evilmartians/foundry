@@ -359,7 +359,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
           l_type_env  = tenv;
           l_const_env = cenv;
           l_args      = args;
-          l_code      = [body]
+          l_body      = [body]
         })
 
   | Syntax.Class((loc,_),name,ancestor,body)
@@ -438,7 +438,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
             l_type_env  = tenv;
             l_const_env = cenv;
             l_args      = args;
-            l_code      = body;
+            l_body      = body;
           }
         } loc;
       Nil)
@@ -456,7 +456,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
             l_type_env  = tenv;
             l_const_env = cenv;
             l_args      = args;
-            l_code      = body;
+            l_body      = body;
           }
         } loc;
       Nil)
@@ -548,7 +548,7 @@ and eval_lambda body args kwargs =
         else ())
   in
     bind_args body.l_args args [];
-    eval env body.l_code
+    eval env body.l_body
 
 and eval env exprs =
   Option.default Nil

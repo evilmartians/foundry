@@ -34,6 +34,7 @@ type value =
 | Class         of klass specialized
 | Mixin         of mixin specialized
 | Instance      of klass specialized * value Table.t
+and 'a specialized = 'a * value Table.t
 and binding_ty = {
   b_location_ty   : Location.t;
   b_is_mutable_ty : bool;
@@ -61,14 +62,13 @@ and lambda = {
   l_type_env      : type_env;
   l_const_env     : const_env;
   l_args          : Syntax.formal_args;
-  l_code          : Syntax.exprs;
+  l_body          : Syntax.exprs;
 }
 and lambda_ty = {
   l_args_ty       : value;
   l_kwargs_ty     : value;
   l_return_ty     : value;
 }
-and 'a specialized = 'a * value Table.t
 and package = {
   p_name          : string;
   p_metaclass     : klass;
@@ -169,7 +169,7 @@ let rec make_roots () =
         (empty_class ("meta:" ^ name) meta_ancestor kClass)
   in
 
-  let kPackage = new_class "Package"
+  let kPackage    = new_class "Package"
   in
 
   let roots = {
@@ -190,10 +190,12 @@ let rec make_roots () =
       p_name      = "toplevel";
       p_metaclass = empty_class "meta:toplevel" (Some kPackage) kClass;
       p_constants = Table.create [
-        ("Nil",     NilTy);
-        ("Boolean", BooleanTy);
-        ("Integer", IntegerTy);
-        ("Symbol",  SymbolTy)
+        ("Class",        Class (kClass,        Table.create []));
+        ("TypeVariable", TvarTy);
+        ("Nil",          NilTy);
+        ("Boolean",      BooleanTy);
+        ("Integer",      IntegerTy);
+        ("Symbol",       SymbolTy)
       ]
     }
   }

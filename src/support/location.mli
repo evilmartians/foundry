@@ -1,6 +1,6 @@
 open Unicode.Std
 
-type t
+type t = private int * int
 with sexp
 
 val empty       : t

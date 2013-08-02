@@ -12,6 +12,7 @@ val get      : 'a t -> string -> 'a option
 val get_exn  : 'a t -> string -> 'a
 val set      : 'a t -> string -> 'a -> unit
 val exists   : 'a t -> string -> bool
+val empty    : 'a t -> bool
 
 val map      : f:('a -> 'b) -> 'a t -> 'b t
 val map_list : f:(string -> 'a -> 'b) -> 'a t -> 'b list
