@@ -33,8 +33,9 @@ type value =
 (* User-defined types *)
 | Class         of klass specialized
 | Mixin         of mixin specialized
-| Instance      of klass specialized * value Table.t
+| Instance      of klass specialized * slots
 and 'a specialized = 'a * value Table.t
+and slots = value Table.t
 and binding_ty = {
   b_location_ty   : Location.t;
   b_is_mutable_ty : bool;
@@ -54,20 +55,20 @@ and local_env = {
   e_bindings      : binding Table.t;
 }
 and type_env =      tvar Table.t
-and const_env =     package list ref
+and const_env =     package list
 and lambda = {
   l_location      : Location.t;
   l_ty            : value;
-  l_local_env     : local_env;
-  l_type_env      : type_env;
-  l_const_env     : const_env;
+  mutable l_local_env : local_env;
+  mutable l_type_env  : type_env;
+  mutable l_const_env : const_env;
   l_args          : Syntax.formal_args;
   l_body          : Syntax.exprs;
 }
 and lambda_ty = {
   l_args_ty       : value;
   l_kwargs_ty     : value;
-  l_return_ty     : value;
+  l_result_ty     : value;
 }
 and package = {
   p_name          : string;
@@ -109,26 +110,22 @@ with sexp
 
 (* Class tooling & default virtual image *)
 
-let lastvar = ref 0
-
-let genvar () : tvar =
-  incr lastvar;
-  !lastvar
-
 type roots = {
-  kClass          : klass;
-  kTypeVariable   : klass;
-  kNil            : klass;
-  kBoolean        : klass;
-  kInteger        : klass;
-  kSymbol         : klass;
-  kTuple          : klass;
-  kRecord         : klass;
-  kLambda         : klass;
-  kMixin          : klass;
-  kPackage        : klass;
+  mutable last_tvar : int;
 
-  pToplevel       : package;
+  kClass            : klass;
+  kTypeVariable     : klass;
+  kNil              : klass;
+  kBoolean          : klass;
+  kInteger          : klass;
+  kSymbol           : klass;
+  kTuple            : klass;
+  kRecord           : klass;
+  kLambda           : klass;
+  kMixin            : klass;
+  kPackage          : klass;
+
+  pToplevel         : package;
 }
 
 let empty_class name ancestor metaclass =
@@ -141,7 +138,7 @@ let empty_class name ancestor metaclass =
     k_prepended = [];
     k_appended  = []; }
 
-let rec make_roots () =
+let create_class () =
   let rec kClass =
     { k_name      = "Class";
       k_ancestor  = None;
@@ -161,7 +158,11 @@ let rec make_roots () =
       k_prepended = [];
       k_appended  = []; }
   in
+  (kClass, kmetaClass)
 
+let create_roots () =
+  let (kClass, kmetaClass) = create_class ()
+  in
   let new_class ?ancestor name =
     let meta_ancestor =
       Option.map_default (fun k -> k.k_ancestor) None ancestor
@@ -173,6 +174,8 @@ let rec make_roots () =
   in
 
   let roots = {
+    last_tvar     = 0;
+
     kClass        = kClass;
     kMixin        = new_class "Mixin";
     kPackage      = kPackage;
@@ -190,7 +193,7 @@ let rec make_roots () =
       p_name      = "toplevel";
       p_metaclass = empty_class "meta:toplevel" (Some kPackage) kClass;
       p_constants = Table.create [
-        ("Class",        Class (kClass,        Table.create []));
+        ("Class",        Class (kClass, Table.create []));
         ("TypeVariable", TvarTy);
         ("Nil",          NilTy);
         ("Boolean",      BooleanTy);
@@ -203,11 +206,15 @@ let rec make_roots () =
 
   roots
 
-let roots = ref (make_roots ())
+let roots = ref (create_roots ())
 
-let reset () =
-  roots   := make_roots ();
-  lastvar := 0
+let adopt_tvar value : tvar =
+  value
+
+let new_tvar () : tvar =
+  let roots = !roots in
+  roots.last_tvar <- roots.last_tvar + 1;
+  roots.last_tvar
 
 let new_class ?ancestor name =
   let meta_ancestor =
@@ -352,7 +359,7 @@ and inspect_type ty =
           | RecordTy(xs) -> Table.map_list inspect_type_pair xs
           | o -> ["**" ^ (inspect_type o)]
         in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^
-           ") -> " ^ (inspect_type lm.l_return_ty))
+           ") -> " ^ (inspect_type lm.l_result_ty))
     | Class(k,_)   -> k.k_name
     | _            -> "((" ^ (inspect_value ty) ^ "))")
 

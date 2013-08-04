@@ -1,6 +1,18 @@
 open Unicode.Std
 
-let env = Vm.env_create ()
+let dump_ir () =
+  IrPrinter.print_roots !Rt.roots
+
+let load_ir lexbuf =
+  let lex () = IrLexer.next lexbuf in
+  let parse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
+    Rt.roots := parse lex
+
+let _ =
+  load_ir (Lexing.from_channel stdin);
+  print_endline (dump_ir ())
+
+(* let env = Vm.env_create ()
 
 while true do
   let lexbuf   = Ulexing.from_utf8_channel stdin in
@@ -34,3 +46,4 @@ while true do
       print_endline ("Error: " ^ exc.Rt.ex_message)
 
 done
+ *)

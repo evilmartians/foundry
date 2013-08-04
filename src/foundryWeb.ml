@@ -18,19 +18,19 @@ let process code ~do_eval =
       match Verifier.check ast with
       | [] ->
         if do_eval then begin
-          Rt.reset ();
+          Rt.roots := Rt.create_roots ();
           let env    = Vm.env_create () in
           let result = Vm.eval env ast  in
             (* Output (Rt.inspect result) *)
             let ir = IrPrinter.print_roots !Rt.roots
             in
-
+(*
             let irlexbuf = Ulexing.from_utf8_string (ir :> latin1s) in
             let irlex () = IrLexer.next irlexbuf in
             let irparse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
             irparse irlex;
 
-            Output (ir)
+ *)            Output (ir)
 
         end else
           Output (u"")

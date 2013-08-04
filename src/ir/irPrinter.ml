@@ -142,7 +142,7 @@ let rec print_value env value =
   | LambdaTy(lt)      -> "type lambda (" ^
                            (print_value env lt.l_args_ty) ^ ", " ^
                            (print_value env lt.l_kwargs_ty) ^ ") -> " ^
-                           (print_value env lt.l_return_ty)
+                           (print_value env lt.l_result_ty)
   | Class(k,sp)       -> "class " ^ (print_name (print_klass env k)) ^
                            "{" ^(print_assoc sp (print_value env))  ^ "}"
   | Mixin(k,sp)       -> "mixin " ^ (print_name (print_mixin env k)) ^
@@ -211,17 +211,16 @@ and print_method env meth =
 
 and print_lambda env lam =
   with_lookup env (NamedLambda lam) (Global "") (fun () ->
-    "lambda {\n" ^
-      "  location " ^ (print_loc lam.l_location) ^ "\n" ^
-      "  type " ^ (print_value env lam.l_ty) ^ "\n" ^
+    "lambda " ^ (print_loc lam.l_location) ^ " {\n" ^
       "  local_env " ^ (print_name (print_local_env env lam.l_local_env)) ^ "\n" ^
       "  type_env {" ^
         (print_table "  " lam.l_type_env (print_tvar env)) ^
       "}\n" ^
       "  const_env [" ^
-        (print_seq !(lam.l_const_env)
+        (print_seq lam.l_const_env
           (fun pkg -> print_name (print_package env pkg))) ^
       "]\n" ^
+      "  type " ^ (print_value env lam.l_ty) ^ "\n" ^
       "  args " ^ (Unicode.adopt_utf8s
           (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_formal_args lam.l_args))) ^ "\n" ^
       "  body " ^ (Unicode.adopt_utf8s

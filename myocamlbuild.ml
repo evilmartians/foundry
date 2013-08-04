@@ -10,7 +10,11 @@ dispatch begin function
       ~deps:["%.byte"]
       ~prod:"%.js"
       begin fun env build ->
-        Seq [Cmd (S[A"js_of_ocaml"; A"-pretty"; A"-noinline"; A"-debuginfo"; Px(env "%.byte")])]
+        Seq [
+          Cmd (S[A"js_of_ocaml"; A"-pretty"; A"-noinline"; A"-debuginfo";
+               P(env "%.byte"); A"-o"; P(env "%.js.o")]);
+          Cmd (S[A"mv"; P(env "%.js.o"); Px(env "%.js")])
+        ]
       end;
 
     (* === UNICODE === *)

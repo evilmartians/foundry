@@ -1,56 +1,59 @@
-%token <Unicode.utf8s>      NAME_LOCAL
-%token <Unicode.utf8s>      NAME_GLOBAL
+%token <Unicode.utf8s>      Name_Local
+%token <Unicode.utf8s>      Name_Global
 
-%token <Unicode.utf8s>      LIT_STRING
-%token <Fy_big_int.big_int> LIT_INTEGER
+%token <Unicode.utf8s>      Lit_String
+%token <Fy_big_int.big_int> Lit_Integer
 
-%token <Syntax.formal_args> SYNTAX_ARGS
-%token <Syntax.exprs>       SYNTAX_EXPRS
+%token <Sexplib.Sexp.t>     Syntax_Args
+%token <Sexplib.Sexp.t>     Syntax_Exprs
 
-%token LPAREN
-%token RPAREN
-%token LBRACK
-%token RBRACK
-%token LBRACE
-%token RBRACE
-%token COMMA
-%token EQUAL
+%token LParen
+%token RParen
+%token LBrack
+%token RBrack
+%token LBrace
+%token RBrace
+%token Comma
+%token Equal
+%token Arrow
 
-%token TYPE
-%token TVAR
-%token NIL
-%token TRUE
-%token FALSE
-%token BOOLEAN
-%token INT
-%token SYMBOL
-%token ENVIRONMENT
-%token LAMBDA
-%token CLASS
-%token MIXIN
-%token PACKAGE
-%token INSTANCE
+%token Type
+%token Tvar
+%token Nil
+%token True
+%token False
+%token Boolean
+%token Int
+%token Symbol
+%token Environment
+%token Lambda
+%token Class
+%token Mixin
+%token Package
+%token Instance
 
-%token IMMUTABLE
-%token MUTABLE
-%token META_MUTABLE
-%token DYNAMIC
+%token Immutable
+%token Mutable
+%token Meta_mutable
+%token Dynamic
 
-%token PARENT
-%token BINDINGS
+%token Parent
+%token Bindings
 
-%token LOCATION
-%token LOCAL_ENV
-%token TYPE_ENV
-%token CONST_ENV
+%token Location
+%token Local_env
+%token Type_env
+%token Const_env
 
-%token METACLASS
-%token ANCESTOR
-%token TYPE_VARIABLES
-%token INSTANCE_VARIABLES
-%token METHODS
-%token PREPENDED
-%token APPENDED
-%token CONSTANTS
+%token Metaclass
+%token Ancestor
+%token Type_variables
+%token Instance_variables
+%token Methods
+%token Prepended
+%token Appended
+%token Constants
+
+%token EOF
 
 %%

@@ -16,6 +16,9 @@ let create lst =
   newtable (List.length lst)
     (fun table -> fill table lst)
 
+let replace table other =
+  Hashtbl.iter (Hashtbl.replace table) other
+
 let copy = Hashtbl.copy
 
 let set = Hashtbl.replace

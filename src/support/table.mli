@@ -6,6 +6,7 @@ with sexp_of
 val create   : (string * 'a) list -> 'a t
 val pair     : string -> 'a -> 'a t
 val fill     : 'a t -> (string * 'a) list -> unit
+val replace  : 'a t -> 'a t -> unit
 val copy     : 'a t -> 'a t
 
 val get      : 'a t -> string -> 'a option

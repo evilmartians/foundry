@@ -55,7 +55,7 @@ let tenv_resolve env name =
   match Table.get env name with
   | Some tvar -> tvar
   | None ->
-    let tvar = Rt.genvar () in
+    let tvar = Rt.new_tvar () in
       Table.set env name tvar;
       tvar
 
@@ -64,7 +64,7 @@ let tenv_resolve env name =
 exception CEnvUnbound
 exception CEnvAlreadyBound of value
 
-let cenv_create () : const_env =
+let cenv_create () : const_env ref =
   ref [!roots.pToplevel]
 
 let cenv_fork env =
@@ -97,7 +97,7 @@ let cenv_lookup env name =
 
 (* Eval helper routines *)
 
-type env = local_env * type_env * const_env
+type env = local_env * type_env * const_env ref
 
 let env_create () =
   let lenv = lenv_create None
@@ -227,7 +227,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
       in LambdaTy {
         l_args_ty   = TupleTy  args;
         l_kwargs_ty = RecordTy (Table.create kwargs);
-        l_return_ty = as_type ret;
+        l_result_ty = as_type ret;
       })
   | Syntax.TypeConstr((loc,_),name,args)
   -> (try
@@ -263,7 +263,7 @@ and eval_closure_ty (lenv, tenv, cenv) expr =
         -> tenv, ty
         | _
         -> exc_type "closure type" ty [Syntax.ty_loc ty_expr])
-    (tenv, Tvar (genvar ()))
+    (tenv, Tvar (new_tvar ()))
     expr
 
 and eval_args env lst =
@@ -357,7 +357,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
           l_ty        = ty;
           l_local_env = lenv;
           l_type_env  = tenv;
-          l_const_env = cenv;
+          l_const_env = !cenv;
           l_args      = args;
           l_body      = [body]
         })
@@ -436,7 +436,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
             l_ty        = ty;
             l_local_env = lenv;
             l_type_env  = tenv;
-            l_const_env = cenv;
+            l_const_env = !cenv;
             l_args      = args;
             l_body      = body;
           }
@@ -454,7 +454,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
             l_ty        = ty;
             l_local_env = lenv;
             l_type_env  = tenv;
-            l_const_env = cenv;
+            l_const_env = !cenv;
             l_args      = args;
             l_body      = body;
           }
@@ -494,7 +494,7 @@ and eval_send recv name ~args ~kwargs ~loc =
 and eval_lambda body args kwargs =
   let lenv = lenv_create (Some body.l_local_env) in
   let tenv = tenv_fork   body.l_type_env  in
-  let cenv = cenv_fork   body.l_const_env in
+  let cenv = ref         body.l_const_env in
   let env  = (lenv, tenv, cenv) in
 
   let rec bind (kind, name) ~loc ~value ~f_rest ~rest ~kwseen =
