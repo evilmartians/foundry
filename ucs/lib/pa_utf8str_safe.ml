@@ -13,11 +13,9 @@ module Make (Syntax : Sig.Camlp4Syntax) = struct
     GLOBAL: expr;
 
     expr: LEVEL "simple"
-    [ [ "u"; s = STRING ->
-        let s = Scanf.unescaped s in
-          <:expr< (Unicode.assert_utf8s $`str:s$) >>
-      ]
-    ]
+      [ [ "u"; s = STRING ->
+            <:expr< (Unicode.assert_utf8s $str:s$) >>
+      ] ]
     ;
   END
 end
