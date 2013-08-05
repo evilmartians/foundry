@@ -170,14 +170,18 @@ let create_roots () =
         (empty_class ("meta:" ^ name) meta_ancestor kClass)
   in
 
-  let kPackage    = new_class "Package"
-  in
+  let kMixin      = new_class "Mixin"   in
+  let kPackage    = new_class "Package" in
+
+  let kTuple      = new_class "Tuple"  in
+  let kRecord     = new_class "Record" in
+  let kLambda     = new_class "Lambda" in
 
   let roots = {
     last_tvar     = 0;
 
     kClass        = kClass;
-    kMixin        = new_class "Mixin";
+    kMixin        = kMixin;
     kPackage      = kPackage;
 
     kTypeVariable = new_class "TypeVariable";
@@ -185,20 +189,27 @@ let create_roots () =
     kBoolean      = new_class "Boolean";
     kInteger      = new_class "Integer";
     kSymbol       = new_class "Symbol";
-    kTuple        = new_class "Tuple";
-    kRecord       = new_class "Record";
-    kLambda       = new_class "Lambda";
+    kTuple        = kTuple;
+    kRecord       = kRecord;
+    kLambda       = kLambda;
 
     pToplevel     = {
       p_name      = "toplevel";
       p_metaclass = empty_class "meta:toplevel" (Some kPackage) kClass;
       p_constants = Table.create [
         ("Class",        Class (kClass, Table.create []));
+        ("Mixin",        Class (kMixin, Table.create []));
+        ("Package",      Class (kPackage, Table.create []));
+
         ("TypeVariable", TvarTy);
         ("Nil",          NilTy);
         ("Boolean",      BooleanTy);
         ("Integer",      IntegerTy);
-        ("Symbol",       SymbolTy)
+        ("Symbol",       SymbolTy);
+
+        ("Tuple",        Class (kTuple, Table.create []));
+        ("Record",       Class (kRecord, Table.create []));
+        ("Lambda",       Class (kLambda, Table.create []));
       ]
     }
   }
