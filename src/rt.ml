@@ -20,9 +20,9 @@ type value =
 | SymbolTy
 (* Product types *)
 | Tuple         of value list
-| TupleTy       of value list
+| TupleTy       of ty list
 | Record        of value Table.t
-| RecordTy      of value Table.t
+| RecordTy      of ty Table.t
 (* Function type *)
 | Environment   of local_env
 | EnvironmentTy of local_env_ty
@@ -34,12 +34,16 @@ type value =
 | Class         of klass specialized
 | Mixin         of mixin specialized
 | Instance      of klass specialized * slots
+(* SSA types *)
+| FunctionTy    of ty list * ty
+| BasicBlockTy
+and ty = value
 and 'a specialized = 'a * value Table.t
 and slots = value Table.t
 and binding_ty = {
   b_location_ty   : Location.t;
   b_is_mutable_ty : bool;
-  b_value_ty      : value;
+  b_value_ty      : ty;
 }
 and local_env_ty = {
   e_parent_ty     : local_env_ty option;
@@ -58,7 +62,7 @@ and type_env =      tvar Table.t
 and const_env =     package list
 and lambda = {
   l_location      : Location.t;
-  l_ty            : value;
+  l_ty            : ty;
   mutable l_local_env : local_env;
   mutable l_type_env  : type_env;
   mutable l_const_env : const_env;
@@ -66,9 +70,9 @@ and lambda = {
   l_body          : Syntax.exprs;
 }
 and lambda_ty = {
-  l_args_ty       : value;
-  l_kwargs_ty     : value;
-  l_result_ty     : value;
+  l_args_ty       : ty;
+  l_kwargs_ty     : ty;
+  l_result_ty     : ty;
 }
 and package = {
   p_name          : string;
@@ -97,7 +101,7 @@ and imethod = {
 and ivar = {
   iv_location     : Location.t;
   iv_kind         : Syntax.ivar_kind;
-  iv_ty           : value;
+  iv_ty           : ty;
 }
 and exc = {
   ex_message      : string;
@@ -309,6 +313,9 @@ let klass_of_value ?(dispatch=false) value =
   | _ -> failwith ("klass_of_value " ^
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
+
+let specialize conv ty =
+  assert false
 
 (* Inspecting types and values *)
 

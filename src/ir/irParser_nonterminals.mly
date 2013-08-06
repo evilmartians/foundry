@@ -305,6 +305,11 @@
                         Table.replace i_slots (slots env)))
                 }
 
+              | Name_Local
+                {
+                  assert false
+                }
+
    definitions: defs=definitions x=entity
                 { let (env, defs) = defs in
                     env, ((x env) :: defs) }
