@@ -62,7 +62,7 @@ and type_env =      tvar Table.t
 and const_env =     package list
 and lambda = {
   l_location      : Location.t;
-  l_ty            : ty;
+  l_ty            : lambda_ty;
   mutable l_local_env : local_env;
   mutable l_type_env  : type_env;
   mutable l_const_env : const_env;
@@ -254,14 +254,14 @@ let rec type_of_value value =
   | Tvar(_)       -> TvarTy
   | Integer(_)    -> IntegerTy
   | Symbol(_)     -> SymbolTy
-  | Tuple(xs)     -> TupleTy(List.map type_of_value xs)
-  | Record(xs)    -> RecordTy(Table.map (fun v -> type_of_value v) xs)
+  | Tuple(xs)     -> TupleTy (List.map type_of_value xs)
+  | Record(xs)    -> RecordTy (Table.map (fun v -> type_of_value v) xs)
 
-  | Lambda(c)     -> c.l_ty
+  | Lambda(c)     -> LambdaTy c.l_ty
 
-  | Package(_)    -> Class(!roots.kPackage, Table.create [])
-  | Class(k,_)    -> Class(!roots.kClass, Table.create [])
-  | Instance(k,_) -> Class(k)
+  | Package(_)    -> Class (!roots.kPackage, Table.create [])
+  | Class(k,_)    -> Class (!roots.kClass, Table.create [])
+  | Instance(k,_) -> Class (k)
   | _ -> failwith ("type_of_value " ^
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value value))))

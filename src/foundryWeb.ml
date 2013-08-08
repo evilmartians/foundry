@@ -22,15 +22,11 @@ let process code ~do_eval =
           let env    = Vm.env_create () in
           let result = Vm.eval env ast  in
             (* Output (Rt.inspect result) *)
-            let ir = IrPrinter.print_roots !Rt.roots
+            let Rt.Lambda lam = result in
+            let func = Ssa.func_of_lambda lam in
+            let ir   = IrPrinter.print_ssa func (* IrPrinter.print_roots !Rt.roots *)
             in
-(*
-            let irlexbuf = Ulexing.from_utf8_string (ir :> latin1s) in
-            let irlex () = IrLexer.next irlexbuf in
-            let irparse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
-            irparse irlex;
-
- *)            Output (ir)
+              Output (ir)
 
         end else
           Output (u"")

@@ -1,14 +1,16 @@
 open Unicode.Std
 open Big_int
 open Rt
+open Ssa
 
 type named_value =
-| NamedClass     of klass
-| NamedMixin     of mixin
-| NamedPackage   of package
-| NamedInstance  of value Table.t (* compared by identity of their ivar tables *)
-| NamedLambda    of lambda
-| NamedLocalEnv  of local_env
+| NamedClass        of klass
+| NamedMixin        of mixin
+| NamedPackage      of package
+| NamedInstance     of value Table.t (* compared by identity of their ivar tables *)
+| NamedLambda       of lambda
+| NamedLocalEnv     of local_env
+| NamedSSAFunction  of func
 
 module ValueIdentity =
 struct
@@ -16,12 +18,13 @@ struct
 
   let equal a b =
     match a, b with
-    | NamedClass(a),     NamedClass(b)    -> a == b
-    | NamedPackage(a),   NamedPackage(b)  -> a == b
-    | NamedMixin(a),     NamedMixin(b)    -> a == b
-    | NamedInstance(a),  NamedInstance(b) -> a == b
-    | NamedLambda(a),    NamedLambda(b)   -> a == b
-    | NamedLocalEnv(a),  NamedLocalEnv(b) -> a == b
+    | NamedClass(a),        NamedClass(b)       -> a == b
+    | NamedPackage(a),      NamedPackage(b)     -> a == b
+    | NamedMixin(a),        NamedMixin(b)       -> a == b
+    | NamedInstance(a),     NamedInstance(b)    -> a == b
+    | NamedLambda(a),       NamedLambda(b)      -> a == b
+    | NamedLocalEnv(a),     NamedLocalEnv(b)    -> a == b
+    | NamedSSAFunction(a),  NamedSSAFunction(b) -> a == b
     | _, _ -> false
 
   let hash = Hashtbl.hash
@@ -139,16 +142,15 @@ let rec print_value env value =
   | Environment(e)    -> "environment " ^ (print_name (print_local_env env e))
   | EnvironmentTy(et) -> assert false (* not yet *)
   | Lambda(l)         -> "lambda " ^ (print_name (print_lambda env l))
-  | LambdaTy(lt)      -> "type lambda (" ^
-                           (print_value env lt.l_args_ty) ^ ", " ^
-                           (print_value env lt.l_kwargs_ty) ^ ") -> " ^
-                           (print_value env lt.l_result_ty)
+  | LambdaTy(lt)      -> print_lambda_ty env lt
   | Class(k,sp)       -> "class " ^ (print_name (print_klass env k)) ^
                            "{" ^(print_assoc sp (print_value env))  ^ "}"
   | Mixin(k,sp)       -> "mixin " ^ (print_name (print_mixin env k)) ^
                            "{" ^(print_assoc sp (print_value env))  ^ "}"
   | Package(p)        -> "package " ^ (print_name (print_package env p))
   | Instance(c,iv)    -> "instance " ^ (print_name (print_instance env c iv))
+  | FunctionTy(_,_)   -> assert false
+  | BasicBlockTy      -> assert false
 
 and print_klass env klass =
   with_lookup env (NamedClass klass) (Global ("c." ^ klass.k_name))
@@ -191,8 +193,14 @@ and print_mixin env mixin =
           "}\n")) ^
       "}")
 
-and print_tvar env tvar =
+and print_tvar env (tvar:tvar) =
   "tvar " ^ (string_of_int (tvar :> int))
+
+and print_lambda_ty env lambda_ty =
+  "type lambda (" ^
+    (print_value env lambda_ty.l_args_ty) ^ ", " ^
+    (print_value env lambda_ty.l_kwargs_ty) ^ ") -> " ^
+    (print_value env lambda_ty.l_result_ty)
 
 and print_ivar env ivar =
   let kind =
@@ -220,7 +228,7 @@ and print_lambda env lam =
         (print_seq lam.l_const_env
           (fun pkg -> print_name (print_package env pkg))) ^
       "]\n" ^
-      "  type " ^ (print_value env lam.l_ty) ^ "\n" ^
+      "  type " ^ (print_lambda_ty env lam.l_ty) ^ "\n" ^
       "  args " ^ (Unicode.adopt_utf8s
           (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_formal_args lam.l_args))) ^ "\n" ^
       "  body " ^ (Unicode.adopt_utf8s
@@ -265,6 +273,25 @@ and print_instance env (klass, sp) ivars =
       "}"
     )
 
+let print_ssa_value env value =
+  match value.opcode with
+  | Function func ->
+    (with_lookup env (NamedSSAFunction func) (Global value.id)
+      (fun () ->
+        let ret_ty =
+          match value.ty with
+          | FunctionTy(args,ret) -> ret
+          | _ -> assert false
+        in
+        "function (" ^
+          (print_seq func.arguments
+            (fun arg ->
+              (print_name (Local arg.id)) ^ " " ^
+              (print_value env arg.ty))) ^
+        ") -> " ^
+          (print_value env ret_ty) ^ " {\n" ^
+        "}"))
+
 let print_roots roots =
   let env = create_env () in
     List.iter (fun klass -> ignore (print_klass env klass)) [
@@ -281,4 +308,9 @@ let print_roots roots =
       roots.kPackage
     ];
     print_package env roots.pToplevel;
+    env.image
+
+let print_ssa value =
+  let env = create_env () in
+    print_ssa_value env value;
     env.image

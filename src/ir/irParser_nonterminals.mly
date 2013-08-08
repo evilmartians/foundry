@@ -10,7 +10,7 @@
   | NamedPackage   of package
   | NamedLambda    of lambda
   | NamedLocalEnv  of local_env
-  | NamedInstance  of klass specialized * slots
+  | NamedInstance  of (klass specialized * slots)
 
   let new_globals () =
     let (kClass, kmetaClass) = Rt.create_class () in
@@ -95,6 +95,14 @@
           tvar: Tvar x=Lit_Integer
                 { (fun env -> Rt.adopt_tvar (int_of_big_int x)) }
 
+     lambda_ty: Type Lambda LParen args=ty Comma kwargs=ty RParen Arrow result=ty
+                { (fun env -> {
+                    l_args_ty   = args   env;
+                    l_kwargs_ty = kwargs env;
+                    l_result_ty = result env;
+                  })
+                }
+
             ty: x=tvar
                 { (fun env -> Tvar (x env)) }
               | Type Tvar
@@ -113,13 +121,8 @@
                 { (fun env -> RecordTy (xs env)) }
               | Type Environment
                 { (fun env -> assert false) }
-              | Type Lambda LParen args=ty Comma kwargs=ty RParen Arrow result=ty
-                { (fun env -> LambdaTy {
-                    l_args_ty   = args   env;
-                    l_kwargs_ty = kwargs env;
-                    l_result_ty = result env;
-                  })
-                }
+              | x=lambda_ty
+                { (fun env -> LambdaTy (x env)) }
 
          value: x=ty
                 { (fun env -> (x env)) }
@@ -258,7 +261,7 @@
                     local_env=prefix(Local_env,           local_env)
                      type_env=prefix(Type_env,            table(tvar))?
                     const_env=prefix(Const_env,           seq(package))?
-                           ty=prefix(Type,                ty)
+                           ty=prefix(Type,                lambda_ty)
                          args=Syntax_Args
                          body=Syntax_Exprs
                   RBrace

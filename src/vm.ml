@@ -255,16 +255,21 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
   -> eval_expr env expr
 
 and eval_closure_ty (lenv, tenv, cenv) expr =
-  Option.map_default (fun ty_expr ->
-    let tenv = tenv_fork tenv in
-      let ty = eval_type (lenv, tenv, cenv) ty_expr in
-        match ty with
-        | LambdaTy(_) | Tvar(_)
-        -> tenv, ty
-        | _
-        -> exc_type "closure type" ty [Syntax.ty_loc ty_expr])
-    (tenv, Tvar (new_tvar ()))
-    expr
+  match expr with
+  | Some ty_expr
+  -> (let tenv = tenv_fork tenv in
+        let ty = eval_type (lenv, tenv, cenv) ty_expr in
+          match ty with
+          | LambdaTy(ty)
+          -> tenv, ty
+          | _
+          -> exc_type "closure type" ty [Syntax.ty_loc ty_expr])
+  | None
+  -> (tenv, {
+        l_args_ty   = Tvar (new_tvar ());
+        l_kwargs_ty = Tvar (new_tvar ());
+        l_result_ty = Tvar (new_tvar ());
+      })
 
 and eval_args env lst =
   let rec eval_args args =
