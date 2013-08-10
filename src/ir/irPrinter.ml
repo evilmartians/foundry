@@ -242,15 +242,28 @@ and print_local_env env lenv =
         (Option.map_default (fun parent ->
             "  parent " ^ (print_name (print_local_env env parent)) ^ "\n")
           "" lenv.e_parent) ^
-        "  bindings {" ^
-          (print_table "  " lenv.e_bindings (fun v ->
-            (print_loc v.b_location) ^ " " ^
-            (match v.b_kind with
-            | Syntax.LVarImmutable -> "immutable"
-            | Syntax.LVarMutable   -> "mutable") ^ " " ^
-            (print_value env v.b_value))) ^
-        "}\n" ^
+        "  bindings " ^ (print_bindings env lenv.e_bindings) ^ "\n" ^
       "}")
+
+and print_bindings env bindings =
+  "{" ^
+    (print_table "  " bindings (fun b ->
+      (print_loc b.b_location) ^ " " ^
+      (match b.b_kind with
+      | Syntax.LVarImmutable -> "immutable"
+      | Syntax.LVarMutable   -> "mutable") ^ " " ^
+      (print_value env b.b_value))) ^
+  "}"
+
+and print_bindings_ty env bindings =
+  "{" ^
+    (print_table "  " bindings (fun b ->
+      (print_loc b.b_location_ty) ^ " " ^
+      (match b.b_kind_ty with
+      | Syntax.LVarImmutable -> "immutable"
+      | Syntax.LVarMutable   -> "mutable") ^ " " ^
+      (print_value env b.b_value_ty))) ^
+  "}"
 
 and print_package env package =
   with_lookup env (NamedPackage package) (Global ("p." ^ package.p_name))
@@ -273,24 +286,58 @@ and print_instance env (klass, sp) ivars =
       "}"
     )
 
-let print_ssa_value env value =
+let rec print_ssa_value env value =
+  let print value =
+    match value with
+    | { opcode = Const value } -> print_value env value
+    | _                        -> print_name (Local value.id)
+  in
+  let term opcode operands =
+    opcode ^ " " ^ (String.concat ", " operands)
+  in
+  let insn opcode operands =
+    (print_name (Local value.id)) ^ " = " ^ (term opcode operands)
+  in
   match value.opcode with
   | Function func ->
-    (with_lookup env (NamedSSAFunction func) (Global value.id)
-      (fun () ->
-        let ret_ty =
-          match value.ty with
-          | FunctionTy(args,ret) -> ret
-          | _ -> assert false
-        in
-        "function (" ^
-          (print_seq func.arguments
-            (fun arg ->
-              (print_name (Local arg.id)) ^ " " ^
-              (print_value env arg.ty))) ^
-        ") -> " ^
-          (print_value env ret_ty) ^ " {\n" ^
-        "}"))
+    (print_name
+      (with_lookup env (NamedSSAFunction func) (Global value.id)
+        (fun () ->
+          let ret_ty =
+            match value.ty with
+            | FunctionTy(args,ret) -> ret
+            | _ -> assert false
+          in
+          "function (" ^
+            (print_seq func.arguments
+              (fun arg -> (print_value env arg.ty) ^ " " ^ (print arg))) ^
+          ") -> " ^
+            (print_value env ret_ty) ^ " {\n" ^
+            (String.concat "\n"
+              (List.map (print_ssa_value env) func.basic_blocks)) ^
+          "}")))
+  | BasicBlock block ->
+    (print_ident value.id) ^ ":\n" ^
+      (String.concat ""
+        (List.map
+          (fun v -> "  " ^ (print_ssa_value env v) ^ "\n")
+          block.instructions))
+  (* Handled in other places *)
+  | Argument | Const _ ->
+    assert false
+  (* Instructions *)
+  | JumpInsn name ->
+    term "jump" [print name]
+  | JumpIfInsn (cond, if_true, if_false) ->
+    term "jump_if" [print cond; print if_true; print if_false]
+  | ReturnInsn name ->
+    term "return" [print name]
+  | EnvironmentInsn (bindings, parent) ->
+    insn "environment" [print_bindings_ty env bindings; print parent]
+  | LVarLoadInsn (env, var) ->
+    insn "lvar_load" [print env; print_string var]
+  | LVarStoreInsn (env, var, value) ->
+    insn "lvar_store" [print env; print_string var; print value]
 
 let print_roots roots =
   let env = create_env () in

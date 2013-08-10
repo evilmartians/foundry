@@ -41,25 +41,27 @@ and 'a specialized = 'a * value Table.t
 and slots = value Table.t
 and binding_ty = {
   b_location_ty   : Location.t;
-  b_is_mutable_ty : bool;
+  b_kind_ty       : Syntax.lvar_kind;
   b_value_ty      : ty;
 }
+and bindings_ty  = binding_ty Table.t
 and local_env_ty = {
   e_parent_ty     : local_env_ty option;
-  e_bindings_ty   : binding_ty Table.t;
+  e_bindings_ty   : bindings_ty;
 }
 and binding = {
   b_location      : Location.t;
   b_kind          : Syntax.lvar_kind;
   b_value         : value;
 }
+and bindings  = binding Table.t
 and local_env = {
   e_parent        : local_env option;
-  e_bindings      : binding Table.t;
+  e_bindings      : bindings;
 }
-and type_env =      tvar Table.t
+and type_env  =      tvar Table.t
 and const_env =     package list
-and lambda = {
+and lambda    = {
   l_location      : Location.t;
   l_ty            : lambda_ty;
   mutable l_local_env : local_env;

@@ -23,7 +23,7 @@ let process code ~do_eval =
           let result = Vm.eval env ast  in
             (* Output (Rt.inspect result) *)
             let Rt.Lambda lam = result in
-            let func = Ssa.func_of_lambda lam in
+            let func = Ssa.name_of_lambda lam in
             let ir   = IrPrinter.print_ssa func (* IrPrinter.print_roots !Rt.roots *)
             in
               Output (ir)

@@ -42,25 +42,27 @@ and 'a specialized = 'a * value Table.t
 and slots = value Table.t
 and binding_ty = {
   b_location_ty   : Location.t;
-  b_is_mutable_ty : bool;
+  b_kind_ty       : Syntax.lvar_kind;
   b_value_ty      : ty;
 }
+and bindings_ty  = binding_ty Table.t
 and local_env_ty = {
   e_parent_ty     : local_env_ty option;
-  e_bindings_ty   : binding_ty Table.t;
+  e_bindings_ty   : bindings_ty;
 }
 and binding = {
   b_location      : Location.t;
   b_kind          : Syntax.lvar_kind;
   b_value         : value;
 }
+and bindings  = binding Table.t
 and local_env = {
   e_parent        : local_env option;
-  e_bindings      : binding Table.t;
+  e_bindings      : bindings;
 }
-and type_env =      tvar Table.t
+and type_env  =     tvar Table.t
 and const_env =     package list
-and lambda = {
+and lambda    = {
   l_location      : Location.t;
   l_ty            : lambda_ty;
   mutable l_local_env : local_env;
@@ -246,26 +248,6 @@ let new_package name =
 
 (* Types and classes *)
 
-let rec type_of_value value =
-  match value with
-  | Truth | Lies  -> BooleanTy
-  | Nil           -> NilTy
-
-  | Tvar(_)       -> TvarTy
-  | Integer(_)    -> IntegerTy
-  | Symbol(_)     -> SymbolTy
-  | Tuple(xs)     -> TupleTy (List.map type_of_value xs)
-  | Record(xs)    -> RecordTy (Table.map (fun v -> type_of_value v) xs)
-
-  | Lambda(c)     -> LambdaTy c.l_ty
-
-  | Package(_)    -> Class (!roots.kPackage, Table.create [])
-  | Class(k,_)    -> Class (!roots.kClass, Table.create [])
-  | Instance(k,_) -> Class (k)
-  | _ -> failwith ("type_of_value " ^
-                   (Unicode.assert_utf8s
-                    (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
-
 let klass_of_type ty =
   match ty with
   | BooleanTy     -> !roots.kBoolean
@@ -313,6 +295,43 @@ let klass_of_value ?(dispatch=false) value =
   | _ -> failwith ("klass_of_value " ^
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
+
+let rec type_of_value value =
+  match value with
+  | Truth | Lies    -> BooleanTy
+  | Nil             -> NilTy
+
+  | Tvar(_)         -> TvarTy
+  | Integer(_)      -> IntegerTy
+  | Symbol(_)       -> SymbolTy
+  | Tuple(xs)       -> TupleTy (List.map type_of_value xs)
+  | Record(xs)      -> RecordTy (Table.map (fun v -> type_of_value v) xs)
+
+  | Environment(e)  -> EnvironmentTy (type_of_environment e)
+  | Lambda(c)       -> LambdaTy c.l_ty
+
+  | Package(_)      -> Class (!roots.kPackage, Table.create [])
+  | Class(k,_)      -> Class (!roots.kClass, Table.create [])
+  | Instance(k,_)   -> Class (k)
+
+  | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
+  | TupleTy(_) | RecordTy(_) | LambdaTy(_)
+  -> Class (klass_of_type value, Table.create [])
+
+  | _ -> failwith ("type_of_value " ^
+                   (Unicode.assert_utf8s
+                    (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
+
+and type_of_environment env =
+  {
+    e_parent_ty   = Option.map type_of_environment env.e_parent;
+    e_bindings_ty =
+      Table.map (fun b -> {
+        b_location_ty = b.b_location;
+        b_kind_ty     = b.b_kind;
+        b_value_ty    = type_of_value b.b_value;
+      }) env.e_bindings;
+  }
 
 let specialize conv ty =
   assert false

@@ -10,8 +10,9 @@ type name = private {
   mutable uses   : name list;
 }
 and func = private {
-          naming    : func_naming;
-  mutable arguments : name list;
+          naming       : func_naming;
+  mutable arguments    : name list;
+  mutable basic_blocks : name list;
 }
 and func_naming
 and basic_block = private {
@@ -19,22 +20,45 @@ and basic_block = private {
 }
 and opcode =
 (* Functions *)
-| Function   of func
+| Function        of func
 | Argument
-| BasicBlock of basic_block
+| BasicBlock      of basic_block
+(* Constants *)
+| Const           of Rt.value
 (* Phi *)
-| Phi        of (name * name) list
+| PhiInsn         of (name * name) list
 (* Terminators *)
-| Jump       of name
-| JumpIf     of name * name * name
-| Return     of name
+| JumpInsn        of name
+| JumpIfInsn      of name * name * name
+| ReturnInsn      of name
 (* Language-specific opcodes *)
-| Const      of Rt.value
-| Primitive0 of string
-| Primitive1 of string * name
-| Primitive2 of string * name * name
+| EnvironmentInsn of Rt.bindings_ty * (*parent*) name
+| LVarLoadInsn    of name * string
+| LVarStoreInsn   of name * string * name
+| Primitive0Insn  of string
+| Primitive1Insn  of string * name
+| Primitive2Insn  of string * name * name
 
-val create_func        : ?id:string -> Rt.ty list -> Rt.ty -> name
-val create_basic_block : ?id:string -> parent:name -> name
+(* Module level *)
 
-val func_of_lambda     : ?id:string -> Rt.lambda -> name
+val name_of_lambda      : ?id:string -> Rt.lambda -> name
+
+(* Function level *)
+
+val create_func         : ?id:string -> Rt.ty list -> Rt.ty -> name
+val create_basic_block  : ?id:string -> parent:name -> name
+
+val func_of_name        : name -> func
+val basic_block_of_name : name -> basic_block
+
+val entry               : name -> name
+val add_basic_block     : (*func*) name -> (*basic_block*) name -> unit
+val remove_basic_block  : (*basic_block*) name -> unit
+
+(* Instruction level *)
+
+val const               : Rt.value -> name
+
+val append_insn         : (*basic_block*) name -> ?id:string -> Rt.ty -> opcode -> name
+val replace_insn        : (*insn*) name -> ?id:string -> Rt.ty -> opcode -> unit
+val remove_insn         : (*insn*) name -> unit
