@@ -2,5 +2,7 @@
 
 <**/*.{ml,mli,mly*,byte,native}>: use_utf8str, syntax(camlp4o), package(sexplib.syntax), package(extlib), package(menhirLib), package(ulex)
 
-<foundryWeb.ml>: -use_utf8str, package(js_of_ocaml.syntax)
-<foundryWeb.{ml,byte}>: package(js_of_ocaml)
+<foundry_web.ml>: -use_utf8str, package(js_of_ocaml.syntax)
+<foundry_web.{ml,byte}>: package(js_of_ocaml)
+
+<foundry.{ml,native}>: package(llvm)

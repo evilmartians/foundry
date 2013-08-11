@@ -1,16 +1,18 @@
 open Unicode.Std
 
-let dump_ir () =
-  IrPrinter.print_roots !Rt.roots
-
 let load_ir lexbuf =
   let lex () = IrLexer.next lexbuf in
   let parse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
-    Rt.roots := parse lex
+  let roots, main = parse lex in
+    Rt.roots := roots;
+    main
+
+let dump_ir main =
+  IrPrinter.print_ssa main
 
 let _ =
-  load_ir (Lexing.from_channel stdin);
-  print_endline (dump_ir ())
+  let main = load_ir (Lexing.from_channel stdin) in
+    print_endline (dump_ir main)
 
 (* let env = Vm.env_create ()
 

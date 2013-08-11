@@ -5,15 +5,22 @@ open Rt
 let int_binop op =
   let f args =
     match args with
-    | Integer(lhs), Integer(rhs) -> Integer(op lhs rhs)
+    | [Integer(lhs); Integer(rhs)] -> Integer(op lhs rhs)
     | _ -> assert false
   in f
 
-let prim0 = Table.create []
+let debug args =
+  match args with
+  | [arg] ->
+    print_endline (Unicode.assert_utf8s
+      (Sexplib.Sexp.to_string_hum (sexp_of_value arg)));
+    Rt.Nil
+  | _ -> assert false
 
-let prim1 = Table.create []
-
-let prim2 = Table.create [
+let prim = Table.create [
+  (* 1-ary *)
+  "debug",   debug;
+  (* 2-ary *)
   "int_add", int_binop add_big_int;
   "int_sub", int_binop sub_big_int;
   "int_mul", int_binop mult_big_int;
@@ -28,19 +35,7 @@ let prim2 = Table.create [
   "int_exp", int_binop power_big_int_positive_big_int;
 ]
 
-let exists name arity =
-  if arity > 2 then
-    false
-  else
-    let table =
-      match arity with
-      | 0 -> prim0 | 1 -> prim1 | 2 -> prim2
-      | _ -> assert false
-    in Table.exists table name
+let exists = Table.exists prim
 
-let invoke (name : string) (args : value list) : value =
-  match args with
-  | [a1; a2] -> (Table.get_exn prim2 name) (a1, a2)
-  (* | [a1]     -> (Table.get_exn prim1 name) (a1) *)
-  (* | []       -> (Table.get_exn prim0 name) () *)
-  | _ -> assert false
+let invoke name args =
+  (Table.get_exn prim name) args

@@ -19,6 +19,7 @@ and basic_block = private {
   mutable instructions : name list;
 }
 and opcode =
+| InvalidInsn
 (* Functions *)
 | Function        of func
 | Argument
@@ -26,18 +27,21 @@ and opcode =
 (* Constants *)
 | Const           of Rt.value
 (* Phi *)
-| PhiInsn         of (name * name) list
+| PhiInsn         of ((*basic_block*) name * (*value*) name) list
 (* Terminators *)
-| JumpInsn        of name
-| JumpIfInsn      of name * name * name
-| ReturnInsn      of name
+| JumpInsn        of (*target*) name
+| JumpIfInsn      of (*condition*) name * (*if_true*) name * (*if_false*) name
+| ReturnInsn      of (*value*) name
 (* Language-specific opcodes *)
-| EnvironmentInsn of Rt.bindings_ty * (*parent*) name
-| LVarLoadInsn    of name * string
-| LVarStoreInsn   of name * string * name
-| Primitive0Insn  of string
-| Primitive1Insn  of string * name
-| Primitive2Insn  of string * name * name
+| FrameInsn       of (*parent*) name
+| LVarLoadInsn    of (*environment*) name * string
+| LVarStoreInsn   of (*environment*) name * string * name
+| PrimitiveInsn   of (*name*) string * (*operands*) name list
+
+(* Generic *)
+
+val name_of_value       : Rt.value -> name
+val set_name_id         : name -> string -> unit
 
 (* Module level *)
 
@@ -45,20 +49,23 @@ val name_of_lambda      : ?id:string -> Rt.lambda -> name
 
 (* Function level *)
 
-val create_func         : ?id:string -> Rt.ty list -> Rt.ty -> name
-val create_basic_block  : ?id:string -> parent:name -> name
-
+val create_func         : ?id:string ->
+                            ?arg_names:string list ->
+                            (*args_ty*)   Rt.ty list ->
+                            (*result_ty*) Rt.ty ->
+                            name
 val func_of_name        : name -> func
-val basic_block_of_name : name -> basic_block
 
-val entry               : name -> name
-val add_basic_block     : (*func*) name -> (*basic_block*) name -> unit
+val find_func_entry     : (*func*) name -> name
+
+(* Basic block level *)
+
+val create_basic_block  : ?id:string -> (*func*) name -> name
 val remove_basic_block  : (*basic_block*) name -> unit
+val basic_block_of_name : (*basic_block*) name -> basic_block
 
 (* Instruction level *)
 
-val const               : Rt.value -> name
-
-val append_insn         : (*basic_block*) name -> ?id:string -> Rt.ty -> opcode -> name
-val replace_insn        : (*insn*) name -> ?id:string -> Rt.ty -> opcode -> unit
+val append_insn         : ?id:string -> ty:Rt.ty -> opcode:opcode -> (*basic_block*) name -> name
+val replace_insn        : ?ty:Rt.ty -> ?opcode:opcode -> (*insn*) name -> unit
 val remove_insn         : (*insn*) name -> unit

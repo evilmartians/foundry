@@ -140,7 +140,7 @@ let rec print_value env value =
   | Record(xs)        -> "{" ^ (print_assoc xs (print_value env)) ^ "}"
   | RecordTy(xs)      -> "type {" ^ (print_assoc xs (print_value env)) ^ "}"
   | Environment(e)    -> "environment " ^ (print_name (print_local_env env e))
-  | EnvironmentTy(et) -> assert false (* not yet *)
+  | EnvironmentTy(et) -> "type environment " ^ (print_local_env_ty env et)
   | Lambda(l)         -> "lambda " ^ (print_name (print_lambda env l))
   | LambdaTy(lt)      -> print_lambda_ty env lt
   | Class(k,sp)       -> "class " ^ (print_name (print_klass env k)) ^
@@ -194,7 +194,7 @@ and print_mixin env mixin =
       "}")
 
 and print_tvar env (tvar:tvar) =
-  "tvar " ^ (string_of_int (tvar :> int))
+  "tvar(" ^ (string_of_int (tvar :> int)) ^ ")"
 
 and print_lambda_ty env lambda_ty =
   "type lambda (" ^
@@ -244,6 +244,18 @@ and print_local_env env lenv =
           "" lenv.e_parent) ^
         "  bindings " ^ (print_bindings env lenv.e_bindings) ^ "\n" ^
       "}")
+
+and print_local_env_ty env ty =
+  "{" ^ print_assoc ty.e_bindings_ty (fun b ->
+    (print_loc b.b_location_ty) ^ " " ^
+    (match b.b_kind_ty with
+    | Syntax.LVarImmutable -> "immutable"
+    | Syntax.LVarMutable   -> "mutable") ^ " " ^
+    (print_value env b.b_value_ty)) ^
+  "}" ^
+    (match ty.e_parent_ty with
+    | Some parent_ty -> " -> " ^ (print_local_env_ty env parent_ty)
+    | None -> "")
 
 and print_bindings env bindings =
   "{" ^
@@ -296,7 +308,8 @@ let rec print_ssa_value env value =
     opcode ^ " " ^ (String.concat ", " operands)
   in
   let insn opcode operands =
-    (print_name (Local value.id)) ^ " = " ^ (term opcode operands)
+    (print_name (Local value.id)) ^ " = " ^
+      (print_value env value.ty) ^ " " ^ (term opcode operands)
   in
   match value.opcode with
   | Function func ->
@@ -326,18 +339,24 @@ let rec print_ssa_value env value =
   | Argument | Const _ ->
     assert false
   (* Instructions *)
+  | InvalidInsn ->
+    insn "$invalid" []
   | JumpInsn name ->
     term "jump" [print name]
   | JumpIfInsn (cond, if_true, if_false) ->
     term "jump_if" [print cond; print if_true; print if_false]
   | ReturnInsn name ->
     term "return" [print name]
-  | EnvironmentInsn (bindings, parent) ->
-    insn "environment" [print_bindings_ty env bindings; print parent]
+  | FrameInsn (parent) ->
+    insn "frame" [print parent]
   | LVarLoadInsn (env, var) ->
     insn "lvar_load" [print env; print_string var]
   | LVarStoreInsn (env, var, value) ->
     insn "lvar_store" [print env; print_string var; print value]
+  | PrimitiveInsn (name, operands) ->
+    (print_name (Local value.id)) ^ " = " ^
+      (print_value env value.ty) ^ " primitive " ^ (print_string name) ^
+      " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
 
 let print_roots roots =
   let env = create_env () in
@@ -354,10 +373,10 @@ let print_roots roots =
       roots.kMixin;
       roots.kPackage
     ];
-    print_package env roots.pToplevel;
+    ignore (print_package env roots.pToplevel);
     env.image
 
 let print_ssa value =
   let env = create_env () in
-    print_ssa_value env value;
+    ignore (print_ssa_value env value);
     env.image

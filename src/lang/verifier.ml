@@ -249,11 +249,10 @@ and check_expr cx expr =
   | DefSelfMethod(_,_,f_args,ty,exprs)
   -> check_lambda cx f_args ty exprs
   | InvokePrimitive((loc,_),name,exprs)
-  -> (if Primitive.exists name (List.length exprs) then
+  -> (if Primitive.exists name then
         check_expr cx @: exprs
       else
-        ["Unknown primitive `" ^ name ^ "/" ^
-          (string_of_int (List.length exprs)) ^ "'.", [loc]])
+        ["Unknown primitive `" ^ name ^ "'.", [loc]])
 
 let check ast =
   let context = {

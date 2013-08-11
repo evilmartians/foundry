@@ -65,12 +65,12 @@ dispatch begin function
         "%_errors.ml.in";
         "%_terminals.mly";
         "%.ml";
-        "src/foundryMerr.native"
+        "src/foundry_merr.native"
       ]
       begin fun env build ->
         Cmd(S[
           P "../merr/merr.native";
-          A"-p"; A("src/foundryMerr.native");
+          A"-p"; A("src/foundry_merr.native");
           A"-t"; P(env "%_terminals.mly");
           A"-a"; P(env "%.automaton");
           A"-e"; P(env "%_errors.ml.in");

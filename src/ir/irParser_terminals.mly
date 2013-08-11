@@ -1,5 +1,6 @@
 %token <Unicode.utf8s>      Name_Local
 %token <Unicode.utf8s>      Name_Global
+%token <Unicode.utf8s>      Name_Label
 
 %token <Unicode.utf8s>      Lit_String
 %token <Fy_big_int.big_int> Lit_Integer
@@ -40,7 +41,6 @@
 %token Parent
 %token Bindings
 
-%token Location
 %token Local_env
 %token Type_env
 %token Const_env
@@ -53,6 +53,17 @@
 %token Prepended
 %token Appended
 %token Constants
+
+%token Empty
+
+%token Function
+%token Jump
+%token Jump_if
+%token Return
+%token Frame
+%token Lvar_load
+%token Lvar_store
+%token Primitive
 
 %token EOF
 

@@ -7,11 +7,14 @@ let name = ['A'-'Z' 'a'-'z' '0'-'9' ':' '.']+
 
 rule lex = parse
 | [' ' '\t' '\n'] { lex lexbuf }
+| ';' [^'\n']*    { lex lexbuf }
 
 | '%' (name as n)            { Name_Local  (Unicode.adopt_utf8s n) }
 | '%' '"' ([^'"']+ as n) '"' { Name_Local  (Unicode.adopt_utf8s n) }
 | '@' (name as n)            { Name_Global (Unicode.adopt_utf8s n) }
 | '@' '"' ([^'"']+ as n) '"' { Name_Global (Unicode.adopt_utf8s n) }
+| (name as n) ':'            { Name_Label  (Unicode.adopt_utf8s n) }
+| '"' ([^'"']+ as n) '"' ':' { Name_Label  (Unicode.adopt_utf8s n) }
 
 | '"' ([^'"']+ as s) '"' { Lit_String  (Unicode.adopt_utf8s s) }
 | ['0'-'9']+ as d        { Lit_Integer (big_int_of_string d) }
@@ -48,7 +51,6 @@ rule lex = parse
 
 | "parent"        { Parent }
 | "bindings"      { Bindings }
-| "location"      { Location }
 
 | "local_env"     { Local_env }
 | "type_env"      { Type_env }
@@ -65,6 +67,17 @@ rule lex = parse
 
 | "args"          { Syntax_Args  (Sexplib.Sexp.scan_sexp lexbuf) }
 | "body"          { Syntax_Exprs (Sexplib.Sexp.scan_sexp lexbuf) }
+
+| "empty"         { Empty }
+
+| "function"      { Function }
+| "jump"          { Jump }
+| "jump_if"       { Jump_if }
+| "return"        { Return }
+| "frame"         { Frame }
+| "lvar_load"     { Lvar_load }
+| "lvar_store"    { Lvar_store }
+| "primitive"     { Primitive }
 
 | (['a'-'z']+) as kw { failwith ("unknown keyword: " ^ kw) }
 | eof                { EOF }

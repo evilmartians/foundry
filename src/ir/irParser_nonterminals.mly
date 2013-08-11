@@ -1,8 +1,9 @@
 %{
 
-  open Rt
   open Unicode.Std
   open Big_int
+  open Rt
+  open Ssa
 
   type named_value =
   | NamedClass     of klass
@@ -11,6 +12,7 @@
   | NamedLambda    of lambda
   | NamedLocalEnv  of local_env
   | NamedInstance  of (klass specialized * slots)
+  | NamedFunction  of name
 
   let new_globals () =
     let (kClass, kmetaClass) = Rt.create_class () in
@@ -25,7 +27,7 @@
 
 %}
 
-%start <Rt.roots> toplevel
+%start <Rt.roots * Ssa.name> toplevel
 
 %%
     %public table(X): LBrace
@@ -92,7 +94,7 @@
                     | NamedInstance (k, sl) -> (k, sl)
                     | _ -> assert false) }
 
-          tvar: Tvar x=Lit_Integer
+          tvar: Tvar LParen x=Lit_Integer RParen
                 { (fun env -> Rt.adopt_tvar (int_of_big_int x)) }
 
      lambda_ty: Type Lambda LParen args=ty Comma kwargs=ty RParen Arrow result=ty
@@ -102,6 +104,14 @@
                     l_result_ty = result env;
                   })
                 }
+
+environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
+                { (fun env -> Some {
+                    e_parent_ty   = parent env;
+                    e_bindings_ty = xs env;
+                  }) }
+              | /* nothing */
+                { (fun env -> None) }
 
             ty: x=tvar
                 { (fun env -> Tvar (x env)) }
@@ -119,8 +129,11 @@
                 { (fun env -> TupleTy (xs env)) }
               | Type xs=table(ty)
                 { (fun env -> RecordTy (xs env)) }
-              | Type Environment
-                { (fun env -> assert false) }
+              | Type Environment xs=table(lvar_ty) parent=environment_ty
+                { (fun env -> EnvironmentTy {
+                    e_parent_ty   = parent env;
+                    e_bindings_ty = xs env;
+                  }) }
               | x=lambda_ty
                 { (fun env -> LambdaTy (x env)) }
 
@@ -177,6 +190,13 @@
                     b_location = loc;
                     b_kind     = kind;
                     b_value    = x env;
+                  }) }
+
+       lvar_ty: loc=location kind=lvar_kind x=ty
+                { (fun env -> {
+                    b_location_ty = loc;
+                    b_kind_ty     = kind;
+                    b_value_ty    = x env;
                   }) }
 
        method_: dynamic=boption(Dynamic) x=lambda
@@ -308,12 +328,83 @@
                         Table.replace i_slots (slots env)))
                 }
 
-              | Name_Local
+
+       fun_arg: ty=ty name=Name_Local
+                { (fun env -> ty env, name) }
+
+      fun_args: LParen xs=separated_list(Comma, fun_arg) RParen
+                { (fun env -> List.map (fun x -> x env) xs) }
+
+          func: bind_as=Name_Global Equal
+                  Function args=fun_args Arrow result=ty LBrace
+                    blocks=basic_blocks
+                  RBrace
                 {
-                  assert false
+                  (fun venv ->
+                    let fenv = Table.create [] in
+                    let args = args venv in
+                    let func = create_func ~id:bind_as
+                                  ~arg_names:(List.map snd args)
+                                  (List.map fst args) (result venv) in
+                      Table.set venv bind_as (NamedFunction func);
+                      let fixups = blocks (venv, func, fenv) in
+                        (fun () -> List.iter (fun f -> f ()) fixups))
                 }
 
+   basic_block: id=Name_Label insns=nonempty_list(insn)
+                { (fun ((venv, func, fenv) as env) ->
+                    let basic_block = create_basic_block ~id func in
+                      Table.set fenv id basic_block;
+                      List.map (fun insn -> insn (venv, basic_block, fenv))
+                        insns) }
+
+  basic_blocks: xs=nonempty_list(basic_block)
+                { (fun env ->
+                    List.concat (List.map (fun x -> x env) xs)) }
+
+       operand: id=Name_Local
+                { (fun (venv, block, fenv) ->
+                    Table.get_exn fenv id)}
+              | value=value
+                { (fun (venv, block, fenv) ->
+                    name_of_value (value venv)) }
+
+          insn: id=Name_Local Equal ty=ty x=value_insn
+                { (fun ((venv, block, fenv) as env) ->
+                    let insn = append_insn block ~id ~ty:Rt.NilTy ~opcode:InvalidInsn in
+                      Table.set fenv id insn;
+                      (fun () ->
+                        replace_insn insn ~ty:(ty venv) ~opcode:(x env))) }
+              | x=term_insn
+                { (fun ((venv, block, fenv) as env) ->
+                    let insn = append_insn block ~ty:Rt.NilTy ~opcode:InvalidInsn in
+                      (fun () ->
+                        replace_insn insn ~ty:Rt.NilTy ~opcode:(x env))) }
+
+    value_insn: Frame parent=operand
+                { (fun env -> FrameInsn (parent env)) }
+              | Frame Empty
+                { (fun env ->
+                    FrameInsn (name_of_value (Environment {
+                                e_parent   = None;
+                                e_bindings = Table.create [];
+                              }))) }
+              | Lvar_load  lenv=operand Comma name=Lit_String
+                { (fun env -> LVarLoadInsn (lenv env, name)) }
+              | Lvar_store lenv=operand Comma name=Lit_String Comma value=operand
+                { (fun env -> LVarStoreInsn (lenv env, name, value env)) }
+              | Primitive  name=Lit_String LParen args=separated_list(Comma, operand) RParen
+                { (fun env -> PrimitiveInsn (name, List.map (fun x -> x env) args)) }
+
+     term_insn: Jump target=operand
+                { (fun env -> JumpInsn (target env)) }
+              | Jump_if cond=operand Comma if_true=operand Comma if_false=operand
+                { (fun env -> JumpIfInsn (cond env, if_true env, if_false env)) }
+              | Return value=operand
+                { (fun env -> ReturnInsn (value env) ) }
+
    definitions: defs=definitions x=entity
+              | defs=definitions x=func
                 { let (env, defs) = defs in
                     env, ((x env) :: defs) }
               | /* empty */
@@ -332,7 +423,12 @@
                       | Some (NamedPackage p) -> p
                       | _ -> assert false
                     in
-                    {
+                    let get_func name =
+                      match Table.get env name with
+                      | Some (NamedFunction f) -> f
+                      | _ -> assert false
+                    in
+                    (*let roots = {
                       last_tvar     = 0; (* TODO *)
 
                       kClass        = get_class (u"c.Class");
@@ -349,4 +445,6 @@
 
                       pToplevel     = get_package (u"p.toplevel");
                     }
+                    in*)
+                    create_roots (), get_func (u"entry")
                 }

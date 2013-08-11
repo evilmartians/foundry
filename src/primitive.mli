@@ -1,5 +1,4 @@
 open Unicode.Std
 
-val exists : string (* name *) -> int (* arity *) -> bool
-
+val exists : string -> bool
 val invoke : string -> Rt.value list -> Rt.value

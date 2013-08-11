@@ -25,6 +25,7 @@ and basic_block = {
   mutable instructions : name list;
 }
 and opcode =
+| InvalidInsn
 (* Functions *)
 | Function        of func
 | Argument
@@ -32,18 +33,16 @@ and opcode =
 (* Constants *)
 | Const           of Rt.value
 (* Phi *)
-| PhiInsn         of (name * name) list
+| PhiInsn         of ((*basic_block*) name * (*value*) name) list
 (* Terminators *)
-| JumpInsn        of name
-| JumpIfInsn      of name * name * name
-| ReturnInsn      of name
+| JumpInsn        of (*target*) name
+| JumpIfInsn      of (*condition*) name * (*if_true*) name * (*if_false*) name
+| ReturnInsn      of (*value*) name
 (* Language-specific opcodes *)
-| EnvironmentInsn of Rt.bindings_ty * (*parent*) name
-| LVarLoadInsn    of name * string
-| LVarStoreInsn   of name * string * name
-| Primitive0Insn  of string
-| Primitive1Insn  of string * name
-| Primitive2Insn  of string * name * name
+| FrameInsn       of (*parent*) name
+| LVarLoadInsn    of (*environment*) name * string
+| LVarStoreInsn   of (*environment*) name * string * name
+| PrimitiveInsn   of (*name*) string * (*operands*) name list
 
 let func_of_name name =
   match name with
@@ -79,7 +78,19 @@ let mangle_id parent_v id =
         end
       end
 
-let create_func ?(id="") args_ty ret_ty =
+let name_of_value value =
+  {
+    id     = "";
+    ty     = Rt.type_of_value value;
+    opcode = Const value;
+    parent = None;
+    uses   = [];
+  }
+
+let set_name_id name id =
+  name.id <- mangle_id name id
+
+let create_func ?(id="") ?arg_names args_ty result_ty =
   let func  = {
     arguments    = [];
     basic_blocks = [];
@@ -90,7 +101,7 @@ let create_func ?(id="") args_ty ret_ty =
   } in
     let value = {
       id;
-      ty     = Rt.FunctionTy (args_ty, ret_ty);
+      ty     = Rt.FunctionTy (args_ty, result_ty);
       opcode = Function func;
       parent = None;
       uses   = [];
@@ -105,39 +116,28 @@ let create_func ?(id="") args_ty ret_ty =
         func.arguments <- List.map make_arg args_ty;
         value
 
-let create_basic_block ?(id="") ~parent =
-  {
-    id     = mangle_id parent id;
-    ty     = Rt.BasicBlockTy;
-    opcode = BasicBlock { instructions = [] };
-    parent = Some parent;
-    uses   = [];
-  }
-
-let entry func =
+let find_func_entry func =
   let func = func_of_name func in
     List.hd func.basic_blocks
 
-let add_basic_block func basic_block_v =
-  let func = func_of_name func in
-  let _    = basic_block_of_name basic_block_v in
-    func.basic_blocks <- func.basic_blocks @ [basic_block_v]
+let create_basic_block ?(id="") func =
+  let basic_block = {
+    id     = mangle_id func id;
+    ty     = Rt.BasicBlockTy;
+    opcode = BasicBlock { instructions = [] };
+    parent = Some func;
+    uses   = [];
+  } in
+    let func = func_of_name func in
+      func.basic_blocks <- func.basic_blocks @ [basic_block];
+      basic_block
 
 let remove_basic_block basic_block_v =
   let func = func_of_name basic_block_v in
   let _    = basic_block_of_name basic_block_v in
     func.basic_blocks <- List.remove func.basic_blocks basic_block_v
 
-let const value =
-  {
-    id     = "";
-    ty     = Rt.type_of_value value;
-    opcode = Const value;
-    parent = None;
-    uses   = [];
-  }
-
-let append_insn basic_block_v ?(id="") ty opcode =
+let append_insn ?(id="") ~ty ~opcode basic_block_v =
   let basic_block = basic_block_of_name basic_block_v in
     let insn = {
       id     = mangle_id basic_block_v id;
@@ -149,8 +149,9 @@ let append_insn basic_block_v ?(id="") ty opcode =
       basic_block.instructions <- basic_block.instructions @ [insn];
       insn
 
-let replace_insn insn_v ?id ty opcode =
-  ()
+let replace_insn ?ty ?opcode insn_v =
+  Option.may (fun x -> insn_v.ty     <- x) ty;
+  Option.may (fun x -> insn_v.opcode <- x) opcode
 
 let remove_insn insn_v =
   ()
@@ -159,6 +160,9 @@ type ssa_conv_state = {
   lambda      : Rt.lambda;
   current_env : name;
 }
+
+let tvar () =
+  Rt.Tvar (Rt.new_tvar ())
 
 let lvar_type ty name =
   let rec lookup env =
@@ -179,43 +183,62 @@ let ssa_of_formal_args ~entry =
 let rec ssa_of_expr ~entry ~state ~expr =
   match expr with
   | Syntax.Begin (_, exprs)
-  -> ssa_of_exprs ~entry ~state ~exprs
+  -> (let entry, names = ssa_of_exprs ~entry ~state ~exprs in
+        entry, List.hd names)
   | Syntax.Int (_, n)
-  -> entry, const (Rt.Integer n)
+  -> entry, name_of_value (Rt.Integer n)
   | Syntax.Var (_, name)
   -> entry, append_insn entry
-                (lvar_type state.current_env.ty name)
-                (LVarLoadInsn (state.current_env, name))
+                ~ty:(lvar_type state.current_env.ty name)
+                ~opcode:(LVarLoadInsn (state.current_env, name))
+  | Syntax.InvokePrimitive (_, name, operands)
+  -> (let entry, operands = ssa_of_exprs ~entry ~state ~exprs:operands in
+        entry, append_insn entry
+                ~ty:(tvar ())
+                ~opcode:(PrimitiveInsn (name, List.rev operands)))
   | _
   -> failwith ("ssa_of_expr: " ^
         (Unicode.assert_utf8s
           (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))))
 
 and ssa_of_exprs ~entry ~state ~exprs =
-  (List.fold_left
-    (fun (entry, name) expr -> ssa_of_expr ~entry ~state ~expr)
-    (entry, const Rt.Nil)
-    exprs)
+  match exprs with
+  | [] -> entry, [name_of_value Rt.Nil]
+  | _ ->
+    (List.fold_left
+      (fun (entry, names) expr ->
+        let entry, name = ssa_of_expr ~entry ~state ~expr in
+          entry, name :: names)
+      (entry, [])
+      exprs)
 
 let name_of_lambda ?(id="") lambda =
   let func =
     let ty = lambda.Rt.l_ty in
       create_func ~id
+        ~arg_names:["args"; "kwargs"]
         [ty.Rt.l_args_ty; ty.Rt.l_kwargs_ty]
         ty.Rt.l_result_ty
   in
-  let entry = create_basic_block ~id:"entry" ~parent:func in
-    add_basic_block func entry;
-    let parent_env =
-      (Rt.Environment lambda.Rt.l_local_env)
-    in
+  let entry = create_basic_block ~id:"entry" func in
     let current_env =
+      let parent_env =
+        (Rt.Environment lambda.Rt.l_local_env)
+      in
+      let parent_env_ty =
+        match Rt.type_of_value parent_env with
+        | Rt.EnvironmentTy ty -> ty
+        | _ -> assert false
+      in
       append_insn entry
-        (Rt.type_of_value parent_env)
-        (EnvironmentInsn (Table.create [], const parent_env))
+        ~ty:(Rt.EnvironmentTy {
+          Rt.e_parent_ty   = Some parent_env_ty;
+          Rt.e_bindings_ty = Table.create [];
+        })
+        ~opcode:(FrameInsn (name_of_value parent_env))
     in
     let state = { lambda; current_env; }
     in
-    let entry, name = ssa_of_exprs ~entry ~state ~exprs:lambda.Rt.l_body in
-      append_insn entry Rt.NilTy (ReturnInsn name);
+    let entry, names = ssa_of_exprs ~entry ~state ~exprs:lambda.Rt.l_body in
+      ignore (append_insn entry ~ty:Rt.NilTy ~opcode:(ReturnInsn (List.hd names)));
       func
