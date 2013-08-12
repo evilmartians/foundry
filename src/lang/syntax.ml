@@ -109,6 +109,8 @@ and expr =
   | Lies            of nullary (* false *)
   | Nil             of nullary
   | Int             of nullary    * big_int
+  | Unsigned        of nullary    * int * big_int
+  | Signed          of nullary    * int * big_int
   | Sym             of nullary    * string
   | Var             of nullary    * string
   | TVar            of nullary    * string
@@ -140,7 +142,8 @@ with sexp
 let loc expr =
   match expr with
   | Self (loc)    | Truth (loc) | Lies (loc)   | Nil (loc)
-  | Int (loc,_)   | Var (loc,_) | TVar (loc,_) | IVar (loc,_)
+  | Int (loc,_)   | Signed(loc,_,_) | Unsigned(loc,_,_)
+  | Var (loc,_)   | TVar (loc,_) | IVar (loc,_)
   | Const (loc,_) | Sym(loc,_) | Class(loc,_,_,_)
   | DefMethod(loc,_,_,_,_) | DefSelfMethod(loc,_,_,_,_)
   | DefIVar(loc,_,_,_)

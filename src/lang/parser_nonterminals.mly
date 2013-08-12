@@ -239,7 +239,7 @@
               | lp=Tk_LPAREN args=f_lam_rest rp=Tk_RPAREN
                 { lp, args, rp }
 
-    f_def_args: lp=Tk_LPAREN args=f_args rp=Tk_RPAREN
+    f_def_args: Tk_LPAREN args=f_args Tk_RPAREN
                 { args }
               | /* nothing */
                 { [] }
@@ -499,6 +499,10 @@
 
               | vl=Vl_INT
                 { let (loc, num) = vl in Syntax.Int (nullary loc, num) }
+              | vl=Vl_UINT
+                { let (loc, width, num) = vl in Syntax.Unsigned (nullary loc, width, num) }
+              | vl=Vl_SINT
+                { let (loc, width, num) = vl in Syntax.Signed (nullary loc, width, num) }
               | vl=Vl_SYMBOL
                 { let (loc, sym) = vl in Syntax.Sym (nullary loc, sym) }
               | lq=Vl_BEGIN elems=quote_elems rq=Vl_END

@@ -15,6 +15,10 @@ type value =
 | BooleanTy
 | Integer       of big_int
 | IntegerTy
+| Unsigned      of (*width*) int * big_int
+| UnsignedTy    of (*width*) int
+| Signed        of (*width*) int * big_int
+| SignedTy      of (*width*) int
 | Symbol        of string
 | SymbolTy
 (* Product types *)
@@ -135,6 +139,8 @@ type roots = {
   kBoolean          : klass;
   kInteger          : klass;
   kSymbol           : klass;
+  kUnsigned         : klass;
+  kSigned           : klass;
   kTuple            : klass;
   kRecord           : klass;
   kLambda           : klass;

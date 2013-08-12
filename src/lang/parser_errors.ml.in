@@ -10,16 +10,7 @@ let message = function
 | "def" -> function
   | _ -> "`def' keyword can define instance variables and methods (not %s)."
 
-| "1 +" | "1 -" | "1 *" | "1 /" | "1 %" | "1 &" | "1 |" | "1 <<"
-| "1 >>" | "1 >>>" | "1 ==" | "1 <" | "1 >" | "1 <=" | "1 >=" | "1 <=>"
+| "1i +"  | "1i -"   | "1i *"  | "1i /" | "1i %" | "1i &"  | "1i |"  | "1i <<"
+| "1i >>" | "1i >>>" | "1i ==" | "1i <" | "1i >" | "1i <=" | "1i >=" | "1i <=>"
 | "~" | "-" | "+" -> function
   | _ -> "Operator should be followed by an expression (not %s)."
-
-(*
-| "mixin" -> function
-  | _ -> "Mixin name cannot be %s."
-| "package" -> function
-  | _ -> "Package name cannot be %s."
-| "iface" -> function
-  | _ -> "Interface name cannot be %s."
-*)

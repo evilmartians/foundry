@@ -189,6 +189,7 @@ and check_expr cx expr =
   match expr with
   | Self _ | Truth _ | Lies _ | Nil _ | Int _ | Sym _
   | TVar _ | IVar _ | Const _
+  | Unsigned _ | Signed _
   -> []
   | Tuple(_,elems)
   -> (let rec check_elem elem =

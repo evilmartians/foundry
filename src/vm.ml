@@ -315,6 +315,9 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Int(_,x) -> Integer(x)
   | Syntax.Sym(_,x) -> Symbol(x)
 
+  | Syntax.Unsigned(_,w,x) -> Unsigned(w,x)
+  | Syntax.Signed(_,w,x)   -> Signed(w,x)
+
   | Syntax.Tuple(_,xs)
   -> List.fold_left concat_tuple
         (Tuple []) (List.map (eval_tuple env) xs)

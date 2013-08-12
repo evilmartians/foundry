@@ -85,12 +85,16 @@ let name_of_token = function
   | Kw_NEW _ -> "Kw_NEW"
   | Tk_CARET _ -> "Tk_CARET"
   | Tk_NEWLINE _ -> "Tk_NEWLINE"
+  | Vl_UINT _ -> "Vl_UINT"
+  | Vl_SINT _ -> "Vl_SINT"
 
 let loc_of_token token =
   match token with
   | Vl_UNQUOTE (loc) -> loc
+  | Vl_UINT (loc, _, _) -> loc
   | Vl_SYMBOL (loc, _) -> loc
   | Vl_STRING (loc, _) -> loc
+  | Vl_SINT (loc, _, _) -> loc
   | Vl_QUOTE (loc) -> loc
   | Vl_INT (loc, _) -> loc
   | Vl_END (loc) -> loc

@@ -185,8 +185,12 @@ let rec ssa_of_expr ~entry ~state ~expr =
   | Syntax.Begin (_, exprs)
   -> (let entry, names = ssa_of_exprs ~entry ~state ~exprs in
         entry, List.hd names)
-  | Syntax.Int (_, n)
-  -> entry, name_of_value (Rt.Integer n)
+  | Syntax.Int (_, value)
+  -> entry, name_of_value (Rt.Integer value)
+  | Syntax.Unsigned (_, width, value)
+  -> entry, name_of_value (Rt.Unsigned (width, value))
+  | Syntax.Signed (_, width, value)
+  -> entry, name_of_value (Rt.Signed (width, value))
   | Syntax.Var (_, name)
   -> entry, append_insn entry
                 ~ty:(lvar_type state.current_env.ty name)

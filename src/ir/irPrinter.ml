@@ -135,6 +135,10 @@ let rec print_value env value =
   | IntegerTy         -> "type int"
   | Symbol(s)         -> "symbol " ^ (print_string s)
   | SymbolTy          -> "type symbol"
+  | Unsigned(w,v)     -> "unsigned(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
+  | UnsignedTy(w)     -> "type unsigned(" ^ (string_of_int w) ^ ") "
+  | Signed(w,v)       -> "signed(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
+  | SignedTy(w)       -> "type signed(" ^ (string_of_int w) ^ ") "
   | Tuple(xs)         -> "[" ^ (print_seq xs (print_value env)) ^ "]"
   | TupleTy(xs)       -> "type [" ^ (print_seq xs (print_value env)) ^ "]"
   | Record(xs)        -> "{" ^ (print_assoc xs (print_value env)) ^ "}"

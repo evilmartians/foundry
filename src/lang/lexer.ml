@@ -187,9 +187,7 @@ let rec lex_code state = lexer
 
 (* Values *)
 | digits          -> expr_begin state false;
-                     Vl_INT    (locate lexbuf, big_int_of_string (lexeme lexbuf))
-
-| digits id_alpha -> raise (Unexpected (locate lexbuf, (sub_lexeme lexbuf (-1) (-1)).[0]))
+                     lex_number state (big_int_of_string (lexeme lexbuf)) lexbuf
 
 | ':' method_name -> expr_begin state false;
                      Vl_SYMBOL (locate lexbuf, sub_lexeme lexbuf 1 (-1))
@@ -228,6 +226,15 @@ let rec lex_code state = lexer
 
 | _               -> unexpected lexbuf
 | eof             -> eof lexbuf
+
+and lex_number state digits = lexer
+| 'i'             -> Vl_INT  (locate lexbuf, digits)
+| 'u' digits      -> Vl_UINT (locate lexbuf, int_of_string (sub_lexeme lexbuf 1 (-1)), digits)
+| 's' digits      -> Vl_SINT (locate lexbuf, int_of_string (sub_lexeme lexbuf 1 (-1)), digits)
+
+| id_alpha        -> raise (Unexpected (locate lexbuf, (lexeme lexbuf).[0]))
+| _               -> Ulexing.rollback lexbuf;
+                     lex_code state lexbuf
 
 and lex_string state = lexer
 | '\''            -> goto state lex_code;

@@ -1,7 +1,9 @@
-%token <Location.t * Fy_big_int.big_int>  Vl_INT     "integer"
-%token <Location.t * Unicode.utf8s>       Vl_SYMBOL  "symbol"
-%token <Location.t * Syntax.quote>        Vl_BEGIN   "quotation"
-%token <Location.t * Unicode.utf8s>       Vl_STRING  "string content"
+%token <Location.t * Fy_big_int.big_int>        Vl_INT     "integer"
+%token <Location.t * int * Fy_big_int.big_int>  Vl_UINT    "unsigned"
+%token <Location.t * int * Fy_big_int.big_int>  Vl_SINT    "signed"
+%token <Location.t * Unicode.utf8s>             Vl_SYMBOL  "symbol"
+%token <Location.t * Syntax.quote>              Vl_BEGIN   "quotation"
+%token <Location.t * Unicode.utf8s>             Vl_STRING  "string content"
 
 %token <Location.t> Vl_UNQUOTE  "begin of interpolation"
 %token <Location.t> Vl_QUOTE    "end of interpolation"

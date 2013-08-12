@@ -16,7 +16,10 @@ type value =
 | BooleanTy
 | Integer       of big_int
 | IntegerTy
-| Symbol        of string
+| Unsigned      of (*width*) int * big_int
+| UnsignedTy    of (*width*) int
+| Signed        of (*width*) int * big_int
+| SignedTy      of (*width*) int| Symbol        of string
 | SymbolTy
 (* Product types *)
 | Tuple         of value list
@@ -125,6 +128,8 @@ type roots = {
   kBoolean          : klass;
   kInteger          : klass;
   kSymbol           : klass;
+  kUnsigned         : klass;
+  kSigned           : klass;
   kTuple            : klass;
   kRecord           : klass;
   kLambda           : klass;
@@ -176,18 +181,13 @@ let create_roots () =
         (empty_class ("meta:" ^ name) meta_ancestor kClass)
   in
 
-  let kMixin      = new_class "Mixin"   in
-  let kPackage    = new_class "Package" in
-
-  let kTuple      = new_class "Tuple"  in
-  let kRecord     = new_class "Record" in
-  let kLambda     = new_class "Lambda" in
-
+  let kPackage    = new_class "Package"
+  in
   let roots = {
     last_tvar     = 0;
 
-    kClass        = kClass;
-    kMixin        = kMixin;
+    kClass        = new_class "Class";
+    kMixin        = new_class "Mixin";
     kPackage      = kPackage;
 
     kTypeVariable = new_class "TypeVariable";
@@ -195,33 +195,40 @@ let create_roots () =
     kBoolean      = new_class "Boolean";
     kInteger      = new_class "Integer";
     kSymbol       = new_class "Symbol";
-    kTuple        = kTuple;
-    kRecord       = kRecord;
-    kLambda       = kLambda;
+
+    kUnsigned     = new_class "Unsigned";
+    kSigned       = new_class "Signed";
+    kTuple        = new_class "Tuple";
+    kRecord       = new_class "Record";
+    kLambda       = new_class "Lambda";
 
     pToplevel     = {
       p_name      = "toplevel";
       p_metaclass = empty_class "meta:toplevel" (Some kPackage) kClass;
-      p_constants = Table.create [
-        ("Class",        Class (kClass, Table.create []));
-        ("Mixin",        Class (kMixin, Table.create []));
-        ("Package",      Class (kPackage, Table.create []));
-
-        ("TypeVariable", TvarTy);
-        ("Nil",          NilTy);
-        ("Boolean",      BooleanTy);
-        ("Integer",      IntegerTy);
-        ("Symbol",       SymbolTy);
-
-        ("Tuple",        Class (kTuple, Table.create []));
-        ("Record",       Class (kRecord, Table.create []));
-        ("Lambda",       Class (kLambda, Table.create []));
-      ]
+      p_constants = Table.create []
     }
   }
   in
+  let constants = roots.pToplevel.p_constants in
+    List.iter (fun (k, v) ->
+        Table.set constants k (Class (v, Table.create []))) [
+      "Class",    roots.kClass;
+      "Mixin",    roots.kMixin;
+      "Package",  roots.kPackage;
 
-  roots
+      "TypeVariable", roots.kTypeVariable;
+      "Nil",      roots.kNil;
+      "Boolean",  roots.kBoolean;
+      "Integer",  roots.kInteger;
+      "Symbol",   roots.kSymbol;
+
+      "Signed",   roots.kSigned;
+      "Unsigned", roots.kUnsigned;
+      "Tuple",    roots.kTuple;
+      "Record",   roots.kRecord;
+      "Lambda",   roots.kLambda;
+    ];
+    roots
 
 let roots = ref (create_roots ())
 
@@ -256,6 +263,8 @@ let klass_of_type ty =
   | TvarTy        -> !roots.kTypeVariable
   | IntegerTy     -> !roots.kInteger
   | SymbolTy      -> !roots.kSymbol
+  | UnsignedTy(_) -> !roots.kUnsigned
+  | SignedTy(_)   -> !roots.kSigned
   | TupleTy(_)    -> !roots.kTuple
   | RecordTy(_)   -> !roots.kRecord
 
@@ -266,6 +275,7 @@ let klass_of_type ty =
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value ty))))
 
+
 let klass_of_value ?(dispatch=false) value =
   match value with
   | Truth | Lies  -> !roots.kBoolean
@@ -274,6 +284,8 @@ let klass_of_value ?(dispatch=false) value =
   | Tvar(_)       -> !roots.kTypeVariable
   | Integer(_)    -> !roots.kInteger
   | Symbol(_)     -> !roots.kSymbol
+  | Unsigned(_)   -> !roots.kUnsigned
+  | Signed(_)     -> !roots.kSigned
   | Tuple(_)      -> !roots.kTuple
   | Record(_)     -> !roots.kRecord
 
@@ -286,6 +298,7 @@ let klass_of_value ?(dispatch=false) value =
 
   | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
   | TupleTy(_) | RecordTy(_) | LambdaTy(_)
+  | SignedTy(_) | UnsignedTy(_)
   -> (let klass = klass_of_type value in
         if dispatch then
           klass.k_metaclass
@@ -304,6 +317,8 @@ let rec type_of_value value =
   | Tvar(_)         -> TvarTy
   | Integer(_)      -> IntegerTy
   | Symbol(_)       -> SymbolTy
+  | Unsigned(w,_)   -> UnsignedTy(w)
+  | Signed(w,_)     -> SignedTy(w)
   | Tuple(xs)       -> TupleTy (List.map type_of_value xs)
   | Record(xs)      -> RecordTy (Table.map (fun v -> type_of_value v) xs)
 
@@ -316,6 +331,7 @@ let rec type_of_value value =
 
   | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
   | TupleTy(_) | RecordTy(_) | LambdaTy(_)
+  | SignedTy(_) | UnsignedTy(_)
   -> Class (klass_of_type value, Table.create [])
 
   | _ -> failwith ("type_of_value " ^
@@ -339,16 +355,26 @@ let specialize conv ty =
 (* Inspecting types and values *)
 
 let string_of_value value =
-   (Unicode.assert_utf8s
+  (Unicode.assert_utf8s
     (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
 
 let inspect_literal_or value f =
   match value with
+  | TvarTy     -> "TypeVariable"
   | Truth      -> "true"
   | Lies       -> "false"
+  | BooleanTy  -> "Boolean"
   | Nil        -> "nil"
-  | Integer(n) -> string_of_big_int n
+  | NilTy      -> "Nil"
+  | Integer(n) -> (string_of_big_int n) ^ "i"
+  | IntegerTy  -> "Integer"
   | Symbol(s)  -> ":" ^ s
+  | SymbolTy   -> "Symbol"
+  | Unsigned(w,v) -> (string_of_big_int v) ^ "u" ^ (string_of_int w)
+  | UnsignedTy(w) -> "Unsigned(width: " ^ (string_of_int w) ^ ")"
+  | Signed(w,v)   -> (string_of_big_int v) ^ "s" ^ (string_of_int w)
+  | SignedTy(w)   -> "Signed(width: " ^ (string_of_int w) ^ ")"
+  | Class(k,_) -> k.k_name
   | _          -> f value
 
 let rec inspect_value value =
@@ -361,31 +387,20 @@ let rec inspect_value value =
                 (fun k v -> k ^ ": " ^ (inspect_value v)) xs)) ^ "}"
     | Lambda(lm)
     -> "#<Lambda " ^ Location.at(lm.l_location) ^ ">"
-    | TvarTy     -> "TypeVariable"
-    | BooleanTy  -> "Boolean"
-    | NilTy      -> "Nil"
-    | IntegerTy  -> "Integer"
-    | SymbolTy   -> "Symbol"
     | TupleTy(_) | RecordTy(_) | LambdaTy(_)
     -> "type " ^ (inspect_type value)
-    | Class(k,_) -> k.k_name
     | Package(p) -> p.p_name
     | _ -> (string_of_value value))
-
-and inspect_type_pair name ty =
-  name ^ ": " ^ (inspect_type ty)
 
 and inspect_type ty =
   inspect_literal_or ty (fun x ->
     match ty with
-    | TvarTy       -> "TypeVariable"
-    | BooleanTy    -> "Boolean"
-    | NilTy        -> "Nil"
-    | IntegerTy    -> "Integer"
-    | SymbolTy     -> "Symbol"
     | Tvar(tv)     -> "\\" ^ (string_of_int tv)
-    | TupleTy(xs)  -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
-    | RecordTy(xs) -> "{" ^ (String.concat ", " (Table.map_list inspect_type_pair xs)) ^ "}"
+    | TupleTy(xs)
+    -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
+    | RecordTy(xs)
+    -> "{" ^ (String.concat ", " (Table.map_list
+                (fun k v -> k ^ ": " ^ (inspect_type v)) xs)) ^ "}"
     | LambdaTy(lm)
     -> (let args_ty =
           match lm.l_args_ty with
@@ -393,12 +408,12 @@ and inspect_type ty =
           | o -> ["*" ^ (inspect_type o)]
         in let kwargs_ty =
           match lm.l_kwargs_ty with
-          | RecordTy(xs) -> Table.map_list inspect_type_pair xs
+          | RecordTy(xs) -> Table.map_list
+                              (fun k v -> k ^ ": " ^ (inspect_type v)) xs
           | o -> ["**" ^ (inspect_type o)]
         in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^
            ") -> " ^ (inspect_type lm.l_result_ty))
-    | Class(k,_)   -> k.k_name
-    | _            -> "((" ^ (inspect_value ty) ^ "))")
+    | _            -> "\\(" ^ (inspect_value ty) ^ ")")
 
 let inspect value =
   let ty =
