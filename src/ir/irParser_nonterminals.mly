@@ -147,6 +147,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> Lies) }
               | Int x=Lit_Integer
                 { (fun env -> Integer x) }
+              | Unsigned LParen w=Lit_Integer RParen x=Lit_Integer
+                { (fun env -> Unsigned (int_of_big_int w, x)) }
+              | Signed LParen w=Lit_Integer RParen x=Lit_Integer
+                { (fun env -> Unsigned (int_of_big_int w, x)) }
               | Symbol x=Lit_String
                 { (fun env -> Symbol x) }
               | xs=seq(value)

@@ -25,6 +25,8 @@
 %token False
 %token Boolean
 %token Int
+%token Signed
+%token Unsigned
 %token Symbol
 %token Environment
 %token Lambda

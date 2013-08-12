@@ -36,6 +36,8 @@ rule lex = parse
 | "false"         { False }
 | "boolean"       { Boolean }
 | "int"           { Int }
+| "unsigned"      { Unsigned }
+| "signed"        { Signed }
 | "symbol"        { Symbol }
 | "environment"   { Environment }
 | "lambda"        { Lambda }
