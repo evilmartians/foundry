@@ -99,22 +99,28 @@ let create_func ?(id="") ?arg_names args_ty result_ty =
       names   = [""];
     }
   } in
-    let value = {
-      id;
-      ty     = Rt.FunctionTy (args_ty, result_ty);
-      opcode = Function func;
-      parent = None;
+  let value = {
+    id;
+    ty     = Rt.FunctionTy (args_ty, result_ty);
+    opcode = Function func;
+    parent = None;
+    uses   = [];
+  } in
+  begin
+    let make_arg name ty = {
+      id     = mangle_id value name;
+      ty;
+      opcode = Argument;
+      parent = Some value;
       uses   = [];
     } in
-      let make_arg ty = {
-        id     = mangle_id value "";
-        ty;
-        opcode = Argument;
-        parent = Some value;
-        uses   = [];
-      } in
-        func.arguments <- List.map make_arg args_ty;
-        value
+    match arg_names with
+    | Some names ->
+      func.arguments <- List.map2 make_arg names args_ty
+    | None ->
+      func.arguments <- List.map (make_arg "") args_ty
+  end;
+  value
 
 let find_func_entry func =
   let func = func_of_name func in

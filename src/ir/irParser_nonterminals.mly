@@ -123,6 +123,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> BooleanTy) }
               | Type Int
                 { (fun env -> IntegerTy) }
+              | Type Unsigned LParen w=Lit_Integer RParen
+                { (fun env -> UnsignedTy (int_of_big_int w)) }
+              | Type Signed LParen w=Lit_Integer RParen
+                { (fun env -> SignedTy (int_of_big_int w)) }
               | Type Symbol
                 { (fun env -> SymbolTy) }
               | Type xs=seq(ty)
@@ -150,7 +154,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | Unsigned LParen w=Lit_Integer RParen x=Lit_Integer
                 { (fun env -> Unsigned (int_of_big_int w, x)) }
               | Signed LParen w=Lit_Integer RParen x=Lit_Integer
-                { (fun env -> Unsigned (int_of_big_int w, x)) }
+                { (fun env -> Signed (int_of_big_int w, x)) }
               | Symbol x=Lit_String
                 { (fun env -> Symbol x) }
               | xs=seq(value)
@@ -221,7 +225,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   RBrace
                 { (fun env ->
                     let klass =
-                      if bind_as = u"c.Class" or bind_as = u"c.meta:Class" then begin
+                      if bind_as = u"c.Class" || bind_as = u"c.meta:Class" then begin
                         match Table.get_exn env bind_as with
                         | NamedClass k -> k
                         | _ -> assert false
@@ -373,7 +377,12 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun (venv, block, fenv) ->
                     name_of_value (value venv)) }
 
-          insn: id=Name_Local Equal ty=ty x=value_insn
+  opt_local_eq: id=Name_Local Equal
+                { id }
+              | /* nothing */
+                { u"" }
+
+          insn: id=opt_local_eq ty=ty x=value_insn
                 { (fun ((venv, block, fenv) as env) ->
                     let insn = append_insn block ~id ~ty:Rt.NilTy ~opcode:InvalidInsn in
                       Table.set fenv id insn;
@@ -450,5 +459,5 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       pToplevel     = get_package (u"p.toplevel");
                     }
                     in*)
-                    create_roots (), get_func (u"entry")
+                    create_roots (), get_func (u"main")
                 }
