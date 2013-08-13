@@ -394,7 +394,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       (fun () ->
                         replace_insn insn ~ty:Rt.NilTy ~opcode:(x env))) }
 
-  phi_operands: xs=separated_list(Comma, separated_pair(Name_Local, FatArrow, operand))
+   phi_operand: LBrack name=Name_Local FatArrow operand=operand RBrack
+                { name, operand }
+
+  phi_operands: xs=separated_list(Comma, phi_operand)
                 { (fun ((venv, block, fenv) as env) ->
                     List.map (fun (id, value) ->
                       Table.get_exn fenv id, value env) xs) }

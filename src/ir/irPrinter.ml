@@ -363,7 +363,7 @@ let rec print_ssa_value env value =
     term "return" [print name]
   | PhiInsn operands ->
     insn "phi" (List.map (fun (block, value) ->
-                  (print block) ^ " => " ^ (print value)) operands)
+                  "[ " ^ (print block) ^ " => " ^ (print value) ^ " ]") operands)
   | FrameInsn (parent) ->
     insn "frame" [print parent]
   | LVarLoadInsn (env, var) ->
