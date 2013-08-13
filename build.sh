@@ -7,7 +7,8 @@ git submodule update --init
 if ! [ -x menhir-bin/bin/menhir ]; then
   echo "Building menhir..."
   (cd menhir;
-   make PREFIX=$(pwd)/../menhir-bin/ install)
+   # Fails on manual.pdf or something.
+   make PREFIX=$(pwd)/../menhir-bin/ install || true)
 fi
 
 if ! [ -x merr/merr.native ]; then
