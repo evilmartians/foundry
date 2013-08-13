@@ -14,6 +14,7 @@ fi
 if ! [ -x merr/merr.native ]; then
   echo "Building merr..."
   (cd merr;
+   export MENHIR=$(pwd)/../menhir-bin/bin/menhir;
    ocamlbuild -use-ocamlfind merr/merr.native;
    ocamlbuild -use-ocamlfind merr/merr.native)
 fi
