@@ -334,7 +334,17 @@ let rec print_ssa_value env value =
               (List.map (print_ssa_value env) func.basic_blocks)) ^
           "}")))
   | BasicBlock block ->
-    (print_ident value.id) ^ ":\n" ^
+    let preds   = List.map print (predecessors value) in
+    let preds   = if preds <> [] then
+                    " ; preds = " ^ (String.concat ", " preds)
+                  else ""
+    in
+    let ident   = (print_ident value.id) ^ ":" in
+    let header  = ident ^
+      (String.make (50 - (String.length ident)) (Unicode.utf32_of_utf8s " ")) ^
+      preds ^ "\n"
+    in
+    header ^
       (String.concat ""
         (List.map
           (fun v -> "  " ^ (print_ssa_value env v) ^ "\n")

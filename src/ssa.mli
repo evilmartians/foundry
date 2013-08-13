@@ -64,6 +64,9 @@ val create_basic_block  : ?id:string -> (*func*) name -> name
 val remove_basic_block  : (*basic_block*) name -> unit
 val basic_block_of_name : (*basic_block*) name -> basic_block
 
+val successors          : (*basic_block*) name -> name list
+val predecessors        : (*basic_block*) name -> name list
+
 (* Instruction level *)
 
 val append_insn         : ?id:string -> ty:Rt.ty -> opcode:opcode -> (*basic_block*) name -> name

@@ -148,6 +148,8 @@ module Std : sig
   end
 
   module String : sig
+    val length : string -> int
+
     val get    : string -> int -> char
     val set    : string -> int -> char -> unit
 

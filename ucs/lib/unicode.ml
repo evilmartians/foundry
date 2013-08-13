@@ -637,6 +637,9 @@ module Std = struct
   end
 
   module String = struct
+    let length str =
+      List.length (utf32s_of_utf8s str)
+
     let get str pos =
       List.nth (utf32s_of_utf8s str) pos
 

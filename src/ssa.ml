@@ -143,21 +143,78 @@ let remove_basic_block basic_block_v =
   let _    = basic_block_of_name basic_block_v in
     func.basic_blocks <- List.remove func.basic_blocks basic_block_v
 
+let successors block_name =
+  let block = basic_block_of_name block_name in
+  match (List.last block.instructions).opcode with
+  | JumpInsn   target        -> [target]
+  | JumpIfInsn (_, ift, iff) -> [ift; iff]
+  | ReturnInsn _             -> []
+  | _ -> assert false
+
+let predecessors block_name =
+  List.filter_map (fun use ->
+      match use.opcode with
+      | JumpInsn _ | JumpIfInsn _
+      -> (match use.parent with
+          | Some parent -> Some parent
+          | None        -> assert false)
+      | _
+      -> None)
+    block_name.uses
+
+let uses_by_instr instr =
+  match instr.opcode with
+  | InvalidInsn
+  | Argument
+  | Function _
+  | BasicBlock _
+  | Const _
+  -> []
+  | PhiInsn operands
+  -> (List.map fst operands) @ (List.map snd operands)
+  | JumpInsn target
+  -> [target]
+  | JumpIfInsn (cond, if_true, if_false)
+  -> [cond; if_true; if_false]
+  | ReturnInsn value
+  -> [value]
+  | FrameInsn parent
+  -> [parent]
+  | LVarLoadInsn (env, _)
+  -> [env]
+  | LVarStoreInsn (env, _, value)
+  -> [env; value]
+  | PrimitiveInsn (name, operands)
+  -> operands
+
+let add_uses instr =
+  List.iter (fun use -> use.uses <- instr :: use.uses)
+    (uses_by_instr instr)
+
+let remove_uses instr =
+  List.iter (fun use -> use.uses <- List.remove use.uses instr)
+    (uses_by_instr instr)
+
 let append_insn ?(id="") ~ty ~opcode basic_block_v =
   let basic_block = basic_block_of_name basic_block_v in
-    let insn = {
+    let instr = {
       id     = mangle_id basic_block_v id;
       ty;
       opcode;
       parent = Some basic_block_v;
       uses   = [];
     } in
-      basic_block.instructions <- basic_block.instructions @ [insn];
-      insn
+      basic_block.instructions <- basic_block.instructions @ [instr];
+      add_uses instr;
+      instr
 
-let replace_insn ?ty ?opcode insn_v =
-  Option.may (fun x -> insn_v.ty     <- x) ty;
-  Option.may (fun x -> insn_v.opcode <- x) opcode
+let replace_insn ?ty ?opcode instr =
+  Option.may (fun ty ->
+    instr.ty <- ty) ty;
+  Option.may (fun opcode ->
+    remove_uses instr;
+    instr.opcode <- opcode;
+    add_uses instr) opcode
 
 let remove_insn insn_v =
   ()
