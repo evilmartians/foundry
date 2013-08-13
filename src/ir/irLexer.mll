@@ -3,7 +3,7 @@
   open IrParser_tokens
 }
 
-let name = ['A'-'Z' 'a'-'z' '0'-'9' ':' '.']+
+let name = ['A'-'Z' 'a'-'z' '0'-'9' '_' ':' '.']+
 
 rule lex = parse
 | [' ' '\t' '\n'] { lex lexbuf }
@@ -28,6 +28,7 @@ rule lex = parse
 | ','  { Comma }
 | '='  { Equal }
 | "->" { Arrow }
+| "=>" { FatArrow }
 
 | "type"          { Type }
 | "tvar"          { Tvar }
@@ -76,6 +77,7 @@ rule lex = parse
 | "jump"          { Jump }
 | "jump_if"       { Jump_if }
 | "return"        { Return }
+| "phi"           { Phi }
 | "frame"         { Frame }
 | "lvar_load"     { Lvar_load }
 | "lvar_store"    { Lvar_store }

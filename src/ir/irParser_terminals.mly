@@ -17,6 +17,7 @@
 %token Comma
 %token Equal
 %token Arrow
+%token FatArrow
 
 %token Type
 %token Tvar
@@ -62,6 +63,7 @@
 %token Jump
 %token Jump_if
 %token Return
+%token Phi
 %token Frame
 %token Lvar_load
 %token Lvar_store

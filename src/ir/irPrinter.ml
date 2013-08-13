@@ -351,6 +351,9 @@ let rec print_ssa_value env value =
     term "jump_if" [print cond; print if_true; print if_false]
   | ReturnInsn name ->
     term "return" [print name]
+  | PhiInsn operands ->
+    insn "phi" (List.map (fun (block, value) ->
+                  (print block) ^ " => " ^ (print value)) operands)
   | FrameInsn (parent) ->
     insn "frame" [print parent]
   | LVarLoadInsn (env, var) ->
