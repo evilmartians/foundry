@@ -360,22 +360,22 @@ let string_of_value value =
 
 let inspect_literal_or value f =
   match value with
-  | TvarTy     -> "TypeVariable"
-  | Truth      -> "true"
-  | Lies       -> "false"
-  | BooleanTy  -> "Boolean"
-  | Nil        -> "nil"
-  | NilTy      -> "Nil"
-  | Integer(n) -> (string_of_big_int n) ^ "i"
-  | IntegerTy  -> "Integer"
-  | Symbol(s)  -> ":" ^ s
-  | SymbolTy   -> "Symbol"
+  | TvarTy        -> "TypeVariable"
+  | Truth         -> "true"
+  | Lies          -> "false"
+  | BooleanTy     -> "Boolean"
+  | Nil           -> "nil"
+  | NilTy         -> "Nil"
+  | Integer(n)    -> (string_of_big_int n) ^ "i"
+  | IntegerTy     -> "Integer"
+  | Symbol(s)     -> ":" ^ s
+  | SymbolTy      -> "Symbol"
   | Unsigned(w,v) -> (string_of_big_int v) ^ "u" ^ (string_of_int w)
-  | UnsignedTy(w) -> "Unsigned(width: " ^ (string_of_int w) ^ ")"
+  | UnsignedTy(w) -> "Unsigned(" ^ (string_of_int w) ^ ")"
   | Signed(w,v)   -> (string_of_big_int v) ^ "s" ^ (string_of_int w)
-  | SignedTy(w)   -> "Signed(width: " ^ (string_of_int w) ^ ")"
-  | Class(k,_) -> k.k_name
-  | _          -> f value
+  | SignedTy(w)   -> "Signed(" ^ (string_of_int w) ^ ")"
+  | Class(k,_)    -> k.k_name ^ "()"
+  | _             -> f value
 
 let rec inspect_value value =
   inspect_literal_or value (fun x ->

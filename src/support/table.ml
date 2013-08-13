@@ -32,6 +32,8 @@ let exists = Hashtbl.mem
 let empty table =
   Hashtbl.length table = 0
 
+let iter ~f table = Hashtbl.iter f table
+
 let pair k v =
   newtable 1
     (fun table -> Hashtbl.add table k v)

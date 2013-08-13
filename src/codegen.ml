@@ -2,15 +2,32 @@ open Unicode.Std
 open ExtList
 open Big_int
 
-module SsaNameIdentity =
-struct
-  type t = Ssa.name
+module Nametbl = Hashtbl.Make(
+  struct
+    type t = Ssa.name
 
-  let equal = (==)
-  let hash  = Hashtbl.hash
-end
+    let equal = (==)
+    let hash  = Hashtbl.hash
+  end)
 
-module Nametbl = Hashtbl.Make(SsaNameIdentity)
+type named_value =
+| NamedLocalEnv of Rt.local_env
+
+let named_value_of_value value =
+  match value with
+  | Rt.Environment env -> NamedLocalEnv env
+  | _ -> assert false
+
+module Valuetbl = Hashtbl.Make(
+  struct
+    type t = named_value
+
+    let equal a b =
+      match a, b with
+      | NamedLocalEnv(a), NamedLocalEnv(b) -> a == b
+
+    let hash = Hashtbl.hash
+  end)
 
 let ctx = Llvm.global_context ()
 
@@ -33,29 +50,120 @@ let gen_debug llmod =
 
 let lltype_of_ty ty =
   match ty with
-  | Rt.NilTy -> Llvm.void_type ctx
-  | _ -> failwith (u"lltype_of_ty " ^ Rt.inspect_type ty)
+  | Rt.NilTy
+  -> Llvm.void_type ctx
+  | Rt.UnsignedTy(width)
+  | Rt.SignedTy(width)
+  -> Llvm.integer_type ctx width
+  | _
+  -> failwith (u"lltype_of_ty " ^ Rt.inspect_value ty)
 
-let llconst_of_value value =
+type env_map = {
+  e_parent  : env_map option;
+  e_content : string list;
+  e_lltype  : Llvm.lltype;
+}
+let env_maps = Hashtbl.create 10
+
+let rec env_map_of_local_env_ty ty =
+  try
+    Hashtbl.find env_maps ty
+  with Not_found ->
+    let parent_map = Option.map env_map_of_local_env_ty ty.Rt.e_parent_ty in
+    (* Serialize the environment. Rt.local_env_ty uses a hash table, which
+       is inherently unordered, and LLVM requires an ordered collection. *)
+    let content    = Table.map_list ty.Rt.e_bindings_ty ~f:(fun name binding ->
+                          name, lltype_of_ty binding.Rt.b_value_ty)
+    in
+    let names   = List.map fst content in
+    let lltypes = List.map snd content in
+    (* Prepend LLVM type for the pointer to the parent environment, if it
+       exists. *)
+    let lltypes =
+      match parent_map with
+      | Some map -> Llvm.pointer_type map.e_lltype :: lltypes
+      | None     -> lltypes
+    in
+    let env_map = {
+      e_parent  = parent_map;
+      e_content = names;
+      e_lltype  = Llvm.struct_type ctx (Array.of_list lltypes);
+    }
+    in
+    (* Memoize the environment. Bare Hashtbl uses structural equality, which is
+       exactly what we need. *)
+    Hashtbl.add env_maps ty env_map;
+    env_map
+
+let env_map_of_ty ty =
+  match ty with
+  | Rt.EnvironmentTy ty -> env_map_of_local_env_ty ty
+  | _ -> assert false
+
+let local_var_index env_map name =
+  (* Find the index of variable in the map content by name. *)
+  let index, _ = List.findi (fun i -> (=) name) env_map.e_content in
+  (* If this environment has a parent, shift the index by 1 to
+     accomodate for its pointer. *)
+  match env_map.e_parent with
+  | Some _ -> index + 1
+  | None   -> index
+
+let heap = Valuetbl.create 10
+
+let rec llconst_of_value llmod value =
+  let memoize lltype f =
+    let key = named_value_of_value value in
+    try
+      Valuetbl.find heap key
+    with Not_found ->
+      let llglobal = Llvm.declare_global lltype "" llmod in
+      let llvalue  = (f llglobal) in
+        Llvm.set_initializer llvalue llglobal;
+        Valuetbl.add heap key llglobal;
+        llglobal
+  in
   match value with
   | Rt.Unsigned (width, ivalue)
   | Rt.Signed (width, ivalue)
   -> (let llty = Llvm.integer_type ctx width in
-        if is_int_big_int ivalue then
-          (* Fast path. *)
-          Llvm.const_int llty (int_of_big_int ivalue)
-        else try
-          (* Slow path. *)
-          let sext =
-            match value with
-            | Rt.Unsigned _ -> false
-            | Rt.Signed   _ -> true
-            | _             -> assert false
-          in
-          Llvm.const_of_int64 llty (int64_of_big_int ivalue) sext
-        with Failure _ ->
-          (* Very slow path. There is no direct big_int -> llvalue converter. *)
-          Llvm.const_int_of_string llty ((string_of_big_int ivalue) :> latin1s) 10)
+      if is_int_big_int ivalue then
+        (* Fast path. 31/63 bits. *)
+        Llvm.const_int llty (int_of_big_int ivalue)
+      else try
+        (* Slow path. 64 bits. *)
+        let sext =
+          match value with
+          | Rt.Unsigned _ -> false
+          | Rt.Signed   _ -> true
+          | _             -> assert false
+        in
+        Llvm.const_of_int64 llty (int64_of_big_int ivalue) sext
+      with Failure _ ->
+        (* Very slow path. > 64 bits.
+           There is no direct big_int -> llvalue converter. *)
+        Llvm.const_int_of_string llty ((string_of_big_int ivalue) :> latin1s) 10)
+  | Rt.Environment env
+  -> (let env_map = env_map_of_ty (Rt.type_of_value value) in
+      memoize env_map.e_lltype (fun _ ->
+        (* Convert the environment to an LLVM record in a way which is
+           compatible with the map env_map_of_ty returns. *)
+        let content =
+          List.map (fun name ->
+              llconst_of_value llmod (Table.get_exn env.Rt.e_bindings name).Rt.b_value)
+            env_map.e_content
+        in
+        (* Recurse and convert parent environment as well. *)
+        let parent = Option.map (fun parent ->
+                          llconst_of_value llmod (Rt.Environment parent))
+                        env.Rt.e_parent in
+        (* Prepend parent environment to the structure content, if it exists. *)
+        let content =
+          match parent with
+          | Some parent -> parent :: content
+          | None -> content
+        in
+        Llvm.const_struct ctx (Array.of_list content)))
   | _ -> assert false
 
 let gen_proto llmod name func_ty =
@@ -97,7 +205,7 @@ let gen_func llmod funcn =
     with Not_found ->
       match name.Ssa.opcode with
       | Ssa.Const value ->
-        let llvalue = llconst_of_value value in
+        let llvalue = llconst_of_value llmod value in
         Nametbl.add names name llvalue;
         llvalue
       | _ -> failwith (u"gen_func/map " ^ name.Ssa.id)
@@ -176,6 +284,47 @@ let gen_func llmod funcn =
           (* Add all not yet existing values into the fixup list. *)
           List.iter (fun (block, op) -> fixups := (llphi, block, op) :: !fixups) succ;
           llphi)
+      | Ssa.FrameInsn nextn
+      -> (let env_map = env_map_of_ty instrn.Ssa.ty in
+          (* Allocate an environment for this function. *)
+          let llenv = Llvm.build_alloca env_map.e_lltype id builder in
+          (* Fill in the next-environment slot. It is always available,
+             because an environment in FSSA is always chained to another one. *)
+          let llparentptr = Llvm.build_struct_gep llenv 0 "" builder in
+          ignore (Llvm.build_store (map nextn) llparentptr builder);
+          (* Return the newly built environment. *)
+          llenv)
+      | Ssa.LVarStoreInsn (envn, var, _)
+      | Ssa.LVarLoadInsn (envn, var)
+      -> (let env_map = env_map_of_ty envn.Ssa.ty in
+          (* Get a pointer to the variable in the environment. *)
+          let rec lookup env_map llenv =
+            try
+              (* Try to lookup on the current level. This possibly
+                 raises Not_found. *)
+              let index = local_var_index env_map var in
+              (* Found it, do the GEP. *)
+              let llvar = Llvm.build_struct_gep llenv index "" builder in
+              llvar
+            with Not_found ->
+              match env_map.e_parent with
+              | Some env_map ->
+                (* The 0th element in the environment is the parent
+                   environment pointer. *)
+                let llenvptr = Llvm.build_struct_gep llenv 0 "" builder in
+                let llenv    = Llvm.build_load llenvptr "" builder in
+                (* Recursively look up at the upper level. *)
+                lookup env_map llenv
+              | None -> assert false
+          in
+          let llvar = lookup env_map (map envn) in
+          (* Actually load or store the variable value. *)
+          match instrn.Ssa.opcode with
+          | Ssa.LVarStoreInsn (_, _, valuen)
+          -> Llvm.build_store (map valuen) llvar builder
+          | Ssa.LVarLoadInsn (_, _)
+          -> Llvm.build_load llvar id builder
+          | _ -> assert false)
       | Ssa.PrimitiveInsn (prim, operands)
       -> gen_prim id (prim :> latin1s) operands
       | _

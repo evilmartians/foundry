@@ -15,6 +15,7 @@ val set      : 'a t -> string -> 'a -> unit
 val exists   : 'a t -> string -> bool
 val empty    : 'a t -> bool
 
+val iter     : f:(string -> 'a -> unit) -> 'a t -> unit
 val map      : f:('a -> 'b) -> 'a t -> 'b t
 val map_list : f:(string -> 'a -> 'b) -> 'a t -> 'b list
 val join     : 'a t -> 'a t -> 'a t
