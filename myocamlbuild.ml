@@ -34,6 +34,10 @@ dispatch begin function
     dep ["ocaml"; "ocamldep"; "use_utf8str"] ["ucs/lib/pa_utf8str.cmo"];
     dep ["ocaml"; "ocamldep"; "use_utf8str_safe"] ["ucs/lib/pa_utf8str_safe.cmo"];
 
+    (* === LLVM === *)
+
+    flag ["ocaml"; "link"; "use_libcxx"] (S[A"-cclib"; A"-lstdc++"]);
+
     (* === MENHIR AND MERR == *)
 
     (* These two rules allow to separate the parser into two parts: terminals

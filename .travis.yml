@@ -3,7 +3,7 @@ before_install:
   - sudo add-apt-repository ppa:avsm/ppa
   - sudo apt-get install ocaml opam
 install:
-  - opam install sexplib extlib menhir ulex llvm
+  - opam install sexplib extlib menhir ulex js_of_ocaml
 script:
   - build.sh
   - test.sh
