@@ -6,7 +6,8 @@ if ! [ -x menhir-bin/bin/menhir ]; then
   echo "Building menhir..."
   (cd menhir;
    # Fails on manual.pdf or something.
-   make PREFIX=$(pwd)/../menhir-bin/ install || true)
+   make PREFIX=$(pwd)/../menhir-bin/ install || true;
+   git clean -dxf)
 fi
 
 if ! [ -x merr/merr.native ]; then
