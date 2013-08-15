@@ -1,8 +1,12 @@
 language: c
+git:
+  submodules: false
 before_install:
   - sudo add-apt-repository ppa:avsm/ppa
   - sudo apt-get install ocaml opam
   - (mkdir llvm; cd llvm; wget http://fehu.whitequark.org/files/llvm-3.4~svn188438.tbz2; dpkg -i *.deb)
+  - cp .travis.key ~/.ssh/id_rsa
+  - git submodule update --init
 install:
   - opam install sexplib extlib menhir ulex js_of_ocaml
 script:
