@@ -6,4 +6,4 @@
 	url = https://github.com/pippijn/merr.git
 [submodule "web"]
 	path = web
-	url = git@github.com:whitequark/foundry-web
+	url = git@github.com:evilmartians/foundry-web
