@@ -2,8 +2,6 @@
 
 set -e
 
-git submodule update --init
-
 if ! [ -x menhir-bin/bin/menhir ]; then
   echo "Building menhir..."
   (cd menhir;
@@ -20,4 +18,4 @@ if ! [ -x merr/merr.native ]; then
 fi
 
 echo "Building foundry..."
-ocamlbuild -use-ocamlfind foundry.native
+ocamlbuild -use-ocamlfind file_check.native foundry.native foundry_web.js

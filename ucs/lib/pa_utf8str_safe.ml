@@ -15,6 +15,8 @@ module Make (Syntax : Sig.Camlp4Syntax) = struct
     expr: LEVEL "simple"
       [ [ "u"; s = STRING ->
             <:expr< (Unicode.assert_utf8s $str:s$) >>
+        | "u"; c = CHAR ->
+            <:expr< (Unicode.utf32_of_utf8s (Unicode.assert_utf8s $str:c$)) >>
       ] ]
     ;
   END

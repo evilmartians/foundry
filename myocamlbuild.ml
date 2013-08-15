@@ -36,8 +36,6 @@ dispatch begin function
 
     (* === MENHIR AND MERR == *)
 
-    ocaml_lib "merr/_build/libmerr/libmerr";
-
     (* These two rules allow to separate the parser into two parts: terminals
        and nonterminals. This way, the lexer does not depend on entire parser,
        but only on the module with token definitions. *)

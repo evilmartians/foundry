@@ -1,36 +1,55 @@
 open Sexplib.Std
 open Unicode.Std
+open ExtList
 
 type t = int * int
 with sexp
 
+type file = int
+
 let empty = (0, 0)
 
-let cur_pos  = ref 0
-let cur_line = ref 0
-let files    = ref []
-let lines    = ref []
+let files  = ref []
+let lines  = ref []
+let cursor = ref 0
+let data   = ref ""
 
 let reset () =
-  cur_pos  := 0;
-  cur_line := 0;
-  files    := [];
-  lines    := []
+  files  := [];
+  lines  := [];
+  cursor := 0;
+  data   := ""
 
-let start_file file line =
-  files    := (file, !cur_pos) :: !files;
-  lines    := (line, !cur_pos) :: !lines;
-  cur_line := line
+let register file line content =
+  files  := (file, !cursor) :: !files;
+  lines  := (line, !cursor) :: !lines;
 
-let start_line pos =
-  lines    := (!cur_line, !cur_pos + pos) :: !lines;
-  cur_line := !cur_line + 1
+  (* Locate and memorize newlines. *)
+  let rec start_line line index =
+    try
+      let index = (String.index_from content index '\n') + 1 in
+      lines := (line, !cursor + index) :: !lines;
+      start_line (line + 1) index
+    with Not_found -> ()
+  in
+  start_line (line + 1) 0;
 
-let finish_file pos =
-  cur_pos  := !cur_pos + pos
+  (* Memorize start of the newly added file. *)
+  let mark = !cursor in
 
-let make lft rgt =
-  (!cur_pos + lft, !cur_pos + rgt)
+  (* Extend internal buffer. *)
+  cursor := !cursor + (String.length content);
+  data   := !data ^ content;
+
+  (* Return mark for this file. *)
+  mark
+
+let make file lft rgt =
+  file + lft, file + rgt
+
+let sub loc lft rgt =
+  let pos, _ = loc in
+    pos + lft, pos + rgt
 
 let next_pos target (_, pos) =
   pos <= target
@@ -46,8 +65,11 @@ let unpack loc =
   let file, p = List.find (next_pos (fst loc)) !files
   in file, (fst loc) - p, (snd loc) - p
 
-let is_empty loc =
-  loc = empty
+let line_source loc =
+  let _, line_start = List.find (next_pos (fst loc)) !lines in
+  let line_finish   = try  String.index_from !data line_start '\n'
+                      with Not_found -> String.length !data in
+    String.sub !data line_start (line_finish - line_start)
 
 let is_present loc =
   loc <> empty

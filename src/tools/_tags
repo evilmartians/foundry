@@ -1,0 +1,1 @@
+<file_check.{ml,byte,native}>: -use_utf8str, use_utf8str_safe, use_str, package(ulex)

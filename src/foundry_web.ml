@@ -9,7 +9,8 @@ let process code ~do_eval =
   Location.reset ();
 
   let lexbuf   = Ulexing.from_utf8_string code in
-  let lexstate = Lexer.create (u"input") 1 in
+  let lexstate = Lexer.create (Location.register (u"input") 1
+                               (Unicode.adopt_utf8s code)) in
   let lex ()   = Lexer.next lexstate lexbuf in
   let parse    = MenhirLib.Convert.Simplified.traditional2revised Parser.toplevel in
 
@@ -34,17 +35,19 @@ let process code ~do_eval =
         Diagnostics problems
   with
   | Lexer.Unexpected (loc, chr) ->
-    Diagnostics [u"Unexpected character " ^ (Char.escaped chr) ^
-                 u" (" ^ (String.make 1 chr) ^ u")", [loc]]
+    Diagnostics [ Diagnostic.Fatal,
+                  u"Unexpected character " ^ (Char.escaped chr) ^
+                  u" (" ^ (String.make 1 chr) ^ u")", [loc]]
   | Parser.StateError (token, state) ->
     (match token with
     | Parser_tokens.EOF _ when not do_eval
     -> Output (u"")
     | _
-    -> Diagnostics [Unicode.assert_utf8s (Parser_errors.message state token),
-                   [Parser_desc.loc_of_token token]])
+    -> Diagnostics [ Diagnostic.Error,
+                     Unicode.assert_utf8s (Parser_errors.message state token),
+                     [Parser_desc.loc_of_token token] ])
   | Rt.Exc exc ->
-    Diagnostics [exc.Rt.ex_message, exc.Rt.ex_locations]
+    Diagnostics [ Diagnostic.Error, exc.Rt.ex_message, exc.Rt.ex_locations ]
   | Failure msg ->
     Error (Unicode.assert_utf8s msg)
 
@@ -79,10 +82,12 @@ let js_eval input do_eval =
             |]
         in let diags =
           Js.array (array
-            (fun (message, locations) ->
-              let message = js_string message in
+            (fun (severity, message, locations) ->
+              let severity  = Diagnostic.string_of_severity severity in
+              let message   = js_string message in
               let locations = Js.array (array js_of_loc locations) in
                 Js.Unsafe.obj [|
+                  ("severity",  inject severity);
                   ("message",   inject message);
                   ("locations", inject locations)
                 |])

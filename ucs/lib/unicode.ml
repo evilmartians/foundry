@@ -619,6 +619,11 @@ module Std = struct
   let print_endline (v : utf8s) =
     print_endline (v :> latin1s)
 
+  let prerr_string (v : utf8s) =
+    prerr_string (v :> latin1s)
+  let prerr_endline (v : utf8s) =
+    prerr_endline (v :> latin1s)
+
   let invalid_arg (v : utf8s) =
     invalid_arg (v :> latin1s)
   let failwith (v : utf8s) =
@@ -628,6 +633,8 @@ module Std = struct
     let chr  = char_of_int
     let code = int_of_char
 
+    let of_string = utf32_of_utf8s
+
     let escaped chr =
       let v = code chr in
         if v > 0xffff then
@@ -636,7 +643,11 @@ module Std = struct
           (Printf.sprintf "\\u%04x" v)
   end
 
+  module ByteArray = String
+
   module String = struct
+    let of_char = utf8s_of_utf32
+
     let length str =
       List.length (utf32s_of_utf8s str)
 
@@ -647,17 +658,23 @@ module Std = struct
       raise (Invalid_argument "String.set does not work on utf8s")
 
     let concat (sep : utf8s) (lst : utf8s list) =
-      assert_utf8s (String.concat (sep :> latin1s) (lst :> latin1s list))
+      assert_utf8s (ByteArray.concat (sep :> latin1s) (lst :> latin1s list))
 
     let make length chr =
-      let chr    = utf8s_of_utf32 chr in
-      let chrlen = String.length chr in
-      let str    = String.create (chrlen * length) in
+      let chr    = of_char chr in
+      let chrlen = ByteArray.length chr in
+      let str    = ByteArray.create (chrlen * length) in
       let rec blit pos count =
         if count = 0 then str
-        else (String.blit chr 0 str pos chrlen;
+        else (ByteArray.blit chr 0 str pos chrlen;
               blit (pos + chrlen) (count - 1))
       in blit 0 length
+
+    let index_from str pos chr =
+      pos + fst (List.findi (fun i -> (=) chr) (List.drop pos (utf32s_of_utf8s str)))
+
+    let sub str pos length =
+      utf8s_of_utf32s (List.take length (List.drop pos (utf32s_of_utf8s str)))
   end
 
   module Big_int = struct

@@ -137,17 +137,26 @@ module Std : sig
   val print_string  : string -> unit
   val print_endline : string -> unit
 
+  val prerr_string  : string -> unit
+  val prerr_endline : string -> unit
+
   val invalid_arg   : string -> 'a
   val failwith      : string -> 'a
 
   module Char : sig
+    val of_string : string -> char
+
     val chr     : int -> char
     val code    : char -> int
 
     val escaped : char -> utf8s
   end
 
+  module ByteArray : module type of ExtString.String
+
   module String : sig
+    val of_char : char -> string
+
     val length : string -> int
 
     val get    : string -> int -> char
@@ -155,6 +164,9 @@ module Std : sig
 
     val make   : int -> char -> string
     val concat : string -> string list -> string
+
+    val sub        : string -> int -> int -> string
+    val index_from : string -> int -> char -> int
   end
 
   module Big_int : sig

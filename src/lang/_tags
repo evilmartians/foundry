@@ -1,3 +1,2 @@
 <parser*.{ml,mly*}>: -use_utf8str, -syntax(camlp4o)
 <parser.mlypack>: explain, dump, external_tokens(Parser_tokens)
-

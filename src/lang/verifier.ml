@@ -256,10 +256,6 @@ and check_expr cx expr =
         ["Unknown primitive `" ^ name ^ "'.", [loc]])
 
 let check ast =
-  let context = {
-        env = {
-          parent = None;
-          bindings = Table.create []
-        }
-      }
-  in check_expr context @: ast
+  let context = { env = { parent = None; bindings = Table.create [] } } in
+  let errors  = check_expr context @: ast in
+    List.map (fun (msg, loc) -> Diagnostic.Error, msg, loc) errors

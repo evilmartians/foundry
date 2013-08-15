@@ -341,7 +341,7 @@ let rec print_ssa_value env value =
     in
     let ident   = (print_ident value.id) ^ ":" in
     let header  = ident ^
-      (String.make (50 - (String.length ident)) (Unicode.utf32_of_utf8s " ")) ^
+      (String.make (50 - (String.length ident)) (Char.of_string " ")) ^
       preds ^ "\n"
     in
     header ^
