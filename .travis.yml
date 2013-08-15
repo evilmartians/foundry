@@ -6,7 +6,7 @@ before_install:
   - sudo apt-get update -qq -y
   - sudo apt-get install -qq -y ocaml opam
   - (mkdir llvm; cd llvm; curl http://fehu.whitequark.org/files/llvm-3.4~svn188438.tbz2 | tar xjv)
-  - sudo dpkg -i llvm/*_i386.deb
+  - sudo dpkg -i llvm/*_amd64.deb
   - cp .travis.key ~/.ssh/id_rsa
   - git submodule update --init
 install:
