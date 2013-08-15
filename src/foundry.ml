@@ -12,10 +12,12 @@ let dump_ir main =
 
 let _ =
   let main = load_ir (Lexing.from_channel stdin) in
-    print_endline (dump_ir main);
-    let llmod = Codegen.llvm_module_of_ssa_func main in
-    Llvm.dump_module llmod;
-    Llvm_bitwriter.write_bitcode_file llmod ("a.bc" :> latin1s)
+  let llmod = Codegen.llvm_module_of_ssa_func main in
+  if (Array.length Sys.argv) > 1 then
+    ignore (if Sys.argv.(1) = ("-" :> latin1s) then
+      Llvm_bitwriter.output_bitcode ~unbuffered:true stdout llmod
+    else
+      Llvm_bitwriter.write_bitcode_file llmod Sys.argv.(1))
 
 (* let env = Vm.env_create ()
 
