@@ -2,8 +2,10 @@ language: c
 before_install:
   - sudo add-apt-repository ppa:avsm/ppa
   - sudo apt-get install ocaml opam
+  - (mkdir llvm; cd llvm; wget http://fehu.whitequark.org/files/llvm-3.4~svn188438.tbz2; dpkg -i *.deb)
 install:
   - opam install sexplib extlib menhir ulex js_of_ocaml
 script:
-  - build.sh
-  - test.sh
+  - export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
+  - ./build.sh
+  - ./test.sh
