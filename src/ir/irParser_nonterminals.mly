@@ -369,7 +369,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     let fenv  = Table.create [] in
                     let args  = args venv in
                     let funcn = create_func ~id:bind_as
-                                  ~arg_names:(List.map snd args)
+                                  ~arg_ids:(List.map snd args)
                                   (List.map fst args) (result venv) in
                       Table.set venv bind_as (NamedFunction funcn);
                       List.iter (fun arg -> Table.set fenv arg.id arg)
@@ -403,18 +403,20 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
          instr: id=opt_local_eq x=value_instr
                 { (fun ((venv, block, fenv) as env) ->
-                    let instr = append_instr block ~id ~ty:Rt.NilTy ~opcode:InvalidInstr in
-                      if Table.exists fenv id && id <> u"" then
-                        failwith (u"Duplicate name %" ^ id);
-                      Table.set fenv instr.id instr;
-                      (fun () ->
-                        let ty, opcode = x env in
-                        replace_instr instr ~ty ~opcode)) }
+                    let instrn = create_instr ~id Rt.NilTy InvalidInstr in
+                    append_instr instrn block;
+                    if Table.exists fenv id && id <> u"" then
+                      failwith (u"Duplicate name %" ^ id);
+                    Table.set fenv instrn.id instrn;
+                    (fun () ->
+                      let ty, opcode = x env in
+                      replace_instr instrn ~ty ~opcode)) }
               | x=term_instr
-                { (fun ((venv, block, fenv) as env) ->
-                    let instr = append_instr block ~ty:Rt.NilTy ~opcode:InvalidInstr in
-                      (fun () ->
-                        replace_instr instr ~ty:Rt.NilTy ~opcode:(x env))) }
+                { (fun ((venv, blockn, fenv) as env) ->
+                    let instrn = create_instr Rt.NilTy InvalidInstr in
+                    append_instr instrn blockn;
+                    (fun () ->
+                      replace_instr ~ty:Rt.NilTy ~opcode:(x env) instrn)) }
 
       instr_ty: ty=ty
                 { (fun (venv, block, fenv) -> ty venv) }
@@ -472,7 +474,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { let (env, defs) = defs in
                     env, ((x env) :: defs) }
               | /* empty */
-                { (new_globals ()), [] }
+                { new_globals (), [] }
 
       toplevel: defs=definitions EOF
                 { let (env, defs) = defs in

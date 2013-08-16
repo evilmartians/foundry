@@ -45,6 +45,14 @@ and opcode =
 | CallInstr       of (*func*) name   * (*operands*) name list
 | PrimitiveInstr  of (*name*) string * (*operands*) name list
 
+(* Variable naming convention:
+   funcn:  function name, of type name
+   func:   function, of type func
+   blockn: block name, of type name
+   block:  block, of type basic_block
+   instr:  instruction name, of type name
+ *)
+
 let func_of_name name =
   match name with
   | { opcode = Function func }
@@ -91,7 +99,7 @@ let name_of_value value =
 let set_name_id name id =
   name.id <- mangle_id name id
 
-let create_func ?(id="") ?arg_names args_ty result_ty =
+let create_func ?(id="") ?arg_ids args_ty result_ty =
   let func  = {
     arguments    = [];
     basic_blocks = [];
@@ -115,9 +123,9 @@ let create_func ?(id="") ?arg_names args_ty result_ty =
       parent = Some value;
       uses   = [];
     } in
-    match arg_names with
-    | Some names ->
-      func.arguments <- List.map2 make_arg names args_ty
+    match arg_ids with
+    | Some ids ->
+      func.arguments <- List.map2 make_arg ids args_ty
     | None ->
       func.arguments <- List.map (make_arg "") args_ty
   end;
@@ -191,25 +199,56 @@ let uses_by_instr instr =
   -> operands
 
 let add_uses instr =
-  List.iter (fun use -> use.uses <- instr :: use.uses)
+  List.iter (fun used ->
+      assert (not (List.mem instr used.uses));
+      used.uses <- instr :: used.uses)
     (uses_by_instr instr)
 
 let remove_uses instr =
-  List.iter (fun use -> use.uses <- List.remove use.uses instr)
+  List.iter (fun used ->
+      assert (List.mem instr used.uses);
+      used.uses <- List.remove used.uses instr)
     (uses_by_instr instr)
 
-let append_instr ?(id="") ~ty ~opcode blockn =
+let create_instr ?(id="") ty opcode =
+  {
+    id;
+    ty;
+    opcode;
+    parent = None;
+    uses   = [];
+  }
+
+let insert_instr ?pivot f_some f_none instr blockn =
   let block = block_of_name blockn in
-    let instr = {
-      id     = mangle_id blockn id;
-      ty;
-      opcode;
-      parent = Some blockn;
-      uses   = [];
-    } in
-      block.instructions <- block.instructions @ [instr];
-      add_uses instr;
-      instr
+  assert (instr.parent = None);
+  begin
+    match pivot with
+    | Some pivotn
+    -> (assert (List.memq pivotn block.instructions);
+        block.instructions <-
+          List.fold_left (fun new_instrs curn ->
+              if curn == pivotn then
+                f_some new_instrs curn
+              else curn :: new_instrs)
+            [] block.instructions)
+    | None
+    -> block.instructions <- f_none block.instructions
+  end;
+  instr.id     <- mangle_id blockn instr.id;
+  instr.parent <- Some blockn
+
+let prepend_instr ?before instr blockn =
+  insert_instr ?pivot:before
+      (fun instrs curn -> instr :: curn :: instrs)
+      (fun instrs      -> instr :: instrs)
+    instr blockn
+
+let append_instr ?after instr blockn =
+  insert_instr ?pivot:after
+      (fun instrs curn -> curn :: instr :: instrs)
+      (fun instrs      -> instrs @ [instr])
+    instr blockn
 
 let replace_instr ?ty ?opcode instr =
   Option.may (fun ty ->
@@ -219,5 +258,13 @@ let replace_instr ?ty ?opcode instr =
     instr.opcode <- opcode;
     add_uses instr) opcode
 
-let remove_instr instrn =
-  ()
+let remove_instr instr =
+  let block = block_of_name (Option.get instr.parent) in
+  assert (List.mem instr block.instructions);
+  block.instructions <- List.remove block.instructions instr;
+  instr.parent <- None
+
+let erase_instr instr =
+  remove_instr instr;
+  remove_uses instr;
+  instr.opcode <- InvalidInstr

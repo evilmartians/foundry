@@ -47,7 +47,7 @@ val set_name_id   : name -> string -> unit
 (* Function level *)
 
 val create_func   : ?id:string ->
-                    ?arg_names:string list ->
+                    ?arg_ids:string list ->
                     (*args_ty*)   Rt.ty list ->
                     (*result_ty*) Rt.ty ->
                             name
@@ -66,6 +66,11 @@ val predecessors  : (*basic_block*) name -> name list
 
 (* Instruction level *)
 
-val append_instr  : ?id:string -> ty:Rt.ty -> opcode:opcode -> (*basic_block*) name -> name
-val replace_instr : ?ty:Rt.ty -> ?opcode:opcode -> (*insn*) name -> unit
-val remove_instr  : (*insn*) name -> unit
+val create_instr  : ?id:string -> Rt.ty -> opcode -> name
+val prepend_instr : ?before:name -> (*instr*) name -> (*basic_block*) name -> unit
+val append_instr  : ?after:name  -> (*instr*) name -> (*basic_block*) name -> unit
+val replace_instr : ?ty:Rt.ty -> ?opcode:opcode -> (*instr*) name -> unit
+val remove_instr  : (*instr*) name -> unit
+val erase_instr   : (*instr*) name -> unit
+
+
