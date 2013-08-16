@@ -389,18 +389,18 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | /* nothing */
                 { u"" }
 
-          insn: id=opt_local_eq x=value_insn
+          insn: id=opt_local_eq x=value_instr
                 { (fun ((venv, block, fenv) as env) ->
-                    let insn = append_insn block ~id ~ty:Rt.NilTy ~opcode:InvalidInsn in
+                    let insn = append_instr block ~id ~ty:Rt.NilTy ~opcode:InvalidInstr in
                       Table.set fenv id insn;
                       (fun () ->
                         let ty, opcode = x env in
-                        replace_insn insn ~ty ~opcode)) }
-              | x=term_insn
+                        replace_instr insn ~ty ~opcode)) }
+              | x=term_instr
                 { (fun ((venv, block, fenv) as env) ->
-                    let insn = append_insn block ~ty:Rt.NilTy ~opcode:InvalidInsn in
+                    let insn = append_instr block ~ty:Rt.NilTy ~opcode:InvalidInstr in
                       (fun () ->
-                        replace_insn insn ~ty:Rt.NilTy ~opcode:(x env))) }
+                        replace_instr insn ~ty:Rt.NilTy ~opcode:(x env))) }
 
        insn_ty: ty=ty
                 { (fun (venv, block, fenv) -> ty venv) }
@@ -413,35 +413,35 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     List.map (fun (id, value) ->
                       Table.get_exn fenv id, value env) xs) }
 
-    value_insn: ty=insn_ty Phi operands=phi_operands
-                { (fun env -> ty env, PhiInsn (operands env)) }
+   value_instr: ty=insn_ty Phi operands=phi_operands
+                { (fun env -> ty env, PhiInstr (operands env)) }
               | ty=insn_ty Frame parent=operand
-                { (fun env -> ty env, FrameInsn (parent env)) }
+                { (fun env -> ty env, FrameInstr (parent env)) }
               | ty=insn_ty Frame Empty
                 { (fun env ->
                     ty env,
-                    FrameInsn (name_of_value (Environment {
+                    FrameInstr (name_of_value (Environment {
                                 e_parent   = None;
                                 e_bindings = Table.create [];
                               }))) }
               | ty=insn_ty Lvar_load
                     lenv=operand Comma name=Lit_String
-                { (fun env -> ty env, LVarLoadInsn (lenv env, name)) }
+                { (fun env -> ty env, LVarLoadInstr (lenv env, name)) }
               | ty=insn_ty Lvar_store
                     lenv=operand Comma name=Lit_String Comma value=operand
-                { (fun env -> ty env, LVarStoreInsn (lenv env, name, value env)) }
+                { (fun env -> ty env, LVarStoreInstr (lenv env, name, value env)) }
               | ty=insn_ty? Primitive
                     name=Lit_String LParen args=separated_list(Comma, operand) RParen
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,
-                    (PrimitiveInsn (name, List.map (fun x -> x env) args))) }
+                    (PrimitiveInstr (name, List.map (fun x -> x env) args))) }
 
-     term_insn: Jump target=operand
-                { (fun env -> JumpInsn (target env)) }
+    term_instr: Jump target=operand
+                { (fun env -> JumpInstr (target env)) }
               | Jump_if cond=operand Comma if_true=operand Comma if_false=operand
-                { (fun env -> JumpIfInsn (cond env, if_true env, if_false env)) }
+                { (fun env -> JumpIfInstr (cond env, if_true env, if_false env)) }
               | Return value=operand
-                { (fun env -> ReturnInsn (value env) ) }
+                { (fun env -> ReturnInstr (value env) ) }
 
    definitions: defs=definitions x=entity
               | defs=definitions x=func

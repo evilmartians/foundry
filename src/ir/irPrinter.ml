@@ -92,7 +92,7 @@ let bind env value name =
 (* Printer *)
 
 let with_lookup env value name printer =
-  match ValueEnvironment.get env.global value with
+  match ValueEnvironment.lookup env.global value with
   | Some name
   -> Global name
   | None
@@ -148,7 +148,7 @@ let rec print_value env value =
 
   | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy | UnsignedTy _
   | SignedTy _ | TupleTy _ | RecordTy _ | EnvironmentTy _ | FunctionTy _
-  | BasicBlockTy _
+  | BasicBlockTy
   -> "type " ^ (print_ty env value)
 
 and print_ty env ty =
@@ -323,7 +323,7 @@ let rec print_ssa_value env value =
   let term opcode operands =
     opcode ^ " " ^ (String.concat ", " operands)
   in
-  let insn opcode operands =
+  let instr opcode operands =
     (print_name (Local value.id)) ^ " = " ^
       (print_ty env value.ty) ^ " " ^ (term opcode operands)
   in
@@ -365,24 +365,24 @@ let rec print_ssa_value env value =
   | Argument | Const _ ->
     assert false
   (* Instructions *)
-  | InvalidInsn ->
-    insn "$invalid" []
-  | JumpInsn name ->
+  | InvalidInstr ->
+    instr "$invalid" []
+  | JumpInstr name ->
     term "jump" [print name]
-  | JumpIfInsn (cond, if_true, if_false) ->
+  | JumpIfInstr (cond, if_true, if_false) ->
     term "jump_if" [print cond; print if_true; print if_false]
-  | ReturnInsn name ->
+  | ReturnInstr name ->
     term "return" [print name]
-  | PhiInsn operands ->
-    insn "phi" (List.map (fun (block, value) ->
+  | PhiInstr operands ->
+    instr "phi" (List.map (fun (block, value) ->
                   "[ " ^ (print block) ^ " => " ^ (print value) ^ " ]") operands)
-  | FrameInsn (parent) ->
-    insn "frame" [print parent]
-  | LVarLoadInsn (env, var) ->
-    insn "lvar_load" [print env; print_string var]
-  | LVarStoreInsn (env, var, value) ->
-    insn "lvar_store" [print env; print_string var; print value]
-  | PrimitiveInsn (name, operands) ->
+  | FrameInstr (parent) ->
+    instr "frame" [print parent]
+  | LVarLoadInstr (env, var) ->
+    instr "lvar_load" [print env; print_string var]
+  | LVarStoreInstr (env, var, value) ->
+    instr "lvar_store" [print env; print_string var; print value]
+  | PrimitiveInstr (name, operands) ->
     (print_name (Local value.id)) ^ " = " ^
       (print_ty env value.ty) ^ " primitive " ^ (print_string name) ^
       " (" ^ (String.concat ", " (List.map print operands)) ^ ")"

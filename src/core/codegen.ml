@@ -258,19 +258,19 @@ let gen_func llmod funcn =
       | Ssa.Const _
       -> assert false
       (* Terminator instructions. *)
-      | Ssa.JumpInsn blockn
+      | Ssa.JumpInstr blockn
       -> Llvm.build_br (Llvm.block_of_value (Nametbl.find names blockn)) builder
-      | Ssa.JumpIfInsn (condn, truen, falsen)
+      | Ssa.JumpIfInstr (condn, truen, falsen)
       -> Llvm.build_cond_br (map condn)
               (Llvm.block_of_value (map truen))
               (Llvm.block_of_value (map falsen))
             builder
-      | Ssa.ReturnInsn valuen
+      | Ssa.ReturnInstr valuen
       -> (match valuen.Ssa.ty with
           | Rt.NilTy -> Llvm.build_ret_void builder
           | _        -> Llvm.build_ret (map valuen) builder)
       (* Value-returning instructions. *)
-      | Ssa.PhiInsn operands
+      | Ssa.PhiInstr operands
       -> (* Divide all FSSA incoming values into predecessor values
             and successor values. It is assumed here that the basic blocks
             are sorted in domination order, therefore all the names which
@@ -288,7 +288,7 @@ let gen_func llmod funcn =
           (* Add all not yet existing values into the fixup list. *)
           List.iter (fun (block, op) -> fixups := (llphi, block, op) :: !fixups) succ;
           llphi)
-      | Ssa.FrameInsn nextn
+      | Ssa.FrameInstr nextn
       -> (let env_map = env_map_of_ty instrn.Ssa.ty in
           (* Allocate an environment for this function. *)
           let llenv = Llvm.build_alloca env_map.e_lltype id builder in
@@ -298,8 +298,8 @@ let gen_func llmod funcn =
           ignore (Llvm.build_store (map nextn) llparentptr builder);
           (* Return the newly built environment. *)
           llenv)
-      | Ssa.LVarStoreInsn (envn, var, _)
-      | Ssa.LVarLoadInsn (envn, var)
+      | Ssa.LVarStoreInstr (envn, var, _)
+      | Ssa.LVarLoadInstr (envn, var)
       -> (let env_map = env_map_of_ty envn.Ssa.ty in
           (* Get a pointer to the variable in the environment. *)
           let rec lookup env_map llenv =
@@ -324,12 +324,12 @@ let gen_func llmod funcn =
           let llvar = lookup env_map (map envn) in
           (* Actually load or store the variable value. *)
           match instrn.Ssa.opcode with
-          | Ssa.LVarStoreInsn (_, _, valuen)
+          | Ssa.LVarStoreInstr (_, _, valuen)
           -> Llvm.build_store (map valuen) llvar builder
-          | Ssa.LVarLoadInsn (_, _)
+          | Ssa.LVarLoadInstr (_, _)
           -> Llvm.build_load llvar id builder
           | _ -> assert false)
-      | Ssa.PrimitiveInsn (prim, operands)
+      | Ssa.PrimitiveInstr (prim, operands)
       -> gen_prim id (prim :> latin1s) operands
       | _
       -> assert false

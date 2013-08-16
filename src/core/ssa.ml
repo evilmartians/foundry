@@ -25,7 +25,7 @@ and basic_block = {
   mutable instructions : name list;
 }
 and opcode =
-| InvalidInsn
+| InvalidInstr
 (* Functions *)
 | Function        of func
 | Argument
@@ -33,16 +33,16 @@ and opcode =
 (* Constants *)
 | Const           of Rt.value
 (* Phi *)
-| PhiInsn         of ((*basic_block*) name * (*value*) name) list
+| PhiInstr        of ((*basic_block*) name * (*value*) name) list
 (* Terminators *)
-| JumpInsn        of (*target*) name
-| JumpIfInsn      of (*condition*) name * (*if_true*) name * (*if_false*) name
-| ReturnInsn      of (*value*) name
+| JumpInstr       of (*target*) name
+| JumpIfInstr     of (*condition*) name * (*if_true*) name * (*if_false*) name
+| ReturnInstr     of (*value*) name
 (* Language-specific opcodes *)
-| FrameInsn       of (*parent*) name
-| LVarLoadInsn    of (*environment*) name * string
-| LVarStoreInsn   of (*environment*) name * string * name
-| PrimitiveInsn   of (*name*) string * (*operands*) name list
+| FrameInstr      of (*parent*) name
+| LVarLoadInstr   of (*environment*) name * string
+| LVarStoreInstr  of (*environment*) name * string * name
+| PrimitiveInstr  of (*name*) string * (*operands*) name list
 
 let func_of_name name =
   match name with
@@ -146,15 +146,15 @@ let remove_basic_block basic_block_v =
 let successors block_name =
   let block = basic_block_of_name block_name in
   match (List.last block.instructions).opcode with
-  | JumpInsn   target        -> [target]
-  | JumpIfInsn (_, ift, iff) -> [ift; iff]
-  | ReturnInsn _             -> []
+  | JumpInstr   target        -> [target]
+  | JumpIfInstr (_, ift, iff) -> [ift; iff]
+  | ReturnInstr _             -> []
   | _ -> assert false
 
 let predecessors block_name =
   List.filter_map (fun use ->
       match use.opcode with
-      | JumpInsn _ | JumpIfInsn _
+      | JumpInstr _ | JumpIfInstr _
       -> (match use.parent with
           | Some parent -> Some parent
           | None        -> assert false)
@@ -164,27 +164,27 @@ let predecessors block_name =
 
 let uses_by_instr instr =
   match instr.opcode with
-  | InvalidInsn
+  | InvalidInstr
   | Argument
   | Function _
   | BasicBlock _
   | Const _
   -> []
-  | PhiInsn operands
+  | PhiInstr operands
   -> (List.map fst operands) @ (List.map snd operands)
-  | JumpInsn target
+  | JumpInstr target
   -> [target]
-  | JumpIfInsn (cond, if_true, if_false)
+  | JumpIfInstr (cond, if_true, if_false)
   -> [cond; if_true; if_false]
-  | ReturnInsn value
+  | ReturnInstr value
   -> [value]
-  | FrameInsn parent
+  | FrameInstr parent
   -> [parent]
-  | LVarLoadInsn (env, _)
+  | LVarLoadInstr (env, _)
   -> [env]
-  | LVarStoreInsn (env, _, value)
+  | LVarStoreInstr (env, _, value)
   -> [env; value]
-  | PrimitiveInsn (name, operands)
+  | PrimitiveInstr (name, operands)
   -> operands
 
 let add_uses instr =
@@ -195,7 +195,7 @@ let remove_uses instr =
   List.iter (fun use -> use.uses <- List.remove use.uses instr)
     (uses_by_instr instr)
 
-let append_insn ?(id="") ~ty ~opcode basic_block_v =
+let append_instr ?(id="") ~ty ~opcode basic_block_v =
   let basic_block = basic_block_of_name basic_block_v in
     let instr = {
       id     = mangle_id basic_block_v id;
@@ -208,7 +208,7 @@ let append_insn ?(id="") ~ty ~opcode basic_block_v =
       add_uses instr;
       instr
 
-let replace_insn ?ty ?opcode instr =
+let replace_instr ?ty ?opcode instr =
   Option.may (fun ty ->
     instr.ty <- ty) ty;
   Option.may (fun opcode ->
@@ -216,7 +216,7 @@ let replace_insn ?ty ?opcode instr =
     instr.opcode <- opcode;
     add_uses instr) opcode
 
-let remove_insn insn_v =
+let remove_instr insn_v =
   ()
 
 type ssa_conv_state = {
@@ -255,14 +255,14 @@ let rec ssa_of_expr ~entry ~state ~expr =
   | Syntax.Signed (_, width, value)
   -> entry, name_of_value (Rt.Signed (width, value))
   | Syntax.Var (_, name)
-  -> entry, append_insn entry
+  -> entry, append_instr entry
                 ~ty:(lvar_type state.current_env.ty name)
-                ~opcode:(LVarLoadInsn (state.current_env, name))
+                ~opcode:(LVarLoadInstr (state.current_env, name))
   | Syntax.InvokePrimitive (_, name, operands)
   -> (let entry, operands = ssa_of_exprs ~entry ~state ~exprs:operands in
-        entry, append_insn entry
+        entry, append_instr entry
                 ~ty:(tvar ())
-                ~opcode:(PrimitiveInsn (name, List.rev operands)))
+                ~opcode:(PrimitiveInstr (name, List.rev operands)))
   | _
   -> failwith ("ssa_of_expr: " ^
         (Unicode.assert_utf8s
@@ -297,15 +297,15 @@ let name_of_lambda ?(id="") lambda =
         | Rt.EnvironmentTy ty -> ty
         | _ -> assert false
       in
-      append_insn entry
+      append_instr entry
         ~ty:(Rt.EnvironmentTy {
           Rt.e_parent_ty   = Some parent_env_ty;
           Rt.e_bindings_ty = Table.create [];
         })
-        ~opcode:(FrameInsn (name_of_value parent_env))
+        ~opcode:(FrameInstr (name_of_value parent_env))
     in
     let state = { lambda; current_env; }
     in
     let entry, names = ssa_of_exprs ~entry ~state ~exprs:lambda.Rt.l_body in
-      ignore (append_insn entry ~ty:Rt.NilTy ~opcode:(ReturnInsn (List.hd names)));
+      ignore (append_instr entry ~ty:Rt.NilTy ~opcode:(ReturnInstr (List.hd names)));
       func

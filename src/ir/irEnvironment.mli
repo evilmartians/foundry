@@ -7,6 +7,5 @@ module Make :
 
     val create  : unit -> t
     val bind    : t -> V.t -> string -> string
-    val get_exn : t -> V.t -> string
-    val get     : t -> V.t -> string option
+    val lookup  : t -> V.t -> string option
   end

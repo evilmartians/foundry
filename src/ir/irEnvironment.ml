@@ -38,10 +38,7 @@ module Make =
         name
       end
 
-    let get_exn env value =
-      ValueHashtbl.find env.values value
-
-    let get env value =
+    let lookup env value =
       try
         Some (ValueHashtbl.find env.values value)
       with Not_found ->

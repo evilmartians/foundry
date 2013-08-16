@@ -19,7 +19,7 @@ and basic_block = private {
   mutable instructions : name list;
 }
 and opcode =
-| InvalidInsn
+| InvalidInstr
 (* Functions *)
 | Function        of func
 | Argument
@@ -27,16 +27,16 @@ and opcode =
 (* Constants *)
 | Const           of Rt.value
 (* Phi *)
-| PhiInsn         of ((*basic_block*) name * (*value*) name) list
+| PhiInstr         of ((*basic_block*) name * (*value*) name) list
 (* Terminators *)
-| JumpInsn        of (*target*) name
-| JumpIfInsn      of (*condition*) name * (*if_true*) name * (*if_false*) name
-| ReturnInsn      of (*value*) name
+| JumpInstr        of (*target*) name
+| JumpIfInstr      of (*condition*) name * (*if_true*) name * (*if_false*) name
+| ReturnInstr      of (*value*) name
 (* Language-specific opcodes *)
-| FrameInsn       of (*parent*) name
-| LVarLoadInsn    of (*environment*) name * string
-| LVarStoreInsn   of (*environment*) name * string * name
-| PrimitiveInsn   of (*name*) string * (*operands*) name list
+| FrameInstr       of (*parent*) name
+| LVarLoadInstr    of (*environment*) name * string
+| LVarStoreInstr   of (*environment*) name * string * name
+| PrimitiveInstr   of (*name*) string * (*operands*) name list
 
 (* Generic *)
 
@@ -69,6 +69,6 @@ val predecessors        : (*basic_block*) name -> name list
 
 (* Instruction level *)
 
-val append_insn         : ?id:string -> ty:Rt.ty -> opcode:opcode -> (*basic_block*) name -> name
-val replace_insn        : ?ty:Rt.ty -> ?opcode:opcode -> (*insn*) name -> unit
-val remove_insn         : (*insn*) name -> unit
+val append_instr         : ?id:string -> ty:Rt.ty -> opcode:opcode -> (*basic_block*) name -> name
+val replace_instr        : ?ty:Rt.ty -> ?opcode:opcode -> (*insn*) name -> unit
+val remove_instr         : (*insn*) name -> unit
