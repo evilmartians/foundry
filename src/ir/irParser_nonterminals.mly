@@ -372,8 +372,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                                   ~arg_names:(List.map snd args)
                                   (List.map fst args) (result venv) in
                       Table.set venv bind_as (NamedFunction funcn);
-                      List.iter (fun arg ->
-                          Table.set fenv arg.id arg)
+                      List.iter (fun arg -> Table.set fenv arg.id arg)
                         (func_of_name funcn).arguments;
                       let fixups = blocks (venv, funcn, fenv) in
                         (fun () -> List.iter (fun f -> f ()) fixups))

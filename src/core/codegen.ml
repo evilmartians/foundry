@@ -185,7 +185,7 @@ let gen_proto llmod name func_ty =
       assert (Llvm.element_type (Llvm.type_of f) == llty);
       f
 
-let gen_func llmod funcn =
+let rec gen_func llmod funcn =
   let func = Ssa.func_of_name funcn in
   let ty =
     match funcn.Ssa.ty with
@@ -329,6 +329,13 @@ let gen_func llmod funcn =
           | Ssa.LVarLoadInstr (_, _)
           -> Llvm.build_load llvar id builder
           | _ -> assert false)
+      | Ssa.CallInstr (funcn, operands)
+      -> (let llfunc =
+            match Llvm.lookup_function (funcn.Ssa.id :> latin1s) llmod with
+            | Some llfunc -> llfunc
+            | None -> gen_func llmod funcn
+          in
+          Llvm.build_call llfunc (Array.of_list (List.map map operands)) id builder)
       | Ssa.PrimitiveInstr (prim, operands)
       -> gen_prim id (prim :> latin1s) operands
       | _
