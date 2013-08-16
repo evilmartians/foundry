@@ -1,4 +1,4 @@
-; RUN: %foundry_as %s -o - | lli | %file_check %s
+; RUN: %foundry_gen %s -o - | lli | %file_check %s
 
 @fib = function (unsigned(32) %n) -> unsigned(32) {
 entry:

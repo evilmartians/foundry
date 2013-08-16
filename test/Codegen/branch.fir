@@ -1,4 +1,4 @@
-; RUN: %foundry_as %s -o - | llvm-dis | %file_check %s
+; RUN: %foundry_gen %s -o - | llvm-dis | %file_check %s
 
 @main = function () -> unsigned(32) {
 ; CHECK: entry:
