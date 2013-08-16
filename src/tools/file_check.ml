@@ -428,10 +428,10 @@ let _ =
           if !input_file <> "" then
             (prerr_endline "More than one input file is provided."; exit 2);
           input_file := arg),
-        "FILE File to check (defaults to stdin)";
+        "<file> File to check (defaults to stdin)";
 
       "-check-prefix", Arg.Set_string prefix,
-        "PREFIX Prefix to use from check file (defaults to 'CHECK')";
+        "<prefix> Prefix to use from check file (defaults to 'CHECK')";
 
       "-strict-whitespace", Arg.Clear canonicalize,
         " Do not treat all horizontal whitespace as equivalent"

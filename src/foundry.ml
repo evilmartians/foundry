@@ -1,24 +1,5 @@
 open Unicode.Std
 
-let load_ir lexbuf =
-  let lex () = IrLexer.next lexbuf in
-  let parse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
-  let roots, main = parse lex in
-    Rt.roots := roots;
-    main
-
-let dump_ir main =
-  IrPrinter.print_ssa main
-
-let _ =
-  let main = load_ir (Lexing.from_channel stdin) in
-  let llmod = Codegen.llvm_module_of_ssa_func main in
-  if (Array.length Sys.argv) > 1 then
-    ignore (if Sys.argv.(1) = ("-" :> latin1s) then
-      Llvm_bitwriter.output_bitcode ~unbuffered:true stdout llmod
-    else
-      Llvm_bitwriter.write_bitcode_file llmod Sys.argv.(1))
-
 (* let env = Vm.env_create ()
 
 while true do

@@ -6,4 +6,5 @@
 <foundry_web.{ml,byte}>: package(js_of_ocaml)
 
 <codegen.*>: package(llvm), -use_utf8str, use_utf8str_safe
-<foundry.{ml,native}>: package(llvm), package(llvm.analysis), package(llvm.bitwriter), use_libcxx
+<foundry{,_as}.ml>: -use_utf8str, use_utf8str_safe
+<foundry{,_as}.{ml,native}>: package(llvm), package(llvm.analysis), package(llvm.bitwriter), use_libcxx

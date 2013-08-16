@@ -1,6 +1,6 @@
-; RUN: %foundry <%s - | llvm-dis | %file_check %s
+; RUN: %foundry_as %s -o - | llvm-dis | %file_check %s
 
-@main = function () -> type nil {
+@main = function () -> type unsigned(32) {
 ; CHECK: entry:
 ; CHECK-NEXT: br label %foo
 entry:
@@ -10,7 +10,7 @@ entry:
 foo:
   jump_if true, %bar, %baz
 bar:
-  return nil
+  return unsigned(32) 0
 baz:
-  return nil
+  return unsigned(32) 0
 }
