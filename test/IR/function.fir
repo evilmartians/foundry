@@ -3,7 +3,7 @@
 ; CHECK: @id = function (unsigned(32) %n) -> unsigned(32)
 @id = function (unsigned(32) %n) -> unsigned(32) {
 entry:
-  return unsigned(32) 0
+  return %n
 }
 
 @main = function () -> nil {

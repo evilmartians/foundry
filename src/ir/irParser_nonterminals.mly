@@ -366,13 +366,16 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   RBrace
                 {
                   (fun venv ->
-                    let fenv = Table.create [] in
-                    let args = args venv in
-                    let func = create_func ~id:bind_as
+                    let fenv  = Table.create [] in
+                    let args  = args venv in
+                    let funcn = create_func ~id:bind_as
                                   ~arg_names:(List.map snd args)
                                   (List.map fst args) (result venv) in
-                      Table.set venv bind_as (NamedFunction func);
-                      let fixups = blocks (venv, func, fenv) in
+                      Table.set venv bind_as (NamedFunction funcn);
+                      List.iter (fun arg ->
+                          Table.set fenv arg.id arg)
+                        (func_of_name funcn).arguments;
+                      let fixups = blocks (venv, funcn, fenv) in
                         (fun () -> List.iter (fun f -> f ()) fixups))
                 }
 
