@@ -1,1 +1,7 @@
 <file_check.{ml,byte,native}>: -use_utf8str, use_utf8str_safe, use_str, package(ulex)
+
+<foundry_web.ml>: -use_utf8str, package(js_of_ocaml.syntax)
+<foundry_web.{ml,byte}>: package(js_of_ocaml)
+
+<foundry{,_as,_opt}.ml>: -use_utf8str, use_utf8str_safe
+<foundry{,_as}.{ml,native}>: package(llvm), package(llvm.analysis), package(llvm.bitwriter), use_libcxx
