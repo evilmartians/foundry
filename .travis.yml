@@ -44,5 +44,4 @@ install:
   - opam install sexplib extlib menhir ulex js_of_ocaml
 script:
   - export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
-  - ./build.sh
-  - ./test.sh
+  - ./scripts/build.sh

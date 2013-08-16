@@ -40,7 +40,7 @@ let gen_debug llmod =
   (* Define __fy_debug primitive helper. *)
   let lldebug_ty  = Llvm.function_type (Llvm.void_type ctx) [| Llvm.i32_type ctx |] in
   let lldebug     = Llvm.declare_function "__fy_debug" lldebug_ty llmod in
-  let entry       = Llvm.append_block ctx "entry" lldebug in
+  let entry       = Llvm.append_block ctx "" lldebug in
   let builder     = Llvm.builder ctx in
     Llvm.position_at_end entry builder;
     let llformat = Llvm.build_global_stringptr "[DEBUG: 0x%08x]\n" "__fy_format" builder in
@@ -164,6 +164,10 @@ let rec llconst_of_value llmod value =
           | None -> content
         in
         Llvm.const_struct ctx (Array.of_list content)))
+  | Rt.Truth
+  -> Llvm.const_int (Llvm.integer_type ctx 1) 1
+  | Rt.Lies
+  -> Llvm.const_int (Llvm.integer_type ctx 1) 0
   | _ -> assert false
 
 let gen_proto llmod name func_ty =

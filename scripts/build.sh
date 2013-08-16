@@ -19,4 +19,8 @@ if ! [ -x merr/merr.native ]; then
 fi
 
 echo "Building foundry..."
+export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
 ocamlbuild -use-ocamlfind file_check.native foundry.native foundry_web.js
+
+echo "Testing foundry..."
+./lit/lit.py -v test/
