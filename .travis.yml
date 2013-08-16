@@ -8,7 +8,6 @@ before_install:
   - sudo apt-get install -qq -y ocaml opam binfmt-support
   - (mkdir llvm; cd llvm; curl http://fehu.whitequark.org/files/llvm-3.4~svn188438.tbz2 | tar xjv)
   - sudo dpkg -i llvm/*_amd64.deb
-  - cp .travis.key ~/.ssh/id_rsa
   - git submodule update --init
 install:
   - opam install sexplib extlib menhir ulex batteries js_of_ocaml
