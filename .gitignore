@@ -1,6 +1,6 @@
 _build/
+vendor/_prefix/
 *.native
 *.byte
 *.pyc
 *.conflicts
-menhir-bin/

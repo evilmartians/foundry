@@ -1,4 +1,4 @@
-; RUN: %foundry_opt -ordered %s | %file_check %s -input-file %t
+; RUN: %foundry_opt -ordered %s | %file_check %s
 
 @1 = environment {
   bindings {

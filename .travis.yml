@@ -11,7 +11,7 @@ before_install:
   - cp .travis.key ~/.ssh/id_rsa
   - git submodule update --init
 install:
-  - opam install sexplib extlib menhir ulex js_of_ocaml
+  - opam install sexplib extlib menhir ulex batteries js_of_ocaml
 script:
   - export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
   - ./scripts/build.sh

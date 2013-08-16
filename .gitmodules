@@ -1,8 +1,8 @@
 [submodule "menhir"]
-	path = menhir
+	path = vendor/menhir
 	url = https://github.com/pippijn/menhir.git
 [submodule "merr"]
-	path = merr
+	path = vendor/merr
 	url = https://github.com/pippijn/merr.git
 [submodule "web"]
 	path = web

@@ -1,7 +1,7 @@
 open Ocamlbuild_plugin;;
 
 Command.setup_virtual_command_solver "MENHIR"
-  (fun () -> P(Sys.getcwd () ^ "/../menhir-bin/bin/menhir"));;
+  (fun () -> P(Sys.getcwd () ^ "/../vendor/_prefix/bin/menhir"));;
 
 dispatch begin function
   | After_rules ->
@@ -20,19 +20,27 @@ dispatch begin function
     (* === UNICODE === *)
 
     (* Add pa_utf8str.cmo to the ocaml pre-processor when use_utf8str is set *)
-    flag ["ocaml"; "compile"; "use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
-    flag ["ocaml"; "ocamldep"; "use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
-    flag ["ocaml"; "infer_interface"; "use_utf8str"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str.cmo"]);
+    flag ["ocaml"; "compile"; "use_utf8str"]
+        (S[A"-ppopt"; A"vendor/ucs/lib/pa_utf8str.cmo"]);
+    flag ["ocaml"; "ocamldep"; "use_utf8str"]
+        (S[A"-ppopt"; A"vendor/ucs/lib/pa_utf8str.cmo"]);
+    flag ["ocaml"; "infer_interface"; "use_utf8str"]
+        (S[A"-ppopt"; A"vendor/ucs/lib/pa_utf8str.cmo"]);
 
-    flag ["ocaml"; "compile"; "use_utf8str_safe"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str_safe.cmo"]);
-    flag ["ocaml"; "ocamldep"; "use_utf8str_safe"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str_safe.cmo"]);
-    flag ["ocaml"; "infer_interface"; "use_utf8str_safe"] (S[A"-ppopt"; A"ucs/lib/pa_utf8str_safe.cmo"]);
+    flag ["ocaml"; "compile"; "use_utf8str_safe"]
+        (S[A"-ppopt"; A"vendor/ucs/lib/pa_utf8str_safe.cmo"]);
+    flag ["ocaml"; "ocamldep"; "use_utf8str_safe"]
+        (S[A"-ppopt"; A"vendor/ucs/lib/pa_utf8str_safe.cmo"]);
+    flag ["ocaml"; "infer_interface"; "use_utf8str_safe"]
+        (S[A"-ppopt"; A"vendor/ucs/lib/pa_utf8str_safe.cmo"]);
 
     (* Running ocamldep on ocaml code that is tagged with use_utf8str
        will require the cmo. Note that you only need this declaration when the
        syntax extension is part of the sources to be compiled with ocamlbuild. *)
-    dep ["ocaml"; "ocamldep"; "use_utf8str"] ["ucs/lib/pa_utf8str.cmo"];
-    dep ["ocaml"; "ocamldep"; "use_utf8str_safe"] ["ucs/lib/pa_utf8str_safe.cmo"];
+    dep ["ocaml"; "ocamldep"; "use_utf8str"]
+        ["vendor/ucs/lib/pa_utf8str.cmo"];
+    dep ["ocaml"; "ocamldep"; "use_utf8str_safe"]
+        ["vendor/ucs/lib/pa_utf8str_safe.cmo"];
 
     (* === LLVM === *)
 
@@ -71,7 +79,7 @@ dispatch begin function
       ]
       begin fun env build ->
         Cmd(S[
-          P "../merr/merr.native";
+          P "../vendor/merr/merr.native";
           A"-p"; A("src/foundry_merr.native");
           A"-t"; P(env "%_terminals.mly");
           A"-a"; P(env "%.automaton");
