@@ -81,6 +81,7 @@ rule lex = parse
 | "frame"         { Frame }
 | "lvar_load"     { Lvar_load }
 | "lvar_store"    { Lvar_store }
+| "call"          { Call }
 | "primitive"     { Primitive }
 
 | (['a'-'z']+) as kw { failwith ("unknown keyword: " ^ kw) }

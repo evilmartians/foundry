@@ -161,10 +161,10 @@ and print_ty env ty =
   | SymbolTy          -> "symbol"
   | UnsignedTy(w)     -> "unsigned(" ^ (string_of_int w) ^ ")"
   | SignedTy(w)       -> "signed(" ^ (string_of_int w) ^ ")"
-  | TupleTy(xs)       -> "[" ^ (print_seq xs (print_value env)) ^ "]"
-  | RecordTy(xs)      -> "{" ^ (print_assoc xs (print_value env)) ^ "}"
-  | EnvironmentTy(et) -> "environment " ^ (print_local_env_ty env et)
-  | FunctionTy(_,_)   -> assert false
+  | TupleTy(xs)       -> "[" ^ (print_seq xs (print_ty env)) ^ "]"
+  | RecordTy(xs)      -> "{" ^ (print_assoc xs (print_ty env)) ^ "}"
+  | EnvironmentTy(x)  -> "environment " ^ (print_local_env_ty env x)
+  | FunctionTy(xs,x)  -> "(" ^ (print_seq xs (print_ty env)) ^ ") -> " ^ (print_ty env x)
   | BasicBlockTy      -> assert false
   | _                 -> assert false (* TODO interpolation *)
 
@@ -317,8 +317,9 @@ and print_instance env (klass, sp) ivars =
 let rec print_ssa_value env value =
   let print value =
     match value with
-    | { opcode = Const value } -> print_value env value
-    | _                        -> print_name (Local value.id)
+    | { opcode = Const value   } -> print_value env value
+    | { opcode = Function func } -> print_ssa_value env value
+    | _ -> print_name (Local value.id)
   in
   let term opcode operands =
     opcode ^ " " ^ (String.concat ", " operands)
@@ -339,12 +340,12 @@ let rec print_ssa_value env value =
           in
           "function (" ^
             (print_seq func.arguments
-              (fun arg -> (print_value env arg.ty) ^ " " ^ (print arg))) ^
+              (fun arg -> (print_ty env arg.ty) ^ " " ^ (print arg))) ^
           ") -> " ^
-            (print_value env ret_ty) ^ " {\n" ^
+            (print_ty env ret_ty) ^ " {\n" ^
             (String.concat "\n"
               (List.map (print_ssa_value env) func.basic_blocks)) ^
-          "}")))
+          "}\n")))
   | BasicBlock block ->
     let preds   = List.map print (predecessors value) in
     let preds   = if preds <> [] then
@@ -382,10 +383,20 @@ let rec print_ssa_value env value =
     instr "lvar_load" [print env; print_string var]
   | LVarStoreInstr (env, var, value) ->
     instr "lvar_store" [print env; print_string var; print value]
+  | CallInstr (func, operands) ->
+    let prefix =
+      if value.ty <> Rt.NilTy then
+        (print_name (Local value.id)) ^ " = " ^ (print_ty env value.ty) ^ " "
+      else ""
+    in prefix ^ "call " ^ (print func) ^
+          " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
   | PrimitiveInstr (name, operands) ->
-    (print_name (Local value.id)) ^ " = " ^
-      (print_ty env value.ty) ^ " primitive " ^ (print_string name) ^
-      " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
+    let prefix =
+      if value.ty <> Rt.NilTy then
+        (print_name (Local value.id)) ^ " = " ^ (print_ty env value.ty) ^ " "
+      else ""
+    in prefix ^ "primitive " ^ (print_string name) ^
+          " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
 
 let print_roots roots =
   let env = create_env () in

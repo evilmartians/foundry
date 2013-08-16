@@ -45,6 +45,11 @@
                       RBrack
                       { (fun env -> List.map (fun x -> x env) xs) }
 
+     %public args(X): LParen
+                        xs=separated_list(Comma, X)
+                      RParen
+                      { (fun env -> List.map (fun x -> x env) xs) }
+
 %public prefix(X, Y): X y=Y
                       { y }
 
@@ -94,6 +99,12 @@
                     | NamedInstance (k, sl) -> (k, sl)
                     | _ -> assert false) }
 
+          func: x=global
+                { (fun env ->
+                    match x env with
+                    | NamedFunction f -> f
+                    | _ -> assert false) }
+
           tvar: Tvar LParen x=Lit_Integer RParen
                 { (fun env -> Rt.adopt_tvar (int_of_big_int x)) }
 
@@ -136,6 +147,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   }) }
               | x=lambda_ty
                 { (fun env -> LambdaTy (x env)) }
+              | args=args(ty) Arrow ty=ty
+                { (fun env -> FunctionTy (args env, ty env)) }
 
             ty: x=tvar
                 { (fun env -> Tvar (x env)) }
@@ -146,10 +159,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
          value: x=tvar
                 { (fun env -> Tvar (x env)) }
-              | Type x=ty_const
-                { (fun env -> (x env)) }
               | Type Tvar
                 { (fun env -> TvarTy) }
+              | Type x=ty_const
+                { (fun env -> (x env)) }
               | Nil
                 { (fun env -> Nil) }
               | True
@@ -220,7 +233,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     im_body    = x env;
                   }) }
 
-        entity: bind_as=Name_Global Equal
+   struct_body: bind_as=Name_Global Equal
                   Class name=Lit_String LBrace
                     metaclass=prefix(Metaclass,           klass)
                      ancestor=prefix(Ancestor,            klass)?
@@ -347,11 +360,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
        fun_arg: ty=ty name=Name_Local
                 { (fun env -> ty env, name) }
 
-      fun_args: LParen xs=separated_list(Comma, fun_arg) RParen
-                { (fun env -> List.map (fun x -> x env) xs) }
-
-          func: bind_as=Name_Global Equal
-                  Function args=fun_args Arrow result=ty LBrace
+     func_body: bind_as=Name_Global Equal
+                  Function args=args(fun_arg) Arrow result=ty LBrace
                     blocks=basic_blocks
                   RBrace
                 {
@@ -366,12 +376,12 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                         (fun () -> List.iter (fun f -> f ()) fixups))
                 }
 
-   basic_block: id=Name_Label insns=nonempty_list(insn)
+   basic_block: id=Name_Label instrs=nonempty_list(instr)
                 { (fun ((venv, func, fenv) as env) ->
                     let basic_block = create_basic_block ~id func in
                       Table.set fenv id basic_block;
-                      List.map (fun insn -> insn (venv, basic_block, fenv))
-                        insns) }
+                      List.map (fun instr -> instr (venv, basic_block, fenv))
+                        instrs) }
 
   basic_blocks: xs=nonempty_list(basic_block)
                 { (fun env ->
@@ -379,7 +389,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
        operand: id=Name_Local
                 { (fun (venv, block, fenv) ->
-                    Table.get_exn fenv id)}
+                    Table.get_exn fenv id) }
               | value=value
                 { (fun (venv, block, fenv) ->
                     name_of_value (value venv)) }
@@ -389,20 +399,22 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | /* nothing */
                 { u"" }
 
-          insn: id=opt_local_eq x=value_instr
+         instr: id=opt_local_eq x=value_instr
                 { (fun ((venv, block, fenv) as env) ->
-                    let insn = append_instr block ~id ~ty:Rt.NilTy ~opcode:InvalidInstr in
-                      Table.set fenv id insn;
+                    let instr = append_instr block ~id ~ty:Rt.NilTy ~opcode:InvalidInstr in
+                      if Table.exists fenv id && id <> u"" then
+                        failwith (u"Duplicate name %" ^ id);
+                      Table.set fenv instr.id instr;
                       (fun () ->
                         let ty, opcode = x env in
-                        replace_instr insn ~ty ~opcode)) }
+                        replace_instr instr ~ty ~opcode)) }
               | x=term_instr
                 { (fun ((venv, block, fenv) as env) ->
-                    let insn = append_instr block ~ty:Rt.NilTy ~opcode:InvalidInstr in
+                    let instr = append_instr block ~ty:Rt.NilTy ~opcode:InvalidInstr in
                       (fun () ->
-                        replace_instr insn ~ty:Rt.NilTy ~opcode:(x env))) }
+                        replace_instr instr ~ty:Rt.NilTy ~opcode:(x env))) }
 
-       insn_ty: ty=ty
+      instr_ty: ty=ty
                 { (fun (venv, block, fenv) -> ty venv) }
 
    phi_operand: LBrack name=Name_Local FatArrow operand=operand RBrack
@@ -413,28 +425,38 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     List.map (fun (id, value) ->
                       Table.get_exn fenv id, value env) xs) }
 
-   value_instr: ty=insn_ty Phi operands=phi_operands
+     call_func: id=Name_Local
+                { (fun (venv, block, fenv) ->
+                    Table.get_exn fenv id) }
+              | func=func
+                { (fun (venv, block, fenv) ->
+                    func venv) }
+
+   value_instr: ty=instr_ty Phi operands=phi_operands
                 { (fun env -> ty env, PhiInstr (operands env)) }
-              | ty=insn_ty Frame parent=operand
+              | ty=instr_ty Frame parent=operand
                 { (fun env -> ty env, FrameInstr (parent env)) }
-              | ty=insn_ty Frame Empty
+              | ty=instr_ty Frame Empty
                 { (fun env ->
                     ty env,
                     FrameInstr (name_of_value (Environment {
                                 e_parent   = None;
                                 e_bindings = Table.create [];
                               }))) }
-              | ty=insn_ty Lvar_load
+              | ty=instr_ty Lvar_load
                     lenv=operand Comma name=Lit_String
                 { (fun env -> ty env, LVarLoadInstr (lenv env, name)) }
-              | ty=insn_ty Lvar_store
+              | ty=instr_ty Lvar_store
                     lenv=operand Comma name=Lit_String Comma value=operand
                 { (fun env -> ty env, LVarStoreInstr (lenv env, name, value env)) }
-              | ty=insn_ty? Primitive
-                    name=Lit_String LParen args=separated_list(Comma, operand) RParen
+              | ty=instr_ty? Primitive name=Lit_String args=args(operand)
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,
-                    (PrimitiveInstr (name, List.map (fun x -> x env) args))) }
+                    (PrimitiveInstr (name, args env))) }
+              | ty=instr_ty? Call func=call_func args=args(operand)
+                { (fun env ->
+                    Option.map_default (fun ty -> ty env) Rt.NilTy ty,
+                    (CallInstr (func env, args env))) }
 
     term_instr: Jump target=operand
                 { (fun env -> JumpInstr (target env)) }
@@ -443,8 +465,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | Return value=operand
                 { (fun env -> ReturnInstr (value env) ) }
 
-   definitions: defs=definitions x=entity
-              | defs=definitions x=func
+   definitions: defs=definitions x=struct_body
+              | defs=definitions x=func_body
                 { let (env, defs) = defs in
                     env, ((x env) :: defs) }
               | /* empty */

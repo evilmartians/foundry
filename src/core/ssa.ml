@@ -40,8 +40,9 @@ and opcode =
 | ReturnInstr     of (*value*) name
 (* Language-specific opcodes *)
 | FrameInstr      of (*parent*) name
-| LVarLoadInstr   of (*environment*) name * string
-| LVarStoreInstr  of (*environment*) name * string * name
+| LVarLoadInstr   of (*environment*) name * (*var*) string
+| LVarStoreInstr  of (*environment*) name * (*var*) string * (*value*) name
+| CallInstr       of (*func*) name   * (*operands*) name list
 | PrimitiveInstr  of (*name*) string * (*operands*) name list
 
 let func_of_name name =
@@ -184,6 +185,8 @@ let uses_by_instr instr =
   -> [env]
   | LVarStoreInstr (env, _, value)
   -> [env; value]
+  | CallInstr (func, operands)
+  -> func :: operands
   | PrimitiveInstr (name, operands)
   -> operands
 

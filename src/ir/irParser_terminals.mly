@@ -67,6 +67,7 @@
 %token Frame
 %token Lvar_load
 %token Lvar_store
+%token Call
 %token Primitive
 
 %token EOF

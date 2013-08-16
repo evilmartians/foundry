@@ -27,16 +27,17 @@ and opcode =
 (* Constants *)
 | Const           of Rt.value
 (* Phi *)
-| PhiInstr         of ((*basic_block*) name * (*value*) name) list
+| PhiInstr        of ((*basic_block*) name * (*value*) name) list
 (* Terminators *)
-| JumpInstr        of (*target*) name
-| JumpIfInstr      of (*condition*) name * (*if_true*) name * (*if_false*) name
-| ReturnInstr      of (*value*) name
+| JumpInstr       of (*target*) name
+| JumpIfInstr     of (*condition*) name * (*if_true*) name * (*if_false*) name
+| ReturnInstr     of (*value*) name
 (* Language-specific opcodes *)
-| FrameInstr       of (*parent*) name
-| LVarLoadInstr    of (*environment*) name * string
-| LVarStoreInstr   of (*environment*) name * string * name
-| PrimitiveInstr   of (*name*) string * (*operands*) name list
+| FrameInstr      of (*parent*) name
+| LVarLoadInstr   of (*environment*) name * (*var*) string
+| LVarStoreInstr  of (*environment*) name * (*var*) string * (*value*) name
+| CallInstr       of (*func*) name   * (*operands*) name list
+| PrimitiveInstr  of (*name*) string * (*operands*) name list
 
 (* Generic *)
 
