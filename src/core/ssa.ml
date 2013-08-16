@@ -54,7 +54,7 @@ let func_of_name name =
   | _
   -> assert false
 
-let basic_block_of_name name =
+let block_of_name name =
   match name with
   | { opcode = BasicBlock bb }
    -> bb
@@ -123,12 +123,12 @@ let create_func ?(id="") ?arg_names args_ty result_ty =
   end;
   value
 
-let find_func_entry func =
+let func_entry func =
   let func = func_of_name func in
     List.hd func.basic_blocks
 
-let create_basic_block ?(id="") func =
-  let basic_block = {
+let create_block ?(id="") func =
+  let block = {
     id     = mangle_id func id;
     ty     = Rt.BasicBlockTy;
     opcode = BasicBlock { instructions = [] };
@@ -136,16 +136,16 @@ let create_basic_block ?(id="") func =
     uses   = [];
   } in
     let func = func_of_name func in
-      func.basic_blocks <- func.basic_blocks @ [basic_block];
-      basic_block
+      func.basic_blocks <- func.basic_blocks @ [block];
+      block
 
-let remove_basic_block basic_block_v =
-  let func = func_of_name basic_block_v in
-  let _    = basic_block_of_name basic_block_v in
-    func.basic_blocks <- List.remove func.basic_blocks basic_block_v
+let remove_block blockn =
+  let func = func_of_name blockn in
+  let _    = block_of_name blockn in
+    func.basic_blocks <- List.remove func.basic_blocks blockn
 
 let successors block_name =
-  let block = basic_block_of_name block_name in
+  let block = block_of_name block_name in
   match (List.last block.instructions).opcode with
   | JumpInstr   target        -> [target]
   | JumpIfInstr (_, ift, iff) -> [ift; iff]
@@ -198,16 +198,16 @@ let remove_uses instr =
   List.iter (fun use -> use.uses <- List.remove use.uses instr)
     (uses_by_instr instr)
 
-let append_instr ?(id="") ~ty ~opcode basic_block_v =
-  let basic_block = basic_block_of_name basic_block_v in
+let append_instr ?(id="") ~ty ~opcode blockn =
+  let block = block_of_name blockn in
     let instr = {
-      id     = mangle_id basic_block_v id;
+      id     = mangle_id blockn id;
       ty;
       opcode;
-      parent = Some basic_block_v;
+      parent = Some blockn;
       uses   = [];
     } in
-      basic_block.instructions <- basic_block.instructions @ [instr];
+      block.instructions <- block.instructions @ [instr];
       add_uses instr;
       instr
 
@@ -219,96 +219,5 @@ let replace_instr ?ty ?opcode instr =
     instr.opcode <- opcode;
     add_uses instr) opcode
 
-let remove_instr insn_v =
+let remove_instr instrn =
   ()
-
-type ssa_conv_state = {
-  lambda      : Rt.lambda;
-  current_env : name;
-}
-
-let tvar () =
-  Rt.Tvar (Rt.new_tvar ())
-
-let lvar_type ty name =
-  let rec lookup env =
-    match Table.get env.Rt.e_bindings_ty name with
-    | Some binding -> binding.Rt.b_value_ty
-    | None
-    -> (match env.Rt.e_parent_ty with
-        | Some parent_ty -> lookup parent_ty
-        | None -> assert false)
-  in
-  match ty with
-  | Rt.EnvironmentTy env -> lookup env
-  | _ -> assert false
-
-let ssa_of_formal_args ~entry =
-  ()
-
-let rec ssa_of_expr ~entry ~state ~expr =
-  match expr with
-  | Syntax.Begin (_, exprs)
-  -> (let entry, names = ssa_of_exprs ~entry ~state ~exprs in
-        entry, List.hd names)
-  | Syntax.Int (_, value)
-  -> entry, name_of_value (Rt.Integer value)
-  | Syntax.Unsigned (_, width, value)
-  -> entry, name_of_value (Rt.Unsigned (width, value))
-  | Syntax.Signed (_, width, value)
-  -> entry, name_of_value (Rt.Signed (width, value))
-  | Syntax.Var (_, name)
-  -> entry, append_instr entry
-                ~ty:(lvar_type state.current_env.ty name)
-                ~opcode:(LVarLoadInstr (state.current_env, name))
-  | Syntax.InvokePrimitive (_, name, operands)
-  -> (let entry, operands = ssa_of_exprs ~entry ~state ~exprs:operands in
-        entry, append_instr entry
-                ~ty:(tvar ())
-                ~opcode:(PrimitiveInstr (name, List.rev operands)))
-  | _
-  -> failwith ("ssa_of_expr: " ^
-        (Unicode.assert_utf8s
-          (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))))
-
-and ssa_of_exprs ~entry ~state ~exprs =
-  match exprs with
-  | [] -> entry, [name_of_value Rt.Nil]
-  | _ ->
-    (List.fold_left
-      (fun (entry, names) expr ->
-        let entry, name = ssa_of_expr ~entry ~state ~expr in
-          entry, name :: names)
-      (entry, [])
-      exprs)
-
-let name_of_lambda ?(id="") lambda =
-  let func =
-    let ty = lambda.Rt.l_ty in
-      create_func ~id
-        ~arg_names:["args"; "kwargs"]
-        [ty.Rt.l_args_ty; ty.Rt.l_kwargs_ty]
-        ty.Rt.l_result_ty
-  in
-  let entry = create_basic_block ~id:"entry" func in
-    let current_env =
-      let parent_env =
-        (Rt.Environment lambda.Rt.l_local_env)
-      in
-      let parent_env_ty =
-        match Rt.type_of_value parent_env with
-        | Rt.EnvironmentTy ty -> ty
-        | _ -> assert false
-      in
-      append_instr entry
-        ~ty:(Rt.EnvironmentTy {
-          Rt.e_parent_ty   = Some parent_env_ty;
-          Rt.e_bindings_ty = Table.create [];
-        })
-        ~opcode:(FrameInstr (name_of_value parent_env))
-    in
-    let state = { lambda; current_env; }
-    in
-    let entry, names = ssa_of_exprs ~entry ~state ~exprs:lambda.Rt.l_body in
-      ignore (append_instr entry ~ty:Rt.NilTy ~opcode:(ReturnInstr (List.hd names)));
-      func

@@ -363,7 +363,7 @@ let rec gen_func llmod funcn =
   (* Codegen non-phi instructions while traversing blocks in
      domination order. *)
   List.iter (fun blockn ->
-      let block   = Ssa.basic_block_of_name blockn in
+      let block   = Ssa.block_of_name blockn in
       let llblock = Llvm.block_of_value (Nametbl.find names blockn) in
       Llvm.position_at_end llblock builder;
       List.iter gen_instr block.Ssa.instructions)

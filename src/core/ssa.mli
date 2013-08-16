@@ -41,35 +41,31 @@ and opcode =
 
 (* Generic *)
 
-val name_of_value       : Rt.value -> name
-val set_name_id         : name -> string -> unit
-
-(* Module level *)
-
-val name_of_lambda      : ?id:string -> Rt.lambda -> name
+val name_of_value : Rt.value -> name
+val set_name_id   : name -> string -> unit
 
 (* Function level *)
 
-val create_func         : ?id:string ->
-                            ?arg_names:string list ->
-                            (*args_ty*)   Rt.ty list ->
-                            (*result_ty*) Rt.ty ->
+val create_func   : ?id:string ->
+                    ?arg_names:string list ->
+                    (*args_ty*)   Rt.ty list ->
+                    (*result_ty*) Rt.ty ->
                             name
-val func_of_name        : name -> func
+val func_of_name  : name -> func
 
-val find_func_entry     : (*func*) name -> name
+val func_entry    : (*func*) name -> name
 
 (* Basic block level *)
 
-val create_basic_block  : ?id:string -> (*func*) name -> name
-val remove_basic_block  : (*basic_block*) name -> unit
-val basic_block_of_name : (*basic_block*) name -> basic_block
+val create_block  : ?id:string -> (*func*) name -> name
+val remove_block  : (*basic_block*) name -> unit
+val block_of_name : (*basic_block*) name -> basic_block
 
-val successors          : (*basic_block*) name -> name list
-val predecessors        : (*basic_block*) name -> name list
+val successors    : (*basic_block*) name -> name list
+val predecessors  : (*basic_block*) name -> name list
 
 (* Instruction level *)
 
-val append_instr         : ?id:string -> ty:Rt.ty -> opcode:opcode -> (*basic_block*) name -> name
-val replace_instr        : ?ty:Rt.ty -> ?opcode:opcode -> (*insn*) name -> unit
-val remove_instr         : (*insn*) name -> unit
+val append_instr  : ?id:string -> ty:Rt.ty -> opcode:opcode -> (*basic_block*) name -> name
+val replace_instr : ?ty:Rt.ty -> ?opcode:opcode -> (*insn*) name -> unit
+val remove_instr  : (*insn*) name -> unit
