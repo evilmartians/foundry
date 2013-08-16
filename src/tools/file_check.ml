@@ -260,7 +260,7 @@ let check_parse ?(canonicalize=true) filename prefix =
         chk_loc     = Location.empty;
         chk_next    = false;
         chk_patt    = None;
-        chk_dag_not = [];
+        chk_dag_not = !dag_not;
       } :: checks
   in
   parse buf 0 []
@@ -305,7 +305,7 @@ let check_next chk env (file, buf) start finish =
         [sensible_loc_after (file, buf) finish]);
     Diagnostic.print (Diagnostic.Note,
         u"previous match ended here:",
-        [sensible_loc_after (file, buf) start])
+        [sensible_loc_after (file, buf) (start - 1)])
   in
   if chk.chk_next then
     let first_eol = try  String.index_from buf start '\n'
@@ -316,6 +316,7 @@ let check_next chk env (file, buf) start finish =
           u"CHECK-NEXT: on the same line as previous match",
           [chk.chk_loc]);
       failure_info ();
+      raise Failure
     end else
       let second_eol = try  String.index_from buf (first_eol + 1) '\n'
                        with Not_found -> finish + 1
@@ -325,6 +326,7 @@ let check_next chk env (file, buf) start finish =
             u"CHECK-NEXT: is not on the line after previous match",
             [chk.chk_loc]);
         failure_info ();
+        raise Failure
       end
 
 let check_dag chk env (file, buf) start =
@@ -401,7 +403,7 @@ let check_match chk env (file, buf) start =
           check_failure env patt (sensible_loc_after (file, buf) last);
           raise Failure)
     | None (* EOF pattern *)
-    -> last, (String.length buf) - last
+    -> String.length buf, 0
   in
 
   (* If this check is a "CHECK-NEXT", verify that the previous match was on
