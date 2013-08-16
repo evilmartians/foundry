@@ -97,7 +97,7 @@
           tvar: Tvar LParen x=Lit_Integer RParen
                 { (fun env -> Rt.adopt_tvar (int_of_big_int x)) }
 
-     lambda_ty: Type Lambda LParen args=ty Comma kwargs=ty RParen Arrow result=ty
+     lambda_ty: Lambda LParen args=ty Comma kwargs=ty RParen Arrow result=ty
                 { (fun env -> {
                     l_args_ty   = args   env;
                     l_kwargs_ty = kwargs env;
@@ -113,27 +113,23 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | /* nothing */
                 { (fun env -> None) }
 
-            ty: x=tvar
-                { (fun env -> Tvar (x env)) }
-              | Type Tvar
-                { (fun env -> TvarTy) }
-              | Type Nil
+      ty_const: Nil
                 { (fun env -> NilTy) }
-              | Type Boolean
+              | Boolean
                 { (fun env -> BooleanTy) }
-              | Type Int
+              | Int
                 { (fun env -> IntegerTy) }
-              | Type Unsigned LParen w=Lit_Integer RParen
+              | Unsigned LParen w=Lit_Integer RParen
                 { (fun env -> UnsignedTy (int_of_big_int w)) }
-              | Type Signed LParen w=Lit_Integer RParen
+              | Signed LParen w=Lit_Integer RParen
                 { (fun env -> SignedTy (int_of_big_int w)) }
-              | Type Symbol
+              | Symbol
                 { (fun env -> SymbolTy) }
-              | Type xs=seq(ty)
+              | xs=seq(ty)
                 { (fun env -> TupleTy (xs env)) }
-              | Type xs=table(ty)
+              | xs=table(ty)
                 { (fun env -> RecordTy (xs env)) }
-              | Type Environment xs=table(lvar_ty) parent=environment_ty
+              | Environment xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> EnvironmentTy {
                     e_parent_ty   = parent env;
                     e_bindings_ty = xs env;
@@ -141,8 +137,19 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | x=lambda_ty
                 { (fun env -> LambdaTy (x env)) }
 
-         value: x=ty
+            ty: x=tvar
+                { (fun env -> Tvar (x env)) }
+              | Type Tvar
+                { (fun env -> TvarTy) }
+              | x=ty_const
+                { x }
+
+         value: x=tvar
+                { (fun env -> Tvar (x env)) }
+              | Type x=ty_const
                 { (fun env -> (x env)) }
+              | Type Tvar
+                { (fun env -> TvarTy) }
               | Nil
                 { (fun env -> Nil) }
               | True
@@ -382,42 +389,52 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | /* nothing */
                 { u"" }
 
-          insn: id=opt_local_eq ty=ty x=value_insn
+          insn: id=opt_local_eq x=value_insn
                 { (fun ((venv, block, fenv) as env) ->
                     let insn = append_insn block ~id ~ty:Rt.NilTy ~opcode:InvalidInsn in
                       Table.set fenv id insn;
                       (fun () ->
-                        replace_insn insn ~ty:(ty venv) ~opcode:(x env))) }
+                        let ty, opcode = x env in
+                        replace_insn insn ~ty ~opcode)) }
               | x=term_insn
                 { (fun ((venv, block, fenv) as env) ->
                     let insn = append_insn block ~ty:Rt.NilTy ~opcode:InvalidInsn in
                       (fun () ->
                         replace_insn insn ~ty:Rt.NilTy ~opcode:(x env))) }
 
+       insn_ty: ty=ty
+                { (fun (venv, block, fenv) -> ty venv) }
+
    phi_operand: LBrack name=Name_Local FatArrow operand=operand RBrack
                 { name, operand }
 
-  phi_operands: xs=separated_list(Comma, phi_operand)
+  phi_operands: xs=separated_nonempty_list(Comma, phi_operand)
                 { (fun ((venv, block, fenv) as env) ->
                     List.map (fun (id, value) ->
                       Table.get_exn fenv id, value env) xs) }
 
-    value_insn: Phi operands=phi_operands
-                { (fun env -> PhiInsn (operands env)) }
-              | Frame parent=operand
-                { (fun env -> FrameInsn (parent env)) }
-              | Frame Empty
+    value_insn: ty=insn_ty Phi operands=phi_operands
+                { (fun env -> ty env, PhiInsn (operands env)) }
+              | ty=insn_ty Frame parent=operand
+                { (fun env -> ty env, FrameInsn (parent env)) }
+              | ty=insn_ty Frame Empty
                 { (fun env ->
+                    ty env,
                     FrameInsn (name_of_value (Environment {
                                 e_parent   = None;
                                 e_bindings = Table.create [];
                               }))) }
-              | Lvar_load  lenv=operand Comma name=Lit_String
-                { (fun env -> LVarLoadInsn (lenv env, name)) }
-              | Lvar_store lenv=operand Comma name=Lit_String Comma value=operand
-                { (fun env -> LVarStoreInsn (lenv env, name, value env)) }
-              | Primitive  name=Lit_String LParen args=separated_list(Comma, operand) RParen
-                { (fun env -> PrimitiveInsn (name, List.map (fun x -> x env) args)) }
+              | ty=insn_ty Lvar_load
+                    lenv=operand Comma name=Lit_String
+                { (fun env -> ty env, LVarLoadInsn (lenv env, name)) }
+              | ty=insn_ty Lvar_store
+                    lenv=operand Comma name=Lit_String Comma value=operand
+                { (fun env -> ty env, LVarStoreInsn (lenv env, name, value env)) }
+              | ty=insn_ty? Primitive
+                    name=Lit_String LParen args=separated_list(Comma, operand) RParen
+                { (fun env ->
+                    Option.map_default (fun ty -> ty env) Rt.NilTy ty,
+                    (PrimitiveInsn (name, List.map (fun x -> x env) args))) }
 
      term_insn: Jump target=operand
                 { (fun env -> JumpInsn (target env)) }

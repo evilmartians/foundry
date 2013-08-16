@@ -140,6 +140,9 @@ module Std : sig
   val prerr_string  : string -> unit
   val prerr_endline : string -> unit
 
+  val output_char   : out_channel -> char -> unit
+  val output_string : out_channel -> string -> unit
+
   val invalid_arg   : string -> 'a
   val failwith      : string -> 'a
 

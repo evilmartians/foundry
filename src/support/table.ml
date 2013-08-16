@@ -32,7 +32,15 @@ let exists = Hashtbl.mem
 let empty table =
   Hashtbl.length table = 0
 
-let iter ~f table = Hashtbl.iter f table
+let iter ?(ordered=false) ~f table =
+  if ordered then
+    let keys = List.of_enum (ExtHashtbl.Hashtbl.keys table) in
+    let keys = List.sort ~cmp:compare keys in
+    List.iter (fun key ->
+        f key (Hashtbl.find table key))
+      keys
+  else
+    Hashtbl.iter f table
 
 let pair k v =
   newtable 1
@@ -40,8 +48,10 @@ let pair k v =
 
 let map ~f table = ExtHashtbl.Hashtbl.map f table
 
-let map_list ~f table =
-  Hashtbl.fold (fun k v accum -> (f k v) :: accum) table []
+let map_list ?(ordered=false) ~f table =
+  let dest = ref [] in
+  iter ~ordered ~f:(fun k v -> dest := (f k v) :: !dest) table;
+  List.rev !dest
 
 let join l r =
   newtable (max (Hashtbl.length l) (Hashtbl.length r))

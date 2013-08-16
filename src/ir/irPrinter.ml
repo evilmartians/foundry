@@ -3,6 +3,8 @@ open Big_int
 open Rt
 open Ssa
 
+let ordered = ref false
+
 type named_value =
 | NamedClass        of klass
 | NamedMixin        of mixin
@@ -102,7 +104,7 @@ let with_lookup env value name printer =
 
 let print_table prefix table f =
   (String.concat ","
-    (Table.map_list (fun key value ->
+    (Table.map_list ~ordered:(!ordered) ~f:(fun key value ->
       "\n  " ^ prefix ^ (print_string key) ^ " = " ^ (f value))
     table)) ^ (if Table.empty table then "" else "\n" ^ prefix)
 
@@ -112,7 +114,7 @@ let print_seq elems xfrm =
 
 let print_assoc elems xfrm =
   String.concat ", "
-    (Table.map_list (fun key value ->
+    (Table.map_list ~ordered:(!ordered) ~f:(fun key value ->
       (print_string key) ^ " = " ^ (xfrm value))
     elems)
 
@@ -125,26 +127,16 @@ let print_some is_empty f =
 let rec print_value env value =
   match value with
   | Tvar(tv)          -> print_tvar env tv
-  | TvarTy            -> "type tvar"
   | Nil               -> "nil"
-  | NilTy             -> "type nil"
   | Truth             -> "true"
   | Lies              -> "false"
-  | BooleanTy         -> "type boolean"
   | Integer(n)        -> "int " ^ (string_of_big_int n)
-  | IntegerTy         -> "type int"
   | Symbol(s)         -> "symbol " ^ (print_string s)
-  | SymbolTy          -> "type symbol"
   | Unsigned(w,v)     -> "unsigned(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
-  | UnsignedTy(w)     -> "type unsigned(" ^ (string_of_int w) ^ ")"
   | Signed(w,v)       -> "signed(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
-  | SignedTy(w)       -> "type signed(" ^ (string_of_int w) ^ ")"
   | Tuple(xs)         -> "[" ^ (print_seq xs (print_value env)) ^ "]"
-  | TupleTy(xs)       -> "type [" ^ (print_seq xs (print_value env)) ^ "]"
   | Record(xs)        -> "{" ^ (print_assoc xs (print_value env)) ^ "}"
-  | RecordTy(xs)      -> "type {" ^ (print_assoc xs (print_value env)) ^ "}"
   | Environment(e)    -> "environment " ^ (print_name (print_local_env env e))
-  | EnvironmentTy(et) -> "type environment " ^ (print_local_env_ty env et)
   | Lambda(l)         -> "lambda " ^ (print_name (print_lambda env l))
   | LambdaTy(lt)      -> print_lambda_ty env lt
   | Class(k,sp)       -> "class " ^ (print_name (print_klass env k)) ^
@@ -153,8 +145,28 @@ let rec print_value env value =
                            "{" ^(print_assoc sp (print_value env))  ^ "}"
   | Package(p)        -> "package " ^ (print_name (print_package env p))
   | Instance(c,iv)    -> "instance " ^ (print_name (print_instance env c iv))
+
+  | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy | UnsignedTy _
+  | SignedTy _ | TupleTy _ | RecordTy _ | EnvironmentTy _ | FunctionTy _
+  | BasicBlockTy _
+  -> "type " ^ (print_ty env value)
+
+and print_ty env ty =
+  match ty with
+  | Tvar(tv)          -> print_tvar env tv
+  | TvarTy            -> "tvar"
+  | NilTy             -> "nil"
+  | BooleanTy         -> "boolean"
+  | IntegerTy         -> "int"
+  | SymbolTy          -> "symbol"
+  | UnsignedTy(w)     -> "unsigned(" ^ (string_of_int w) ^ ")"
+  | SignedTy(w)       -> "signed(" ^ (string_of_int w) ^ ")"
+  | TupleTy(xs)       -> "[" ^ (print_seq xs (print_value env)) ^ "]"
+  | RecordTy(xs)      -> "{" ^ (print_assoc xs (print_value env)) ^ "}"
+  | EnvironmentTy(et) -> "environment " ^ (print_local_env_ty env et)
   | FunctionTy(_,_)   -> assert false
   | BasicBlockTy      -> assert false
+  | _                 -> assert false (* TODO interpolation *)
 
 and print_klass env klass =
   with_lookup env (NamedClass klass) (Global ("c." ^ klass.k_name))
@@ -202,9 +214,9 @@ and print_tvar env (tvar:tvar) =
 
 and print_lambda_ty env lambda_ty =
   "type lambda (" ^
-    (print_value env lambda_ty.l_args_ty) ^ ", " ^
-    (print_value env lambda_ty.l_kwargs_ty) ^ ") -> " ^
-    (print_value env lambda_ty.l_result_ty)
+    (print_ty env lambda_ty.l_args_ty) ^ ", " ^
+    (print_ty env lambda_ty.l_kwargs_ty) ^ ") -> " ^
+    (print_ty env lambda_ty.l_result_ty)
 
 and print_ivar env ivar =
   let kind =
@@ -215,7 +227,7 @@ and print_ivar env ivar =
   in
   (print_loc ivar.iv_location) ^ " " ^
     kind ^ " " ^
-    (print_value env ivar.iv_ty)
+    (print_ty env ivar.iv_ty)
 
 and print_method env meth =
   (if meth.im_dynamic then "dynamic " else "") ^
@@ -255,7 +267,7 @@ and print_local_env_ty env ty =
     (match b.b_kind_ty with
     | Syntax.LVarImmutable -> "immutable"
     | Syntax.LVarMutable   -> "mutable") ^ " " ^
-    (print_value env b.b_value_ty)) ^
+    (print_ty env b.b_value_ty)) ^
   "}" ^
     (match ty.e_parent_ty with
     | Some parent_ty -> " -> " ^ (print_local_env_ty env parent_ty)
@@ -313,7 +325,7 @@ let rec print_ssa_value env value =
   in
   let insn opcode operands =
     (print_name (Local value.id)) ^ " = " ^
-      (print_value env value.ty) ^ " " ^ (term opcode operands)
+      (print_ty env value.ty) ^ " " ^ (term opcode operands)
   in
   match value.opcode with
   | Function func ->
@@ -372,7 +384,7 @@ let rec print_ssa_value env value =
     insn "lvar_store" [print env; print_string var; print value]
   | PrimitiveInsn (name, operands) ->
     (print_name (Local value.id)) ^ " = " ^
-      (print_value env value.ty) ^ " primitive " ^ (print_string name) ^
+      (print_ty env value.ty) ^ " primitive " ^ (print_string name) ^
       " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
 
 let print_roots roots =

@@ -1,7 +1,7 @@
 ; RUN: %foundry_as %s -o - | llvm-dis | %file_check %s
 
 ; CHECK: define i32 @main()
-@main = function () -> type unsigned(32) {
+@main = function () -> unsigned(32) {
 ; CHECK: entry:
 ; CHECK-NEXT: ret i32 0
 entry:

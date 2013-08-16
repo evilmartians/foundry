@@ -624,6 +624,11 @@ module Std = struct
   let prerr_endline (v : utf8s) =
     prerr_endline (v :> latin1s)
 
+  let output_char chan (c : utf32) =
+    output_string chan (utf8s_of_utf32 c)
+  let output_string chan (v : utf8s) =
+    output_string chan (v :> latin1s)
+
   let invalid_arg (v : utf8s) =
     invalid_arg (v :> latin1s)
   let failwith (v : utf8s) =

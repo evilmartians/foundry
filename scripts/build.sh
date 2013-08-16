@@ -20,7 +20,7 @@ fi
 
 echo "Building foundry..."
 export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
-ocamlbuild -use-ocamlfind file_check.native foundry_as.native #foundry_web.js
+ocamlbuild -j 8 -use-ocamlfind file_check.native foundry_as.native foundry_opt.native #foundry_web.js
 
 echo "Testing foundry..."
 ./lit/lit.py -v test/
