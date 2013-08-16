@@ -7,7 +7,7 @@ if ! [ -x vendor/_prefix/bin/menhir ]; then
   (cd vendor/menhir;
    # Fails on manual.pdf or something.
    make PREFIX=$(pwd)/../_prefix/ install || true;
-   git clean -dxf)
+   git clean -dxf >/dev/null 2>&1)
 fi
 
 if ! [ -x vendor/merr/merr.native ]; then

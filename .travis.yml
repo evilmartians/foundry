@@ -11,5 +11,6 @@ install:
   - opam init
   - opam install sexplib extlib menhir ulex batteries js_of_ocaml
 script:
+  - eval `opam config -env`
   - export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
   - ./scripts/build.sh
