@@ -2,6 +2,7 @@
 
 open ExtString
 open ExtHashtbl
+open ExtList
 
 exception Error   of Diagnostic.t
 exception Failure
@@ -177,6 +178,55 @@ let patt_failure_info patt env loc =
         | None -> "uses undefined variable \"" ^ var ^ "\""
       in Diagnostic.print (Diagnostic.Note, Unicode.assert_utf8s message, [loc]))
     patt.patt_uses
+
+(* Computes the Levenshtein distance between two strings. *)
+let levenshtein x y =
+  let minimum x y z =
+    let min a b : int = if a < b then a else b in
+    min (min x y) z
+  in
+  let init_matrix n m =
+    let init_col = Array.init m in
+    Array.init n (function
+      | 0 -> init_col (function j -> j)
+      | i -> init_col (function 0 -> i | _ -> 0)
+    )
+  in
+  match String.length x, String.length y with
+  | 0, n -> n
+  | m, 0 -> m
+  | m, n ->
+     let matrix = init_matrix (m + 1) (n + 1) in
+     for i = 1 to m do
+       let s = matrix.(i) and t = matrix.(i - 1) in
+       for j = 1 to n do
+         let cost = abs (compare x.[i - 1] y.[j - 1]) in
+         s.(j) <- minimum
+           (t.(j) + 1)
+           (s.(j - 1) + 1)
+           (t.(j - 1) + cost)
+       done
+     done;
+     matrix.(m).(n)
+
+let patt_suggest patt env (file, buf) start =
+  let needle = patt.patt_source in
+  let distances = ref [] in
+  (* Search an arbitrarily selected 4K of text from the point of
+     the last match. *)
+  for from = start to min (start + 4096)
+                          ((String.length buf) -
+                           (String.length needle) - start) do
+    let haystack = String.sub buf from (String.length needle) in
+    let distance = levenshtein haystack needle in
+    distances := (from, distance) :: !distances
+  done;
+  let distances = List.sort ~cmp:(fun x y -> compare (snd y) (snd x)) !distances in
+  if distances <> [] then
+    let pos, _ = List.last distances in
+    (* Display the highest scoring match. *)
+    Diagnostic.print (Diagnostic.Note, u"possible intended match here:",
+        [Location.make file pos (pos + 1)])
 
 (* === CHECK STRING PARSER AND EVALUATOR === *)
 
@@ -401,6 +451,7 @@ let check_match chk env (file, buf) start =
           pos, len
         with Not_found ->
           check_failure env patt (sensible_loc_after (file, buf) last);
+          patt_suggest patt env (file, buf) last;
           raise Failure)
     | None (* EOF pattern *)
     -> String.length buf, 0
