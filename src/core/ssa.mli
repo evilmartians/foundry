@@ -50,11 +50,11 @@ val set_name_id   : name -> string -> unit
 
 (* Module level *)
 
-val create_capsule : unit -> capsule
+val create_capsule  : unit -> capsule
 
-val find_func      : string -> capsule -> name
-val add_func       : (*func*) name -> capsule -> unit
-val remove_func    : (*func*) name -> capsule -> unit
+val find_func       : string -> capsule -> name
+val add_func        : (*func*) name -> capsule -> unit
+val remove_func     : (*func*) name -> capsule -> unit
 
 (* Function level *)
 
@@ -83,11 +83,11 @@ val predecessors  : (*basic_block*) name -> name list
 
 (* Instruction level *)
 
-val create_instr  : ?id:string -> Rt.ty -> opcode -> name
-val prepend_instr : ?before:name -> (*instr*) name -> (*basic_block*) name -> unit
-val append_instr  : ?after:name  -> (*instr*) name -> (*basic_block*) name -> unit
-val replace_instr : ?ty:Rt.ty -> ?opcode:opcode -> (*instr*) name -> unit
-val remove_instr  : (*instr*) name -> unit
-val erase_instr   : (*instr*) name -> unit
+val create_instr    : ?id:string -> Rt.ty -> opcode -> name
+val prepend_instr   : ?before:name -> (*instr*) name -> (*basic_block*) name -> unit
+val append_instr    : ?after:name  -> (*instr*) name -> (*basic_block*) name -> unit
+val replace_instr   : ?ty:Rt.ty -> ?opcode:opcode -> (*instr*) name -> unit
+val remove_instr    : (*instr*) name -> unit
+val erase_instr     : (*instr*) name -> unit
 
-
+val instr_operands  : (*instr*) name -> name list

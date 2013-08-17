@@ -10,6 +10,7 @@ entry:
   %x = int lvar_load %frame, "x"
 ; CHECK-NOT: primitive "int_add"
   %y = int primitive "int_add" (int 1, int 2)
+  %z = int primitive "int_add" (%y, int 3)
 
   return nil
 }

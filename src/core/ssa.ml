@@ -211,7 +211,7 @@ let predecessors block_name =
       -> None)
     block_name.uses
 
-let uses_by_instr instr =
+let instr_operands instr =
   match instr.opcode with
   | InvalidInstr
   | Argument
@@ -242,13 +242,13 @@ let add_uses instr =
   List.iter (fun used ->
       assert (not (List.memq instr used.uses));
       used.uses <- instr :: used.uses)
-    (uses_by_instr instr)
+    (instr_operands instr)
 
 let remove_uses instr =
   List.iter (fun used ->
       assert (List.memq instr used.uses);
       used.uses <- List.remove_if ((==) instr) used.uses)
-    (uses_by_instr instr)
+    (instr_operands instr)
 
 let create_instr ?(id="") ty opcode =
   {

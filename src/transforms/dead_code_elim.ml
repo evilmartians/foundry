@@ -1,3 +1,4 @@
+open Unicode.Std
 open Ssa
 
 let has_side_effects instr =
@@ -10,10 +11,20 @@ let has_side_effects instr =
   -> true
 
 let run_on_function func =
-  iter_instrs (fun instr ->
-      if instr.uses = [] && not (has_side_effects instr) then
-        erase_instr instr)
-    func
+  let worklist = Worklist.create () in
+  (* Populate worklist with all instructions in the function. *)
+  iter_instrs (Worklist.put worklist) func;
+
+  while Worklist.some worklist do
+    let instr = Worklist.take worklist in
+    (* If an instruction does not have side effects and is not
+       referenced, erase it and add its operands to worklist. *)
+    if instr.uses = [] && not (has_side_effects instr) then begin
+      Worklist.append worklist (instr_operands instr);
+      Worklist.remove worklist instr;
+      erase_instr instr
+    end
+  done
 
 let run_on_capsule capsule =
   List.iter run_on_function capsule.functions
