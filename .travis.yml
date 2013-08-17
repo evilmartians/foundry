@@ -6,7 +6,7 @@ before_install:
   - sudo apt-get update -qq -y
   - (mkdir llvm; cd llvm; curl http://fehu.whitequark.org/files/llvm-3.4~svn188438.tbz2 | tar xjv)
 install:
-  - sudo apt-get install -qq -y ocaml opam binfmt-support camlp4-extra
+  - sudo apt-get install -qq -y ocaml ocaml-native-compilers opam binfmt-support camlp4-extra
   - sudo dpkg -i llvm/*_amd64.deb
   - opam init
   - opam install sexplib extlib menhir ulex batteries js_of_ocaml
