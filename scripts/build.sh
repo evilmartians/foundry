@@ -5,8 +5,8 @@ set -e
 if ! [ -x vendor/_prefix/bin/menhir ]; then
   echo "Building menhir..."
   (cd vendor/menhir;
-   # Fails on manual.pdf or something.
-   make PREFIX=$(pwd)/../_prefix/ install || true;
+   touch manual.pdf; # missing for some reason
+   make PREFIX=$(pwd)/../_prefix/ install;
    git clean -dxf >/dev/null 2>&1)
 fi
 
@@ -24,7 +24,8 @@ ocamlbuild -j 8 -use-ocamlfind \
   file_check.native  \
   foundry_opt.native \
   foundry_gen.native \
-  # foundry_web.js
 
-echo "Testing foundry..."
-./vendor/lit/lit.py -v test/
+if [ -n "$JS_OF_OCAML" ]; then
+  ocamlbuild -j 8 -use-ocamlfind \
+    foundry_web.js
+fi
