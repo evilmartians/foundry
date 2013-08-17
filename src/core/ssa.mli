@@ -78,6 +78,8 @@ val block_of_name : (*basic_block*) name -> basic_block
 val iter_instrs   : f:( (*func or basic_block*) name -> unit) ->
                         (*func*) name -> unit
 
+val terminator    : (*basic_block*) name -> name
+
 val successors    : (*basic_block*) name -> name list
 val predecessors  : (*basic_block*) name -> name list
 

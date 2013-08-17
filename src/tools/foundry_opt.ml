@@ -11,6 +11,10 @@ let _ =
   let inputs = ref []  in
   let optzns = ref []  in
 
+  let append_opt opt () =
+    optzns := opt :: !optzns
+  in
+
   Arg.parse (Arg.align [
       "-o", Arg.Set_string output,
         "<file> Output file";
@@ -18,9 +22,11 @@ let _ =
       "-ordered", Arg.Set IrPrinter.ordered,
         " Iterate symbol tables in alphabetical order";
 
-      "-dce", Arg.Unit (fun () ->
-          optzns := Dead_code_elim.run_on_capsule :: !optzns),
-        "Dead Code Elimination"
+      "-dce", Arg.Unit (append_opt Dead_code_elim.run_on_capsule),
+        "Dead Code Elimination";
+
+      "-simplify-cfg", Arg.Unit (append_opt Simplify_cfg.run_on_capsule),
+        "CFG Simplification";
     ]) (fun arg ->
       inputs := arg :: !inputs)
     ("Usage: " ^ (Sys.argv.(0) ^ " [options] <input-file>..."));

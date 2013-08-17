@@ -176,9 +176,12 @@ let create_block ?(id="") funcn =
   block
 
 let remove_block blockn =
-  let func = func_of_name blockn in
-  let _    = block_of_name blockn in
-  func.basic_blocks <- List.remove func.basic_blocks blockn
+  match blockn.parent with
+  | ParentFunction funcn
+  -> (let func = func_of_name funcn in
+      func.basic_blocks <- List.remove_if ((==) blockn) func.basic_blocks)
+  | _
+  -> assert false
 
 let iter_instrs ~f name =
   match name with
@@ -192,15 +195,18 @@ let iter_instrs ~f name =
   | _
   -> assert false
 
-let successors block_name =
-  let block = block_of_name block_name in
-  match (List.last block.instructions).opcode with
+let terminator blockn =
+  let block = block_of_name blockn in
+  (List.last block.instructions)
+
+let successors blockn =
+  match (terminator blockn).opcode with
   | JumpInstr   target        -> [target]
   | JumpIfInstr (_, ift, iff) -> [ift; iff]
   | ReturnInstr _             -> []
   | _ -> assert false
 
-let predecessors block_name =
+let predecessors blockn =
   List.filter_map (fun use ->
       match use.opcode with
       | JumpInstr _ | JumpIfInstr _
@@ -209,7 +215,7 @@ let predecessors block_name =
           | _ -> assert false)
       | _
       -> None)
-    block_name.uses
+    blockn.uses
 
 let instr_operands instr =
   match instr.opcode with
