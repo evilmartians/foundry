@@ -4,13 +4,13 @@ env: OPAMYES=1 JS_OF_OCAML=
 before_install:
   - sudo add-apt-repository -y 'deb http://ppa.launchpad.net/avsm/ppa/ubuntu raring main'
   - sudo apt-get update -qq -y
-  - sudo apt-get install -qq -y ocaml ocaml-native-compilers opam binfmt-support camlp4-extra
+  - sudo apt-get install -qq -y ocaml-nox ocaml-native-compilers opam binfmt-support camlp4-extra
   - (mkdir llvm; cd llvm; curl http://fehu.whitequark.org/files/llvm-3.4~svn188438.tbz2 | tar xjv)
   - sudo dpkg -i llvm/*_amd64.deb
   - export OPAMYES=1 OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
   - opam init
   - opam install sexplib extlib ulex batteries
-  - 'if [ -n "$JS_OF_OCAML" ]; then opam install js_of_ocaml fi'
+  - 'if [ -n "$JS_OF_OCAML" ]; then opam install js_of_ocaml; fi'
   - eval `opam config -env`
 install: ./scripts/build.sh
 script:  ./scripts/test.sh
