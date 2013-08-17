@@ -17,6 +17,8 @@ dispatch begin function
         ]
       end;
 
+    flag ["ocaml"; "compile"; "bin_annot"] (A"-bin-annot");
+
     (* === UNICODE === *)
 
     (* Add pa_utf8str.cmo to the ocaml pre-processor when use_utf8str is set *)

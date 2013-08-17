@@ -66,12 +66,17 @@ val create_func   : ?id:string ->
 val func_of_name  : name -> func
 
 val func_entry    : (*func*) name -> name
+val iter_blocks   : f:( (*basic_block*) name -> unit) ->
+                        (*func*) name -> unit
 
 (* Basic block level *)
 
 val create_block  : ?id:string -> (*func*) name -> name
 val remove_block  : (*basic_block*) name -> unit
 val block_of_name : (*basic_block*) name -> basic_block
+
+val iter_instrs   : f:( (*func or basic_block*) name -> unit) ->
+                        (*func*) name -> unit
 
 val successors    : (*basic_block*) name -> name list
 val predecessors  : (*basic_block*) name -> name list

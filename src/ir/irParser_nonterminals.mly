@@ -450,9 +450,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | ty=instr_ty Lvar_load
                     lenv=operand Comma name=Lit_String
                 { (fun env -> ty env, LVarLoadInstr (lenv env, name)) }
-              | ty=instr_ty Lvar_store
+              | Lvar_store
                     lenv=operand Comma name=Lit_String Comma value=operand
-                { (fun env -> ty env, LVarStoreInstr (lenv env, name, value env)) }
+                { (fun env -> Rt.Nil, LVarStoreInstr (lenv env, name, value env)) }
               | ty=instr_ty? Primitive name=Lit_String args=args(operand)
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,

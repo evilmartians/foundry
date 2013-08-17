@@ -1,3 +1,3 @@
-<{support,core,lang,ir,tools}>: include
+<{support,core,lang,ir,tools,transforms}>: include
 
 <**/*.{ml,mli,mly*,byte,native}>: use_utf8str, syntax(camlp4o), package(sexplib.syntax), package(extlib), package(menhirLib), package(ulex)

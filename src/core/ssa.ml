@@ -159,6 +159,10 @@ let func_entry func =
   let func = func_of_name func in
   List.hd func.basic_blocks
 
+let iter_blocks ~f funcn =
+  let func = func_of_name funcn in
+  List.iter f func.basic_blocks
+
 let create_block ?(id="") funcn =
   let func = func_of_name funcn in
   let block = {
@@ -175,6 +179,18 @@ let remove_block blockn =
   let func = func_of_name blockn in
   let _    = block_of_name blockn in
   func.basic_blocks <- List.remove func.basic_blocks blockn
+
+let iter_instrs ~f name =
+  match name with
+  | { opcode = Function func }
+  -> (List.iter (fun blockn ->
+          let block = block_of_name blockn in
+          List.iter f block.instructions)
+        func.basic_blocks)
+  | { opcode = BasicBlock block }
+  -> List.iter f block.instructions
+  | _
+  -> assert false
 
 let successors block_name =
   let block = block_of_name block_name in
@@ -224,14 +240,14 @@ let uses_by_instr instr =
 
 let add_uses instr =
   List.iter (fun used ->
-      assert (not (List.mem instr used.uses));
+      assert (not (List.memq instr used.uses));
       used.uses <- instr :: used.uses)
     (uses_by_instr instr)
 
 let remove_uses instr =
   List.iter (fun used ->
-      assert (List.mem instr used.uses);
-      used.uses <- List.remove used.uses instr)
+      assert (List.memq instr used.uses);
+      used.uses <- List.remove_if ((==) instr) used.uses)
     (uses_by_instr instr)
 
 let create_instr ?(id="") ty opcode =
@@ -298,8 +314,8 @@ let remove_instr instr =
   match instr.parent with
   | ParentBasicBlock blockn
   -> (let block = block_of_name blockn in
-      assert (List.mem instr block.instructions);
-      block.instructions <- List.remove block.instructions instr;
+      assert (List.memq instr block.instructions);
+      block.instructions <- List.remove_if ((==) instr) block.instructions;
       instr.parent <- ParentNone)
   | _
   -> assert false

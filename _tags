@@ -1,4 +1,4 @@
-true: debug, use_menhir
+true: debug, use_menhir, bin_annot
 
 <**/*>: -include, -traverse
 

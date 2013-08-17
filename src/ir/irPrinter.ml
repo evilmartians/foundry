@@ -382,7 +382,7 @@ let rec print_ssa_value env value =
   | LVarLoadInstr (env, var) ->
     instr "lvar_load" [print env; print_string var]
   | LVarStoreInstr (env, var, value) ->
-    instr "lvar_store" [print env; print_string var; print value]
+    term "lvar_store" [print env; print_string var; print value]
   | CallInstr (func, operands) ->
     let prefix =
       if value.ty <> Rt.NilTy then

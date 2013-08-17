@@ -1,4 +1,4 @@
 <{irSupport.ml,irLexer.ml}>: -use_utf8str, use_utf8str_safe
 
-<irParser*.{ml,mly*}>: -use_utf8str, use_utf8str_safe, -syntax(camlp4o)
+<irParser*.{ml,mly*}>: -use_utf8str, use_utf8str_safe, -syntax(camlp4o), -bin_annot
 <irParser.mlypack>: explain, dump, external_tokens(IrParser_tokens)
