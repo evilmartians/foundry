@@ -10,7 +10,7 @@ before_install:
   - export OPAMYES=1 OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
   - opam init
   - opam install sexplib extlib ulex batteries
-  - '[ -n "$JS_OF_OCAML" ] && opam install js_of_ocaml'
+  - 'if [ -n "$JS_OF_OCAML" ]; then opam install js_of_ocaml fi'
   - eval `opam config -env`
 install: ./scripts/build.sh
 script:  ./scripts/test.sh
