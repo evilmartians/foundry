@@ -398,7 +398,7 @@ let rec print_ssa_value env value =
     in prefix ^ "primitive " ^ (print_string name) ^
           " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
 
-let print_roots roots =
+let print roots capsule =
   let env = create_env () in
     List.iter (fun klass -> ignore (print_klass env klass)) [
       roots.kClass;
@@ -414,9 +414,9 @@ let print_roots roots =
       roots.kPackage
     ];
     ignore (print_package env roots.pToplevel);
-    env.image
 
-let print_ssa value =
-  let env = create_env () in
-    ignore (print_ssa_value env value);
+    List.iter (fun funcn ->
+        ignore (print_ssa_value env funcn))
+      capsule.functions;
+
     env.image

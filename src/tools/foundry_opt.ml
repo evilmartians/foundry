@@ -1,12 +1,10 @@
 let load_ir lexbuf =
   let lex () = IrLexer.next lexbuf in
   let parse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
-  let roots, main = parse lex in
-    Rt.roots := roots;
-    main
+  parse lex
 
-let dump_ir main =
-  IrPrinter.print_ssa main
+let dump_ir roots capsule =
+  IrPrinter.print roots capsule
 
 let _ =
   let output = ref "-"   in
@@ -27,6 +25,6 @@ let _ =
       (List.map Io.input_all
         (List.map Io.open_in !inputs)) in
 
-  let main     = load_ir (Lexing.from_string (input_ir :> string)) in
+  let roots, capsule = load_ir (Lexing.from_string (input_ir :> string)) in
   let out_chan = Io.open_out !output in
-    Unicode.Std.output_string out_chan (dump_ir main)
+    Unicode.Std.output_string out_chan (dump_ir roots capsule)

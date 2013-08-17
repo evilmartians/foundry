@@ -9,8 +9,16 @@ type name = {
   mutable opcode : opcode;
 
   (* Internal fields *)
-  mutable parent : name option;
+  mutable parent : name_parent;
   mutable uses   : name list;
+}
+and name_parent =
+| ParentNone
+| ParentCapsule    of capsule
+| ParentFunction   of name
+| ParentBasicBlock of name
+and capsule = {
+  mutable functions    : name list;
 }
 and func = {
           naming       : func_naming;
@@ -56,48 +64,64 @@ and opcode =
 let func_of_name name =
   match name with
   | { opcode = Function func }
-  | { opcode = BasicBlock(_);
-      parent = Some { opcode = Function func } }
   -> func
   | _
   -> assert false
 
 let block_of_name name =
   match name with
-  | { opcode = BasicBlock bb }
-   -> bb
+  | { opcode = BasicBlock block }
+   -> block
   | _
   -> assert false
 
-let mangle_id parent_v id =
-  let func = func_of_name parent_v in
-    let naming = func.naming in
-      if id = "" then begin
+let mangle_id name id =
+  let naming =
+    match name with
+    | { opcode = Function func }
+    | { parent = ParentFunction { opcode = Function func } }
+    -> func.naming
+    | _
+    -> assert false
+  in
+  if id = "" then begin
+    naming.next_id <- naming.next_id + 1;
+      (string_of_int naming.next_id)
+  end else begin
+    let id =
+      if List.exists ((=) id) naming.names then begin
         naming.next_id <- naming.next_id + 1;
-          (string_of_int naming.next_id)
-      end else begin
-        let id =
-          if List.exists ((=) id) naming.names then begin
-            naming.next_id <- naming.next_id + 1;
-            id ^ "." ^ (string_of_int naming.next_id)
-          end else id
-        in begin
-          naming.names <- id :: naming.names;
-          id
-        end
-      end
+        id ^ "." ^ (string_of_int naming.next_id)
+      end else id
+    in begin
+      naming.names <- id :: naming.names;
+      id
+    end
+  end
 
 let name_of_value value =
   {
     id     = "";
     ty     = Rt.type_of_value value;
     opcode = Const value;
-    parent = None;
+    parent = ParentNone;
     uses   = [];
   }
 
 let set_name_id name id =
   name.id <- mangle_id name id
+
+let create_capsule () =
+  { functions = []; }
+
+let find_func id capsule =
+  List.find (fun funcn -> funcn.id = id) capsule.functions
+
+let add_func funcn capsule =
+  capsule.functions <- funcn :: capsule.functions
+
+let remove_func funcn capsule =
+  capsule.functions <- List.remove capsule.functions funcn
 
 let create_func ?(id="") ?arg_ids args_ty result_ty =
   let func  = {
@@ -108,19 +132,19 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
       names   = [""];
     }
   } in
-  let value = {
+  let funcn = {
     id;
     ty     = Rt.FunctionTy (args_ty, result_ty);
     opcode = Function func;
-    parent = None;
+    parent = ParentNone;
     uses   = [];
   } in
   begin
     let make_arg name ty = {
-      id     = mangle_id value name;
+      id     = mangle_id funcn name;
       ty;
       opcode = Argument;
-      parent = Some value;
+      parent = ParentFunction funcn;
       uses   = [];
     } in
     match arg_ids with
@@ -129,28 +153,28 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
     | None ->
       func.arguments <- List.map (make_arg "") args_ty
   end;
-  value
+  funcn
 
 let func_entry func =
   let func = func_of_name func in
-    List.hd func.basic_blocks
+  List.hd func.basic_blocks
 
-let create_block ?(id="") func =
+let create_block ?(id="") funcn =
+  let func = func_of_name funcn in
   let block = {
-    id     = mangle_id func id;
+    id     = mangle_id funcn id;
     ty     = Rt.BasicBlockTy;
     opcode = BasicBlock { instructions = [] };
-    parent = Some func;
+    parent = ParentFunction funcn;
     uses   = [];
   } in
-    let func = func_of_name func in
-      func.basic_blocks <- func.basic_blocks @ [block];
-      block
+  func.basic_blocks <- func.basic_blocks @ [block];
+  block
 
 let remove_block blockn =
   let func = func_of_name blockn in
   let _    = block_of_name blockn in
-    func.basic_blocks <- List.remove func.basic_blocks blockn
+  func.basic_blocks <- List.remove func.basic_blocks blockn
 
 let successors block_name =
   let block = block_of_name block_name in
@@ -165,8 +189,8 @@ let predecessors block_name =
       match use.opcode with
       | JumpInstr _ | JumpIfInstr _
       -> (match use.parent with
-          | Some parent -> Some parent
-          | None        -> assert false)
+          | ParentBasicBlock block -> Some block
+          | _ -> assert false)
       | _
       -> None)
     block_name.uses
@@ -215,13 +239,23 @@ let create_instr ?(id="") ty opcode =
     id;
     ty;
     opcode;
-    parent = None;
+    parent = ParentNone;
     uses   = [];
   }
 
 let insert_instr ?pivot f_some f_none instr blockn =
   let block = block_of_name blockn in
-  assert (instr.parent = None);
+  begin
+    (* Sanity checks: instr must be an instruction not
+       attached to any block. *)
+    assert (instr.parent = ParentNone);
+    match instr.opcode with
+    | Argument | Function _ | BasicBlock _
+    | Const _
+    -> assert false;
+    | _
+    -> ()
+  end;
   begin
     match pivot with
     | Some pivotn
@@ -236,7 +270,7 @@ let insert_instr ?pivot f_some f_none instr blockn =
     -> block.instructions <- f_none block.instructions
   end;
   instr.id     <- mangle_id blockn instr.id;
-  instr.parent <- Some blockn
+  instr.parent <- ParentBasicBlock blockn
 
 let prepend_instr ?before instr blockn =
   insert_instr ?pivot:before
@@ -252,17 +286,23 @@ let append_instr ?after instr blockn =
 
 let replace_instr ?ty ?opcode instr =
   Option.may (fun ty ->
-    instr.ty <- ty) ty;
+      instr.ty <- ty)
+    ty;
   Option.may (fun opcode ->
-    remove_uses instr;
-    instr.opcode <- opcode;
-    add_uses instr) opcode
+      remove_uses instr;
+      instr.opcode <- opcode;
+      add_uses instr)
+    opcode
 
 let remove_instr instr =
-  let block = block_of_name (Option.get instr.parent) in
-  assert (List.mem instr block.instructions);
-  block.instructions <- List.remove block.instructions instr;
-  instr.parent <- None
+  match instr.parent with
+  | ParentBasicBlock blockn
+  -> (let block = block_of_name blockn in
+      assert (List.mem instr block.instructions);
+      block.instructions <- List.remove block.instructions instr;
+      instr.parent <- ParentNone)
+  | _
+  -> assert false
 
 let erase_instr instr =
   remove_instr instr;

@@ -14,7 +14,7 @@
   | NamedInstance  of (klass specialized * slots)
   | NamedFunction  of name
 
-  let new_globals () =
+  let create_globals () =
     let (kClass, kmetaClass) = Rt.create_class () in
       Table.create [
         (u"c.Class",      NamedClass kClass);
@@ -27,7 +27,7 @@
 
 %}
 
-%start <Rt.roots * Ssa.name> toplevel
+%start <Rt.roots * Ssa.capsule> toplevel
 
 %%
     %public table(X): LBrace
@@ -375,7 +375,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       List.iter (fun arg -> Table.set fenv arg.id arg)
                         (func_of_name funcn).arguments;
                       let fixups = blocks (venv, funcn, fenv) in
-                        (fun () -> List.iter (fun f -> f ()) fixups))
+                      funcn, (fun () -> List.iter (fun f -> f ()) fixups))
                 }
 
    basic_block: id=Name_Label instrs=nonempty_list(instr)
@@ -469,28 +469,32 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | Return value=operand
                 { (fun env -> ReturnInstr (value env) ) }
 
-   definitions: defs=definitions x=struct_body
-              | defs=definitions x=func_body
-                { let (env, defs) = defs in
-                    env, ((x env) :: defs) }
+   definitions: env=definitions x=struct_body
+                { let (globals, capsule, fixups) = env in
+                  globals, capsule, (x globals) :: fixups }
+              | env=definitions x=func_body
+                { let (globals, capsule, fixups) = env in
+                  let funcn, fixup = x globals in
+                  add_func funcn capsule;
+                  globals, capsule, fixup :: fixups }
               | /* empty */
-                { new_globals (), [] }
+                { create_globals (), create_capsule (), [] }
 
-      toplevel: defs=definitions EOF
-                { let (env, defs) = defs in
-                    List.iter (fun f -> f ()) defs;
+      toplevel: env=definitions EOF
+                { let (globals, capsule, fixups) = env in
+                    List.iter (fun f -> f ()) fixups;
                     let get_class name =
-                      match Table.get env name with
+                      match Table.get globals name with
                       | Some (NamedClass k) -> k
                       | _ -> assert false
                     in
                     let get_package name =
-                      match Table.get env name with
+                      match Table.get globals name with
                       | Some (NamedPackage p) -> p
                       | _ -> assert false
                     in
                     let get_func name =
-                      match Table.get env name with
+                      match Table.get globals name with
                       | Some (NamedFunction f) -> f
                       | _ -> assert false
                     in
@@ -512,5 +516,5 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       pToplevel     = get_package (u"p.toplevel");
                     }
                     in*)
-                    create_roots (), get_func (u"main")
+                    create_roots (), capsule
                 }

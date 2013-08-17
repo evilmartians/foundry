@@ -6,8 +6,12 @@ type name = private {
   mutable opcode : opcode;
 
   (* Internal fields *)
-  mutable parent : name option;
+  mutable parent : name_parent;
   mutable uses   : name list;
+}
+and name_parent
+and capsule = private {
+  mutable functions    : name list;
 }
 and func = private {
           naming       : func_naming;
@@ -44,13 +48,21 @@ and opcode =
 val name_of_value : Rt.value -> name
 val set_name_id   : name -> string -> unit
 
+(* Module level *)
+
+val create_capsule : unit -> capsule
+
+val find_func      : string -> capsule -> name
+val add_func       : (*func*) name -> capsule -> unit
+val remove_func    : (*func*) name -> capsule -> unit
+
 (* Function level *)
 
 val create_func   : ?id:string ->
                     ?arg_ids:string list ->
                     (*args_ty*)   Rt.ty list ->
                     (*result_ty*) Rt.ty ->
-                            name
+                        name
 val func_of_name  : name -> func
 
 val func_entry    : (*func*) name -> name

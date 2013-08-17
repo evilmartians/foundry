@@ -1,9 +1,7 @@
 let load_ir lexbuf =
   let lex () = IrLexer.next lexbuf in
   let parse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
-  let roots, main = parse lex in
-    Rt.roots := roots;
-    main
+  parse lex
 
 let _ =
   let output = ref ""   in
@@ -27,8 +25,8 @@ let _ =
       (List.map Io.input_all
         (List.map Io.open_in !inputs)) in
 
-  let main  = load_ir (Lexing.from_string (input_ir :> string)) in
-  let llmod = Codegen.llvm_module_of_ssa_func main in
+  let roots, capsule = load_ir (Lexing.from_string (input_ir :> string)) in
+  let llmod = Codegen.llvm_module_of_ssa_func (Ssa.find_func u"main" capsule) in
 
   if !dump then
     Llvm.dump_module llmod;
