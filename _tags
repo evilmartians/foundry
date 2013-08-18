@@ -1,4 +1,6 @@
-true: debug, use_menhir, bin_annot
+true: debug, use_menhir
+
+<**/*.{cmo,cmi}>: bin_annot
 
 <**/*>: -include, -traverse
 
