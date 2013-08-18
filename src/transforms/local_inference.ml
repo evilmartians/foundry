@@ -15,7 +15,7 @@ let run_on_function func =
               let func_ty' = Typing.func_specialize ~return_ty:value.ty func.ty
               in set_ty func_ty' func)
         | _
-        -> ())
+        -> assert false)
     | _
     -> ())
 
