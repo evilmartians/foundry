@@ -256,6 +256,9 @@ let remove_uses instr =
       used.uses <- List.remove_if ((==) instr) used.uses)
     (instr_operands instr)
 
+let iter_uses ~f instr =
+  List.iter f instr.uses
+
 let create_instr ?(id="") ty opcode =
   {
     id;
@@ -306,7 +309,7 @@ let append_instr ?after instr blockn =
       (fun instrs      -> instrs @ [instr])
     instr blockn
 
-let replace_instr ?ty ?opcode instr =
+let update_instr ?ty ?opcode instr =
   Option.may (fun ty ->
       instr.ty <- ty)
     ty;
@@ -330,3 +333,58 @@ let erase_instr instr =
   remove_instr instr;
   remove_uses instr;
   instr.opcode <- InvalidInstr
+
+let set_instr_operands instr operands =
+  match instr.opcode, operands with
+  | InvalidInstr, []
+  | Argument,     []
+  | Function _,   []
+  | BasicBlock _, []
+  | Const _,      []
+  -> ()
+  | PhiInstr _, _
+  -> (let halfway = (List.length operands) / 2 in
+      let blocks, values = List.split_nth halfway operands in
+      let operands' = List.combine blocks values in
+      update_instr ~opcode:(PhiInstr operands') instr)
+  | JumpInstr _,   [target]
+  -> update_instr ~opcode:(JumpInstr target) instr
+  | JumpIfInstr _, [cond; if_true; if_false]
+  -> update_instr ~opcode:(JumpIfInstr (cond, if_true, if_false)) instr
+  | ReturnInstr _, [value]
+  -> update_instr ~opcode:(ReturnInstr value) instr
+  | FrameInstr _,  [parent]
+  -> update_instr ~opcode:(FrameInstr parent) instr
+  | LVarLoadInstr (_, name), [frame]
+  -> update_instr ~opcode:(LVarLoadInstr (frame, name)) instr
+  | LVarStoreInstr (_, name, _), [frame; value]
+  -> update_instr ~opcode:(LVarStoreInstr (frame, name, value)) instr
+  | CallInstr (func, _), _
+  -> update_instr ~opcode:(CallInstr (func, operands)) instr
+  | PrimitiveInstr (name, _), _
+  -> update_instr ~opcode:(PrimitiveInstr (name, operands)) instr
+  | _
+  -> assert false
+
+let replace_all_uses_with instr instr' =
+  iter_uses instr ~f:(fun use ->
+    let operands = instr_operands use in
+    let operands = List.map (fun operand ->
+      if operand == instr then instr'
+      else operand) operands
+    in
+    set_instr_operands use operands)
+
+let replace_instr instr instr' =
+  replace_all_uses_with instr instr';
+  match instr' with
+  | { opcode = Argument     }
+  | { opcode = Function _   }
+  | { opcode = BasicBlock _ }
+  | { opcode = Const _      }
+  -> erase_instr instr;
+  | { parent = ParentBasicBlock block }
+  -> prepend_instr ~before:instr instr' block;
+     erase_instr instr
+  | _
+  -> assert false

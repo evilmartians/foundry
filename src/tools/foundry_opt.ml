@@ -23,10 +23,13 @@ let _ =
         " Iterate symbol tables in alphabetical order";
 
       "-dce", Arg.Unit (append_opt Dead_code_elim.run_on_capsule),
-        "Dead Code Elimination";
+        " Dead Code Elimination";
 
       "-simplify-cfg", Arg.Unit (append_opt Simplify_cfg.run_on_capsule),
-        "CFG Simplification";
+        " CFG Simplification";
+
+      "-simplify-frames", Arg.Unit (append_opt Simplify_frames.run_on_capsule),
+        " Frame Simplification";
     ]) (fun arg ->
       inputs := arg :: !inputs)
     ("Usage: " ^ (Sys.argv.(0) ^ " [options] <input-file>..."));

@@ -410,13 +410,13 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     Table.set fenv instrn.id instrn;
                     (fun () ->
                       let ty, opcode = x env in
-                      replace_instr instrn ~ty ~opcode)) }
+                      update_instr instrn ~ty ~opcode)) }
               | x=term_instr
                 { (fun ((venv, blockn, fenv) as env) ->
                     let instrn = create_instr Rt.NilTy InvalidInstr in
                     append_instr instrn blockn;
                     (fun () ->
-                      replace_instr ~ty:Rt.NilTy ~opcode:(x env) instrn)) }
+                      update_instr ~ty:Rt.NilTy ~opcode:(x env) instrn)) }
 
       instr_ty: ty=ty
                 { (fun (venv, block, fenv) -> ty venv) }
