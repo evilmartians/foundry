@@ -400,22 +400,24 @@ let rec print_ssa_value env value =
     in prefix ^ "primitive " ^ (print_string name) ^
           " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
 
-let print roots capsule =
+let print ?roots capsule =
   let env = create_env () in
-    List.iter (fun klass -> ignore (print_klass env klass)) [
-      roots.kClass;
-      roots.kTypeVariable;
-      roots.kNil;
-      roots.kBoolean;
-      roots.kInteger;
-      roots.kSymbol;
-      roots.kTuple;
-      roots.kRecord;
-      roots.kLambda;
-      roots.kMixin;
-      roots.kPackage
-    ];
-    ignore (print_package env roots.pToplevel);
+    Option.may (fun roots ->
+        List.iter (fun klass -> ignore (print_klass env klass)) [
+          roots.kClass;
+          roots.kTypeVariable;
+          roots.kNil;
+          roots.kBoolean;
+          roots.kInteger;
+          roots.kSymbol;
+          roots.kTuple;
+          roots.kRecord;
+          roots.kLambda;
+          roots.kMixin;
+          roots.kPackage
+        ];
+        ignore (print_package env roots.pToplevel)
+      ) roots;
 
     List.iter (fun funcn ->
         ignore (print_ssa_value env funcn))

@@ -3,13 +3,14 @@ let load_ir lexbuf =
   let parse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
   parse lex
 
-let dump_ir roots capsule =
-  IrPrinter.print roots capsule
+let dump_ir ?roots capsule =
+  IrPrinter.print ?roots capsule
 
 let _ =
-  let output = ref "-" in
-  let inputs = ref []  in
-  let optzns = ref []  in
+  let output   = ref "-"   in
+  let no_roots = ref false in
+  let inputs   = ref []    in
+  let optzns   = ref []    in
 
   let append_opt opt () =
     optzns := opt :: !optzns
@@ -22,6 +23,9 @@ let _ =
       "-ordered", Arg.Set IrPrinter.ordered,
         " Iterate symbol tables in alphabetical order";
 
+      "-no-roots", Arg.Set no_roots,
+        " Don't print out root data structures";
+
       "-dce", Arg.Unit (append_opt Dead_code_elim.run_on_capsule),
         " Dead Code Elimination";
 
@@ -30,6 +34,9 @@ let _ =
 
       "-simplify-frames", Arg.Unit (append_opt Simplify_frames.run_on_capsule),
         " Frame Simplification";
+
+      "-infer", Arg.Unit (append_opt Local_inference.run_on_capsule),
+        " Local Type Inference";
     ]) (fun arg ->
       inputs := arg :: !inputs)
     ("Usage: " ^ (Sys.argv.(0) ^ " [options] <input-file>..."));
@@ -45,5 +52,9 @@ let _ =
       optzn capsule)
     !optzns;
 
-  let out_chan = Io.open_out !output in
-    Unicode.Std.output_string out_chan (dump_ir roots capsule)
+  let output_ir =
+    if !no_roots then dump_ir capsule
+    else dump_ir ~roots capsule
+  in
+  let out_chan  = Io.open_out !output in
+    Unicode.Std.output_string out_chan output_ir

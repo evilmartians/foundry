@@ -108,7 +108,7 @@ let name_of_value value =
     uses   = [];
   }
 
-let set_name_id name id =
+let set_id id name =
   name.id <- mangle_id name id
 
 let create_capsule () =
@@ -309,15 +309,27 @@ let append_instr ?after instr blockn =
       (fun instrs      -> instrs @ [instr])
     instr blockn
 
-let update_instr ?ty ?opcode instr =
-  Option.may (fun ty ->
-      instr.ty <- ty)
-    ty;
-  Option.may (fun opcode ->
-      remove_uses instr;
-      instr.opcode <- opcode;
-      add_uses instr)
-    opcode
+let set_opcode opcode name =
+  match name.opcode with
+  | Argument | Function _ | BasicBlock _ | Const _
+  -> assert false
+  | _ (* instruction *)
+  -> (remove_uses name;
+      name.opcode <- opcode;
+      add_uses name)
+
+let set_ty ty name =
+  match name.opcode with
+  | Function func
+  -> (match ty with
+      | Rt.FunctionTy (args_ty, ret_ty)
+      -> (name.ty <- ty;
+          List.iter2 (fun arg ty -> arg.ty <- ty)
+              func.arguments args_ty))
+  | Argument | BasicBlock _ | Const _
+  -> assert false
+  | _ (* instruction *)
+  -> name.ty <- ty
 
 let remove_instr instr =
   match instr.parent with
@@ -346,23 +358,23 @@ let set_instr_operands instr operands =
   -> (let halfway = (List.length operands) / 2 in
       let blocks, values = List.split_nth halfway operands in
       let operands' = List.combine blocks values in
-      update_instr ~opcode:(PhiInstr operands') instr)
+      set_opcode (PhiInstr operands') instr)
   | JumpInstr _,   [target]
-  -> update_instr ~opcode:(JumpInstr target) instr
+  -> set_opcode (JumpInstr target) instr
   | JumpIfInstr _, [cond; if_true; if_false]
-  -> update_instr ~opcode:(JumpIfInstr (cond, if_true, if_false)) instr
+  -> set_opcode (JumpIfInstr (cond, if_true, if_false)) instr
   | ReturnInstr _, [value]
-  -> update_instr ~opcode:(ReturnInstr value) instr
+  -> set_opcode (ReturnInstr value) instr
   | FrameInstr _,  [parent]
-  -> update_instr ~opcode:(FrameInstr parent) instr
+  -> set_opcode (FrameInstr parent) instr
   | LVarLoadInstr (_, name), [frame]
-  -> update_instr ~opcode:(LVarLoadInstr (frame, name)) instr
+  -> set_opcode (LVarLoadInstr (frame, name)) instr
   | LVarStoreInstr (_, name, _), [frame; value]
-  -> update_instr ~opcode:(LVarStoreInstr (frame, name, value)) instr
+  -> set_opcode (LVarStoreInstr (frame, name, value)) instr
   | CallInstr (func, _), _
-  -> update_instr ~opcode:(CallInstr (func, operands)) instr
+  -> set_opcode (CallInstr (func, operands)) instr
   | PrimitiveInstr (name, _), _
-  -> update_instr ~opcode:(PrimitiveInstr (name, operands)) instr
+  -> set_opcode (PrimitiveInstr (name, operands)) instr
   | _
   -> assert false
 

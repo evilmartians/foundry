@@ -46,7 +46,8 @@ and opcode =
 (* Generic *)
 
 val name_of_value : Rt.value -> name
-val set_name_id   : name -> string -> unit
+val set_id        : string -> name -> unit
+val set_ty        : Rt.ty -> name -> unit
 
 val replace_all_uses_with : name -> name -> unit
 
@@ -90,7 +91,7 @@ val predecessors  : (*basic_block*) name -> name list
 val create_instr    : ?id:string -> Rt.ty -> opcode -> name
 val prepend_instr   : ?before:name -> (*instr*) name -> (*basic_block*) name -> unit
 val append_instr    : ?after:name  -> (*instr*) name -> (*basic_block*) name -> unit
-val update_instr    : ?ty:Rt.ty -> ?opcode:opcode -> (*instr*) name -> unit
+val set_opcode      : opcode -> (*instr*) name -> unit
 val replace_instr   : (*instr*) name -> (*instr*) name -> unit
 val remove_instr    : (*instr*) name -> unit
 val erase_instr     : (*instr*) name -> unit

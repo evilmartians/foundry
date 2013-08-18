@@ -7,7 +7,7 @@ if [ -n "$COVERAGE" ]; then
 fi
 
 echo "Testing foundry..."
-./vendor/lit/lit.py -v test/
+./vendor/lit/lit.py -v -s --no-progress-bar test/
 
 if [ -n "$COVERAGE" ]; then
   echo "Generating coverage..."

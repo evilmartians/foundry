@@ -403,20 +403,22 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
          instr: id=opt_local_eq x=value_instr
                 { (fun ((venv, block, fenv) as env) ->
-                    let instrn = create_instr ~id Rt.NilTy InvalidInstr in
-                    append_instr instrn block;
+                    let instr = create_instr ~id Rt.NilTy InvalidInstr in
+                    append_instr instr block;
                     if Table.exists fenv id && id <> u"" then
                       failwith (u"Duplicate name %" ^ id);
-                    Table.set fenv instrn.id instrn;
+                    Table.set fenv instr.id instr;
                     (fun () ->
                       let ty, opcode = x env in
-                      update_instr instrn ~ty ~opcode)) }
+                      set_ty     ty     instr;
+                      set_opcode opcode instr)) }
               | x=term_instr
                 { (fun ((venv, blockn, fenv) as env) ->
-                    let instrn = create_instr Rt.NilTy InvalidInstr in
-                    append_instr instrn blockn;
+                    let instr = create_instr Rt.NilTy InvalidInstr in
+                    append_instr instr blockn;
                     (fun () ->
-                      update_instr ~ty:Rt.NilTy ~opcode:(x env) instrn)) }
+                      set_ty     Rt.NilTy instr;
+                      set_opcode (x env)  instr)) }
 
       instr_ty: ty=ty
                 { (fun (venv, block, fenv) -> ty venv) }
