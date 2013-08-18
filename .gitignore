@@ -1,5 +1,7 @@
 _build/
 vendor/_prefix/
+coverage/
+bisect*.out
 *.native
 *.byte
 *.pyc

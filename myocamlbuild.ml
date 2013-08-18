@@ -3,6 +3,11 @@ open Ocamlbuild_plugin;;
 Command.setup_virtual_command_solver "MENHIR"
   (fun () -> P(Sys.getcwd () ^ "/../vendor/_prefix/bin/menhir"));;
 
+let do_cov =
+  try (Sys.getenv "COVERAGE") <> ""
+  with Not_found -> false
+;;
+
 dispatch begin function
   | After_rules ->
     (* Compile foundryWeb.js from bytecode foundryWeb.byte *)
@@ -18,6 +23,13 @@ dispatch begin function
       end;
 
     flag ["ocaml"; "compile"; "bin_annot"] (A"-bin-annot");
+
+    if do_cov then
+      tag_any ["package(bisect)"]
+    else
+      (* package(bisect) includes use_str, which would conflict with this
+         explicit tag. *)
+      tag_file "src/tools/file_check.native" ["use_str"];
 
     (* === UNICODE === *)
 
