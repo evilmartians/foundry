@@ -2,6 +2,10 @@
 
 set -e
 
+if [ -n "$COVERAGE" ]; then
+  find test -name 'bisect*.out' -delete
+fi
+
 echo "Testing foundry..."
 ./vendor/lit/lit.py -v test/
 
