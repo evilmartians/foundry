@@ -166,7 +166,9 @@ and print_ty env ty =
   | EnvironmentTy(x)  -> "environment " ^ (print_local_env_ty env x)
   | FunctionTy(xs,x)  -> "(" ^ (print_seq xs (print_ty env)) ^ ") -> " ^ (print_ty env x)
   | BasicBlockTy      -> assert false
-  | _                 -> assert false (* TODO interpolation *)
+  | Class(k,sp)       -> "class " ^ (print_name (print_klass env k)) ^
+                           "{" ^(print_assoc sp (print_value env))  ^ "}"
+  | _                 -> assert false (* interpolation *)
 
 and print_klass env klass =
   with_lookup env (NamedClass klass) (Global ("c." ^ klass.k_name))
