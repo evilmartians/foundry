@@ -158,6 +158,11 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
   end;
   funcn
 
+let func_ty funcn =
+  match funcn.ty with
+  | Rt.FunctionTy (args_ty, ret_ty) -> args_ty, ret_ty
+  | _ -> assert false
+
 let func_entry funcn =
   let func = func_of_name funcn in
   List.hd func.basic_blocks
@@ -413,11 +418,7 @@ let copy_func funcn =
   let func    = func_of_name funcn in
   (* Duplicate the function. *)
   let arg_ids = List.map (fun arg -> arg.id) func.arguments in
-  let args_ty, ret_ty =
-    match funcn.ty with
-    | Rt.FunctionTy (args_ty, ret_ty) -> args_ty, ret_ty
-    | _ -> assert false
-  in
+  let args_ty, ret_ty = func_ty funcn in
   let funcn' = create_func ~id:funcn.id ~arg_ids args_ty ret_ty in
   let func'  = func_of_name funcn' in
   (* Duplicate function content while maintaining referentional

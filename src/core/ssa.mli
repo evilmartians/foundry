@@ -68,8 +68,7 @@ val create_func   : ?id:string ->
                         name
 val func_of_name  : name -> func
 
-val copy_func     : (*func*) name -> (*func'*) name
-val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> unit
+val func_ty       : (*func*) name -> Rt.ty list * Rt.ty
 
 val add_func      : (*func*) name -> capsule -> unit
 val remove_func   : (*func*) name -> capsule -> unit
@@ -77,6 +76,9 @@ val remove_func   : (*func*) name -> capsule -> unit
 val func_entry    : (*func*) name -> name
 val iter_blocks   : f:( (*basic_block*) name -> unit) ->
                         (*func*) name -> unit
+
+val copy_func     : (*func*) name -> (*func'*) name
+val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> unit
 
 (* Basic block level *)
 
