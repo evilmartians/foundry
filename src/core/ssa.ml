@@ -9,8 +9,9 @@ type name = {
   mutable opcode : opcode;
 
   (* Internal fields *)
-  mutable parent : name_parent;
-  mutable uses   : name list;
+  mutable parent    : name_parent;
+  mutable uses      : name list;
+          name_hash : int;
 }
 and name_parent =
 | ParentNone
@@ -54,6 +55,16 @@ and opcode =
 | LVarStoreInstr  of (*environment*) name * (*var*) string * (*value*) name
 | CallInstr       of (*func*) name   * (*operands*) name list
 | PrimitiveInstr  of (*name*) string * (*operands*) name list
+
+module NameIdentity =
+struct
+  type t = name
+
+  let equal = (==)
+  let hash name = name.name_hash
+end
+
+module Nametbl = Hashtbl.Make(NameIdentity)
 
 (* Variable naming convention:
    funcn:  function name, of type name
@@ -103,11 +114,12 @@ let mangle_id name id =
 
 let name_of_value value =
   {
-    id     = "";
-    ty     = Rt.type_of_value value;
-    opcode = Const value;
-    parent = ParentNone;
-    uses   = [];
+    id        = "";
+    ty        = Rt.type_of_value value;
+    opcode    = Const value;
+    parent    = ParentNone;
+    uses      = [];
+    name_hash = 0; (* TODO better hash *)
   }
 
 let set_id id name =
@@ -140,18 +152,20 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
   } in
   let funcn = {
     id;
-    ty     = Rt.FunctionTy (args_ty, result_ty);
-    opcode = Function func;
-    parent = ParentNone;
-    uses   = [];
+    ty        = Rt.FunctionTy (args_ty, result_ty);
+    opcode    = Function func;
+    parent    = ParentNone;
+    uses      = [];
+    name_hash = 0; (* TODO *)
   } in
   begin
     let make_arg name ty = {
-      id     = mangle_id funcn name;
+      id        = mangle_id funcn name;
       ty;
-      opcode = Argument;
-      parent = ParentFunction funcn;
-      uses   = [];
+      opcode    = Argument;
+      parent    = ParentFunction funcn;
+      uses      = [];
+      name_hash = 0; (* TODO *)
     } in
     match arg_ids with
     | Some ids ->
@@ -177,11 +191,12 @@ let iter_blocks ~f funcn =
 let create_block ?(id="") funcn =
   let func = func_of_name funcn in
   let block = {
-    id     = mangle_id funcn id;
-    ty     = Rt.BasicBlockTy;
-    opcode = BasicBlock { instructions = [] };
-    parent = ParentFunction funcn;
-    uses   = [];
+    id        = mangle_id funcn id;
+    ty        = Rt.BasicBlockTy;
+    opcode    = BasicBlock { instructions = [] };
+    parent    = ParentFunction funcn;
+    uses      = [];
+    name_hash = 0; (* TODO *)
   } in
   func.basic_blocks <- func.basic_blocks @ [block];
   block
@@ -275,8 +290,9 @@ let create_instr ?(id="") ty opcode =
     id;
     ty;
     opcode;
-    parent = ParentNone;
-    uses   = [];
+    parent    = ParentNone;
+    uses      = [];
+    name_hash = 0;
   }
 
 let insert_instr ?pivot f_some f_none instr blockn =

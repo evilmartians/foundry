@@ -2,14 +2,6 @@ open Unicode.Std
 open ExtList
 open Big_int
 
-module Nametbl = Hashtbl.Make(
-  struct
-    type t = Ssa.name
-
-    let equal = (==)
-    let hash  = Hashtbl.hash
-  end)
-
 type named_value =
 | NamedLocalEnv of Rt.local_env
 
@@ -196,7 +188,7 @@ let rec gen_func llmod funcn =
   let builder = Llvm.builder ctx in
 
   (* Define a map between FSSA names and LLVM names *)
-  let names   = Nametbl.create 10 in
+  let names   = Ssa.Nametbl.create 10 in
 
   (* Define list of LLVM phis which need to be fixed up
      and FSSA names of incoming values. *)
@@ -205,12 +197,12 @@ let rec gen_func llmod funcn =
   (* Map FSSA name to LLVM name, and memoize the mapping. *)
   let map name =
     try
-      Nametbl.find names name
+      Ssa.Nametbl.find names name
     with Not_found ->
       match name.Ssa.opcode with
       | Ssa.Const value ->
         let llvalue = llconst_of_value llmod value in
-        Nametbl.add names name llvalue;
+        Ssa.Nametbl.add names name llvalue;
         llvalue
       | _ -> failwith (u"gen_func/map " ^ name.Ssa.id)
   in
@@ -259,7 +251,7 @@ let rec gen_func llmod funcn =
       -> assert false
       (* Terminator instructions. *)
       | Ssa.JumpInstr blockn
-      -> Llvm.build_br (Llvm.block_of_value (Nametbl.find names blockn)) builder
+      -> Llvm.build_br (Llvm.block_of_value (Ssa.Nametbl.find names blockn)) builder
       | Ssa.JumpIfInstr (condn, truen, falsen)
       -> Llvm.build_cond_br (map condn)
               (Llvm.block_of_value (map truen))
@@ -278,7 +270,7 @@ let rec gen_func llmod funcn =
          (let pred, succ = List.partition (fun (_, op) ->
                               match op.Ssa.opcode with
                               | Ssa.Const _ -> true
-                              | _ -> Nametbl.mem names op) operands
+                              | _ -> Ssa.Nametbl.mem names op) operands
           in
           (* Build an LLVM phi with existing values. Attempting to pass []
              to build_phi results in segfault :( *)
@@ -341,7 +333,7 @@ let rec gen_func llmod funcn =
       | _
       -> assert false
     in
-    Nametbl.add names instrn llvalue
+    Ssa.Nametbl.add names instrn llvalue
   in
 
   (* Rename the LLVM arguments to match FSSA arguments,
@@ -349,7 +341,7 @@ let rec gen_func llmod funcn =
   let llparams = Llvm.params llfunc in
   List.iteri (fun index argn ->
       let llparam = llparams.(index) in
-      Nametbl.add names argn llparam;
+      Ssa.Nametbl.add names argn llparam;
       Llvm.set_value_name (argn.Ssa.id :> latin1s) llparam)
     func.Ssa.arguments;
 
@@ -357,21 +349,21 @@ let rec gen_func llmod funcn =
      blocks. *)
   List.iter (fun blockn ->
       let llblock = Llvm.append_block ctx (blockn.Ssa.id :> latin1s) llfunc in
-      Nametbl.add names blockn (Llvm.value_of_block llblock))
+      Ssa.Nametbl.add names blockn (Llvm.value_of_block llblock))
     func.Ssa.basic_blocks;
 
   (* Codegen non-phi instructions while traversing blocks in
      domination order. *)
   List.iter (fun blockn ->
       let block   = Ssa.block_of_name blockn in
-      let llblock = Llvm.block_of_value (Nametbl.find names blockn) in
+      let llblock = Llvm.block_of_value (Ssa.Nametbl.find names blockn) in
       Llvm.position_at_end llblock builder;
       List.iter gen_instr block.Ssa.instructions)
     func.Ssa.basic_blocks;
 
   (* Fixup phi instructions. *)
   List.iter (fun (llphi, pred, name) ->
-      let llblock = Llvm.block_of_value (Nametbl.find names pred) in
+      let llblock = Llvm.block_of_value (Ssa.Nametbl.find names pred) in
       let llvalue = map name in
       Llvm.add_incoming (llvalue, llblock) llphi)
     !fixups;

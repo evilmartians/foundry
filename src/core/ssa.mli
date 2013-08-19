@@ -6,8 +6,9 @@ type name = private {
   mutable opcode : opcode;
 
   (* Internal fields *)
-  mutable parent : name_parent;
-  mutable uses   : name list;
+  mutable parent    : name_parent;
+  mutable uses      : name list;
+          name_hash : int;
 }
 and name_parent
 and capsule = private {
@@ -44,6 +45,9 @@ and opcode =
 | LVarStoreInstr  of (*environment*) name * (*var*) string * (*value*) name
 | CallInstr       of (*func*) name   * (*operands*) name list
 | PrimitiveInstr  of (*name*) string * (*operands*) name list
+
+(* Nametbl is safe to use in presence of key mutation. *)
+module Nametbl : Hashtbl.S with type key = name
 
 (* Generic *)
 
