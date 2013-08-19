@@ -381,7 +381,7 @@ let map_instr_operands instr operands =
   -> LVarLoadInstr (frame, name)
   | LVarStoreInstr (_, name, _), [frame; value]
   -> LVarStoreInstr (frame, name, value)
-  | CallInstr (func, _), _
+  | CallInstr (_, _), func :: operands
   -> CallInstr (func, operands)
   | PrimitiveInstr (name, _), _
   -> PrimitiveInstr (name, operands)
@@ -414,10 +414,10 @@ let replace_instr instr instr' =
   | _
   -> assert false
 
-let copy_func funcn =
+let copy_func ?(suffix="") funcn =
   let func    = func_of_name funcn in
   (* Duplicate the function. *)
-  let arg_ids = List.map (fun arg -> arg.id) func.arguments in
+  let arg_ids = List.map (fun arg -> arg.id ^ suffix) func.arguments in
   let args_ty, ret_ty = func_ty funcn in
   let funcn' = create_func ~id:funcn.id ~arg_ids args_ty ret_ty in
   let func'  = func_of_name funcn' in
@@ -428,7 +428,7 @@ let copy_func funcn =
   List.iter2 (Hashtbl.add map) func.arguments func'.arguments;
   (* Duplicate basic blocks and remember the mapping between them. *)
   iter_blocks funcn ~f:(fun blockn ->
-    let blockn' = create_block ~id:blockn.id funcn' in
+    let blockn' = create_block ~id:(blockn.id ^ suffix) funcn' in
     Hashtbl.add map blockn blockn');
 
   (* Duplicate instructions while updating references through
@@ -453,7 +453,7 @@ let copy_func funcn =
   let phis = ref [] in
   iter_instrs funcn ~f:(fun instr ->
     (* Duplicate instruction. *)
-    let instr'  = create_instr ~id:instr.id instr.ty InvalidInstr in
+    let instr'  = create_instr ~id:(instr.id ^ suffix) instr.ty InvalidInstr in
     (* Append instruction to the corresponding basic block in the
        specialized function. *)
     let blockn' =

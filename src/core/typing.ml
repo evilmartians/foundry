@@ -14,6 +14,10 @@ let rec match_ty' env pattern subject =
   | Rt.FunctionTy(args_ty, ret_ty), Rt.FunctionTy(args_ty', ret_ty')
   -> (let env = match_tys' env args_ty args_ty' in
       match_ty' env ret_ty ret_ty')
+  | Rt.UnsignedTy(wa), Rt.UnsignedTy(wb)
+  | Rt.SignedTy(wa),   Rt.SignedTy(wb)
+    when wa = wb
+  -> env
   | a, b
   -> failwith ("Typing.match_ty' " ^ (Rt.inspect_type a) ^ " " ^ (Rt.inspect_type b))
 

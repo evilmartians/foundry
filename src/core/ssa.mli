@@ -77,7 +77,7 @@ val func_entry    : (*func*) name -> name
 val iter_blocks   : f:( (*basic_block*) name -> unit) ->
                         (*func*) name -> unit
 
-val copy_func     : (*func*) name -> (*func'*) name
+val copy_func     : ?suffix:string -> (*func*) name -> (*func'*) name
 val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> unit
 
 (* Basic block level *)
