@@ -63,8 +63,8 @@ and local_env = {
   e_parent        : local_env option;
   e_bindings      : bindings;
 }
-and type_env  =      tvar Table.t
-and const_env =     package list
+and type_env  = tvar Table.t
+and const_env = package list
 and lambda    = {
   l_location      : Location.t;
   l_ty            : lambda_ty;

@@ -70,6 +70,8 @@
 %token Call
 %token Primitive
 
+%token Map
+
 %token EOF
 
 %%

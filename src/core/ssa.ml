@@ -19,7 +19,9 @@ and name_parent =
 | ParentBasicBlock of name
 and capsule = {
   mutable functions    : name list;
+  mutable overloads    : overloads;
 }
+and overloads = (Rt.ty list, (name * name) list) Hashtbl.t
 and func = {
           naming       : func_naming;
   mutable arguments    : name list;
@@ -112,18 +114,19 @@ let set_id id name =
   name.id <- mangle_id name id
 
 let create_capsule () =
-  { functions = []; }
+  { functions = [];
+    overloads = Hashtbl.create 10; }
 
 let iter_funcs ~f capsule =
   List.iter f capsule.functions
 
-let find_func id capsule =
+let find_func capsule id =
   List.find (fun funcn -> funcn.id = id) capsule.functions
 
-let add_func funcn capsule =
+let add_func capsule funcn =
   capsule.functions <- funcn :: capsule.functions
 
-let remove_func funcn capsule =
+let remove_func capsule funcn =
   capsule.functions <- List.remove capsule.functions funcn
 
 let create_func ?(id="") ?arg_ids args_ty result_ty =
@@ -478,3 +481,31 @@ let specialize funcn env =
   set_ty (rewrite funcn.ty) funcn;
   iter_instrs funcn ~f:(fun instr ->
     set_ty (rewrite instr.ty) instr)
+
+let add_overload capsule funcn args_ty funcn' =
+  try
+    let bucket = Hashtbl.find capsule.overloads args_ty in
+    Hashtbl.replace capsule.overloads args_ty ((funcn, funcn') :: bucket)
+  with Not_found ->
+    Hashtbl.add capsule.overloads args_ty [(funcn, funcn')]
+
+let iter_overloads ~f capsule =
+  Hashtbl.iter (fun args_ty bucket ->
+      List.iter (fun (funcn, funcn') ->
+          f funcn args_ty funcn')
+        bucket)
+    capsule.overloads
+
+let overload capsule funcn operands_ty =
+  try
+    let bucket = Hashtbl.find capsule.overloads operands_ty in
+    List.assq funcn bucket
+  with Not_found ->
+    let _, ret_ty = func_ty funcn in
+    let call_ty = Rt.FunctionTy (operands_ty, ret_ty) in
+    let subst   = Typing.match_ty funcn.ty call_ty in
+    let funcn'  = copy_func funcn in
+    add_func     capsule funcn';
+    specialize   funcn'  subst;
+    add_overload capsule funcn operands_ty funcn';
+    funcn'

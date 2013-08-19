@@ -26,7 +26,7 @@ let _ =
         (List.map Io.open_in !inputs)) in
 
   let roots, capsule = load_ir (Lexing.from_string (input_ir :> string)) in
-  let llmod = Codegen.llvm_module_of_ssa_func (Ssa.find_func u"main" capsule) in
+  let llmod = Codegen.llvm_module_of_ssa_func (Ssa.find_func capsule u"main") in
 
   if !dump then
     Llvm.dump_module llmod

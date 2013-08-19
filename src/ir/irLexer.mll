@@ -84,6 +84,8 @@ rule lex = parse
 | "call"          { Call }
 | "primitive"     { Primitive }
 
+| "map"           { Map }
+
 | (['a'-'z']+) as kw { failwith ("unknown keyword: " ^ kw) }
 | eof                { EOF }
 

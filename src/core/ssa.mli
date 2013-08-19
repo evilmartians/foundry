@@ -12,7 +12,9 @@ type name = private {
 and name_parent
 and capsule = private {
   mutable functions    : name list;
+  mutable overloads    : overloads;
 }
+and overloads
 and func = private {
           naming       : func_naming;
   mutable arguments    : name list;
@@ -55,7 +57,7 @@ val replace_all_uses_with : name -> name -> unit
 
 val create_capsule  : unit -> capsule
 
-val find_func       : string -> capsule -> name
+val find_func       : capsule -> string -> name
 val iter_funcs      : f:( (*func*) name -> unit) ->
                           capsule -> unit
 
@@ -70,8 +72,8 @@ val func_of_name  : name -> func
 
 val func_ty       : (*func*) name -> Rt.ty list * Rt.ty
 
-val add_func      : (*func*) name -> capsule -> unit
-val remove_func   : (*func*) name -> capsule -> unit
+val add_func      : capsule -> (*func*) name -> unit
+val remove_func   : capsule -> (*func*) name -> unit
 
 val func_entry    : (*func*) name -> name
 val iter_blocks   : f:( (*basic_block*) name -> unit) ->
@@ -79,6 +81,14 @@ val iter_blocks   : f:( (*basic_block*) name -> unit) ->
 
 val copy_func     : ?suffix:string -> (*func*) name -> (*func'*) name
 val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> unit
+
+val overload        : capsule -> (*func*) name -> Rt.ty list ->
+                        (*func'*) name
+val iter_overloads  : f:( (*func*)  name -> Rt.ty list ->
+                          (*func'*) name -> unit) ->
+                        capsule -> unit
+val add_overload    : capsule -> (*func*) name -> Rt.ty list ->
+                        (*func'*) name -> unit
 
 (* Basic block level *)
 

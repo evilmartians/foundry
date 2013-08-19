@@ -400,27 +400,38 @@ let rec print_ssa_value env value =
     in prefix ^ "primitive " ^ (print_string name) ^
           " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
 
+let print_roots env roots =
+  List.iter (fun klass -> ignore (print_klass env klass)) [
+    roots.kClass;
+    roots.kTypeVariable;
+    roots.kNil;
+    roots.kBoolean;
+    roots.kInteger;
+    roots.kSymbol;
+    roots.kTuple;
+    roots.kRecord;
+    roots.kLambda;
+    roots.kMixin;
+    roots.kPackage
+  ];
+  ignore (print_package env roots.pToplevel)
+
+let print_capsule env capsule =
+  List.iter (fun funcn ->
+      ignore (print_ssa_value env funcn))
+    capsule.functions;
+
+  iter_overloads capsule ~f:(fun funcn args_ty funcn' ->
+    let funcn   = print_ssa_value env funcn in
+    let args_ty = print_seq args_ty (print_ty env) in
+    let funcn'  = print_ssa_value env funcn' in
+    env.image <- env.image ^
+      "map function " ^ funcn ^ " (" ^ args_ty ^
+          ") => " ^ funcn' ^ "\n")
+
 let print ?roots capsule =
   let env = create_env () in
-    Option.may (fun roots ->
-        List.iter (fun klass -> ignore (print_klass env klass)) [
-          roots.kClass;
-          roots.kTypeVariable;
-          roots.kNil;
-          roots.kBoolean;
-          roots.kInteger;
-          roots.kSymbol;
-          roots.kTuple;
-          roots.kRecord;
-          roots.kLambda;
-          roots.kMixin;
-          roots.kPackage
-        ];
-        ignore (print_package env roots.pToplevel)
-      ) roots;
-
-    List.iter (fun funcn ->
-        ignore (print_ssa_value env funcn))
-      capsule.functions;
+    Option.may (print_roots env) roots;
+    print_capsule env capsule;
 
     env.image

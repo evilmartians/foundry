@@ -10,12 +10,7 @@ let run_on_capsule capsule =
           operand types are more specific, and specialize the callee for
           operand types. *)
        (if args_ty <> operands_ty then
-          let call_ty = Rt.FunctionTy (operands_ty, return_ty) in
-          let subst   = Typing.match_ty callee.ty call_ty in
-          let callee' = Ssa.copy_func callee in
-          Ssa.add_func callee' capsule;
-          Ssa.specialize callee' subst;
-          Some callee'
+          Some (overload capsule callee operands_ty)
         else
           None)
     | _

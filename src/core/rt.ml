@@ -19,7 +19,8 @@ type value =
 | Unsigned      of (*width*) int * big_int
 | UnsignedTy    of (*width*) int
 | Signed        of (*width*) int * big_int
-| SignedTy      of (*width*) int| Symbol        of string
+| SignedTy      of (*width*) int
+| Symbol        of string
 | SymbolTy
 (* Product types *)
 | Tuple         of value list
@@ -63,8 +64,8 @@ and local_env = {
   e_parent        : local_env option;
   e_bindings      : bindings;
 }
-and type_env  =     tvar Table.t
-and const_env =     package list
+and type_env  = tvar Table.t
+and const_env = package list
 and lambda    = {
   l_location      : Location.t;
   l_ty            : lambda_ty;
