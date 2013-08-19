@@ -56,8 +56,8 @@ val replace_all_uses_with : name -> name -> unit
 val create_capsule  : unit -> capsule
 
 val find_func       : string -> capsule -> name
-val add_func        : (*func*) name -> capsule -> unit
-val remove_func     : (*func*) name -> capsule -> unit
+val iter_funcs      : f:( (*func*) name -> unit) ->
+                          capsule -> unit
 
 (* Function level *)
 
@@ -68,6 +68,12 @@ val create_func   : ?id:string ->
                         name
 val func_of_name  : name -> func
 
+val copy_func     : (*func*) name -> (*func'*) name
+val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> unit
+
+val add_func      : (*func*) name -> capsule -> unit
+val remove_func   : (*func*) name -> capsule -> unit
+
 val func_entry    : (*func*) name -> name
 val iter_blocks   : f:( (*basic_block*) name -> unit) ->
                         (*func*) name -> unit
@@ -75,8 +81,8 @@ val iter_blocks   : f:( (*basic_block*) name -> unit) ->
 (* Basic block level *)
 
 val create_block  : ?id:string -> (*func*) name -> name
-val remove_block  : (*basic_block*) name -> unit
 val block_of_name : (*basic_block*) name -> basic_block
+val remove_block  : (*basic_block*) name -> unit
 
 val iter_instrs   : f:( (*func or basic_block*) name -> unit) ->
                         (*func*) name -> unit

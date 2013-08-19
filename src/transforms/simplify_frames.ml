@@ -1,13 +1,13 @@
 open Unicode.Std
 open Ssa
 
-let run_on_function func =
+let run_on_function funcn =
   let rec lookup env name =
     match Table.get env.Rt.e_bindings name with
     | Some binding -> binding
     | None -> lookup (Option.get env.Rt.e_parent) name
   in
-  iter_instrs func ~f:(fun instr ->
+  iter_instrs funcn ~f:(fun instr ->
     (* Find all stack frames in this function. Usually
        there would be only one, as that's how the frontend
        generates code; however, closure conversion may split

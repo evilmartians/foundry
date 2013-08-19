@@ -1,10 +1,10 @@
 open Unicode.Std
 open Ssa
 
-let run_on_function func =
+let run_on_function funcn =
   let worklist = Worklist.create () in
   (* Populate worklist with all basic blocks in the function. *)
-  iter_blocks (Worklist.put worklist) func;
+  iter_blocks (Worklist.put worklist) funcn;
 
   while Worklist.some worklist do
     let blockn = Worklist.take worklist in
@@ -35,7 +35,7 @@ let run_on_function func =
       end
     end;
 
-    if (predecessors blockn) = [] && (func_entry func) != blockn then begin
+    if (predecessors blockn) = [] && (func_entry funcn) != blockn then begin
       (* This block does not have any predecessors and is not the
          entry block. Remove it, as it's dead. *)
       remove_block blockn;

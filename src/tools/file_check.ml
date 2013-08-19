@@ -302,7 +302,11 @@ let check_parse ?(canonicalize=true) filename prefix =
                 chk_patt = Some patt;
                 chk_dag_not;
               } :: checks)))
-      | None -> checks
+      | None
+      -> (* This was a false positive, continue searching for prefix. *)
+         (let next_idx = chk_idx + (String.length prefix) in
+          let buf      = String.slice ~first:next_idx buf in
+          parse buf (offset + next_idx) checks)
     with Invalid_string ->
       if !dag_not = [] then
         checks

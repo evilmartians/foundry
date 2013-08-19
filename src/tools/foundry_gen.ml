@@ -29,7 +29,9 @@ let _ =
   let llmod = Codegen.llvm_module_of_ssa_func (Ssa.find_func u"main" capsule) in
 
   if !dump then
-    Llvm.dump_module llmod;
+    Llvm.dump_module llmod
+  else
+    output := "-";
 
   if !output <> "" then
     let chan = Io.open_out !output in

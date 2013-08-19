@@ -37,6 +37,9 @@ let _ =
 
       "-infer", Arg.Unit (append_opt Local_inference.run_on_capsule),
         " Local Type Inference";
+
+      "-specialize", Arg.Unit (append_opt Specialization.run_on_capsule),
+        " Code Specialization";
     ]) (fun arg ->
       inputs := arg :: !inputs)
     ("Usage: " ^ (Sys.argv.(0) ^ " [options] <input-file>..."));
@@ -50,7 +53,7 @@ let _ =
 
   List.iter (fun optzn ->
       optzn capsule)
-    !optzns;
+    (List.rev !optzns);
 
   let output_ir =
     if !no_roots then dump_ir capsule

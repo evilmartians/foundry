@@ -10,10 +10,10 @@ let has_side_effects instr =
   | _
   -> true
 
-let run_on_function func =
+let run_on_function funcn =
   let worklist = Worklist.create () in
   (* Populate worklist with all instructions in the function. *)
-  iter_instrs (Worklist.put worklist) func;
+  iter_instrs (Worklist.put worklist) funcn;
 
   while Worklist.some worklist do
     let instr = Worklist.take worklist in

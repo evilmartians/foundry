@@ -114,6 +114,9 @@ let set_id id name =
 let create_capsule () =
   { functions = []; }
 
+let iter_funcs ~f capsule =
+  List.iter f capsule.functions
+
 let find_func id capsule =
   List.find (fun funcn -> funcn.id = id) capsule.functions
 
@@ -155,8 +158,8 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
   end;
   funcn
 
-let func_entry func =
-  let func = func_of_name func in
+let func_entry funcn =
+  let func = func_of_name funcn in
   List.hd func.basic_blocks
 
 let iter_blocks ~f funcn =
@@ -325,7 +328,9 @@ let set_ty ty name =
       | Rt.FunctionTy (args_ty, ret_ty)
       -> (name.ty <- ty;
           List.iter2 (fun arg ty -> arg.ty <- ty)
-              func.arguments args_ty))
+              func.arguments args_ty)
+      | _
+      -> assert false)
   | Argument | BasicBlock _ | Const _
   -> assert false
   | _ (* instruction *)
@@ -346,37 +351,40 @@ let erase_instr instr =
   remove_uses instr;
   instr.opcode <- InvalidInstr
 
-let set_instr_operands instr operands =
+let map_instr_operands instr operands =
   match instr.opcode, operands with
   | InvalidInstr, []
   | Argument,     []
   | Function _,   []
   | BasicBlock _, []
   | Const _,      []
-  -> ()
+  -> instr.opcode
   | PhiInstr _, _
   -> (let halfway = (List.length operands) / 2 in
       let blocks, values = List.split_nth halfway operands in
       let operands' = List.combine blocks values in
-      set_opcode (PhiInstr operands') instr)
+      PhiInstr operands')
   | JumpInstr _,   [target]
-  -> set_opcode (JumpInstr target) instr
+  -> JumpInstr target
   | JumpIfInstr _, [cond; if_true; if_false]
-  -> set_opcode (JumpIfInstr (cond, if_true, if_false)) instr
+  -> JumpIfInstr (cond, if_true, if_false)
   | ReturnInstr _, [value]
-  -> set_opcode (ReturnInstr value) instr
+  -> ReturnInstr value
   | FrameInstr _,  [parent]
-  -> set_opcode (FrameInstr parent) instr
+  -> FrameInstr parent
   | LVarLoadInstr (_, name), [frame]
-  -> set_opcode (LVarLoadInstr (frame, name)) instr
+  -> LVarLoadInstr (frame, name)
   | LVarStoreInstr (_, name, _), [frame; value]
-  -> set_opcode (LVarStoreInstr (frame, name, value)) instr
+  -> LVarStoreInstr (frame, name, value)
   | CallInstr (func, _), _
-  -> set_opcode (CallInstr (func, operands)) instr
+  -> CallInstr (func, operands)
   | PrimitiveInstr (name, _), _
-  -> set_opcode (PrimitiveInstr (name, operands)) instr
+  -> PrimitiveInstr (name, operands)
   | _
   -> assert false
+
+let set_instr_operands instr operands =
+  set_opcode (map_instr_operands instr operands) instr
 
 let replace_all_uses_with instr instr' =
   iter_uses instr ~f:(fun use ->
@@ -400,3 +408,72 @@ let replace_instr instr instr' =
      erase_instr instr
   | _
   -> assert false
+
+let copy_func funcn =
+  let func    = func_of_name funcn in
+  (* Duplicate the function. *)
+  let arg_ids = List.map (fun arg -> arg.id) func.arguments in
+  let args_ty, ret_ty =
+    match funcn.ty with
+    | Rt.FunctionTy (args_ty, ret_ty) -> args_ty, ret_ty
+    | _ -> assert false
+  in
+  let funcn' = create_func ~id:funcn.id ~arg_ids args_ty ret_ty in
+  let func'  = func_of_name funcn' in
+  (* Duplicate function content while maintaining referentional
+     integrity. *)
+  let map    = Hashtbl.create 10 in
+  (* Remember the mapping between arguments. *)
+  List.iter2 (Hashtbl.add map) func.arguments func'.arguments;
+  (* Duplicate basic blocks and remember the mapping between them. *)
+  iter_blocks funcn ~f:(fun blockn ->
+    let blockn' = create_block ~id:blockn.id funcn' in
+    Hashtbl.add map blockn blockn');
+
+  (* Duplicate instructions while updating references through
+     the mapping and remember the mapping. *)
+  let map_opcode instr instr' =
+    let map_operand operand =
+      match operand.opcode with
+      (* Don't map calls to specialized function in its own body to
+         this specialization: the function may call itself with
+         a different signature. *)
+      | Function _
+      (* Constants are module-global. *)
+      | Const _
+      -> operand
+      | _
+      -> Hashtbl.find map operand
+    in
+    let operands' = List.map map_operand (instr_operands instr) in
+    let opcode'   = map_instr_operands instr operands' in
+    set_opcode opcode' instr'
+  in
+  let phis = ref [] in
+  iter_instrs funcn ~f:(fun instr ->
+    (* Duplicate instruction. *)
+    let instr'  = create_instr ~id:instr.id instr.ty InvalidInstr in
+    (* Append instruction to the corresponding basic block in the
+       specialized function. *)
+    let blockn' =
+      match instr.parent with
+      | ParentBasicBlock blockn -> Hashtbl.find map blockn
+      | _ -> assert false
+    in
+    append_instr instr' blockn';
+    (* Remember the mapping for the current instruction. *)
+    Hashtbl.add map instr instr';
+    (* Map instruction operands. *)
+    match instr.opcode with
+    (* Phi instructions will be fixed up later. *)
+    | PhiInstr _ -> phis := (instr, instr') :: !phis
+    | _          -> map_opcode instr instr');
+  (* Fix up all phis. *)
+  List.iter (fun (phi, phi') -> map_opcode phi phi') !phis;
+  funcn'
+
+let specialize funcn env =
+  let rewrite = Typing.rewrite env in
+  set_ty (rewrite funcn.ty) funcn;
+  iter_instrs funcn ~f:(fun instr ->
+    set_ty (rewrite instr.ty) instr)
