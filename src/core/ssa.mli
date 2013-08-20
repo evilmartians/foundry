@@ -7,7 +7,7 @@ type name = private {
 
   (* Internal fields *)
   mutable parent    : name_parent;
-  mutable uses      : name list;
+  mutable name_uses : name list;
           name_hash : int;
 }
 and name_parent

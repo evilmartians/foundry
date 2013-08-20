@@ -10,7 +10,7 @@ type name = {
 
   (* Internal fields *)
   mutable parent    : name_parent;
-  mutable uses      : name list;
+  mutable name_uses : name list;
           name_hash : int;
 }
 and name_parent =
@@ -118,7 +118,7 @@ let name_of_value value =
     ty        = Rt.type_of_value value;
     opcode    = Const value;
     parent    = ParentNone;
-    uses      = [];
+    name_uses = [];
     name_hash = 0; (* TODO better hash *)
   }
 
@@ -155,7 +155,7 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
     ty        = Rt.FunctionTy (args_ty, result_ty);
     opcode    = Function func;
     parent    = ParentNone;
-    uses      = [];
+    name_uses = [];
     name_hash = 0; (* TODO *)
   } in
   begin
@@ -164,7 +164,7 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
       ty;
       opcode    = Argument;
       parent    = ParentFunction funcn;
-      uses      = [];
+      name_uses = [];
       name_hash = 0; (* TODO *)
     } in
     match arg_ids with
@@ -199,7 +199,7 @@ let create_block ?(id="") funcn =
     ty        = Rt.BasicBlockTy;
     opcode    = BasicBlock { instructions = [] };
     parent    = ParentFunction funcn;
-    uses      = [];
+    name_uses = [];
     name_hash = 0; (* TODO *)
   } in
   func.basic_blocks <- func.basic_blocks @ [block];
@@ -245,7 +245,7 @@ let predecessors blockn =
           | _ -> assert false)
       | _
       -> None)
-    blockn.uses
+    blockn.name_uses
 
 let instr_operands instr =
   match instr.opcode with
@@ -281,18 +281,18 @@ let instr_parent instr =
 
 let add_uses instr =
   List.iter (fun used ->
-      assert (not (List.memq instr used.uses));
-      used.uses <- instr :: used.uses)
+      assert (not (List.memq instr used.name_uses));
+      used.name_uses <- instr :: used.name_uses)
     (instr_operands instr)
 
 let remove_uses instr =
   List.iter (fun used ->
-      assert (List.memq instr used.uses);
-      used.uses <- List.remove_if ((==) instr) used.uses)
+      assert (List.memq instr used.name_uses);
+      used.name_uses <- List.remove_if ((==) instr) used.name_uses)
     (instr_operands instr)
 
 let iter_uses ~f instr =
-  List.iter f instr.uses
+  List.iter f instr.name_uses
 
 let create_instr ?(id="") ty opcode =
   {
@@ -300,7 +300,7 @@ let create_instr ?(id="") ty opcode =
     ty;
     opcode;
     parent    = ParentNone;
-    uses      = [];
+    name_uses = [];
     name_hash = 0;
   }
 
