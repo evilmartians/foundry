@@ -29,10 +29,10 @@ let _ =
       "-dce", Arg.Unit (append_xfrm Dead_code_elim.run_on_capsule),
         " Dead Code Elimination";
 
-      "-simplify-cfg", Arg.Unit (append_xfrm Simplify_cfg.run_on_capsule),
+      "-simplify-cfg", Arg.Unit (append_xfrm Cfg_simplification.run_on_capsule),
         " CFG Simplification";
 
-      "-simplify-frames", Arg.Unit (append_xfrm Simplify_frames.run_on_capsule),
+      "-simplify-frames", Arg.Unit (append_xfrm Frame_simplification.run_on_capsule),
         " Frame Simplification";
 
       "-infer", Arg.Unit (append_xfrm Local_inference.run_on_capsule),
@@ -54,9 +54,7 @@ let _ =
 
   let roots, capsule = load_ir (Lexing.from_string (input_ir :> string)) in
 
-  List.iter (fun xfrm ->
-      xfrm capsule)
-    (List.rev !xfrms);
+  List.iter (fun xfrm -> xfrm capsule) (List.rev !xfrms);
 
   let output_ir =
     if !no_roots then dump_ir capsule
