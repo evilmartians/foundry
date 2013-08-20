@@ -188,6 +188,10 @@ let iter_blocks ~f funcn =
   let func = func_of_name funcn in
   List.iter f func.basic_blocks
 
+let iter_args ~f funcn =
+  let func = func_of_name funcn in
+  List.iter f func.arguments
+
 let create_block ?(id="") funcn =
   let func = func_of_name funcn in
   let block = {
@@ -269,6 +273,11 @@ let instr_operands instr =
   -> func :: operands
   | PrimitiveInstr (name, operands)
   -> operands
+
+let instr_parent instr =
+  match instr.parent with
+  | ParentBasicBlock blockn -> blockn
+  | _ -> assert false
 
 let add_uses instr =
   List.iter (fun used ->

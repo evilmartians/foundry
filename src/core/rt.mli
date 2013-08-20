@@ -124,7 +124,8 @@ val type_of_value  : value -> value
 val klass_of_type  : value -> klass
 val klass_of_value : ?dispatch:bool -> value -> klass
 
-val specialize     : (tvar -> ty) -> ty -> ty
+(* Correctly handles cyclic structures. *)
+val equal          : value -> value -> bool
 
 val inspect_value  : value -> string
 val inspect_type   : value -> string

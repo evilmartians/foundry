@@ -350,8 +350,8 @@ and type_of_environment env =
       }) env.e_bindings;
   }
 
-let specialize conv ty =
-  assert false
+let equal a b =
+  a = b (* TODO don't hang *)
 
 (* Inspecting types and values *)
 

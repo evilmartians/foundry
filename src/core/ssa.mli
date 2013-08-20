@@ -80,6 +80,8 @@ val add_func      : capsule -> (*func*) name -> unit
 val remove_func   : capsule -> (*func*) name -> unit
 
 val func_entry    : (*func*) name -> name
+val iter_args     : f:( (*argument*) name -> unit) ->
+                        (*func*) name -> unit
 val iter_blocks   : f:( (*basic_block*) name -> unit) ->
                         (*func*) name -> unit
 
@@ -119,5 +121,6 @@ val remove_instr    : (*instr*) name -> unit
 val erase_instr     : (*instr*) name -> unit
 
 val instr_operands  : (*instr*) name -> name list
+val instr_parent    : (*instr*) name -> (*basic_block*) name
 val iter_uses       : f:( (*instr*) name -> unit) ->
                           (*instr*) name -> unit

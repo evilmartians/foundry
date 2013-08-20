@@ -40,6 +40,9 @@ let _ =
 
       "-specialize", Arg.Unit (append_opt Specialization.run_on_capsule),
         " Code Specialization";
+
+      "-sccp", Arg.Unit (append_opt Constant_folding.run_on_capsule),
+        " Sparse Conditional Code Propagation";
     ]) (fun arg ->
       inputs := arg :: !inputs)
     ("Usage: " ^ (Sys.argv.(0) ^ " [options] <input-file>..."));
