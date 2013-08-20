@@ -9,9 +9,9 @@ type name = {
   mutable opcode : opcode;
 
   (* Internal fields *)
-  mutable parent    : name_parent;
-  mutable name_uses : name list;
-          name_hash : int;
+  mutable name_parent : name_parent;
+  mutable name_uses   : name list;
+          name_hash   : int;
 }
 and name_parent =
 | ParentNone
@@ -92,7 +92,7 @@ let mangle_id name id =
   let naming =
     match name with
     | { opcode = Function func }
-    | { parent = ParentFunction { opcode = Function func } }
+    | { name_parent = ParentFunction { opcode = Function func } }
     -> func.naming
     | _
     -> assert false
@@ -114,12 +114,12 @@ let mangle_id name id =
 
 let name_of_value value =
   {
-    id        = "";
-    ty        = Rt.type_of_value value;
-    opcode    = Const value;
-    parent    = ParentNone;
-    name_uses = [];
-    name_hash = 0; (* TODO better hash *)
+    id          = "";
+    ty          = Rt.type_of_value value;
+    opcode      = Const value;
+    name_parent = ParentNone;
+    name_uses   = [];
+    name_hash   = 0; (* TODO better hash *)
   }
 
 let set_id id name =
@@ -152,20 +152,20 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
   } in
   let funcn = {
     id;
-    ty        = Rt.FunctionTy (args_ty, result_ty);
-    opcode    = Function func;
-    parent    = ParentNone;
-    name_uses = [];
-    name_hash = 0; (* TODO *)
+    ty          = Rt.FunctionTy (args_ty, result_ty);
+    opcode      = Function func;
+    name_parent = ParentNone;
+    name_uses   = [];
+    name_hash   = 0; (* TODO *)
   } in
   begin
     let make_arg name ty = {
-      id        = mangle_id funcn name;
+      id          = mangle_id funcn name;
       ty;
-      opcode    = Argument;
-      parent    = ParentFunction funcn;
-      name_uses = [];
-      name_hash = 0; (* TODO *)
+      opcode      = Argument;
+      name_parent = ParentFunction funcn;
+      name_uses   = [];
+      name_hash   = 0; (* TODO *)
     } in
     match arg_ids with
     | Some ids ->
@@ -195,18 +195,18 @@ let iter_args ~f funcn =
 let create_block ?(id="") funcn =
   let func = func_of_name funcn in
   let block = {
-    id        = mangle_id funcn id;
-    ty        = Rt.BasicBlockTy;
-    opcode    = BasicBlock { instructions = [] };
-    parent    = ParentFunction funcn;
-    name_uses = [];
-    name_hash = 0; (* TODO *)
+    id          = mangle_id funcn id;
+    ty          = Rt.BasicBlockTy;
+    opcode      = BasicBlock { instructions = [] };
+    name_parent = ParentFunction funcn;
+    name_uses   = [];
+    name_hash   = 0; (* TODO *)
   } in
   func.basic_blocks <- func.basic_blocks @ [block];
   block
 
 let remove_block blockn =
-  match blockn.parent with
+  match blockn.name_parent with
   | ParentFunction funcn
   -> (let func = func_of_name funcn in
       func.basic_blocks <- List.remove_if ((==) blockn) func.basic_blocks)
@@ -240,7 +240,7 @@ let predecessors blockn =
   List.filter_map (fun use ->
       match use.opcode with
       | JumpInstr _ | JumpIfInstr _
-      -> (match use.parent with
+      -> (match use.name_parent with
           | ParentBasicBlock block -> Some block
           | _ -> assert false)
       | _
@@ -275,7 +275,7 @@ let instr_operands instr =
   -> operands
 
 let instr_parent instr =
-  match instr.parent with
+  match instr.name_parent with
   | ParentBasicBlock blockn -> blockn
   | _ -> assert false
 
@@ -299,9 +299,9 @@ let create_instr ?(id="") ty opcode =
     id;
     ty;
     opcode;
-    parent    = ParentNone;
-    name_uses = [];
-    name_hash = 0;
+    name_parent = ParentNone;
+    name_uses   = [];
+    name_hash   = 0;
   }
 
 let insert_instr ?pivot f_some f_none instr blockn =
@@ -309,7 +309,7 @@ let insert_instr ?pivot f_some f_none instr blockn =
   begin
     (* Sanity checks: instr must be an instruction not
        attached to any block. *)
-    assert (instr.parent = ParentNone);
+    assert (instr.name_parent = ParentNone);
     match instr.opcode with
     | Argument | Function _ | BasicBlock _
     | Const _
@@ -330,8 +330,8 @@ let insert_instr ?pivot f_some f_none instr blockn =
     | None
     -> block.instructions <- f_none block.instructions
   end;
-  instr.id     <- mangle_id blockn instr.id;
-  instr.parent <- ParentBasicBlock blockn
+  instr.id <- mangle_id blockn instr.id;
+  instr.name_parent <- ParentBasicBlock blockn
 
 let prepend_instr ?before instr blockn =
   insert_instr ?pivot:before
@@ -370,12 +370,12 @@ let set_ty ty name =
   -> name.ty <- ty
 
 let remove_instr instr =
-  match instr.parent with
+  match instr.name_parent with
   | ParentBasicBlock blockn
   -> (let block = block_of_name blockn in
       assert (List.memq instr block.instructions);
       block.instructions <- List.remove_if ((==) instr) block.instructions;
-      instr.parent <- ParentNone)
+      instr.name_parent <- ParentNone)
   | _
   -> assert false
 
@@ -436,7 +436,7 @@ let replace_instr instr instr' =
   | { opcode = BasicBlock _ }
   | { opcode = Const _      }
   -> erase_instr instr;
-  | { parent = ParentBasicBlock block }
+  | { name_parent = ParentBasicBlock block }
   -> prepend_instr ~before:instr instr' block;
      erase_instr instr
   | _
@@ -485,7 +485,7 @@ let copy_func ?(suffix="") funcn =
     (* Append instruction to the corresponding basic block in the
        specialized function. *)
     let blockn' =
-      match instr.parent with
+      match instr.name_parent with
       | ParentBasicBlock blockn -> Hashtbl.find map blockn
       | _ -> assert false
     in

@@ -6,9 +6,9 @@ type name = private {
   mutable opcode : opcode;
 
   (* Internal fields *)
-  mutable parent    : name_parent;
-  mutable name_uses : name list;
-          name_hash : int;
+  mutable name_parent : name_parent;
+  mutable name_uses   : name list;
+          name_hash   : int;
 }
 and name_parent
 and capsule = private {
