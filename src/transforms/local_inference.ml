@@ -12,8 +12,8 @@ let run_on_function funcn =
     | ReturnInstr value
     -> (let _, return_ty = func_ty funcn in
         if value.ty <> return_ty then
-          let subst = Typing.match_ty return_ty value.ty in
-          Ssa.specialize funcn subst)
+          let env = Typing.unify return_ty value.ty in
+          Ssa.specialize funcn env)
     | _
     -> ());
 
@@ -27,8 +27,8 @@ let run_on_function funcn =
     | CallInstr (callee, _)
     -> (let _, return_ty = func_ty callee in
         if instr.ty <> return_ty then
-          let subst = Typing.match_ty instr.ty return_ty in
-          Ssa.specialize funcn subst)
+          let env = Typing.unify instr.ty return_ty in
+          Ssa.specialize funcn env)
     | _
     -> ())
 

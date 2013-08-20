@@ -502,10 +502,10 @@ let copy_func ?(suffix="") funcn =
   funcn'
 
 let specialize funcn env =
-  let rewrite = Typing.rewrite env in
-  set_ty (rewrite funcn.ty) funcn;
+  let subst = Typing.subst env in
+  set_ty (subst funcn.ty) funcn;
   iter_instrs funcn ~f:(fun instr ->
-    set_ty (rewrite instr.ty) instr)
+    set_ty (subst instr.ty) instr)
 
 let add_overload capsule funcn args_ty funcn' =
   try
@@ -528,9 +528,9 @@ let overload capsule funcn operands_ty =
   with Not_found ->
     let _, ret_ty = func_ty funcn in
     let call_ty = Rt.FunctionTy (operands_ty, ret_ty) in
-    let subst   = Typing.match_ty funcn.ty call_ty in
+    let env     = Typing.unify funcn.ty call_ty in
     let funcn'  = copy_func funcn in
     add_func     capsule funcn';
-    specialize   funcn'  subst;
+    specialize   funcn'  env;
     add_overload capsule funcn operands_ty funcn';
     funcn'
