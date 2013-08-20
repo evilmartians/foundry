@@ -38,6 +38,7 @@ let run_on_function funcn =
     if (predecessors blockn) = [] && (func_entry funcn) != blockn then begin
       (* This block does not have any predecessors and is not the
          entry block. Remove it, as it's dead. *)
+      iter_instrs erase_instr blockn;
       remove_block blockn;
       Worklist.remove worklist blockn
     end
