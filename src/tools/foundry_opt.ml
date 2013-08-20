@@ -4,7 +4,7 @@ let load_ir lexbuf =
   parse lex
 
 let dump_ir ?roots capsule =
-  IrPrinter.print ?roots capsule
+  IrPrinter.string_of ?roots capsule
 
 let _ =
   let output   = ref "-"   in
