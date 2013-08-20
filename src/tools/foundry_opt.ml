@@ -10,10 +10,10 @@ let _ =
   let output   = ref "-"   in
   let no_roots = ref false in
   let inputs   = ref []    in
-  let optzns   = ref []    in
+  let xfrms   = ref []    in
 
-  let append_opt opt () =
-    optzns := opt :: !optzns
+  let append_xfrm xfrm () =
+    xfrms := xfrm :: !xfrms
   in
 
   Arg.parse (Arg.align [
@@ -26,26 +26,26 @@ let _ =
       "-no-roots", Arg.Set no_roots,
         " Don't print out root data structures";
 
-      "-dce", Arg.Unit (append_opt Dead_code_elim.run_on_capsule),
+      "-dce", Arg.Unit (append_xfrm Dead_code_elim.run_on_capsule),
         " Dead Code Elimination";
 
-      "-simplify-cfg", Arg.Unit (append_opt Simplify_cfg.run_on_capsule),
+      "-simplify-cfg", Arg.Unit (append_xfrm Simplify_cfg.run_on_capsule),
         " CFG Simplification";
 
-      "-simplify-frames", Arg.Unit (append_opt Simplify_frames.run_on_capsule),
+      "-simplify-frames", Arg.Unit (append_xfrm Simplify_frames.run_on_capsule),
         " Frame Simplification";
 
-      "-infer", Arg.Unit (append_opt Local_inference.run_on_capsule),
+      "-infer", Arg.Unit (append_xfrm Local_inference.run_on_capsule),
         " Local Type Inference";
 
-      "-specialize", Arg.Unit (append_opt Specialization.run_on_capsule),
+      "-specialize", Arg.Unit (append_xfrm Specialization.run_on_capsule),
         " Code Specialization";
 
-      "-sccp", Arg.Unit (append_opt Constant_folding.run_on_capsule),
+      "-sccp", Arg.Unit (append_xfrm Constant_folding.run_on_capsule),
         " Sparse Conditional Code Propagation";
     ]) (fun arg ->
       inputs := arg :: !inputs)
-    ("Usage: " ^ (Sys.argv.(0) ^ " [options] <input-file>..."));
+    ("Usage: " ^ (Sys.argv.(0) ^ " [xfrmions] <input-file>..."));
 
   let input_ir =
     Unicode.Std.String.concat u""
@@ -54,9 +54,9 @@ let _ =
 
   let roots, capsule = load_ir (Lexing.from_string (input_ir :> string)) in
 
-  List.iter (fun optzn ->
-      optzn capsule)
-    (List.rev !optzns);
+  List.iter (fun xfrm ->
+      xfrm capsule)
+    (List.rev !xfrms);
 
   let output_ir =
     if !no_roots then dump_ir capsule
