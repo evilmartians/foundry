@@ -431,16 +431,24 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     List.map (fun (id, value) ->
                       Table.get_exn fenv id, value env) xs) }
 
-     call_func: id=Name_Local
+         local: id=Name_Local
                 { (fun (venv, block, fenv) ->
                     Table.get_exn fenv id) }
-              | func=func
+
+oper_local_env: x=local
+                { x }
+              | x=local_env
                 { (fun (venv, block, fenv) ->
-                    func venv) }
+                      name_of_value (Rt.Environment (x venv))) }
+
+     oper_func: x=local
+                { x }
+              | x=func
+                { (fun (venv, block, fenv) -> x venv) }
 
    value_instr: ty=instr_ty Phi operands=phi_operands
                 { (fun env -> ty env, PhiInstr (operands env)) }
-              | ty=instr_ty Frame parent=operand
+              | ty=instr_ty Frame parent=oper_local_env
                 { (fun env -> ty env, FrameInstr (parent env)) }
               | ty=instr_ty Frame Empty
                 { (fun env ->
@@ -459,7 +467,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,
                     (PrimitiveInstr (name, args env))) }
-              | ty=instr_ty? Call func=call_func args=args(operand)
+              | ty=instr_ty? Call func=oper_func args=args(operand)
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,
                     (CallInstr (func env, args env))) }

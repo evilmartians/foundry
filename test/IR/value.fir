@@ -34,7 +34,7 @@ entry:
   %1 = environment {} -> {
 ; CHECK: "b1" = (0 0) immutable boolean
     "b1" = (0 0) immutable boolean
-  } frame environment @1
+  } frame @1
 ; CHECK: %2 = unsigned(32) primitive "int_add"
   %2 = unsigned(32) primitive "int_add" (unsigned(32) 1, unsigned(32) 1)
   return nil

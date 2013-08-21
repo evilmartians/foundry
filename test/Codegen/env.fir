@@ -21,7 +21,7 @@ entry:
     "y" = (0 0) mutable unsigned(32)
   } -> {
     "x" = (0 0) mutable unsigned(32)
-  } frame environment @env1
+  } frame @env1
 
 ; CHECK: [DEBUG: 0x0000000a]
   %x = unsigned(32) lvar_load %frame, "x"

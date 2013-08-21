@@ -23,7 +23,7 @@ entry:
   } -> {
     "x" = (0 0) immutable int,
     "z" = (0 0) immutable int
-  } frame environment @env
+  } frame @env
 
 ; CHECK-NOT: %x = int lvar_load %frame, "x"
   %x = int lvar_load %frame, "x"
