@@ -44,18 +44,34 @@ let pair k v =
   newtable 1
     (fun table -> Hashtbl.add table k v)
 
-let map ~f table = ExtHashtbl.Hashtbl.map f table
+let map ~f table =
+  ExtHashtbl.Hashtbl.map f table
+
+let map2 ~f left right =
+  assert ((Hashtbl.length left) = (Hashtbl.length right));
+  newtable (Hashtbl.length left)
+    (fun result ->
+      iter (fun k v ->
+        Hashtbl.add result k (f v (Hashtbl.find right k))) left)
 
 let map_list ?(ordered=false) ~f table =
   let dest = ref [] in
   iter ~ordered ~f:(fun k v -> dest := (f k v) :: !dest) table;
   List.rev !dest
 
-let join l r =
-  newtable (max (Hashtbl.length l) (Hashtbl.length r))
+let fold ~f acc table =
+  Hashtbl.fold (fun k v a -> f k a v) table acc
+
+let fold2 ~f acc left right =
+  assert ((Hashtbl.length left) = (Hashtbl.length right));
+  fold acc left ~f:(fun k acc v ->
+      f k acc v (Hashtbl.find right k))
+
+let join left right =
+  newtable (max (Hashtbl.length left) (Hashtbl.length right))
     (fun table ->
-      Hashtbl.iter (Hashtbl.add table) l;
-      Hashtbl.iter (Hashtbl.replace table) r)
+      Hashtbl.iter (Hashtbl.add table) left;
+      Hashtbl.iter (Hashtbl.replace table) right)
 
 let keys table =
   List.sort (List.of_enum (ExtHashtbl.Hashtbl.keys table))

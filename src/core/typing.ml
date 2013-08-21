@@ -2,7 +2,7 @@ open Unicode.Std
 
 exception Conflict of Rt.ty * Rt.ty
 
-let rec unify_one env a b =
+let rec unify' env a b =
   (* Substitute already instantiated type variables. *)
   let rec subst_tvar ty =
     match ty with
@@ -23,32 +23,26 @@ let rec unify_one env a b =
         let subst = List.assoc tvar env in
         if not (subst = ty) then
           (*raise (Conflict (ty, subst));*)
-          failwith ("Typing.unify_one subst=" ^ (Rt.inspect_type subst) ^
+          failwith ("Typing.unify' subst=" ^ (Rt.inspect_type subst) ^
                     " <> ty=" ^ (Rt.inspect_type ty));
         env
       with Not_found ->
         (tvar, ty) :: env)
-  | Rt.FunctionTy(args_ty, ret_ty), Rt.FunctionTy(args_ty', ret_ty')
-  -> (let env = unify_list env args_ty args_ty' in
-      unify_one env ret_ty ret_ty')
   | Rt.UnsignedTy(wa), Rt.UnsignedTy(wb)
   | Rt.SignedTy(wa),   Rt.SignedTy(wb)
     when wa = wb
   -> env
+  | Rt.TupleTy(xsa), Rt.TupleTy(xsb)
+  -> List.fold_left2 unify' env xsa xsb
+  | Rt.RecordTy(xsa), Rt.RecordTy(xsb)
+  -> Table.fold2 ~f:(fun _ -> unify') env xsa xsb
+  | Rt.FunctionTy(args_ty, ret_ty), Rt.FunctionTy(args_ty', ret_ty')
+  -> (let env = List.fold_left2 unify' env args_ty args_ty' in
+      unify' env ret_ty ret_ty')
   | a, b
-  -> failwith ("Typing.unify_one " ^ (Rt.inspect_type a) ^ " " ^ (Rt.inspect_type b))
+  -> failwith ("Typing.unify': " ^ (Rt.inspect_type a) ^ " " ^ (Rt.inspect_type b))
 
-and unify_list env a_s b_s =
-  match a_s, b_s with
-  | a :: a_s, b :: b_s
-  -> (let env = unify_one env a b in
-      unify_list env a_s b_s)
-  | [], []
-  -> env
-  | _, _
-  -> assert false
-
-let unify = unify_one []
+let unify = unify' []
 
 let rec subst env ty =
   match ty with
@@ -66,6 +60,8 @@ let rec subst env ty =
   -> Rt.EnvironmentTy (subst_local_env env ty)
   | Rt.FunctionTy (args, ret)
   -> Rt.FunctionTy (List.map (subst env) args, subst env ret)
+  | _
+  -> failwith ("Typing.subst: " ^ (Rt.inspect_type ty))
 
 and subst_local_env env ty =
   { Rt.e_parent_ty   = Option.map (subst_local_env env) ty.Rt.e_parent_ty;
