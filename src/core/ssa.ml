@@ -56,6 +56,7 @@ and opcode =
 | CallInstr         of (*func*) name    * (*operands*) name list
 | MakeClosureInstr  of (*func*) name    * (*environment*) name
 | CallClosureInstr  of (*closure*) name * (*operands*) name list
+| ResolveInstr      of (*object*)  name * (*method*)   name
 | PrimitiveInstr    of (*name*) string  * (*operands*) name list
 
 module NameIdentity =
@@ -276,6 +277,8 @@ let instr_operands instr =
   -> callee :: operands
   | MakeClosureInstr (func, env)
   -> [func; env]
+  | ResolveInstr (obj, meth)
+  -> [obj; meth]
   | PrimitiveInstr (name, operands)
   -> operands
 
@@ -418,7 +421,9 @@ let map_instr_operands instr operands =
   | CallClosureInstr (_, _), callee :: operands
   -> CallInstr (callee, operands)
   | MakeClosureInstr (_, _), [func; env]
-  -> MakeClosureInstr(func, env)
+  -> MakeClosureInstr (func, env)
+  | ResolveInstr (_, _), [obj; meth]
+  -> ResolveInstr (obj, meth)
   | PrimitiveInstr (name, _), _
   -> PrimitiveInstr (name, operands)
   | _

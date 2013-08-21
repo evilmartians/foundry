@@ -43,6 +43,9 @@ let _ =
 
       "-sccp", Arg.Unit (append_xfrm Constant_folding.run_on_capsule),
         " Sparse Conditional Code Propagation";
+
+      "-resolve", Arg.Unit (append_xfrm Method_resolution.run_on_capsule),
+        " Method Resolution";
     ]) (fun arg ->
       inputs := arg :: !inputs)
     ("Usage: " ^ (Sys.argv.(0) ^ " [xfrmions] <input-file>..."));

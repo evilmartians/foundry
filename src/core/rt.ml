@@ -188,7 +188,7 @@ let create_roots () =
   let roots = {
     last_tvar     = 0;
 
-    kClass        = new_class "Class";
+    kClass        = kClass;
     kMixin        = new_class "Mixin";
     kPackage      = kPackage;
 
@@ -277,13 +277,12 @@ let klass_of_type ty =
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value ty))))
 
-
-let klass_of_value ?(dispatch=false) value =
+let klass_of_value ?(dispatch=false) ?(meta=true) value =
   match value with
   | Truth | Lies  -> !roots.kBoolean
   | Nil           -> !roots.kNil
 
-  | Tvar(_)       -> !roots.kTypeVariable
+  | Tvar(_)       -> if meta then !roots.kTypeVariable else raise Not_found
   | Integer(_)    -> !roots.kInteger
   | Symbol(_)     -> !roots.kSymbol
   | Unsigned(_)   -> !roots.kUnsigned

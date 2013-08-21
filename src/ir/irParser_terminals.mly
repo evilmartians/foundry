@@ -5,8 +5,9 @@
 %token <Unicode.utf8s>      Lit_String
 %token <Fy_big_int.big_int> Lit_Integer
 
-%token <Sexplib.Sexp.t>     Syntax_Args
-%token <Sexplib.Sexp.t>     Syntax_Exprs
+%token <Syntax.formal_args> Syntax_Args
+%token <Syntax.exprs>       Syntax_Exprs
+%token <Syntax.expr>        Syntax_Lambda
 
 %token LParen
 %token RParen
@@ -68,6 +69,7 @@
 %token Frame
 %token Lvar_load
 %token Lvar_store
+%token Resolve
 %token Call
 %token Make_closure
 %token Call_closure

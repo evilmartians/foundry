@@ -46,6 +46,7 @@ and opcode =
 | CallInstr         of (*func*) name    * (*operands*) name list
 | MakeClosureInstr  of (*func*) name    * (*environment*) name
 | CallClosureInstr  of (*closure*) name * (*operands*) name list
+| ResolveInstr      of (*object*)  name * (*method*)   name
 | PrimitiveInstr    of (*name*) string  * (*operands*) name list
 
 (* Nametbl is safe to use in presence of key mutation. *)

@@ -92,6 +92,7 @@ let name_of_lambda ?(id="") lambda =
     in
     let state = { lambda; current_env; }
     in
+    failwith ((u(Sexplib.Sexp.to_string_hum (Syntax.sexp_of_formal_args lambda.Rt.l_args))) ^ " " ^ (u(Sexplib.Sexp.to_string_hum (Syntax.sexp_of_exprs lambda.Rt.l_body))));
     let entry, names = ssa_of_exprs ~entry ~state ~exprs:lambda.Rt.l_body in
       ignore (append entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr (List.hd names)));
       func

@@ -15,11 +15,67 @@
   | NamedFunction  of name
 
   let create_globals () =
-    let (kClass, kmetaClass) = Rt.create_class () in
+    let roots = Rt.create_roots () in
       Table.create [
-        (u"c.Class",      NamedClass kClass);
-        (u"c.meta:Class", NamedClass kmetaClass);
+        (u"c.Class",              NamedClass roots.kClass);
+        (u"c.meta:Class",         NamedClass roots.kClass.k_metaclass);
+        (u"c.TypeVariable",       NamedClass roots.kTypeVariable);
+        (u"c.meta:TypeVariable",  NamedClass roots.kTypeVariable.k_metaclass);
+        (u"c.Nil",                NamedClass roots.kNil);
+        (u"c.meta:Nil",           NamedClass roots.kNil.k_metaclass);
+        (u"c.Boolean",            NamedClass roots.kBoolean);
+        (u"c.meta:Boolean",       NamedClass roots.kBoolean.k_metaclass);
+        (u"c.Integer",            NamedClass roots.kInteger);
+        (u"c.meta:Integer",       NamedClass roots.kInteger.k_metaclass);
+        (u"c.Unsigned",           NamedClass roots.kUnsigned);
+        (u"c.meta:Unsigned",      NamedClass roots.kUnsigned.k_metaclass);
+        (u"c.Signed",             NamedClass roots.kSigned);
+        (u"c.meta:Signed",        NamedClass roots.kSigned.k_metaclass);
+        (u"c.Symbol",             NamedClass roots.kSymbol);
+        (u"c.meta:Symbol",        NamedClass roots.kSymbol.k_metaclass);
+        (u"c.Tuple",              NamedClass roots.kTuple);
+        (u"c.meta:Tuple",         NamedClass roots.kTuple.k_metaclass);
+        (u"c.Record",             NamedClass roots.kRecord);
+        (u"c.meta:Record",        NamedClass roots.kRecord.k_metaclass);
+        (u"c.Lambda",             NamedClass roots.kLambda);
+        (u"c.meta:Lambda",        NamedClass roots.kLambda.k_metaclass);
+        (u"c.Mixin",              NamedClass roots.kMixin);
+        (u"c.meta:Mixin",         NamedClass roots.kMixin.k_metaclass);
+        (u"c.Package",            NamedClass roots.kPackage);
+        (u"c.meta:Package",       NamedClass roots.kPackage.k_metaclass);
+        (u"p.toplevel",           NamedPackage roots.pToplevel);
+        (u"p.meta:toplevel",      NamedClass roots.pToplevel.p_metaclass);
       ]
+
+  let extract_roots globals =
+    let get_class name =
+      match Table.get globals name with
+      | Some (NamedClass k) -> k
+      | _ -> assert false
+    and get_package name =
+      match Table.get globals name with
+      | Some (NamedPackage p) -> p
+      | _ -> assert false
+    in
+    {
+      last_tvar     = 0; (* TODO *)
+
+      kClass        = get_class (u"c.Class");
+      kTypeVariable = get_class (u"c.TypeVariable");
+      kNil          = get_class (u"c.Nil");
+      kBoolean      = get_class (u"c.Boolean");
+      kInteger      = get_class (u"c.Integer");
+      kUnsigned     = get_class (u"c.Unsigned");
+      kSigned       = get_class (u"c.Signed");
+      kSymbol       = get_class (u"c.Symbol");
+      kTuple        = get_class (u"c.Tuple");
+      kRecord       = get_class (u"c.Record");
+      kLambda       = get_class (u"c.Lambda");
+      kMixin        = get_class (u"c.Mixin");
+      kPackage      = get_class (u"c.Package");
+
+      pToplevel     = get_package (u"p.toplevel");
+    }
 
   let dummy_local_env =
     { e_parent   = None;
@@ -235,6 +291,13 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     im_body    = x env;
                   }) }
 
+   lambda_code: args=Syntax_Args body=Syntax_Exprs
+                { args, body }
+              | lam=Syntax_Lambda
+                { match lam with
+                  | Syntax.Lambda (_, args, _, body) -> args, [body]
+                  | _ -> assert false }
+
    struct_body: bind_as=Name_Global Equal
                   Class name=Lit_String LBrace
                     metaclass=prefix(Metaclass,           klass)
@@ -247,24 +310,22 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   RBrace
                 { (fun env ->
                     let klass =
-                      if bind_as = u"c.Class" || bind_as = u"c.meta:Class" then begin
-                        match Table.get_exn env bind_as with
-                        | NamedClass k -> k
-                        | _ -> assert false
-                      end else begin
-                        let klass = {
-                          k_name      = name;
-                          k_ancestor  = Option.map (fun x -> x env) ancestor;
-                          k_metaclass = metaclass env;
-                          k_tvars     = Table.create [];
-                          k_ivars     = Table.create [];
-                          k_methods   = Table.create [];
-                          k_prepended = [];
-                          k_appended  = [];
-                        } in
-                        Table.set env bind_as (NamedClass klass);
-                        klass
-                      end
+                      match Table.get_exn env bind_as with
+                      | NamedClass klass
+                      -> klass
+                      | _
+                      -> (let klass = {
+                            k_name      = name;
+                            k_ancestor  = Option.map (fun x -> x env) ancestor;
+                            k_metaclass = metaclass env;
+                            k_tvars     = Table.create [];
+                            k_ivars     = Table.create [];
+                            k_methods   = Table.create [];
+                            k_prepended = [];
+                            k_appended  = [];
+                          } in
+                          Table.set env bind_as (NamedClass klass);
+                          klass)
                     in
                     (fun () ->
                       Option.may (fun x -> Table.replace klass.k_tvars   (x env)) tvars;
@@ -312,18 +373,18 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                      type_env=prefix(Type_env,            table(tvar))?
                     const_env=prefix(Const_env,           seq(package))?
                            ty=prefix(Type,                lambda_ty)
-                         args=Syntax_Args
-                         body=Syntax_Exprs
+                         code=lambda_code
                   RBrace
                 { (fun env ->
+                    let args, exprs = code in
                     let lambda = {
                       l_location  = loc;
                       l_ty        = ty env;
                       l_local_env = dummy_local_env;
                       l_type_env  = Table.create [];
                       l_const_env = [];
-                      l_args      = Syntax.formal_args_of_sexp args;
-                      l_body      = Syntax.exprs_of_sexp body;
+                      l_args      = args;
+                      l_body      = exprs;
                     } in
                     Table.set env bind_as (NamedLambda lambda);
                     (fun () ->
@@ -480,6 +541,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,
                     (CallClosureInstr (closure env, args env))) }
+              | ty=instr_ty Resolve obj=operand Comma meth=operand
+                { (fun env ->
+                    ty env, ResolveInstr (obj env, meth env)) }
 
     term_instr: Jump target=operand
                 { (fun env -> JumpInstr (target env)) }
@@ -511,38 +575,5 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
       toplevel: env=definitions EOF
                 { let (globals, g_fixups), (capsule, c_fixups) = env in
                     List.iter (fun f -> f ()) (g_fixups @ c_fixups);
-                    let get_class name =
-                      match Table.get globals name with
-                      | Some (NamedClass k) -> k
-                      | _ -> assert false
-                    in
-                    let get_package name =
-                      match Table.get globals name with
-                      | Some (NamedPackage p) -> p
-                      | _ -> assert false
-                    in
-                    let get_func name =
-                      match Table.get globals name with
-                      | Some (NamedFunction f) -> f
-                      | _ -> assert false
-                    in
-                    (*let roots = {
-                      last_tvar     = 0; (* TODO *)
-
-                      kClass        = get_class (u"c.Class");
-                      kTypeVariable = get_class (u"c.TypeVariable");
-                      kNil          = get_class (u"c.Nil");
-                      kBoolean      = get_class (u"c.Boolean");
-                      kInteger      = get_class (u"c.Integer");
-                      kSymbol       = get_class (u"c.Symbol");
-                      kTuple        = get_class (u"c.Tuple");
-                      kRecord       = get_class (u"c.Record");
-                      kLambda       = get_class (u"c.Lambda");
-                      kMixin        = get_class (u"c.Mixin");
-                      kPackage      = get_class (u"c.Package");
-
-                      pToplevel     = get_package (u"p.toplevel");
-                    }
-                    in*)
-                    create_roots (), capsule
+                    extract_roots globals, capsule
                 }

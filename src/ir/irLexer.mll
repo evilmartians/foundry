@@ -69,8 +69,24 @@ rule lex = parse
 | "appended"            { Appended }
 | "constants"           { Constants }
 
-| "args"          { Syntax_Args  (Sexplib.Sexp.scan_sexp lexbuf) }
-| "body"          { Syntax_Exprs (Sexplib.Sexp.scan_sexp lexbuf) }
+| "args"
+  { Syntax_Args (Syntax.formal_args_of_sexp (Sexplib.Sexp.scan_sexp lexbuf))  }
+| "body"
+  { Syntax_Exprs (Syntax.exprs_of_sexp (Sexplib.Sexp.scan_sexp lexbuf)) }
+
+| "code" (([^';']+ ';'?)+ as code) ";;"
+  {
+    prerr_endline code;
+    let lexbuf   = Ulexing.from_utf8_string code in
+    let lexstate = Lexer.create (Location.register (u"input") 1
+                                 (Unicode.adopt_utf8s code)) in
+    let lex ()   = Lexer.next lexstate lexbuf in
+    let parse    = MenhirLib.Convert.Simplified.traditional2revised Parser.toplevel in
+
+    match parse lex with
+    | [Syntax.Lambda _ as lambda] -> Syntax_Lambda lambda
+    | _ -> failwith "code: one lambda expected"
+  }
 
 | "empty"         { Empty }
 
@@ -82,6 +98,7 @@ rule lex = parse
 | "frame"         { Frame }
 | "lvar_load"     { Lvar_load }
 | "lvar_store"    { Lvar_store }
+| "resolve"       { Resolve }
 | "call"          { Call }
 | "make_closure"  { Make_closure }
 | "call_closure"  { Call_closure }

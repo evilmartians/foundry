@@ -64,16 +64,14 @@ let string_of_ident ident =
 (* Environments *)
 
 type env = {
-         global : ValueEnvironment.t;
-          local : ValueEnvironment.t;
+        globals : ValueEnvironment.t;
   mutable image : string
 }
 
 let create_env () =
   {
-    global = ValueEnvironment.create ();
-    local  = ValueEnvironment.create ();
-    image  = "";
+    globals = ValueEnvironment.create ();
+    image   = "";
   }
 
 let bind env value name =
@@ -81,13 +79,12 @@ let bind env value name =
     ValueEnvironment.bind env value name
   in
   match name with
-  | Global name -> Global (ir_bind env.global name)
-  | Local  name -> Local  (ir_bind env.local name)
+  | Global name -> Global (ir_bind env.globals name)
 
 (* Printer *)
 
 let with_lookup env value name printer =
-  match ValueEnvironment.lookup env.global value with
+  match ValueEnvironment.lookup env.globals value with
   | Some name
   -> Global name
   | None
@@ -396,6 +393,8 @@ let rec string_of_ssa_name env value =
     instr "make_closure" [print func; print env]
   | CallClosureInstr (func, operands) ->
     call_like_instr ("call " ^ (print func)) operands
+  | ResolveInstr (obj, meth) ->
+    instr "resolve" [print obj; print meth]
   | PrimitiveInstr (name, operands) ->
     call_like_instr ("primitive " ^ (escape_as_literal name)) operands
 

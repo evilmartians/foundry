@@ -123,7 +123,7 @@ val exc_type       : string -> value -> Location.t list -> 'a
 
 val type_of_value  : value -> value
 val klass_of_type  : value -> klass
-val klass_of_value : ?dispatch:bool -> value -> klass
+val klass_of_value : ?dispatch:bool -> ?meta:bool -> value -> klass
 
 (* Correctly handles cyclic structures. *)
 val equal          : value -> value -> bool
