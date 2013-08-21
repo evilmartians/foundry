@@ -30,7 +30,7 @@ let _ =
 
   if !dump then
     Llvm.dump_module llmod
-  else
+  else if !output = "" then
     output := "-";
 
   if !output <> "" then
