@@ -40,13 +40,32 @@ let gen_debug llmod =
     ignore (Llvm.build_ret_void builder);
     lldebug
 
-let lltype_of_ty ty =
+let rec lltype_of_ty ty =
   match ty with
   | Rt.NilTy
   -> Llvm.void_type ctx
+  | Rt.BooleanTy
+  -> Llvm.i1_type ctx
   | Rt.UnsignedTy(width)
   | Rt.SignedTy(width)
   -> Llvm.integer_type ctx width
+  | Rt.EnvironmentTy env_ty
+  -> Llvm.pointer_type (Llvm.i8_type ctx)
+  | Rt.FunctionTy (args_ty, ret_ty)
+  -> (Llvm.function_type
+        (lltype_of_ty ret_ty)
+        (Array.of_list (List.map lltype_of_ty args_ty)))
+  | Rt.ClosureTy (args_ty, ret_ty)
+  -> (* { f(i8*, ...)*, i8* } *)
+     (Llvm.struct_type ctx [|
+        Llvm.pointer_type (* f(i8*, ...)* *)
+          (Llvm.function_type (* f(i8*, ...) *)
+            (lltype_of_ty ret_ty)
+            (Array.of_list
+              ((Llvm.pointer_type (Llvm.i8_type ctx)) (* i8* *) ::
+               (List.map lltype_of_ty args_ty))));    (* ... *)
+        Llvm.pointer_type (Llvm.i8_type ctx) (* i8* *)
+      |])
   | _
   -> failwith (u"lltype_of_ty " ^ Rt.inspect_value ty)
 
@@ -116,6 +135,10 @@ let rec llconst_of_value llmod value =
         llglobal
   in
   match value with
+  | Rt.Truth
+  -> Llvm.const_int (Llvm.integer_type ctx 1) 1
+  | Rt.Lies
+  -> Llvm.const_int (Llvm.integer_type ctx 1) 0
   | Rt.Unsigned (width, ivalue)
   | Rt.Signed (width, ivalue)
   -> (let llty = Llvm.integer_type ctx width in
@@ -156,14 +179,11 @@ let rec llconst_of_value llmod value =
           | None -> content
         in
         Llvm.const_struct ctx (Array.of_list content)))
-  | Rt.Truth
-  -> Llvm.const_int (Llvm.integer_type ctx 1) 1
-  | Rt.Lies
-  -> Llvm.const_int (Llvm.integer_type ctx 1) 0
   | _ -> assert false
 
-let gen_proto llmod name func_ty =
-  let args_ty, ret_ty = func_ty in
+let gen_proto llmod funcn =
+  let name = (funcn.Ssa.id :> latin1s) in
+  let args_ty, ret_ty = Ssa.func_ty funcn in
   (* Map FSSA prototype to LLVM prototype. *)
   let llargs_ty = Array.of_list (List.map lltype_of_ty args_ty)
   and llret_ty  = lltype_of_ty ret_ty in
@@ -173,18 +193,12 @@ let gen_proto llmod name func_ty =
     match Llvm.lookup_function name llmod with
     | None -> Llvm.declare_function name llty llmod
     | Some f ->
-      assert (Llvm.block_begin f == Llvm.At_end f);
+      assert (Llvm.block_begin f = Llvm.At_end f);
       assert (Llvm.element_type (Llvm.type_of f) == llty);
       f
 
 let rec gen_func llmod funcn =
-  let func = Ssa.func_of_name funcn in
-  let ty =
-    match funcn.Ssa.ty with
-    | Rt.FunctionTy (args, ret) -> args, ret
-    | _ -> assert false
-  in
-  let llfunc  = gen_proto llmod (funcn.Ssa.id :> latin1s) ty in
+  let llfunc  = gen_proto llmod funcn in
   let builder = Llvm.builder ctx in
 
   (* Define a map between FSSA names and LLVM names *)
@@ -200,11 +214,21 @@ let rec gen_func llmod funcn =
       Ssa.Nametbl.find names name
     with Not_found ->
       match name.Ssa.opcode with
-      | Ssa.Const value ->
-        let llvalue = llconst_of_value llmod value in
-        Ssa.Nametbl.add names name llvalue;
-        llvalue
-      | _ -> failwith (u"gen_func/map " ^ name.Ssa.id)
+      | Ssa.Const value
+      -> (* This is an FSSA constant, convert it to an LLVM constant. *)
+         (let llvalue = llconst_of_value llmod value in
+          Ssa.Nametbl.add names name llvalue;
+          llvalue)
+      | Ssa.Function _
+      -> (* This is an FSSA function, which is semantically equivalent to
+            a constant within this context, but has different lookup rules.
+            Either look it up, or emit a prototype and hopefully fill it
+            later in gen_func. *)
+         (match Llvm.lookup_function (name.Ssa.id :> latin1s) llmod with
+          | Some llfunc -> llfunc
+          | None -> gen_proto llmod name)
+      | _
+      -> failwith (u"gen_func/map " ^ name.Ssa.id)
   in
 
   (* Map FSSA primitive to LLVM primitive. *)
@@ -242,12 +266,12 @@ let rec gen_func llmod funcn =
   in
 
   (* Build LLVM instruction out of FSSA instruction. *)
-  let gen_instr instrn =
-    let id = (instrn.Ssa.id :> latin1s) in
+  let gen_instr instr =
+    let id = (instr.Ssa.id :> latin1s) in
     let llvalue =
-      match instrn.Ssa.opcode with
+      match instr.Ssa.opcode with
       (* Constants are handled within `map'. *)
-      | Ssa.Const _
+      | Ssa.Const _ | Ssa.Function _
       -> assert false
       (* Terminator instructions. *)
       | Ssa.JumpInstr blockn
@@ -265,11 +289,14 @@ let rec gen_func llmod funcn =
       | Ssa.PhiInstr operands
       -> (* Divide all FSSA incoming values into predecessor values
             and successor values. It is assumed here that the basic blocks
-            are sorted in domination order, therefore all the names which
-            are already converted to LLVM come from dominating blocks. *)
+            are sorted in dataflow order, therefore all the names which
+            are already converted to LLVM come from preceding blocks.
+
+            Constants and functions (which are constants) are always
+            accessible. *)
          (let pred, succ = List.partition (fun (_, op) ->
                               match op.Ssa.opcode with
-                              | Ssa.Const _ -> true
+                              | Ssa.Const _ | Ssa.Function _ -> true
                               | _ -> Ssa.Nametbl.mem names op) operands
           in
           (* Build an LLVM phi with existing values. Attempting to pass []
@@ -281,13 +308,15 @@ let rec gen_func llmod funcn =
           List.iter (fun (block, op) -> fixups := (llphi, block, op) :: !fixups) succ;
           llphi)
       | Ssa.FrameInstr nextn
-      -> (let env_map = env_map_of_ty instrn.Ssa.ty in
+      -> (let env_map = env_map_of_ty instr.Ssa.ty in
           (* Allocate an environment for this function. *)
           let llenv = Llvm.build_alloca env_map.e_lltype id builder in
           (* Fill in the next-environment slot. It is always available,
              because an environment in FSSA is always chained to another one. *)
           let llparentptr = Llvm.build_struct_gep llenv 0 "" builder in
-          ignore (Llvm.build_store (map nextn) llparentptr builder);
+          let llnextty    = Llvm.pointer_type (Option.get env_map.e_parent).e_lltype in
+          let llnext      = Llvm.build_bitcast (map nextn) llnextty "" builder in
+          ignore (Llvm.build_store llnext llparentptr builder);
           (* Return the newly built environment. *)
           llenv)
       | Ssa.LVarStoreInstr (envn, var, _)
@@ -313,28 +342,55 @@ let rec gen_func llmod funcn =
                 lookup env_map llenv
               | None -> assert false
           in
-          let llvar = lookup env_map (map envn) in
+          let llenvty = Llvm.pointer_type env_map.e_lltype in
+          let llenv   = Llvm.build_bitcast (map envn) llenvty "" builder in
+          let llvar   = lookup env_map llenv in
           (* Actually load or store the variable value. *)
-          match instrn.Ssa.opcode with
+          match instr.Ssa.opcode with
           | Ssa.LVarStoreInstr (_, _, valuen)
           -> Llvm.build_store (map valuen) llvar builder
           | Ssa.LVarLoadInstr (_, _)
           -> Llvm.build_load llvar id builder
           | _ -> assert false)
       | Ssa.CallInstr (funcn, operands)
-      -> (let llfunc =
-            match Llvm.lookup_function (funcn.Ssa.id :> latin1s) llmod with
-            | Some llfunc -> llfunc
-            | None -> gen_func llmod funcn
-          in
-          Llvm.build_call llfunc (Array.of_list (List.map map operands)) id builder)
+      -> (* Construct a call instruction. The instruction has the same type
+            as the result type of the function it calls, so if that's nil, make
+            it unnamed: otherwise LLVM will reject the module. *)
+         (let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
+          Llvm.build_call (map funcn) (Array.of_list (List.map map operands)) id builder)
+      | Ssa.CallClosureInstr (closure, operands)
+      -> (* Construct a call instruction with environment substitution. The
+            closure is a value type: forall f. { f*, i8* }, where f is the type
+            of closure without prepended environment argument, and i8* is the
+            generalized type for all environments.
+
+            See also Ssa.CallInstr branch. *)
+         (let llclosure = map closure in
+          let llfunc    = Llvm.build_extractvalue llclosure 0 "" builder in
+          let llenv     = Llvm.build_extractvalue llclosure 1 "" builder in
+          let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
+          Llvm.build_call llfunc (Array.of_list (llenv :: (List.map map operands))) id builder)
+      | Ssa.MakeClosureInstr (callee, env)
+      -> (* See Ssa.CallClosureInstr branch. *)
+         (let llfunc, llenv = map callee, map env in
+          let llenv = Llvm.build_bitcast llenv (Llvm.pointer_type (Llvm.i8_type ctx)) "" builder in
+          let llclosurety = Llvm.struct_type ctx [|
+                              Llvm.type_of llfunc;
+                              Llvm.type_of llenv;
+                            |] in
+          let llclosure = Llvm.undef llclosurety in
+          let llclosure = Llvm.build_insertvalue llclosure llfunc 0 "" builder in
+          let llclosure = Llvm.build_insertvalue llclosure llenv  1 "" builder in
+          llclosure)
       | Ssa.PrimitiveInstr (prim, operands)
       -> gen_prim id (prim :> latin1s) operands
       | _
       -> assert false
     in
-    Ssa.Nametbl.add names instrn llvalue
+    Ssa.Nametbl.add names instr llvalue
   in
+
+  let func    = Ssa.func_of_name funcn in
 
   (* Rename the LLVM arguments to match FSSA arguments,
      and add them to the value map. *)
@@ -370,14 +426,15 @@ let rec gen_func llmod funcn =
 
   (* Validate the result. *)
   if not (Llvm_analysis.verify_function llfunc) then begin
-    Llvm.dump_value llfunc;
+    Llvm.dump_module llmod;
     Llvm_analysis.assert_valid_function llfunc
   end;
 
   llfunc
 
-let llvm_module_of_ssa_func name =
+let llvm_module_of_ssa_capsule capsule =
   let llmod = Llvm.create_module ctx "foundry" in
     ignore (gen_debug llmod);
-    ignore (gen_func llmod name);
+    Ssa.iter_funcs capsule ~f:(fun funcn ->
+      ignore (gen_func llmod funcn));
     llmod

@@ -42,6 +42,7 @@ rule lex = parse
 | "symbol"        { Symbol }
 | "environment"   { Environment }
 | "lambda"        { Lambda }
+| "closure"       { Closure }
 | "class"         { Class }
 | "mixin"         { Mixin }
 | "package"       { Package }
@@ -82,6 +83,8 @@ rule lex = parse
 | "lvar_load"     { Lvar_load }
 | "lvar_store"    { Lvar_store }
 | "call"          { Call }
+| "make_closure"  { Make_closure }
+| "call_closure"  { Call_closure }
 | "primitive"     { Primitive }
 
 | "map"           { Map }

@@ -38,23 +38,25 @@ and basic_block = {
 and opcode =
 | InvalidInstr
 (* Functions *)
-| Function        of func
+| Function          of func
 | Argument
-| BasicBlock      of basic_block
+| BasicBlock        of basic_block
 (* Constants *)
-| Const           of Rt.value
+| Const             of Rt.value
 (* Phi *)
-| PhiInstr        of ((*basic_block*) name * (*value*) name) list
+| PhiInstr          of ((*basic_block*) name * (*value*) name) list
 (* Terminators *)
-| JumpInstr       of (*target*) name
-| JumpIfInstr     of (*condition*) name * (*if_true*) name * (*if_false*) name
-| ReturnInstr     of (*value*) name
+| JumpInstr         of (*target*) name
+| JumpIfInstr       of (*condition*) name * (*if_true*) name * (*if_false*) name
+| ReturnInstr       of (*value*) name
 (* Language-specific opcodes *)
-| FrameInstr      of (*parent*) name
-| LVarLoadInstr   of (*environment*) name * (*var*) string
-| LVarStoreInstr  of (*environment*) name * (*var*) string * (*value*) name
-| CallInstr       of (*func*) name   * (*operands*) name list
-| PrimitiveInstr  of (*name*) string * (*operands*) name list
+| FrameInstr        of (*parent*) name
+| LVarLoadInstr     of (*environment*) name * (*var*) string
+| LVarStoreInstr    of (*environment*) name * (*var*) string * (*value*) name
+| CallInstr         of (*func*) name    * (*operands*) name list
+| MakeClosureInstr  of (*func*) name    * (*environment*) name
+| CallClosureInstr  of (*closure*) name * (*operands*) name list
+| PrimitiveInstr    of (*name*) string  * (*operands*) name list
 
 module NameIdentity =
 struct
@@ -269,8 +271,11 @@ let instr_operands instr =
   -> [env]
   | LVarStoreInstr (env, _, value)
   -> [env; value]
-  | CallInstr (func, operands)
-  -> func :: operands
+  | CallInstr (callee, operands)
+  | CallClosureInstr (callee, operands)
+  -> callee :: operands
+  | MakeClosureInstr (func, env)
+  -> [func; env]
   | PrimitiveInstr (name, operands)
   -> operands
 
@@ -409,8 +414,11 @@ let map_instr_operands instr operands =
   -> LVarLoadInstr (frame, name)
   | LVarStoreInstr (_, name, _), [frame; value]
   -> LVarStoreInstr (frame, name, value)
-  | CallInstr (_, _), func :: operands
-  -> CallInstr (func, operands)
+  | CallInstr (_, _), callee :: operands
+  | CallClosureInstr (_, _), callee :: operands
+  -> CallInstr (callee, operands)
+  | MakeClosureInstr (_, _), [func; env]
+  -> MakeClosureInstr(func, env)
   | PrimitiveInstr (name, _), _
   -> PrimitiveInstr (name, operands)
   | _

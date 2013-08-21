@@ -31,6 +31,7 @@
 %token Symbol
 %token Environment
 %token Lambda
+%token Closure
 %token Class
 %token Mixin
 %token Package
@@ -68,6 +69,8 @@
 %token Lvar_load
 %token Lvar_store
 %token Call
+%token Make_closure
+%token Call_closure
 %token Primitive
 
 %token Map

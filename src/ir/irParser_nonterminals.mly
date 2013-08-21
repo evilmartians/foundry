@@ -147,8 +147,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   }) }
               | x=lambda_ty
                 { (fun env -> LambdaTy (x env)) }
-              | args=args(ty) Arrow ty=ty
+              | Function args=args(ty) Arrow ty=ty
                 { (fun env -> FunctionTy (args env, ty env)) }
+              | Closure args=args(ty) Arrow ty=ty
+                { (fun env -> ClosureTy (args env, ty env)) }
 
             ty: x=tvar
                 { (fun env -> Tvar (x env)) }
@@ -374,8 +376,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       Table.set venv bind_as (NamedFunction funcn);
                       List.iter (fun arg -> Table.set fenv arg.id arg)
                         (func_of_name funcn).arguments;
-                      let fixups = blocks (venv, funcn, fenv) in
-                      funcn, (fun () -> List.iter (fun f -> f ()) fixups))
+                      funcn, (fun () ->
+                        let fixups = blocks (venv, funcn, fenv) in
+                        List.iter (fun f -> f ()) fixups))
                 }
 
    basic_block: id=Name_Label instrs=nonempty_list(instr)
@@ -389,17 +392,43 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env ->
                     List.concat (List.map (fun x -> x env) xs)) }
 
-       operand: id=Name_Local
+         local: id=Name_Local
                 { (fun (venv, block, fenv) ->
                     Table.get_exn fenv id) }
-              | value=value
+
+       operand: x=local
+                { x }
+              | x=func
+                { (fun (venv, block, fenv) -> x venv) }
+              | x=value
+                { (fun (venv, block, fenv) -> name_of_value (x venv)) }
+
+        phi_op: LBrack name=Name_Local FatArrow operand=operand RBrack
+                { name, operand }
+
+       phi_ops: xs=separated_nonempty_list(Comma, phi_op)
+                { (fun ((venv, block, fenv) as env) ->
+                    List.map (fun (id, value) ->
+                      Table.get_exn fenv id, value env) xs) }
+
+  local_env_op: x=local
+                { x }
+              | x=local_env
                 { (fun (venv, block, fenv) ->
-                    name_of_value (value venv)) }
+                      name_of_value (Rt.Environment (x venv))) }
+
+       func_op: x=local
+                { x }
+              | x=func
+                { (fun (venv, block, fenv) -> x venv) }
 
   opt_local_eq: id=Name_Local Equal
                 { id }
               | /* nothing */
                 { u"" }
+
+      instr_ty: ty=ty
+                { (fun (venv, block, fenv) -> ty venv) }
 
          instr: id=opt_local_eq x=value_instr
                 { (fun ((venv, block, fenv) as env) ->
@@ -420,35 +449,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       set_ty     Rt.NilTy instr;
                       set_opcode (x env)  instr)) }
 
-      instr_ty: ty=ty
-                { (fun (venv, block, fenv) -> ty venv) }
-
-   phi_operand: LBrack name=Name_Local FatArrow operand=operand RBrack
-                { name, operand }
-
-  phi_operands: xs=separated_nonempty_list(Comma, phi_operand)
-                { (fun ((venv, block, fenv) as env) ->
-                    List.map (fun (id, value) ->
-                      Table.get_exn fenv id, value env) xs) }
-
-         local: id=Name_Local
-                { (fun (venv, block, fenv) ->
-                    Table.get_exn fenv id) }
-
-oper_local_env: x=local
-                { x }
-              | x=local_env
-                { (fun (venv, block, fenv) ->
-                      name_of_value (Rt.Environment (x venv))) }
-
-     oper_func: x=local
-                { x }
-              | x=func
-                { (fun (venv, block, fenv) -> x venv) }
-
-   value_instr: ty=instr_ty Phi operands=phi_operands
+   value_instr: ty=instr_ty Phi operands=phi_ops
                 { (fun env -> ty env, PhiInstr (operands env)) }
-              | ty=instr_ty Frame parent=oper_local_env
+              | ty=instr_ty Frame parent=local_env_op
                 { (fun env -> ty env, FrameInstr (parent env)) }
               | ty=instr_ty Frame Empty
                 { (fun env ->
@@ -458,19 +461,25 @@ oper_local_env: x=local
                                 e_bindings = Table.create [];
                               }))) }
               | ty=instr_ty Lvar_load
-                    lenv=operand Comma name=Lit_String
+                    lenv=local_env_op Comma name=Lit_String
                 { (fun env -> ty env, LVarLoadInstr (lenv env, name)) }
               | Lvar_store
-                    lenv=operand Comma name=Lit_String Comma value=operand
+                    lenv=local_env_op Comma name=Lit_String Comma value=operand
                 { (fun env -> Rt.Nil, LVarStoreInstr (lenv env, name, value env)) }
               | ty=instr_ty? Primitive name=Lit_String args=args(operand)
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,
                     (PrimitiveInstr (name, args env))) }
-              | ty=instr_ty? Call func=oper_func args=args(operand)
+              | ty=instr_ty? Call func=func_op args=args(operand)
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,
                     (CallInstr (func env, args env))) }
+              | ty=instr_ty Make_closure func=func_op Comma lenv=local_env_op
+                { (fun env -> ty env, MakeClosureInstr (func env, lenv env) )}
+              | ty=instr_ty? Call_closure closure=operand args=args(operand)
+                { (fun env ->
+                    Option.map_default (fun ty -> ty env) Rt.NilTy ty,
+                    (CallClosureInstr (closure env, args env))) }
 
     term_instr: Jump target=operand
                 { (fun env -> JumpInstr (target env)) }
@@ -484,23 +493,24 @@ oper_local_env: x=local
                      Ssa.add_overload capsule (func env) (args env) (target env)) }
 
    definitions: env=definitions x=struct_body
-                { let (globals, capsule, fixups) = env in
-                  globals, capsule, (x globals) :: fixups }
+                { let (globals, g_fixups), (capsule, c_fixups) = env in
+                  (globals, (x globals) :: g_fixups), (capsule, c_fixups) }
               | env=definitions x=func_body
-                { let (globals, capsule, fixups) = env in
+                { let (globals, g_fixups), (capsule, c_fixups) = env in
                   let funcn, fixup = x globals in
                   add_func capsule funcn;
-                  globals, capsule, fixup :: fixups }
+                  (globals, g_fixups), (capsule, fixup :: c_fixups) }
               | env=definitions x=overload_body
               /*| env=definitions x=impl_body*/
-                { let (globals, capsule, fixups) = env in
-                  x globals capsule; env }
+                { let (globals, g_fixups), (capsule, c_fixups) = env in
+                  x globals capsule;
+                  env }
               | /* empty */
-                { create_globals (), create_capsule (), [] }
+                { (create_globals (), []), (create_capsule (), []) }
 
       toplevel: env=definitions EOF
-                { let (globals, capsule, fixups) = env in
-                    List.iter (fun f -> f ()) fixups;
+                { let (globals, g_fixups), (capsule, c_fixups) = env in
+                    List.iter (fun f -> f ()) (g_fixups @ c_fixups);
                     let get_class name =
                       match Table.get globals name with
                       | Some (NamedClass k) -> k

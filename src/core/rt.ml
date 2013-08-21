@@ -40,6 +40,7 @@ type value =
 | Instance      of klass specialized * slots
 (* SSA types *)
 | FunctionTy    of ty list * ty
+| ClosureTy     of ty list * ty
 | BasicBlockTy
 and ty = value
 and 'a specialized = 'a * value Table.t

@@ -15,7 +15,8 @@ entry:
 ; CHECK: call @id (unsigned(32) 5)
   call @id (unsigned(32) 5)
 
-  %func = (unsigned(32)) -> unsigned(32) primitive "getfun" ()
+; CHECK: %func = function (unsigned(32)) -> unsigned(32) primitive "getfun" ()
+  %func = function (unsigned(32)) -> unsigned(32) primitive "getfun" ()
 ; CHECK: call %func (unsigned(32) 1)
   call %func(unsigned(32) 1)
 

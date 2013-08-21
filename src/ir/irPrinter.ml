@@ -131,7 +131,7 @@ let rec string_of_value env value =
   | Signed(w,v)       -> "signed(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
   | Tuple(xs)         -> "[" ^ (string_of_seq xs (string_of_value env)) ^ "]"
   | Record(xs)        -> "{" ^ (string_of_assoc xs (string_of_value env)) ^ "}"
-  | Environment(e)    -> "environment " ^ (string_of_ident (string_of_local_env env e))
+  | Environment(e)    -> string_of_ident (string_of_local_env env e)
   | Lambda(l)         -> "lambda " ^ (string_of_ident (string_of_lambda env l))
   | LambdaTy(lt)      -> string_of_lambda_ty env lt
   | Class(k,sp)       -> "class " ^ (string_of_ident (string_of_klass env k)) ^
@@ -143,7 +143,7 @@ let rec string_of_value env value =
 
   | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy | UnsignedTy _
   | SignedTy _ | TupleTy _ | RecordTy _ | EnvironmentTy _ | FunctionTy _
-  | BasicBlockTy
+  | ClosureTy _ | BasicBlockTy
   -> "type " ^ (string_of_ty env value)
 
 and string_of_ty env ty =
@@ -159,7 +159,10 @@ and string_of_ty env ty =
   | TupleTy(xs)       -> "[" ^ (string_of_seq xs (string_of_ty env)) ^ "]"
   | RecordTy(xs)      -> "{" ^ (string_of_assoc xs (string_of_ty env)) ^ "}"
   | EnvironmentTy(x)  -> "environment " ^ (string_of_local_env_ty env x)
-  | FunctionTy(xs,x)  -> "(" ^ (string_of_seq xs (string_of_ty env)) ^ ") -> " ^ (string_of_ty env x)
+  | FunctionTy(xs,x)  -> "function (" ^ (string_of_seq xs (string_of_ty env)) ^ ") -> " ^
+                            (string_of_ty env x)
+  | ClosureTy(xs,x)   -> "closure (" ^ (string_of_seq xs (string_of_ty env)) ^ ") -> " ^
+                            (string_of_ty env x)
   | BasicBlockTy      -> assert false
   | Class(k,sp)       -> "class " ^ (string_of_ident (string_of_klass env k)) ^
                            "{" ^(string_of_assoc sp (string_of_value env))  ^ "}"
@@ -325,6 +328,13 @@ let rec string_of_ssa_name env value =
     (string_of_ident (Local value.id)) ^ " = " ^
       (string_of_ty env value.ty) ^ " " ^ (term opcode operands)
   in
+  let call_like_instr callee operands =
+    let prefix =
+      if value.ty <> Rt.NilTy then
+        (string_of_ident (Local value.id)) ^ " = " ^ (string_of_ty env value.ty) ^ " "
+      else ""
+    in prefix ^ callee ^ " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
+  in
   match value.opcode with
   | Function func ->
     (string_of_ident
@@ -381,19 +391,13 @@ let rec string_of_ssa_name env value =
   | LVarStoreInstr (env, var, value) ->
     term "lvar_store" [print env; escape_as_literal var; print value]
   | CallInstr (func, operands) ->
-    let prefix =
-      if value.ty <> Rt.NilTy then
-        (string_of_ident (Local value.id)) ^ " = " ^ (string_of_ty env value.ty) ^ " "
-      else ""
-    in prefix ^ "call " ^ (print func) ^
-          " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
+    call_like_instr ("call " ^ (print func)) operands
+  | MakeClosureInstr (func, env) ->
+    instr "make_closure" [print func; print env]
+  | CallClosureInstr (func, operands) ->
+    call_like_instr ("call " ^ (print func)) operands
   | PrimitiveInstr (name, operands) ->
-    let prefix =
-      if value.ty <> Rt.NilTy then
-        (string_of_ident (Local value.id)) ^ " = " ^ (string_of_ty env value.ty) ^ " "
-      else ""
-    in prefix ^ "primitive " ^ (escape_as_literal name) ^
-          " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
+    call_like_instr ("primitive " ^ (escape_as_literal name)) operands
 
 let string_of_roots env roots =
   List.iter (fun klass -> ignore (string_of_klass env klass)) [

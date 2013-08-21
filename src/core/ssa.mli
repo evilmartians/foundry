@@ -28,23 +28,25 @@ and basic_block = private {
 and opcode =
 | InvalidInstr
 (* Functions *)
-| Function        of func
+| Function          of func
 | Argument
-| BasicBlock      of basic_block
+| BasicBlock        of basic_block
 (* Constants *)
-| Const           of Rt.value
+| Const             of Rt.value
 (* Phi *)
-| PhiInstr        of ((*basic_block*) name * (*value*) name) list
+| PhiInstr          of ((*basic_block*) name * (*value*) name) list
 (* Terminators *)
-| JumpInstr       of (*target*) name
-| JumpIfInstr     of (*condition*) name * (*if_true*) name * (*if_false*) name
-| ReturnInstr     of (*value*) name
+| JumpInstr         of (*target*) name
+| JumpIfInstr       of (*condition*) name * (*if_true*) name * (*if_false*) name
+| ReturnInstr       of (*value*) name
 (* Language-specific opcodes *)
-| FrameInstr      of (*parent*) name
-| LVarLoadInstr   of (*environment*) name * (*var*) string
-| LVarStoreInstr  of (*environment*) name * (*var*) string * (*value*) name
-| CallInstr       of (*func*) name   * (*operands*) name list
-| PrimitiveInstr  of (*name*) string * (*operands*) name list
+| FrameInstr        of (*parent*) name
+| LVarLoadInstr     of (*environment*) name * (*var*) string
+| LVarStoreInstr    of (*environment*) name * (*var*) string * (*value*) name
+| CallInstr         of (*func*) name    * (*operands*) name list
+| MakeClosureInstr  of (*func*) name    * (*environment*) name
+| CallClosureInstr  of (*closure*) name * (*operands*) name list
+| PrimitiveInstr    of (*name*) string  * (*operands*) name list
 
 (* Nametbl is safe to use in presence of key mutation. *)
 module Nametbl : Hashtbl.S with type key = name
