@@ -464,13 +464,13 @@ let copy_func ?(suffix="") funcn =
   let func'  = func_of_name funcn' in
   (* Duplicate function content while maintaining referentional
      integrity. *)
-  let map    = Hashtbl.create 10 in
+  let map    = Nametbl.create 10 in
   (* Remember the mapping between arguments. *)
-  List.iter2 (Hashtbl.add map) func.arguments func'.arguments;
+  List.iter2 (Nametbl.add map) func.arguments func'.arguments;
   (* Duplicate basic blocks and remember the mapping between them. *)
   iter_blocks funcn ~f:(fun blockn ->
     let blockn' = create_block ~id:(blockn.id ^ suffix) funcn' in
-    Hashtbl.add map blockn blockn');
+    Nametbl.add map blockn blockn');
 
   (* Duplicate instructions while updating references through
      the mapping and remember the mapping. *)
@@ -485,7 +485,7 @@ let copy_func ?(suffix="") funcn =
       | Const _
       -> operand
       | _
-      -> Hashtbl.find map operand
+      -> Nametbl.find map operand
     in
     let operands' = List.map map_operand (instr_operands instr) in
     let opcode'   = map_instr_operands instr operands' in
@@ -499,12 +499,12 @@ let copy_func ?(suffix="") funcn =
        specialized function. *)
     let blockn' =
       match instr.name_parent with
-      | ParentBasicBlock blockn -> Hashtbl.find map blockn
+      | ParentBasicBlock blockn -> Nametbl.find map blockn
       | _ -> assert false
     in
     append_instr instr' blockn';
     (* Remember the mapping for the current instruction. *)
-    Hashtbl.add map instr instr';
+    Nametbl.add map instr instr';
     (* Map instruction operands. *)
     match instr.opcode with
     (* Phi instructions will be fixed up later. *)
