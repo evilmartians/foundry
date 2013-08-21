@@ -2,33 +2,55 @@ open Unicode.Std
 open Ssa
 
 let run_on_function funcn =
-  (* For every terminator... *)
-  iter_blocks funcn ~f:(fun blockn ->
-    match (terminator blockn).opcode with
-    (* Find all return instructions whose type differs
-       from the return type of this function. With a hypothesis
-       that the instruction type is more specific, narrow
-       the function type. *)
+  (* TODO don't allocate this each time :( *)
+  let tvar () = Rt.Tvar (Rt.new_tvar ()) in
+  let int_binop_ty =
+    let tv = tvar () in Rt.FunctionTy ([tv; tv], tv) in
+  let int_cmpop_ty =
+    let tv = tvar () in Rt.FunctionTy ([tv; tv], Rt.BooleanTy) in
+
+  iter_instrs funcn ~f:(fun instr ->
+    match instr.opcode with
     | ReturnInstr value
     -> (let _, return_ty = func_ty funcn in
         if value.ty <> return_ty then
           let env = Typing.unify return_ty value.ty in
           Ssa.specialize funcn env)
-    | _
-    -> ());
-
-  (* For every instruction... *)
-  iter_instrs funcn ~f:(fun instr ->
-    match instr.opcode with
-    (* Find all call instructions whose type differs from the
-       return type of the callee. With a hypothesis that the
-       function type is more specific, narrow the instruction
-       type. (Reverse of the above.) *)
     | CallInstr (callee, _)
     -> (let _, return_ty = func_ty callee in
         if instr.ty <> return_ty then
           let env = Typing.unify instr.ty return_ty in
           Ssa.specialize funcn env)
+    (* Primitives obey simple, primitive-specific typing rules. *)
+    | PrimitiveInstr (prim, operands)
+    -> (let env =
+          match (prim :> latin1s) with
+          (* Operands to integer primitives must have the
+             same type. *)
+          | "int_add"  | "int_sub"  | "int_mul"  | "int_sdiv"
+          | "int_udiv" | "int_and"  | "int_or"   | "int_xor"
+          | "int_shl"  | "int_lshr" | "int_ashr" | "int_exp"
+          -> (* Match de-facto type of this primitive invocation with
+                its polymorphic signature. *)
+             (let ty =
+                match operands with
+                | [a; b] -> Rt.FunctionTy ([a.Ssa.ty; b.Ssa.ty], instr.Ssa.ty)
+                | _ -> assert false
+              in
+              let env = Typing.unify int_binop_ty ty in
+              let ty  = Typing.subst env ty in
+              (* Verify that the substitution yields a valid primitive
+                 signature, i.e. it is indeed an integer operation. *)
+              match ty with
+              | Rt.FunctionTy(_, Rt.IntegerTy)
+              | Rt.FunctionTy(_, Rt.UnsignedTy(_))
+              | Rt.FunctionTy(_, Rt.SignedTy(_))
+              -> Some env
+              | _
+              -> None)
+          | _
+          -> None
+        in Option.may (specialize funcn) env)
     | _
     -> ())
 

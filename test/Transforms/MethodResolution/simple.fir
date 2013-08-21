@@ -16,7 +16,9 @@
 
 @main = function () -> nil {
 entry:
+; CHECK-NOT: resolve
   %add = function ([int, int], {}) -> int resolve int 1, symbol "+"
+; CHECK: %x = int call @"Integer:+"
   %x   = int call %add ([int 1, int 2], {})
   primitive "debug" (%x)
   return nil

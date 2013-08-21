@@ -26,6 +26,8 @@ let _ =
         (List.map Io.open_in !inputs)) in
 
   let roots, capsule = load_ir (Lexing.from_string (input_ir :> string)) in
+  Rt.roots := roots;
+
   let llmod = Codegen.llvm_module_of_ssa_capsule capsule in
 
   if !dump then

@@ -46,9 +46,14 @@ let rec lltype_of_ty ty =
   -> Llvm.void_type ctx
   | Rt.BooleanTy
   -> Llvm.i1_type ctx
-  | Rt.UnsignedTy(width)
-  | Rt.SignedTy(width)
+  | Rt.UnsignedTy width
+  | Rt.SignedTy width
   -> Llvm.integer_type ctx width
+  | Rt.TupleTy xs
+  -> Llvm.struct_type ctx (Array.of_list (List.map lltype_of_ty xs))
+  | Rt.RecordTy xs
+  -> Llvm.struct_type ctx (Array.of_list
+        (Table.map_list ~ordered:true ~f:(fun _ -> lltype_of_ty) xs))
   | Rt.EnvironmentTy env_ty
   -> Llvm.pointer_type (Llvm.i8_type ctx)
   | Rt.FunctionTy (args_ty, ret_ty)
@@ -67,7 +72,7 @@ let rec lltype_of_ty ty =
         Llvm.pointer_type (Llvm.i8_type ctx) (* i8* *)
       |])
   | _
-  -> failwith (u"lltype_of_ty " ^ Rt.inspect_value ty)
+  -> failwith (u"lltype_of_ty: " ^ Rt.inspect_value ty)
 
 type env_map = {
   e_parent  : env_map option;
@@ -158,6 +163,11 @@ let rec llconst_of_value llmod value =
         (* Very slow path. > 64 bits.
            There is no direct big_int -> llvalue converter. *)
         Llvm.const_int_of_string llty ((string_of_big_int ivalue) :> latin1s) 10)
+  | Rt.Tuple xs
+  -> Llvm.const_struct ctx (Array.of_list (List.map (llconst_of_value llmod) xs))
+  | Rt.Record xs
+  -> Llvm.const_struct ctx (Array.of_list
+      (Table.map_list ~ordered:true ~f:(fun _ -> llconst_of_value llmod) xs))
   | Rt.Environment env
   -> (let env_map = env_map_of_ty (Rt.type_of_value value) in
       memoize env_map.e_lltype (fun _ ->
@@ -179,7 +189,7 @@ let rec llconst_of_value llmod value =
           | None -> content
         in
         Llvm.const_struct ctx (Array.of_list content)))
-  | _ -> assert false
+  | _ -> failwith (u"llconst_of_value: " ^ (Rt.inspect_value value))
 
 let gen_proto llmod funcn =
   let name = (funcn.Ssa.id :> latin1s) in
@@ -260,6 +270,10 @@ let rec gen_func llmod funcn =
     | "int_slt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Slt (map lhs) (map rhs) id builder
     | "int_sge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sge (map lhs) (map rhs) id builder
     | "int_sgt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sgt (map lhs) (map rhs) id builder
+
+    | "tup_index", [tup; { Ssa.opcode = Ssa.Const (Rt.Integer idx) }]
+    -> Llvm.build_extractvalue (map tup) (int_of_big_int idx) "" builder
+
     | _, _
     -> failwith (u"gen_func/gen_prim: " ^ (Unicode.assert_utf8s prim) ^
                  u"/" ^ (string_of_int (List.length operands)))
@@ -343,6 +357,8 @@ let rec gen_func llmod funcn =
               | None -> assert false
           in
           let llenvty = Llvm.pointer_type env_map.e_lltype in
+          (* Environments are always represented as i8*: their true type is
+             hidden. Sort of an existential type for LLVM IR. *)
           let llenv   = Llvm.build_bitcast (map envn) llenvty "" builder in
           let llvar   = lookup env_map llenv in
           (* Actually load or store the variable value. *)

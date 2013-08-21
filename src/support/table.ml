@@ -34,11 +34,9 @@ let empty table =
 
 let iter ?(ordered=false) ~f table =
   if ordered then
-    let keys = List.of_enum (ExtHashtbl.Hashtbl.keys table) in
-    let keys = List.sort ~cmp:compare keys in
-    List.iter (fun key ->
-        f key (Hashtbl.find table key))
-      keys
+    let lst = Hashtbl.fold (fun k v acc -> (k, v) :: acc) table [] in
+    let lst = List.sort ~cmp:(fun (k1,_) (k2,_) -> compare k1 k2) lst in
+    List.iter (fun (k, v) -> f k v) lst
   else
     Hashtbl.iter f table
 

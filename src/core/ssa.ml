@@ -100,12 +100,12 @@ let mangle_id name id =
     | _
     -> assert false
   in
-  if id = "" then begin
+  if id = "" || IrSupport.is_digits id then begin
     naming.next_id <- naming.next_id + 1;
-      (string_of_int naming.next_id)
+    string_of_int naming.next_id
   end else begin
     let id =
-      if List.exists ((=) id) naming.names then begin
+      if List.mem id naming.names then begin
         naming.next_id <- naming.next_id + 1;
         id ^ "." ^ (string_of_int naming.next_id)
       end else id
@@ -125,7 +125,7 @@ let name_of_value value =
     name_hash   = 0; (* TODO better hash *)
   }
 
-let set_id id name =
+let set_id name id =
   name.id <- mangle_id name id
 
 let create_capsule () =
@@ -353,7 +353,7 @@ let append_instr ?after instr blockn =
       (fun instrs      -> instrs @ [instr])
     instr blockn
 
-let set_opcode opcode name =
+let set_opcode name opcode =
   match name.opcode with
   | Argument | Function _ | BasicBlock _ | Const _
   -> assert false
@@ -362,7 +362,7 @@ let set_opcode opcode name =
       name.opcode <- opcode;
       add_uses name)
 
-let set_ty ty name =
+let set_ty name ty =
   match name.opcode with
   | Function func
   -> (match ty with
@@ -430,7 +430,7 @@ let map_instr_operands instr operands =
   -> assert false
 
 let set_instr_operands instr operands =
-  set_opcode (map_instr_operands instr operands) instr
+  set_opcode instr (map_instr_operands instr operands)
 
 let replace_all_uses_with instr instr' =
   iter_uses instr ~f:(fun use ->
@@ -489,7 +489,7 @@ let copy_func ?(suffix="") funcn =
     in
     let operands' = List.map map_operand (instr_operands instr) in
     let opcode'   = map_instr_operands instr operands' in
-    set_opcode opcode' instr'
+    set_opcode instr' opcode'
   in
   let phis = ref [] in
   iter_instrs funcn ~f:(fun instr ->
@@ -516,9 +516,9 @@ let copy_func ?(suffix="") funcn =
 
 let specialize funcn env =
   let subst = Typing.subst env in
-  set_ty (subst funcn.ty) funcn;
+  set_ty funcn (subst funcn.ty);
   iter_instrs funcn ~f:(fun instr ->
-    set_ty (subst instr.ty) instr)
+    set_ty instr (subst instr.ty))
 
 let add_overload capsule funcn args_ty funcn' =
   try

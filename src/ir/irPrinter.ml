@@ -415,9 +415,13 @@ let string_of_roots env roots =
   ignore (string_of_package env roots.pToplevel)
 
 let string_of_capsule env capsule =
-  List.iter (fun funcn ->
-      ignore (string_of_ssa_name env funcn))
-    capsule.functions;
+  let funcs =
+    if !ordered then
+      List.sort (fun a b -> compare a.id b.id) capsule.functions
+    else
+      capsule.functions
+  in
+  List.iter (fun funcn -> ignore (string_of_ssa_name env funcn)) funcs;
 
   iter_overloads capsule ~f:(fun funcn args_ty funcn' ->
     let funcn   = string_of_ssa_name env funcn in

@@ -114,7 +114,7 @@ let run_on_function funcn =
               schedule_block if_false)
           | Const k
           -> (let target = if k = Rt.Truth then if_true else if_false in
-              set_opcode (JumpInstr target) instr;
+              set_opcode instr (JumpInstr target);
               schedule_block target)); Top
       (* Handle primitives. Fold non-side-effectful primitives, possibly
          with primitive-specific knowledge. *)

@@ -1,7 +1,15 @@
-; RUN: %foundry_opt %s -no-roots -infer | %file_check %s
+; RUN: %foundry_opt %s -no-roots -ordered -infer | %file_check %s
 
 ; CHECK: @a = function ([int] %x) -> int
 @a = function ([tvar(1)] %x) -> tvar(1) {
 entry:
   return int 1
+}
+
+; CHECK: @b = function (int %x, int %y) -> int
+@b = function (tvar(2) %x, tvar(2) %y) -> int {
+entry:
+; CHECK: %z = int primitive
+  %z = tvar(2) primitive "int_add" (%x, %y)
+  return %z
 }

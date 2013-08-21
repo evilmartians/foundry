@@ -1,4 +1,7 @@
-val unify : (*pattern*) Rt.ty -> (*subject*) Rt.ty ->
-              (Rt.tvar * Rt.ty) list
+open Rt
 
-val subst : (Rt.tvar * Rt.ty) list -> Rt.ty -> Rt.ty
+exception Conflict of Rt.ty * Rt.ty
+
+val unify : (*pattern*) ty -> (*subject*) ty -> (tvar * ty) list
+
+val subst : (tvar * ty) list -> ty -> ty

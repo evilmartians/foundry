@@ -24,7 +24,7 @@ let run_on_capsule capsule =
       | CallInstr ({ opcode = Function _ } as callee, operands)
       -> (match maybe_specialize caller callee operands with
           | Some callee'
-          -> set_opcode (CallInstr (callee', operands)) instr
+          -> set_opcode instr (CallInstr (callee', operands))
           | None
           -> ())
       | _
