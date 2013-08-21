@@ -124,6 +124,12 @@
                     | NamedLocalEnv e -> e
                     | _ -> assert false)
                 }
+              | Empty
+                { (fun env -> {
+                      e_parent   = None;
+                      e_bindings = Table.create [];
+                    })
+                }
 
         lambda: x=global
                 { (fun env ->
@@ -514,13 +520,6 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> ty env, PhiInstr (operands env)) }
               | ty=instr_ty Frame parent=local_env_op
                 { (fun env -> ty env, FrameInstr (parent env)) }
-              | ty=instr_ty Frame Empty
-                { (fun env ->
-                    ty env,
-                    FrameInstr (name_of_value (Environment {
-                                e_parent   = None;
-                                e_bindings = Table.create [];
-                              }))) }
               | ty=instr_ty Lvar_load
                     lenv=local_env_op Comma name=Lit_String
                 { (fun env -> ty env, LVarLoadInstr (lenv env, name)) }

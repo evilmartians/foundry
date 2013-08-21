@@ -193,7 +193,7 @@ and string_of_klass env klass =
           "  appended ["  ^
             (string_of_seq klass.k_appended
               (fun mixin -> string_of_ident (string_of_mixin env mixin))) ^ "]\n")) ^
-      "}")
+      "}\n")
 
 and string_of_mixin env mixin =
   with_lookup env (NamedMixin mixin) (Global ("m." ^ mixin.m_name))
@@ -204,7 +204,7 @@ and string_of_mixin env mixin =
           "  methods {" ^
             (string_of_table "  " mixin.m_methods (string_of_method env)) ^
           "}\n")) ^
-      "}")
+      "}\n")
 
 and string_of_tvar env (tvar:tvar) =
   "tvar(" ^ (string_of_int (tvar :> int)) ^ ")"
@@ -246,7 +246,7 @@ and string_of_lambda env lam =
           (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_formal_args lam.l_args))) ^ "\n" ^
       "  body " ^ (Unicode.adopt_utf8s
           (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_exprs lam.l_body))) ^ "\n" ^
-    "}")
+    "}\n")
 
 and string_of_local_env env lenv =
   with_lookup env (NamedLocalEnv lenv) (Global (""))
@@ -256,7 +256,7 @@ and string_of_local_env env lenv =
             "  parent " ^ (string_of_ident (string_of_local_env env parent)) ^ "\n")
           "" lenv.e_parent) ^
         "  bindings " ^ (string_of_bindings env lenv.e_bindings) ^ "\n" ^
-      "}")
+      "}\n")
 
 and string_of_local_env_ty env ty =
   "{" ^ string_of_assoc ty.e_bindings_ty (fun b ->
@@ -300,7 +300,7 @@ and string_of_package env package =
             (string_of_table "  " package.p_constants (string_of_value env)) ^
           "}\n"
         )) ^
-      "}")
+      "}\n")
 
 and string_of_instance env (klass, sp) ivars =
   with_lookup env (NamedInstance ivars) (Global "")
@@ -308,7 +308,7 @@ and string_of_instance env (klass, sp) ivars =
       "instance " ^ (string_of_ident (string_of_klass env klass)) ^
         "{" ^ (string_of_assoc sp (string_of_value env)) ^ "} {\n" ^
         (string_of_table "  " ivars (string_of_value env)) ^
-      "}"
+      "}\n"
     )
 
 let rec string_of_ssa_name env value =

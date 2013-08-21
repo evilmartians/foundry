@@ -122,6 +122,8 @@ val exc_fail       : string -> Location.t list -> 'a
 val exc_type       : string -> value -> Location.t list -> 'a
 
 val type_of_value  : value -> value
+val type_of_environment : local_env -> local_env_ty
+
 val klass_of_type  : value -> klass
 val klass_of_value : ?dispatch:bool -> ?meta:bool -> value -> klass
 

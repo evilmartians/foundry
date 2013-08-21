@@ -7,12 +7,9 @@
   }
 }
 
-@1 = environment {
-  bindings {}
-}
-
+; CHECK: @"Integer:+" = function ([int, int] %args, {} %kwargs) -> int {
 @"Integer:+" = lambda (0 0) {
-  local_env @1
+  local_env empty
   type lambda ([int, int], {}) -> int
   code (self, other) { invokeprimitive int_add (self, other) };;
 }

@@ -56,6 +56,7 @@ let _ =
         (List.map Io.open_in !inputs)) in
 
   let roots, capsule = load_ir (Lexing.from_string (input_ir :> string)) in
+  Rt.roots := roots;
 
   List.iter (fun xfrm -> xfrm capsule) (List.rev !xfrms);
 

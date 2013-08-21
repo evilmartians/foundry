@@ -76,7 +76,6 @@ rule lex = parse
 
 | "code" (([^';']+ ';'?)+ as code) ";;"
   {
-    prerr_endline code;
     let lexbuf   = Ulexing.from_utf8_string code in
     let lexstate = Lexer.create (Location.register (u"input") 1
                                  (Unicode.adopt_utf8s code)) in
