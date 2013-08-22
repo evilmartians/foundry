@@ -3,7 +3,7 @@ open Ssa
 
 let has_side_effects instr =
   match instr.opcode with
-  | FrameInstr _ | LVarLoadInstr _
+  | FrameInstr _ | LVarLoadInstr _ | MakeClosureInstr _
   -> false
   | PrimitiveInstr (name, operands)
   -> Primitive.has_side_effects name
