@@ -20,10 +20,13 @@ let run_on_function funcn =
           let env = Typing.unify return_ty value.ty in
           Ssa.specialize funcn env)
     | CallInstr (callee, _)
-    -> (let _, return_ty = func_ty callee in
-        if instr.ty <> return_ty then
-          let env = Typing.unify instr.ty return_ty in
-          Ssa.specialize funcn env)
+    -> (match callee.ty with
+        | Rt.FunctionTy (_, return_ty)
+        -> (if instr.ty <> return_ty then
+              let env = Typing.unify instr.ty return_ty in
+              Ssa.specialize funcn env)
+        | _
+        -> ())
     (* Primitives obey simple, primitive-specific typing rules. *)
     | PrimitiveInstr (prim, operands)
     -> (let env =

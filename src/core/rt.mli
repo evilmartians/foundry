@@ -134,6 +134,10 @@ val inspect_value  : value -> string
 val inspect_type   : value -> string
 val inspect        : value -> string
 
+val print_value    : value -> unit
+val print_type     : value -> unit
+val print          : value -> unit
+
 type roots = {
   mutable last_tvar : int;
 

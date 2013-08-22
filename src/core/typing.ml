@@ -70,3 +70,9 @@ and subst_local_env env ty =
         Rt.b_kind_ty     = binding.Rt.b_kind_ty;
         Rt.b_value_ty    = subst env binding.Rt.b_value_ty;
       }) ty.Rt.e_bindings_ty }
+
+let print_env env =
+  List.iter (fun (tvar, ty) ->
+      print_endline ((Rt.inspect_type (Rt.Tvar tvar)) ^
+                     " -> " ^ (Rt.inspect_type ty)))
+    env
