@@ -51,7 +51,7 @@ let _ =
         " Method Resolution";
     ]) (fun arg ->
       inputs := arg :: !inputs)
-    ("Usage: " ^ (Sys.argv.(0) ^ " [xfrmions] <input-file>..."));
+    ("Usage: " ^ Sys.argv.(0) ^ " [options] <input-file>...");
 
   let input_ir =
     Unicode.Std.String.concat u""

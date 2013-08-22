@@ -117,7 +117,7 @@
 %public prefix(X, Y): X y=Y
                       { y }
 
-      location: LParen Lit_Integer Lit_Integer RParen
+      location: LParen lft=Lit_Integer rgt=Lit_Integer RParen
                 { Location.empty }
 
         global: name=Name_Global
@@ -321,10 +321,12 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   RBrace
                 { (fun env ->
                     let klass =
-                      match Table.get_exn env bind_as with
-                      | NamedClass klass
+                      match Table.get env bind_as with
+                      | Some (NamedClass klass)
                       -> klass
-                      | _
+                      | Some _
+                      -> assert false
+                      | None
                       -> (let klass = {
                             k_name      = name;
                             k_ancestor  = Option.map (fun x -> x env) ancestor;

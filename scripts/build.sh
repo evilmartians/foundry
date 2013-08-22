@@ -22,8 +22,9 @@ echo "Building foundry..."
 export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
 ocamlbuild -j 8 -use-ocamlfind \
   file_check.native  \
+  foundry.native     \
   foundry_opt.native \
-  foundry_gen.native \
+  foundry_gen.native
 
 if [ -n "$JS_OF_OCAML" ]; then
   ocamlbuild -j 8 -use-ocamlfind \

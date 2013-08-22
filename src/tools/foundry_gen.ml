@@ -18,7 +18,7 @@ let _ =
         " Dump LLVM IR to stderr"
     ]) (fun arg ->
       inputs := arg :: !inputs)
-    ("Usage: " ^ (Sys.argv.(0) ^ " [options] <input-file>..."));
+    ("Usage: " ^ Sys.argv.(0) ^ " [options] <input-file>...");
 
   let input_ir =
     Unicode.Std.String.concat u""

@@ -1,37 +1,61 @@
-open Unicode.Std
+open Fy_big_int
 
-(* let env = Vm.env_create ()
-
-while true do
-  let lexbuf   = Ulexing.from_utf8_channel stdin in
-  let lexstate = Lexer.create "stdin" 1 in
+let parse filename =
+  let content  = Io.input_all (Io.open_in filename) in
+  let file     = Location.register (Unicode.assert_utf8s filename) 1 content in
+  let lexstate = Lexer.create file in
+  let lexbuf   = Ulexing.from_utf8_string (content :> string) in
   let lex ()   = Lexer.next lexstate lexbuf in
   let parse    = MenhirLib.Convert.Simplified.traditional2revised Parser.toplevel in
+  parse lex
 
-(* let print_stmt stmt =
-    stmt
-    |> Syntax.sexp_of_expr
-    |> Sexp.to_string_hum
-    |> print_endline
-  in List.iter (Parser.toplevel lex lexbuf) ~f:print_stmt
-*)
+let _ =
+  let output   = ref "-"   in
+  let inputs   = ref []    in
 
-  try
-    ignore (Vm.eval env (parse lex));
-    print_endline (IrPrinter.print_roots !Rt.roots)
-  with Rt.Exc exc ->
-(*     let pointers =
-      let all_ranges = exc.Vm.ex_location :: exc.Vm.ex_highlights in
-        String.make (List.fold ~f:max ~init:0 (List.map all_ranges ~f:snd) + 1) ' '
-    in
-      List.iter ~f:(fun (x, y) -> String.fill pointers x (y - x) '~') exc.Vm.ex_highlights;
-      (let x, y = exc.Vm.ex_location in
-        String.fill pointers x (y - x) '^');
+  Arg.parse (Arg.align [
+      "-o", Arg.Set_string output,
+        "<file> Output file";
+    ]) (fun arg ->
+      inputs := arg :: !inputs)
+    ("Usage: " ^ Sys.argv.(0) ^ " <input-file>...");
 
-      print_endline pointers;
- *)
-      print_endline (Location.at (List.hd exc.Rt.ex_locations));
-      print_endline ("Error: " ^ exc.Rt.ex_message)
+  let env = Vm.env_create () in
 
-done
- *)
+  List.iter (fun input ->
+      try
+        ignore (Vm.eval env (parse input))
+      with Rt.Exc exc ->
+        let diag = Diagnostic.Error, exc.Rt.ex_message, exc.Rt.ex_locations in
+        Diagnostic.print diag)
+    !inputs;
+
+  let capsule = Ssa.create_capsule () in
+    let funcn    = Ssa.create_func ~id:u"main" [] (Rt.UnsignedTy 32) in
+    Ssa.add_func capsule funcn;
+
+    let entry    = Ssa.create_block ~id:u"entry" funcn in
+    let toplevel = Ssa.name_of_value (Rt.Package (!Rt.roots).Rt.pToplevel) in
+
+    let resolve  = Ssa.create_instr (Rt.Tvar (Rt.new_tvar ()))
+                      (Ssa.ResolveInstr (toplevel,
+                          Ssa.name_of_value (Rt.Symbol u"main"))) in
+    Ssa.append_instr resolve entry;
+
+    let call     = Ssa.create_instr (Rt.Tvar (Rt.new_tvar ()))
+                      (Ssa.CallInstr (resolve, [
+                          Ssa.name_of_value (Rt.Tuple ([
+                              Rt.Package (!Rt.roots).Rt.pToplevel ]));
+                          Ssa.name_of_value (Rt.Record (
+                              Table.create []))
+                       ])) in
+    Ssa.append_instr call entry;
+
+    let return   = Ssa.create_instr (Rt.UnsignedTy 32)
+                      (Ssa.ReturnInstr (
+                          Ssa.name_of_value (Rt.Unsigned (32, (big_int_of_int 0))))) in
+    Ssa.append_instr return entry;
+
+  let output_ir = IrPrinter.string_of !Rt.roots capsule in
+  let out_chan  = Io.open_out !output in
+    Unicode.Std.output_string out_chan output_ir
