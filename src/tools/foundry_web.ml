@@ -27,7 +27,7 @@ let process code ~do_eval =
             let func    = Ssa_gen.name_of_lambda lam in
             let capsule = Ssa.create_capsule () in
             Ssa.add_func capsule func;
-            Output (IrPrinter.string_of ~roots:!Rt.roots capsule)
+            Output (IrPrinter.string_of !Rt.roots capsule)
 
         end else
           Output (u"")

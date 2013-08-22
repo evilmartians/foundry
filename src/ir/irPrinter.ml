@@ -434,9 +434,12 @@ let print_name name =
   let env = create_env () in
     print_endline (string_of_ssa_name env name)
 
-let string_of ?roots capsule =
+let string_of ?(omit_roots=false) roots capsule =
   let env = create_env () in
-    Option.may (string_of_roots env) roots;
+    if not omit_roots then
+      ignore (string_of_roots env roots);
     string_of_capsule env capsule;
+    env.image <- env.image ^
+      "map tvar = " ^ (string_of_int roots.last_tvar) ^ "\n";
 
     env.image

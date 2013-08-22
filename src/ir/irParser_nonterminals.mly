@@ -81,6 +81,14 @@
     { e_parent   = None;
       e_bindings = Table.create [] }
 
+  type definitions = {
+            globals   : named_value Table.t;
+    mutable g_fixups  : (unit -> unit) list;
+            capsule   : capsule;
+    mutable c_fixups  : (unit -> unit) list;
+    mutable last_tvar : int;
+  }
+
 %}
 
 %start <Rt.roots * Ssa.capsule> toplevel
@@ -125,11 +133,7 @@
                     | _ -> assert false)
                 }
               | Empty
-                { (fun env -> {
-                      e_parent   = None;
-                      e_bindings = Table.create [];
-                    })
-                }
+                { (fun env -> dummy_local_env) }
 
         lambda: x=global
                 { (fun env ->
@@ -555,24 +559,33 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env capsule ->
                      Ssa.add_overload capsule (func env) (target env)) }
 
+last_tvar_body: Map Tvar Equal tv=Lit_Integer
+                { tv }
+
    definitions: env=definitions x=struct_body
-                { let (globals, g_fixups), (capsule, c_fixups) = env in
-                  (globals, (x globals) :: g_fixups), (capsule, c_fixups) }
+                { env.g_fixups <- (x env.globals) :: env.g_fixups;
+                  env }
               | env=definitions x=func_body
-                { let (globals, g_fixups), (capsule, c_fixups) = env in
-                  let funcn, fixup = x globals in
-                  add_func capsule funcn;
-                  (globals, g_fixups), (capsule, fixup :: c_fixups) }
+                { let funcn, fixup = x env.globals in
+                  add_func env.capsule funcn;
+                  env.c_fixups <- fixup :: env.c_fixups;
+                  env }
               | env=definitions x=overload_body
               /*| env=definitions x=impl_body*/
-                { let (globals, g_fixups), (capsule, c_fixups) = env in
-                  x globals capsule;
+                { x env.globals env.capsule;
+                  env }
+              | env=definitions x=last_tvar_body
+                { env.last_tvar <- int_of_big_int x;
                   env }
               | /* empty */
-                { (create_globals (), []), (create_capsule (), []) }
+                { { globals   = create_globals ();
+                    g_fixups  = [];
+                    capsule   = create_capsule ();
+                    c_fixups  = [];
+                    last_tvar = 0; } }
 
       toplevel: env=definitions EOF
-                { let (globals, g_fixups), (capsule, c_fixups) = env in
-                    List.iter (fun f -> f ()) (g_fixups @ c_fixups);
-                    extract_roots globals, capsule
-                }
+                { List.iter (fun f -> f ()) (env.g_fixups @ env.c_fixups);
+                  let roots = extract_roots env.globals in
+                  roots.Rt.last_tvar <- env.last_tvar;
+                  roots, env.capsule }

@@ -11,14 +11,16 @@
 
 @"Unsigned:+" = lambda (0 0) {
   local_env empty
-  type lambda (tvar(10), tvar(11)) -> tvar(12)
+  type lambda (tvar(1), tvar(2)) -> tvar(3)
   code (self, other) { invokeprimitive int_add (self, other) };;
 }
 
 @main = function () -> unsigned(32) {
 entry:
-  %add = tvar(13) resolve unsigned(32) 1, symbol "+"
-  %x   = tvar(14) call %add ([unsigned(32) 1, unsigned(32) 2], {})
+  %add = tvar(4) resolve unsigned(32) 1, symbol "+"
+  %x   = tvar(5) call %add ([unsigned(32) 1, unsigned(32) 2], {})
   primitive "debug" (%x)
   return unsigned(32) 0
 }
+
+map tvar = 6

@@ -3,14 +3,14 @@ let load_ir lexbuf =
   let parse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
   parse lex
 
-let dump_ir ?roots capsule =
-  IrPrinter.string_of ?roots capsule
+let dump_ir omit_roots roots capsule =
+  IrPrinter.string_of ~omit_roots roots capsule
 
 let _ =
   let output   = ref "-"   in
   let no_roots = ref false in
   let inputs   = ref []    in
-  let xfrms   = ref []    in
+  let xfrms    = ref []    in
 
   let append_xfrm xfrm () =
     xfrms := xfrm :: !xfrms
@@ -63,9 +63,6 @@ let _ =
 
   List.iter (fun xfrm -> xfrm capsule) (List.rev !xfrms);
 
-  let output_ir =
-    if !no_roots then dump_ir capsule
-    else dump_ir ~roots capsule
-  in
+  let output_ir = dump_ir !no_roots roots capsule in
   let out_chan  = Io.open_out !output in
     Unicode.Std.output_string out_chan output_ir

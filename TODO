@@ -3,6 +3,5 @@ features:
  * inliner
 
 bugs:
- * last_tvar
  * better value_env
  * better mangling
