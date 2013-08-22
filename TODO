@@ -1,7 +1,10 @@
+features:
  * memoize methods
- * last_tvar
  * target datalayout in foundry_gen
- * better value_env
- * better mangling
  * inliner
  * mono/poly tvar
+
+bugs:
+ * last_tvar
+ * better value_env
+ * better mangling
