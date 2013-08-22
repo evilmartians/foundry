@@ -1,8 +1,6 @@
 open Unicode.Std
 open ExtList
 
-type ty = Rt.ty
-
 module rec NameType :
 sig
   type name = {
@@ -143,7 +141,7 @@ let name_of_value value =
     opcode    = Const value;
     n_parent  = ParentNone;
     n_uses    = [];
-    n_hash    = 0; (* TODO better hash *)
+    n_hash    = Hash_seed.make ();
   }
 
 let set_id name id =
@@ -191,7 +189,7 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
     opcode    = Function func;
     n_parent  = ParentNone;
     n_uses    = [];
-    n_hash    = 0; (* TODO *)
+    n_hash    = Hash_seed.make ();
   } in
   begin
     let make_arg name ty = {
@@ -200,7 +198,7 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
       opcode    = Argument;
       n_parent  = ParentFunction funcn;
       n_uses    = [];
-      n_hash    = 0; (* TODO *)
+      n_hash    = Hash_seed.make ();
     } in
     match arg_ids with
     | Some ids ->
@@ -235,7 +233,7 @@ let create_block ?(id="") funcn =
     opcode    = BasicBlock { instructions = [] };
     n_parent  = ParentFunction funcn;
     n_uses    = [];
-    n_hash    = 0; (* TODO *)
+    n_hash    = Hash_seed.make ();
   } in
   func.basic_blocks <- func.basic_blocks @ [block];
   block

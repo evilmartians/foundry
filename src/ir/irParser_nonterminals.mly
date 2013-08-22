@@ -297,7 +297,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
        method_: dynamic=boption(Dynamic) x=lambda
                 { (fun env -> {
-                    im_hash    = 0; (* TODO *)
+                    im_hash    = Hash_seed.make ();
                     im_dynamic = dynamic;
                     im_body    = x env;
                   }) }
@@ -389,7 +389,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env ->
                     let args, exprs = code in
                     let lambda = {
-                      l_hash      = 0; (* TODO *)
+                      l_hash      = Hash_seed.make ();
                       l_location  = loc;
                       l_ty        = ty env;
                       l_local_env = dummy_local_env;
