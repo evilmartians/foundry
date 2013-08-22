@@ -333,6 +333,10 @@ let rec string_of_ssa_name env value =
     in prefix ^ callee ^ " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
   in
   match value.opcode with
+  | Const value ->
+    string_of_value env value
+  | Argument ->
+    string_of_ident (Local value.id)
   | Function func ->
     (string_of_ident
       (with_lookup env (NamedSSAFunction func) (Global value.id)
@@ -366,9 +370,6 @@ let rec string_of_ssa_name env value =
         (List.map
           (fun v -> "  " ^ (string_of_ssa_name env v) ^ "\n")
           block.instructions))
-  (* Handled in other places *)
-  | Argument | Const _ ->
-    assert false
   (* Instructions *)
   | InvalidInstr ->
     instr "$invalid" []
@@ -428,6 +429,10 @@ let string_of_capsule env capsule =
     let funcn'  = string_of_ssa_name env funcn' in
     env.image <- env.image ^
       "map function " ^ funcn ^ " => " ^ funcn' ^ "\n")
+
+let print_name name =
+  let env = create_env () in
+    print_endline (string_of_ssa_name env name)
 
 let string_of ?roots capsule =
   let env = create_env () in

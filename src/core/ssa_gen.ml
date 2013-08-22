@@ -109,7 +109,7 @@ let ssa_of_formal_arg ~entry ~state ~arg =
 let ssa_of_formal_args ~entry ~state ~args =
   List.fold_left (fun entry arg ->
       ssa_of_formal_arg ~entry ~state ~arg)
-    entry args)
+    entry args
 
 let name_of_lambda ?(id="") lambda =
   (* Create the function with the signature corresponding to that
