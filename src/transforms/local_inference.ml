@@ -30,9 +30,9 @@ let run_on_function funcn =
           match (prim :> latin1s) with
           (* Operands to integer primitives must have the
              same type. *)
-          | "int_add"  | "int_sub"  | "int_mul"  | "int_sdiv"
-          | "int_udiv" | "int_and"  | "int_or"   | "int_xor"
-          | "int_shl"  | "int_lshr" | "int_ashr" | "int_exp"
+          | "int_add"  | "int_sub"  | "int_mul"  | "int_and"
+          | "int_or"   | "int_xor"  | "int_shl"  | "int_lshr"
+          | "int_ashr" | "int_exp"
           -> (* Match de-facto type of this primitive invocation with
                 its polymorphic signature. *)
              (let ty =
