@@ -1,8 +1,6 @@
 features:
  * memoize methods
- * target datalayout in foundry_gen
  * inliner
- * mono/poly tvar
 
 bugs:
  * last_tvar
