@@ -551,9 +551,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | Return value=operand
                 { (fun env -> ReturnInstr (value env) ) }
 
- overload_body: Map Function func=func args=args(ty) FatArrow target=func
+ overload_body: Map Function func=func FatArrow target=func
                 { (fun env capsule ->
-                     Ssa.add_overload capsule (func env) (args env) (target env)) }
+                     Ssa.add_overload capsule (func env) (target env)) }
 
    definitions: env=definitions x=struct_body
                 { let (globals, g_fixups), (capsule, c_fixups) = env in

@@ -3,71 +3,78 @@ open ExtList
 
 type ty = Rt.ty
 
-type name = {
-  mutable id     : string;
-  mutable ty     : Rt.ty;
-  mutable opcode : opcode;
+module rec NameType :
+sig
+  type name = {
+    mutable id     : string;
+    mutable ty     : Rt.ty;
+    mutable opcode : opcode;
 
-  (* Internal fields *)
-  mutable name_parent : name_parent;
-  mutable name_uses   : name list;
-          name_hash   : int;
-}
-and name_parent =
-| ParentNone
-| ParentCapsule    of capsule
-| ParentFunction   of name
-| ParentBasicBlock of name
-and capsule = {
-  mutable functions    : name list;
-  mutable overloads    : overloads;
-}
-and overloads = (Rt.ty list, (name * name) list) Hashtbl.t
-and func = {
-          naming       : func_naming;
-  mutable arguments    : name list;
-  mutable basic_blocks : name list;
-}
-and func_naming = {
-  mutable next_id      : int;
-  mutable names        : string list;
-}
-and basic_block = {
-  mutable instructions : name list;
-}
-and opcode =
-| InvalidInstr
-(* Functions *)
-| Function          of func
-| Argument
-| BasicBlock        of basic_block
-(* Constants *)
-| Const             of Rt.value
-(* Phi *)
-| PhiInstr          of ((*basic_block*) name * (*value*) name) list
-(* Terminators *)
-| JumpInstr         of (*target*) name
-| JumpIfInstr       of (*condition*) name * (*if_true*) name * (*if_false*) name
-| ReturnInstr       of (*value*) name
-(* Language-specific opcodes *)
-| FrameInstr        of (*parent*) name
-| LVarLoadInstr     of (*environment*) name * (*var*) string
-| LVarStoreInstr    of (*environment*) name * (*var*) string * (*value*) name
-| CallInstr         of (*func*) name    * (*operands*) name list
-| MakeClosureInstr  of (*func*) name    * (*environment*) name
-| CallClosureInstr  of (*closure*) name * (*operands*) name list
-| ResolveInstr      of (*object*)  name * (*method*)   name
-| PrimitiveInstr    of (*name*) string  * (*operands*) name list
+    (* Internal fields *)
+    mutable name_parent : name_parent;
+    mutable name_uses   : name list;
+            name_hash   : int;
+  }
+  and name_parent =
+  | ParentNone
+  | ParentCapsule    of capsule
+  | ParentFunction   of name
+  | ParentBasicBlock of name
+  and capsule = {
+    mutable functions    : name list;
+    mutable overloads    : overloads;
+  }
+  and overloads = name Nametbl.t
+  and func = {
+            naming       : func_naming;
+    mutable arguments    : name list;
+    mutable basic_blocks : name list;
+  }
+  and func_naming = {
+    mutable next_id      : int;
+    mutable names        : string list;
+  }
+  and basic_block = {
+    mutable instructions : name list;
+  }
+  and opcode =
+  | InvalidInstr
+  (* Functions *)
+  | Function          of func
+  | Argument
+  | BasicBlock        of basic_block
+  (* Constants *)
+  | Const             of Rt.value
+  (* Phi *)
+  | PhiInstr          of ((*basic_block*) name * (*value*) name) list
+  (* Terminators *)
+  | JumpInstr         of (*target*) name
+  | JumpIfInstr       of (*condition*) name * (*if_true*) name * (*if_false*) name
+  | ReturnInstr       of (*value*) name
+  (* Language-specific opcodes *)
+  | FrameInstr        of (*parent*) name
+  | LVarLoadInstr     of (*environment*) name * (*var*) string
+  | LVarStoreInstr    of (*environment*) name * (*var*) string * (*value*) name
+  | CallInstr         of (*func*) name    * (*operands*) name list
+  | MakeClosureInstr  of (*func*) name    * (*environment*) name
+  | CallClosureInstr  of (*closure*) name * (*operands*) name list
+  | ResolveInstr      of (*object*)  name * (*method*)   name
+  | PrimitiveInstr    of (*name*) string  * (*operands*) name list
+end = NameType
 
-module NameIdentity =
+and NameIdentity : Hashtbl.HashedType =
 struct
-  type t = name
+  type t = NameType.name
 
   let equal = (==)
-  let hash name = name.name_hash
+  let hash name =
+    name.NameType.name_hash
 end
 
-module Nametbl = Hashtbl.Make(NameIdentity)
+and Nametbl : Hashtbl.S with type key = NameType.name =
+  Hashtbl.Make(NameIdentity)
+
+include NameType
 
 (* Variable naming convention:
    funcn:  function name, of type name
@@ -130,7 +137,7 @@ let set_id name id =
 
 let create_capsule () =
   { functions = [];
-    overloads = Hashtbl.create 10; }
+    overloads = Nametbl.create 10; }
 
 let iter_funcs ~f capsule =
   List.iter f capsule.functions
@@ -143,10 +150,9 @@ let add_func capsule funcn =
 
 let remove_func capsule funcn =
   capsule.functions <- List.remove_if ((==) funcn) capsule.functions;
-  Hashtbl.iter (fun args_ty overloads ->
-      Hashtbl.replace capsule.overloads args_ty
-        (List.remove_if (fun (source, target) ->
-          source == funcn || target == funcn) overloads))
+  Nametbl.iter (fun source target ->
+      if funcn == source || funcn == target then
+      Nametbl.remove capsule.overloads source)
     capsule.overloads
 
 let create_func ?(id="") ?arg_ids args_ty result_ty =
@@ -525,30 +531,30 @@ let specialize funcn env =
   iter_instrs funcn ~f:(fun instr ->
     set_ty instr (subst instr.ty))
 
-let add_overload capsule funcn args_ty funcn' =
-  try
-    let bucket = Hashtbl.find capsule.overloads args_ty in
-    Hashtbl.replace capsule.overloads args_ty ((funcn, funcn') :: bucket)
-  with Not_found ->
-    Hashtbl.add capsule.overloads args_ty [(funcn, funcn')]
+let add_overload capsule funcn funcn' =
+  ignore (func_of_name funcn);
+  ignore (func_of_name funcn');
+  Nametbl.add capsule.overloads funcn funcn'
 
 let iter_overloads ~f capsule =
-  Hashtbl.iter (fun args_ty bucket ->
-      List.iter (fun (funcn, funcn') ->
-          f funcn args_ty funcn')
-        bucket)
-    capsule.overloads
+  Nametbl.iter f capsule.overloads
 
-let overload capsule funcn operands_ty =
+let overload capsule funcn ty' =
   try
-    let bucket = Hashtbl.find capsule.overloads operands_ty in
-    List.assq funcn bucket
+    let overloads = Nametbl.find_all capsule.overloads funcn in
+    List.find (fun overload ->
+        try  ignore (Typing.unify overload.ty ty'); true
+        with Typing.Conflict _ -> false)
+      overloads
   with Not_found ->
-    let _, ret_ty = func_ty funcn in
-    let call_ty = Rt.FunctionTy (operands_ty, ret_ty) in
-    let env     = Typing.unify funcn.ty call_ty in
-    let funcn'  = copy_func funcn in
-    add_func     capsule funcn';
-    specialize   funcn'  env;
-    add_overload capsule funcn operands_ty funcn';
-    funcn'
+    (* If unification does not change the signature of callee, do
+       not specialize it. *)
+    let env    = Typing.unify funcn.ty ty' in
+    if (Typing.subst env funcn.ty) <> funcn.ty then begin
+      let funcn' = copy_func funcn in
+      add_func     capsule funcn';
+      add_overload capsule funcn funcn';
+      specialize   funcn'  env;
+      funcn'
+    end else
+      funcn

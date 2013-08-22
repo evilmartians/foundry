@@ -52,13 +52,13 @@ let run_on_function funcn =
           (* Tuple and record primitives have type-level semantics not
              expressible with (non-dependent) type variables. *)
           | "tup_index"
-          -> (let ty =
-                match operands with
-                | [ { ty = Rt.TupleTy xs };
-                    { opcode = Const (Rt.Integer idx) } ]
-                -> List.nth xs (int_of_big_int idx)
-              in
-              Some (Typing.unify instr.Ssa.ty ty))
+          -> (match operands with
+              | [ { ty = Rt.TupleTy xs };
+                  { opcode = Const (Rt.Integer idx) } ]
+              -> (let ty = List.nth xs (int_of_big_int idx) in
+                  Some (Typing.unify instr.Ssa.ty ty))
+              | _
+              -> None)
           | _
           -> None
         in Option.may (specialize funcn) env)

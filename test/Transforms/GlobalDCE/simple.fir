@@ -24,4 +24,4 @@ entry:
   return nil
 }
 
-map function @"Unsigned:+.2" ([unsigned(32), unsigned(32)], {}) => @"Unsigned:+"
+map function @"Unsigned:+.2" => @"Unsigned:+"

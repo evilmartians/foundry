@@ -423,13 +423,11 @@ let string_of_capsule env capsule =
   in
   List.iter (fun funcn -> ignore (string_of_ssa_name env funcn)) funcs;
 
-  iter_overloads capsule ~f:(fun funcn args_ty funcn' ->
-    let funcn   = string_of_ssa_name env funcn in
-    let args_ty = string_of_seq args_ty (string_of_ty env) in
+  iter_overloads capsule ~f:(fun funcn funcn' ->
+    let funcn   = string_of_ssa_name env funcn  in
     let funcn'  = string_of_ssa_name env funcn' in
     env.image <- env.image ^
-      "map function " ^ funcn ^ " (" ^ args_ty ^
-          ") => " ^ funcn' ^ "\n")
+      "map function " ^ funcn ^ " => " ^ funcn' ^ "\n")
 
 let string_of ?roots capsule =
   let env = create_env () in
