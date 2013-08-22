@@ -16,13 +16,13 @@ let run_on_capsule capsule =
     (* Find all opcodes which refer to other functions, and mark
        the functions as live. *)
     iter_instrs funcn ~f:(fun instr ->
-      match instr.opcode with
-      | CallInstr (funcn, _)
-      | MakeClosureInstr (funcn, _)
-      -> (if not (List.memq funcn !seen) then
-            Worklist.put worklist funcn)
-      | _
-      -> ())
+      List.iter (fun operand ->
+        match operand with
+        | { opcode = Function _ }
+        -> (if not (List.memq operand !seen) then
+              Worklist.put worklist operand)
+        | _
+        -> ()) (instr_operands instr))
   done;
 
   let seen = !seen in
