@@ -31,15 +31,18 @@ let append blockn ~ty ~opcode =
 
 let rec ssa_of_expr ~entry ~state ~expr =
   match expr with
-  | Syntax.Begin (_, exprs)
-  -> (let entry, names = ssa_of_exprs ~entry ~state ~exprs in
-        entry, List.hd names)
+  (* Constants. *)
   | Syntax.Int (_, value)
   -> entry, Ssa.name_of_value (Rt.Integer value)
   | Syntax.Unsigned (_, width, value)
   -> entry, Ssa.name_of_value (Rt.Unsigned (width, value))
   | Syntax.Signed (_, width, value)
   -> entry, Ssa.name_of_value (Rt.Signed (width, value))
+  (* Code block. *)
+  | Syntax.Begin (_, exprs)
+  -> (let entry, names = ssa_of_exprs ~entry ~state ~exprs in
+        entry, List.hd names)
+  (* Variable access and assignment. *)
   | Syntax.Self (_)
   -> entry, append entry
                 ~ty:(lvar_type state.frame_ty "self")
@@ -48,6 +51,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
   -> entry, append entry
                 ~ty:(lvar_type state.frame_ty name)
                 ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
+  (* Miscellanea. *)
   | Syntax.InvokePrimitive (_, name, operands)
   -> (let entry, operands = ssa_of_exprs ~entry ~state ~exprs:operands in
       entry, append entry
@@ -71,6 +75,8 @@ and ssa_of_exprs ~entry ~state ~exprs =
         exprs)
 
 let ssa_of_formal_arg ~entry ~state ~arg =
+  (* All bindings initially have a fresh type variable as
+     their type. *)
   let ty = tvar () in
   let assign kind name value =
     Table.set state.frame_ty.Rt.e_bindings_ty name {
@@ -101,15 +107,13 @@ let ssa_of_formal_arg ~entry ~state ~arg =
       assign kind name arg)
 
 let ssa_of_formal_args ~entry ~state ~args =
-  match args with
-  | []
-  -> entry
-  | _
-  -> (List.fold_left (fun entry arg ->
-          ssa_of_formal_arg ~entry ~state ~arg)
-        entry args)
+  List.fold_left (fun entry arg ->
+      ssa_of_formal_arg ~entry ~state ~arg)
+    entry args)
 
 let name_of_lambda ?(id="") lambda =
+  (* Create the function with the signature corresponding to that
+     of lambda. Usually it would be (\x, \y) -> \z. *)
   let funcn =
     let ty = lambda.Rt.l_ty in
     Ssa.create_func ~id
@@ -118,12 +122,16 @@ let name_of_lambda ?(id="") lambda =
       ty.Rt.l_result_ty
   in
   let func = Ssa.func_of_name funcn in
+  (* Extract arguments as SSA names. *)
   let args, kwargs =
     match func.Ssa.arguments with
     | [args; kwargs] -> args, kwargs
     | _ -> assert false
   in
+  (* Create entry block. *)
   let entry = Ssa.create_block ~id:"entry" funcn in
+    (* Define a stack frame. Its type will be mutated while the function
+       is converted. *)
     let frame_ty = {
       Rt.e_parent_ty   = Some (Rt.type_of_environment lambda.Rt.l_local_env);
       Rt.e_bindings_ty = Table.create [];
@@ -134,10 +142,13 @@ let name_of_lambda ?(id="") lambda =
           ~opcode:(Ssa.FrameInstr (Ssa.name_of_value
                     (Rt.Environment lambda.Rt.l_local_env)))
     in
+
+    (* Perform SSA conversion. *)
     let state = { lambda; frame; frame_ty; args; arg_idx = 0; kwargs } in
     let entry =
       ssa_of_formal_args ~entry ~state ~args:lambda.Rt.l_args in
     let entry, names =
       ssa_of_exprs ~entry ~state ~exprs:lambda.Rt.l_body in
     ignore (append entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr (List.hd names)));
+
     funcn
