@@ -16,10 +16,18 @@ let run_on_function capsule funcn =
         | { ty }, { opcode = Const (Rt.Symbol selector) }
         -> (let klass   = Rt.klass_of_type ty in
             let imethod = Table.get_exn klass.Rt.k_methods selector in
-            let lambda  = imethod.Rt.im_body in
-            let callee  = Ssa_gen.name_of_lambda
-                            ~id:(klass.Rt.k_name ^ ":" ^ selector) lambda in
-            add_func capsule callee;
+            let callee =
+              (* Only translate each method once. *)
+              match lookup_lambda capsule imethod.Rt.im_body with
+              | Some callee -> callee
+              | None
+              -> (let lambda  = imethod.Rt.im_body in
+                  let callee  = Ssa_gen.name_of_lambda
+                                  ~id:(klass.Rt.k_name ^ ":" ^ selector) lambda in
+                  add_func   capsule callee;
+                  add_lambda capsule imethod.Rt.im_body callee;
+                  callee)
+            in
             replace_instr instr callee)
         | _, _
         -> ())

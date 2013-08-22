@@ -361,6 +361,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Lambda(_,args,ty_expr,body)
   -> (let tenv, ty = eval_closure_ty env ty_expr in
         Lambda {
+          l_hash      = 0; (*TODO*)
           l_location  = Syntax.loc expr;
           l_ty        = ty;
           l_local_env = lenv;
@@ -438,8 +439,10 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       in
       let tenv, ty = eval_closure_ty env ty_expr in
         define_method definee name {
+          im_hash     = 0; (* TODO *)
           im_dynamic  = false;
           im_body     = {
+            l_hash      = 0; (*TODO*)
             l_location  = loc;
             l_ty        = ty;
             l_local_env = lenv;
@@ -456,8 +459,10 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       let definee  = Class (klass_of_value ~dispatch:true (lenv_lookup lenv "self"),
                             Table.create []) in
         define_method definee name {
+          im_hash     = 0; (* TODO *)
           im_dynamic  = false;
           im_body     = {
+            l_hash    = 0; (*TODO*)
             l_location  = loc;
             l_ty        = ty;
             l_local_env = lenv;

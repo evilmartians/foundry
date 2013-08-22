@@ -6,14 +6,14 @@ type ty = Rt.ty
 module rec NameType :
 sig
   type name = {
-    mutable id     : string;
-    mutable ty     : Rt.ty;
-    mutable opcode : opcode;
+    mutable id        : string;
+    mutable ty        : Rt.ty;
+    mutable opcode    : opcode;
 
     (* Internal fields *)
-    mutable name_parent : name_parent;
-    mutable name_uses   : name list;
-            name_hash   : int;
+    mutable n_parent  : name_parent;
+    mutable n_uses    : name list;
+            n_hash    : int;
   }
   and name_parent =
   | ParentNone
@@ -22,9 +22,11 @@ sig
   | ParentBasicBlock of name
   and capsule = {
     mutable functions    : name list;
-    mutable overloads    : overloads;
+            overloads    : overloads;
+            lambda_cache : lambda_cache;
   }
-  and overloads = name Nametbl.t
+  and overloads    = name Nametbl.t
+  and lambda_cache = name Lambdatbl.t
   and func = {
             naming       : func_naming;
     mutable arguments    : name list;
@@ -68,11 +70,23 @@ struct
 
   let equal = (==)
   let hash name =
-    name.NameType.name_hash
+    name.NameType.n_hash
 end
 
 and Nametbl : Hashtbl.S with type key = NameType.name =
   Hashtbl.Make(NameIdentity)
+
+and LambdaIdentity : Hashtbl.HashedType =
+struct
+  type t = Rt.lambda
+
+  let equal = (==)
+  let hash lambda =
+    lambda.Rt.l_hash
+end
+
+and Lambdatbl : Hashtbl.S with type key = Rt.lambda =
+  Hashtbl.Make(LambdaIdentity)
 
 include NameType
 
@@ -102,7 +116,7 @@ let mangle_id name id =
   let naming =
     match name with
     | { opcode = Function func }
-    | { name_parent = ParentFunction { opcode = Function func } }
+    | { n_parent = ParentFunction { opcode = Function func } }
     -> func.naming
     | _
     -> assert false
@@ -124,20 +138,21 @@ let mangle_id name id =
 
 let name_of_value value =
   {
-    id          = "";
-    ty          = Rt.type_of_value value;
-    opcode      = Const value;
-    name_parent = ParentNone;
-    name_uses   = [];
-    name_hash   = 0; (* TODO better hash *)
+    id        = "";
+    ty        = Rt.type_of_value value;
+    opcode    = Const value;
+    n_parent  = ParentNone;
+    n_uses    = [];
+    n_hash    = 0; (* TODO better hash *)
   }
 
 let set_id name id =
   name.id <- mangle_id name id
 
 let create_capsule () =
-  { functions = [];
-    overloads = Nametbl.create 10; }
+  { functions     = [];
+    overloads     = Nametbl.create 10;
+    lambda_cache  = Lambdatbl.create 10; }
 
 let iter_funcs ~f capsule =
   List.iter f capsule.functions
@@ -150,10 +165,16 @@ let add_func capsule funcn =
 
 let remove_func capsule funcn =
   capsule.functions <- List.remove_if ((==) funcn) capsule.functions;
+  (* Remove overloads where this function is either source or target. *)
   Nametbl.iter (fun source target ->
       if funcn == source || funcn == target then
-      Nametbl.remove capsule.overloads source)
-    capsule.overloads
+        Nametbl.remove capsule.overloads source)
+    capsule.overloads;
+  (* Remove lambda cache entries where this function is the target. *)
+  Lambdatbl.iter (fun lambda target ->
+      if funcn == target then
+        Lambdatbl.remove capsule.lambda_cache lambda)
+    capsule.lambda_cache
 
 let create_func ?(id="") ?arg_ids args_ty result_ty =
   let func  = {
@@ -166,20 +187,20 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
   } in
   let funcn = {
     id;
-    ty          = Rt.FunctionTy (args_ty, result_ty);
-    opcode      = Function func;
-    name_parent = ParentNone;
-    name_uses   = [];
-    name_hash   = 0; (* TODO *)
+    ty        = Rt.FunctionTy (args_ty, result_ty);
+    opcode    = Function func;
+    n_parent  = ParentNone;
+    n_uses    = [];
+    n_hash    = 0; (* TODO *)
   } in
   begin
     let make_arg name ty = {
-      id          = mangle_id funcn name;
+      id        = mangle_id funcn name;
       ty;
-      opcode      = Argument;
-      name_parent = ParentFunction funcn;
-      name_uses   = [];
-      name_hash   = 0; (* TODO *)
+      opcode    = Argument;
+      n_parent  = ParentFunction funcn;
+      n_uses    = [];
+      n_hash    = 0; (* TODO *)
     } in
     match arg_ids with
     | Some ids ->
@@ -209,18 +230,18 @@ let iter_args ~f funcn =
 let create_block ?(id="") funcn =
   let func = func_of_name funcn in
   let block = {
-    id          = mangle_id funcn id;
-    ty          = Rt.BasicBlockTy;
-    opcode      = BasicBlock { instructions = [] };
-    name_parent = ParentFunction funcn;
-    name_uses   = [];
-    name_hash   = 0; (* TODO *)
+    id        = mangle_id funcn id;
+    ty        = Rt.BasicBlockTy;
+    opcode    = BasicBlock { instructions = [] };
+    n_parent  = ParentFunction funcn;
+    n_uses    = [];
+    n_hash    = 0; (* TODO *)
   } in
   func.basic_blocks <- func.basic_blocks @ [block];
   block
 
 let remove_block blockn =
-  match blockn.name_parent with
+  match blockn.n_parent with
   | ParentFunction funcn
   -> (let func = func_of_name funcn in
       func.basic_blocks <- List.remove_if ((==) blockn) func.basic_blocks)
@@ -254,12 +275,12 @@ let predecessors blockn =
   List.filter_map (fun use ->
       match use.opcode with
       | JumpInstr _ | JumpIfInstr _
-      -> (match use.name_parent with
+      -> (match use.n_parent with
           | ParentBasicBlock block -> Some block
           | _ -> assert false)
       | _
       -> None)
-    blockn.name_uses
+    blockn.n_uses
 
 let instr_operands instr =
   match instr.opcode with
@@ -294,33 +315,33 @@ let instr_operands instr =
   -> operands
 
 let instr_parent instr =
-  match instr.name_parent with
+  match instr.n_parent with
   | ParentBasicBlock blockn -> blockn
   | _ -> assert false
 
 let add_uses instr =
   List.iter (fun used ->
-      assert (not (List.memq instr used.name_uses));
-      used.name_uses <- instr :: used.name_uses)
+      assert (not (List.memq instr used.n_uses));
+      used.n_uses <- instr :: used.n_uses)
     (instr_operands instr)
 
 let remove_uses instr =
   List.iter (fun used ->
-      assert (List.memq instr used.name_uses);
-      used.name_uses <- List.remove_if ((==) instr) used.name_uses)
+      assert (List.memq instr used.n_uses);
+      used.n_uses <- List.remove_if ((==) instr) used.n_uses)
     (instr_operands instr)
 
 let iter_uses ~f instr =
-  List.iter f instr.name_uses
+  List.iter f instr.n_uses
 
 let create_instr ?(id="") ty opcode =
   {
     id;
     ty;
     opcode;
-    name_parent = ParentNone;
-    name_uses   = [];
-    name_hash   = 0;
+    n_parent  = ParentNone;
+    n_uses    = [];
+    n_hash    = 0;
   }
 
 let insert_instr ?pivot f_some f_none instr blockn =
@@ -328,7 +349,7 @@ let insert_instr ?pivot f_some f_none instr blockn =
   begin
     (* Sanity checks: instr must be an instruction not
        attached to any block. *)
-    assert (instr.name_parent = ParentNone);
+    assert (instr.n_parent = ParentNone);
     match instr.opcode with
     | Argument | Function _ | BasicBlock _
     | Const _
@@ -350,7 +371,7 @@ let insert_instr ?pivot f_some f_none instr blockn =
     -> block.instructions <- f_none block.instructions
   end;
   instr.id <- mangle_id blockn instr.id;
-  instr.name_parent <- ParentBasicBlock blockn
+  instr.n_parent <- ParentBasicBlock blockn
 
 let prepend_instr ?before instr blockn =
   insert_instr ?pivot:before
@@ -389,12 +410,12 @@ let set_ty name ty =
   -> name.ty <- ty
 
 let remove_instr instr =
-  match instr.name_parent with
+  match instr.n_parent with
   | ParentBasicBlock blockn
   -> (let block = block_of_name blockn in
       assert (List.memq instr block.instructions);
       block.instructions <- List.remove_if ((==) instr) block.instructions;
-      instr.name_parent <- ParentNone)
+      instr.n_parent <- ParentNone)
   | _
   -> assert false
 
@@ -460,7 +481,7 @@ let replace_instr instr instr' =
   | { opcode = BasicBlock _ }
   | { opcode = Const _      }
   -> erase_instr instr;
-  | { name_parent = ParentBasicBlock block }
+  | { n_parent = ParentBasicBlock block }
   -> prepend_instr ~before:instr instr' block;
      erase_instr instr
   | _
@@ -509,7 +530,7 @@ let copy_func ?(suffix="") funcn =
     (* Append instruction to the corresponding basic block in the
        specialized function. *)
     let blockn' =
-      match instr.name_parent with
+      match instr.n_parent with
       | ParentBasicBlock blockn -> Nametbl.find map blockn
       | _ -> assert false
     in
@@ -558,3 +579,14 @@ let overload capsule funcn ty' =
       funcn'
     end else
       funcn
+
+let add_lambda capsule lambda funcn =
+  ignore (func_of_name funcn);
+  Lambdatbl.add capsule.lambda_cache lambda funcn
+
+let iter_lambdas ~f capsule =
+  Lambdatbl.iter f capsule.lambda_cache
+
+let lookup_lambda capsule lambda =
+  try  Some (Lambdatbl.find capsule.lambda_cache lambda)
+  with Not_found -> None

@@ -84,8 +84,8 @@ let ssa_of_formal_arg ~entry ~state ~arg =
       Rt.b_kind_ty     = kind;
       Rt.b_value_ty    = ty;
     };
-    append entry ~ty:Rt.NilTy
-      ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value));
+    ignore (append entry ~ty:Rt.NilTy
+        ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
     entry
   in
   match arg with

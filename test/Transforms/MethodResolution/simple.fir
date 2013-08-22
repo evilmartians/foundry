@@ -20,6 +20,11 @@ entry:
   %add = function ([int, int], {}) -> int resolve int 1, symbol "+"
 ; CHECK: %x = int call @"Integer:+"
   %x   = int call %add ([int 1, int 2], {})
-  primitive "debug" (%x)
+
+; CHECK-NOT: resolve
+  %add.s = function ([int, int], {}) -> int resolve int 5, symbol "+"
+; CHECK: %x.s = int call @"Integer:+"
+  %x.s   = int call %add.s ([int 5, int 10], {})
+
   return nil
 }

@@ -20,7 +20,9 @@ let run_on_function funcn =
           let env = Typing.unify return_ty value.ty in
           Ssa.specialize funcn env)
     | CallInstr (callee, _)
-    -> (match callee.ty with
+    -> (* Call instruction does not necessarily point directly to
+          the function; it can be a function pointer. *)
+       (match callee.ty with
         | Rt.FunctionTy (_, return_ty)
         -> (if instr.ty <> return_ty then
               let env = Typing.unify instr.ty return_ty in

@@ -19,7 +19,7 @@ let run_on_function funcn =
     let instr = Worklist.take worklist in
     (* If an instruction does not have side effects and is not
        referenced, erase it and add its operands to worklist. *)
-    if instr.name_uses = [] && not (has_side_effects instr) then begin
+    if instr.n_uses = [] && not (has_side_effects instr) then begin
       Worklist.append worklist (instr_operands instr);
       Worklist.remove worklist instr;
       erase_instr instr

@@ -47,7 +47,7 @@
         (u"p.meta:toplevel",      NamedClass roots.pToplevel.p_metaclass);
       ]
 
-  let extract_roots globals =
+  let extract_roots last_tvar globals =
     let get_class name =
       match Table.get globals name with
       | Some (NamedClass k) -> k
@@ -58,7 +58,7 @@
       | _ -> assert false
     in
     {
-      last_tvar     = 0; (* TODO *)
+      last_tvar;
 
       kClass        = get_class (u"c.Class");
       kTypeVariable = get_class (u"c.TypeVariable");
@@ -297,6 +297,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
        method_: dynamic=boption(Dynamic) x=lambda
                 { (fun env -> {
+                    im_hash    = 0; (* TODO *)
                     im_dynamic = dynamic;
                     im_body    = x env;
                   }) }
@@ -388,6 +389,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env ->
                     let args, exprs = code in
                     let lambda = {
+                      l_hash      = 0; (* TODO *)
                       l_location  = loc;
                       l_ty        = ty env;
                       l_local_env = dummy_local_env;
@@ -559,6 +561,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env capsule ->
                      Ssa.add_overload capsule (func env) (target env)) }
 
+     impl_body: Map Lambda meth=lambda FatArrow target=func
+                { (fun env capsule ->
+                     Ssa.add_lambda capsule (meth env) (target env))}
+
 last_tvar_body: Map Tvar Equal tv=Lit_Integer
                 { tv }
 
@@ -571,7 +577,7 @@ last_tvar_body: Map Tvar Equal tv=Lit_Integer
                   env.c_fixups <- fixup :: env.c_fixups;
                   env }
               | env=definitions x=overload_body
-              /*| env=definitions x=impl_body*/
+              | env=definitions x=impl_body
                 { x env.globals env.capsule;
                   env }
               | env=definitions x=last_tvar_body
@@ -586,6 +592,4 @@ last_tvar_body: Map Tvar Equal tv=Lit_Integer
 
       toplevel: env=definitions EOF
                 { List.iter (fun f -> f ()) (env.g_fixups @ env.c_fixups);
-                  let roots = extract_roots env.globals in
-                  roots.Rt.last_tvar <- env.last_tvar;
-                  roots, env.capsule }
+                  extract_roots env.last_tvar env.globals, env.capsule }

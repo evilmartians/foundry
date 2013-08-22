@@ -1,21 +1,23 @@
 open Unicode.Std
 
 type name = private {
-  mutable id     : string;
-  mutable ty     : Rt.ty;
-  mutable opcode : opcode;
+  mutable id        : string;
+  mutable ty        : Rt.ty;
+  mutable opcode    : opcode;
 
   (* Internal fields *)
-  mutable name_parent : name_parent;
-  mutable name_uses   : name list;
-          name_hash   : int;
+  mutable n_parent  : name_parent;
+  mutable n_uses    : name list;
+          n_hash    : int;
 }
 and name_parent
 and capsule = private {
   mutable functions    : name list;
-  mutable overloads    : overloads;
+          overloads    : overloads;
+          lambda_cache : lambda_cache;
 }
 and overloads
+and lambda_cache
 and func = private {
           naming       : func_naming;
   mutable arguments    : name list;
@@ -94,6 +96,11 @@ val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> unit
 val overload        : capsule -> (*func*) name -> Rt.ty -> (*func'*) name
 val add_overload    : capsule -> (*func*) name -> (*func'*) name -> unit
 val iter_overloads  : f:( (*func*)  name -> (*func'*) name -> unit) ->
+                        capsule -> unit
+
+val lookup_lambda : capsule -> Rt.lambda -> (*func*) name option
+val add_lambda    : capsule -> Rt.lambda -> (*func*) name -> unit
+val iter_lambdas  : f:(Rt.lambda -> (*func*) name -> unit) ->
                         capsule -> unit
 
 (* Basic block level *)

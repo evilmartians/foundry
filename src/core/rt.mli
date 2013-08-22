@@ -67,6 +67,7 @@ and local_env = {
 and type_env  = tvar Table.t
 and const_env = package list
 and lambda    = {
+  l_hash          : int;
   l_location      : Location.t;
   l_ty            : lambda_ty;
   mutable l_local_env : local_env;
@@ -101,6 +102,7 @@ and mixin = {
   m_methods       : imethod Table.t;
 }
 and imethod = {
+  im_hash         : int;
   im_body         : lambda;
   im_dynamic      : bool;
 }

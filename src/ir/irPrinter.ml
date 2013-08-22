@@ -130,7 +130,6 @@ let rec string_of_value env value =
   | Record(xs)        -> "{" ^ (string_of_assoc xs (string_of_value env)) ^ "}"
   | Environment(e)    -> string_of_ident (string_of_local_env env e)
   | Lambda(l)         -> "lambda " ^ (string_of_ident (string_of_lambda env l))
-  | LambdaTy(lt)      -> string_of_lambda_ty env lt
   | Class(k,sp)       -> "class " ^ (string_of_ident (string_of_klass env k)) ^
                            "{" ^(string_of_assoc sp (string_of_value env))  ^ "}"
   | Mixin(k,sp)       -> "mixin " ^ (string_of_ident (string_of_mixin env k)) ^
@@ -139,7 +138,7 @@ let rec string_of_value env value =
   | Instance(c,iv)    -> "instance " ^ (string_of_ident (string_of_instance env c iv))
 
   | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy | UnsignedTy _
-  | SignedTy _ | TupleTy _ | RecordTy _ | EnvironmentTy _ | FunctionTy _
+  | SignedTy _ | TupleTy _ | RecordTy _ | LambdaTy _ | EnvironmentTy _ | FunctionTy _
   | ClosureTy _ | BasicBlockTy
   -> "type " ^ (string_of_ty env value)
 
@@ -155,6 +154,7 @@ and string_of_ty env ty =
   | SignedTy(w)       -> "signed(" ^ (string_of_int w) ^ ")"
   | TupleTy(xs)       -> "[" ^ (string_of_seq xs (string_of_ty env)) ^ "]"
   | RecordTy(xs)      -> "{" ^ (string_of_assoc xs (string_of_ty env)) ^ "}"
+  | LambdaTy(lt)      -> string_of_lambda_ty env lt
   | EnvironmentTy(x)  -> "environment " ^ (string_of_local_env_ty env x)
   | FunctionTy(xs,x)  -> "function (" ^ (string_of_seq xs (string_of_ty env)) ^ ") -> " ^
                             (string_of_ty env x)
@@ -210,7 +210,7 @@ and string_of_tvar env (tvar:tvar) =
   "tvar(" ^ (string_of_int (tvar :> int)) ^ ")"
 
 and string_of_lambda_ty env lambda_ty =
-  "type lambda (" ^
+  "lambda (" ^
     (string_of_ty env lambda_ty.l_args_ty) ^ ", " ^
     (string_of_ty env lambda_ty.l_kwargs_ty) ^ ") -> " ^
     (string_of_ty env lambda_ty.l_result_ty)
@@ -425,10 +425,16 @@ let string_of_capsule env capsule =
   List.iter (fun funcn -> ignore (string_of_ssa_name env funcn)) funcs;
 
   iter_overloads capsule ~f:(fun funcn funcn' ->
-    let funcn   = string_of_ssa_name env funcn  in
-    let funcn'  = string_of_ssa_name env funcn' in
+    let funcn  = string_of_ssa_name env funcn  in
+    let funcn' = string_of_ssa_name env funcn' in
     env.image <- env.image ^
-      "map function " ^ funcn ^ " => " ^ funcn' ^ "\n")
+      "map function " ^ funcn ^ " => " ^ funcn' ^ "\n");
+
+  iter_lambdas capsule ~f:(fun lambda funcn ->
+    let lambda = string_of_lambda env lambda  in
+    let funcn  = string_of_ssa_name env funcn in
+    env.image <- env.image ^
+      "map lambda " ^ (string_of_ident lambda) ^ " => " ^ funcn ^ "\n")
 
 let print_name name =
   let env = create_env () in
