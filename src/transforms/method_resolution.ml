@@ -7,8 +7,9 @@ let run_on_function capsule funcn =
     | ResolveInstr (recvn, seln)
     -> (* Find all resolve instructions where:
            - Selector is fully known;
-           - Type of receiver is at least partially
-             known, i.e. not a bare type variable. *)
+           - Type of receiver is at least partially known, i.e.
+             not a bare type variable. Method lookup in Foundry is
+             only dependent on the type itself and not its parameters. *)
        (match recvn, seln with
         | { ty = Rt.Tvar _ }, _
         -> ()

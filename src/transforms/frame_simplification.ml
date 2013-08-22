@@ -10,8 +10,8 @@ let run_on_function funcn =
   iter_instrs funcn ~f:(fun instr ->
     (* Find all stack frames in this function. Usually
        there would be only one, as that's how the frontend
-       generates code; however, closure conversion may split
-       additional frames. *)
+       generates code; however, inlining or other optimizations
+       may split additional frames. *)
     match instr.opcode with
     | FrameInstr { opcode = Const (Rt.Environment env) }
     -> (iter_uses instr ~f:(fun frame_user ->

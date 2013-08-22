@@ -12,6 +12,8 @@ let run_on_function funcn =
 
   iter_instrs funcn ~f:(fun instr ->
     match instr.opcode with
+    (* Make sure that call and return instruction types match the
+       signatures of their associated functions. *)
     | ReturnInstr value
     -> (let _, return_ty = func_ty funcn in
         if value.ty <> return_ty then
