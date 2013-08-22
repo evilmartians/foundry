@@ -1,7 +1,6 @@
-; RUN: %foundry_opt %s -no-roots -specialize -specialize -o %t
+; RUN: %foundry_opt %s -no-roots -specialize -specialize -gdce -o %t
 ; RUN: %file_check %s -input-file %t
 ; RUN: %foundry_gen %t | lli | %file_check %s -check-prefix EXEC
-; XFAIL: *
 
 ; CHECK: [[fact:@fact[\d.]*]] = function (unsigned(32) %x, unsigned(32) %one) -> unsigned(32)
 @fact = function (tvar(1) %x, tvar(1) %one) -> tvar(1) {

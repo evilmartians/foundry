@@ -142,7 +142,12 @@ let add_func capsule funcn =
   capsule.functions <- funcn :: capsule.functions
 
 let remove_func capsule funcn =
-  capsule.functions <- List.remove capsule.functions funcn
+  capsule.functions <- List.remove_if ((==) funcn) capsule.functions;
+  Hashtbl.iter (fun args_ty overloads ->
+      Hashtbl.replace capsule.overloads args_ty
+        (List.remove_if (fun (source, target) ->
+          source == funcn || target == funcn) overloads))
+    capsule.overloads
 
 let create_func ?(id="") ?arg_ids args_ty result_ty =
   let func  = {

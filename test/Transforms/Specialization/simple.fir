@@ -1,7 +1,6 @@
-; RUN: %foundry_opt %s -no-roots -specialize -infer -o %t
+; RUN: %foundry_opt %s -no-roots -specialize -infer -gdce -o %t
 ; RUN: %file_check %s -input-file %t
 ; RUN: %foundry_gen %t | lli | %file_check %s -check-prefix EXEC
-; XFAIL: *
 
 @add = function (tvar(1) %x, tvar(1) %y) -> tvar(1) {
 entry:

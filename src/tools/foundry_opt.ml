@@ -29,6 +29,9 @@ let _ =
       "-dce", Arg.Unit (append_xfrm Dead_code_elim.run_on_capsule),
         " Dead Code Elimination";
 
+      "-gdce", Arg.Unit (append_xfrm Global_dce.run_on_capsule),
+        " Global Dead Code Elimination";
+
       "-simplify-cfg", Arg.Unit (append_xfrm Cfg_simplification.run_on_capsule),
         " CFG Simplification";
 
