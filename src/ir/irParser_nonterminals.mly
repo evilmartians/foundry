@@ -211,6 +211,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     e_parent_ty   = parent env;
                     e_bindings_ty = xs env;
                   }) }
+              | Class x=klass sp=table(value)
+                { (fun env -> Class (x env, sp env)) }
               | x=lambda_ty
                 { (fun env -> LambdaTy (x env)) }
               | Function args=args(ty) Arrow ty=ty

@@ -20,6 +20,9 @@ let _ =
       inputs := arg :: !inputs)
     ("Usage: " ^ Sys.argv.(0) ^ " <input-file>...");
 
+  if !inputs = [] then
+    inputs := ["-"];
+
   let env = Vm.env_create () in
 
   List.iter (fun input ->
@@ -27,7 +30,8 @@ let _ =
         ignore (Vm.eval env (parse input))
       with Rt.Exc exc ->
         let diag = Diagnostic.Error, exc.Rt.ex_message, exc.Rt.ex_locations in
-        Diagnostic.print diag)
+        Diagnostic.print diag;
+        exit 1)
     !inputs;
 
   let capsule = Ssa.create_capsule () in

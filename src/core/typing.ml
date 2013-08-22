@@ -54,10 +54,16 @@ let rec subst env ty =
       with Not_found -> ty)
   | Rt.TupleTy xs
   -> Rt.TupleTy (List.map (subst env) xs)
+  | Rt.Tuple xs
+  -> Rt.Tuple (List.map (subst env) xs)
   | Rt.RecordTy xs
   -> Rt.RecordTy (Table.map (subst env) xs)
+  | Rt.Record xs
+  -> Rt.Record (Table.map (subst env) xs)
   | Rt.EnvironmentTy ty
   -> Rt.EnvironmentTy (subst_local_env env ty)
+  | Rt.Class (klass, specz)
+  -> Rt.Class (klass, Table.map (subst env) specz)
   | Rt.FunctionTy (args, ret)
   -> Rt.FunctionTy (List.map (subst env) args, subst env ret)
   | _

@@ -42,7 +42,7 @@ type value =
 | ClosureTy     of ty list * ty
 | BasicBlockTy
 and ty = value
-and 'a specialized = 'a * value Table.t
+and 'a specialized = 'a * ty Table.t
 and slots = value Table.t
 and binding_ty = {
   b_location_ty   : Location.t;
@@ -123,22 +123,22 @@ with sexp
 val exc_fail       : string -> Location.t list -> 'a
 val exc_type       : string -> value -> Location.t list -> 'a
 
-val type_of_value  : value -> value
+val type_of_value       : value -> ty
 val type_of_environment : local_env -> local_env_ty
 
-val klass_of_type  : value -> klass
+val klass_of_type  : ?dispatch:bool -> ty -> klass
 val klass_of_value : ?dispatch:bool -> ?meta:bool -> value -> klass
 
 (* Correctly handles cyclic structures. *)
 val equal          : value -> value -> bool
 
-val inspect_value  : value -> string
-val inspect_type   : value -> string
 val inspect        : value -> string
+val inspect_value  : value -> string
+val inspect_type   : ty    -> string
 
-val print_value    : value -> unit
-val print_type     : value -> unit
 val print          : value -> unit
+val print_value    : value -> unit
+val print_type     : ty    -> unit
 
 type roots = {
   mutable last_tvar : int;

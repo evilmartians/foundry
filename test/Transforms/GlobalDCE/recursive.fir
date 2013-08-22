@@ -1,4 +1,4 @@
-; RUN: %foundry_opt %s -no-roots -gdce | %file_check %s
+; RUN: %foundry_xfrm %s -no-roots -gdce | %file_check %s
 
 ; CHECK-NOT: @foo
 

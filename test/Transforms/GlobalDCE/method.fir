@@ -1,4 +1,4 @@
-; RUN: %foundry_opt %s -no-roots -resolve -specialize -gdce | %file_check %s
+; RUN: %foundry_xfrm %s -no-roots -resolve -specialize -gdce | %file_check %s
 ; CHECK-NOT: map lambda
 
 @c.Unsigned = class "Unsigned" {

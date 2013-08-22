@@ -1,4 +1,4 @@
-; RUN: %foundry_opt %s -no-roots -resolve -specialize -gdce -infer >%t
+; RUN: %foundry_xfrm %s -no-roots -resolve -specialize -gdce -infer >%t
 ; RUN: %foundry_gen %t | lli | %file_check %s
 ; CHECK: [DEBUG: 0x00000003]
 

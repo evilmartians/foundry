@@ -1,4 +1,4 @@
-; RUN: %foundry_opt %s -no-roots -dce | %file_check %s
+; RUN: %foundry_xfrm %s -no-roots -dce | %file_check %s
 
 @foo = function() -> nil {
 entry:

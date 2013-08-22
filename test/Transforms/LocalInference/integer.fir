@@ -1,4 +1,4 @@
-; RUN: %foundry_opt %s -no-roots -infer | %file_check %s
+; RUN: %foundry_xfrm %s -no-roots -infer | %file_check %s
 
 ; CHECK: @a = function () -> int {
 @a = function () -> tvar(1) {

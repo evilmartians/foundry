@@ -1,4 +1,4 @@
-; RUN: %foundry_opt -ordered %s | %file_check %s
+; RUN: %foundry_xfrm -ordered %s | %file_check %s
 
 @1 = environment {
   bindings {

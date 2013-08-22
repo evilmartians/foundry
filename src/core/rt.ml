@@ -259,7 +259,7 @@ let new_package name =
 
 (* Types and classes *)
 
-let klass_of_type ty =
+let klass_of_type ?(dispatch=false) ty =
   match ty with
   | BooleanTy     -> !roots.kBoolean
   | NilTy         -> !roots.kNil
@@ -275,6 +275,7 @@ let klass_of_type ty =
   | LambdaTy(_)   -> !roots.kLambda
 
   | Class(k,_)    -> k
+
   | _ -> failwith ("klass_of_type " ^
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value ty))))
@@ -300,13 +301,9 @@ let klass_of_value ?(dispatch=false) ?(meta=true) value =
   | Mixin(m,_)    -> if dispatch then m.m_metaclass else !roots.kMixin
 
   | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
-  | TupleTy(_) | RecordTy(_) | LambdaTy(_)
-  | SignedTy(_) | UnsignedTy(_)
-  -> (let klass = klass_of_type value in
-        if dispatch then
-          klass.k_metaclass
-        else
-          klass)
+  | TupleTy _ | RecordTy _ | LambdaTy _ | SignedTy _
+  | UnsignedTy _
+  -> klass_of_type ~dispatch value
 
   | _ -> failwith ("klass_of_value " ^
                    (Unicode.assert_utf8s
@@ -328,9 +325,9 @@ let rec type_of_value value =
   | Environment(e)  -> EnvironmentTy (type_of_environment e)
   | Lambda(c)       -> LambdaTy c.l_ty
 
-  | Package(_)      -> Class (!roots.kPackage, Table.create [])
-  | Class(k,_)      -> Class (!roots.kClass, Table.create [])
-  | Instance(k,_)   -> Class (k)
+  | Package(p)      -> Class (p.p_metaclass, Table.create [])
+  | Class(k,_)      -> Class (k.k_metaclass, Table.create [])
+  | Instance(k,_)   -> Class k
 
   | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
   | TupleTy(_) | RecordTy(_) | LambdaTy(_)

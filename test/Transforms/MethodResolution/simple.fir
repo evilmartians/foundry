@@ -1,4 +1,4 @@
-; RUN: %foundry_opt %s -no-roots -resolve | %file_check %s
+; RUN: %foundry_xfrm %s -no-roots -resolve | %file_check %s
 
 @c.Integer = class "Integer" {
   metaclass @c.meta:Integer

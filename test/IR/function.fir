@@ -1,4 +1,4 @@
-; RUN: %foundry_opt -ordered %s | %file_check %s
+; RUN: %foundry_xfrm -ordered %s | %file_check %s
 
 ; CHECK: @id = function (unsigned(32) %n) -> unsigned(32)
 @id = function (unsigned(32) %n) -> unsigned(32) {

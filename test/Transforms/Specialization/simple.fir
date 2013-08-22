@@ -1,4 +1,4 @@
-; RUN: %foundry_opt %s -no-roots -specialize -infer -gdce -o %t
+; RUN: %foundry_xfrm %s -no-roots -specialize -infer -gdce -o %t
 ; RUN: %file_check %s -input-file %t
 ; RUN: %foundry_gen %t | lli | %file_check %s -check-prefix EXEC
 

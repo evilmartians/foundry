@@ -33,6 +33,11 @@ let run_on_function funcn =
     | PrimitiveInstr (prim, operands)
     -> (let env =
           match (prim :> latin1s) with
+          (* Debug primitive is polymorphic; it accepts any amount of
+             values of any kind. *)
+          | "debug"
+          -> (let env = Typing.unify instr.ty Rt.NilTy in
+              Some env)
           (* Operands to integer primitives must have the
              same type. *)
           | "int_add"  | "int_sub"  | "int_mul"  | "int_and"

@@ -1,4 +1,4 @@
-; RUN: %foundry_opt %s -no-roots -simplify-frames | %file_check %s
+; RUN: %foundry_xfrm %s -no-roots -simplify-frames | %file_check %s
 
 @env1 = environment {
   bindings {

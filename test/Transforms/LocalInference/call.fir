@@ -1,4 +1,4 @@
-; RUN: %foundry_opt %s -no-roots -infer | %file_check %s
+; RUN: %foundry_xfrm %s -no-roots -infer | %file_check %s
 
 @a = function () -> int {
 entry:

@@ -56,6 +56,8 @@ let rec lltype_of_ty ty =
         (Table.map_list ~ordered:true ~f:(fun _ -> lltype_of_ty) xs))
   | Rt.EnvironmentTy env_ty
   -> Llvm.pointer_type (Llvm.i8_type ctx)
+  | Rt.Class (klass, specz) (* TODO *)
+  -> Llvm.struct_type ctx [||]
   | Rt.FunctionTy (args_ty, ret_ty)
   -> (Llvm.function_type
         (lltype_of_ty ret_ty)
@@ -189,6 +191,8 @@ let rec llconst_of_value llmod value =
           | None -> content
         in
         Llvm.const_struct ctx (Array.of_list content)))
+  | Rt.Package pkg
+  -> (Llvm.const_struct ctx [||]) (* TODO *)
   | _ -> failwith (u"llconst_of_value: " ^ (Rt.inspect_value value))
 
 let gen_proto llmod funcn =
