@@ -10,6 +10,19 @@ let int_cmpop_ty = (* val int_cmpop : 'a -> 'a -> bool *)
   let tv = stvar () in Rt.FunctionTy ([tv; tv], Rt.BooleanTy)
 
 let run_on_function funcn =
+  let local_var_ty frame name =
+    let rec lookup ty =
+      match Table.get ty.Rt.e_bindings_ty name with
+      | Some binding -> binding.Rt.b_value_ty
+      | None ->
+        match ty.Rt.e_parent_ty with
+        | Some ty -> lookup ty
+        | None -> assert false
+    in
+    match frame.ty with
+    | Rt.EnvironmentTy ty -> lookup ty
+    | _ -> assert false
+  in
   iter_instrs funcn ~f:(fun instr ->
     match instr.opcode with
     (* Make sure that call and return instruction types match the
@@ -29,7 +42,14 @@ let run_on_function funcn =
               Ssa.specialize funcn env)
         | _
         -> ())
-    (* Phis are equivalent to HM unification points. *)
+    (* Local variable accesses are unification points. *)
+    | LVarLoadInstr (frame, name)
+    -> (let env = Typing.unify instr.ty (local_var_ty frame name) in
+        Ssa.specialize funcn env)
+    | LVarStoreInstr (frame, name, value)
+    -> (let env = Typing.unify value.ty (local_var_ty frame name) in
+        Ssa.specialize funcn env)
+    (* Phis are unification points. *)
     | PhiInstr incoming
     -> (let tys = List.map (fun (_,value) -> value.ty) incoming in
         let env = Typing.unify_list (instr.ty :: tys) in

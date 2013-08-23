@@ -15,7 +15,10 @@ let run_on_function capsule funcn =
         -> ()
         | { ty }, { opcode = Const (Rt.Symbol selector) }
         -> (let klass   = Rt.klass_of_type ty in
-            let imethod = Table.get_exn klass.Rt.k_methods selector in
+            let imethod =
+              try  Table.get_exn klass.Rt.k_methods selector
+              with Not_found -> failwith ("Method_resolution: " ^ selector)
+            in
             let callee =
               (* Only translate each method once. *)
               match lookup_lambda capsule imethod.Rt.im_body with

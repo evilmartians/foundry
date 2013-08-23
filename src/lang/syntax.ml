@@ -65,7 +65,7 @@ type actual_arg =
 | ActualKwSplice  of operator   * expr
 and actual_args = actual_arg list
 and local_var   = lvar_kind * string
-and formal_arg =
+and formal_arg  =
 | FormalSelf      of nullary
 | FormalArg       of nullary    * local_var
 | FormalOptArg    of operator   * local_var * expr
@@ -74,18 +74,18 @@ and formal_arg =
 | FormalKwOptArg  of operator   * local_var * expr
 | FormalKwRest    of operator   * local_var
 and formal_args = formal_arg list
-and pair_ty =          operator   * string * ty
-and arg_ty =
+and pair_ty     = operator   * string * ty
+and arg_ty      =
 | TypeArg         of nullary    * ty
 | TypeArgKw       of operator   * string * ty
-and ty =
+and ty          =
 | TypeConstr      of operator   * string * pair_ty list
 | TypeTuple       of collection * ty list
 | TypeRecord      of collection * pair_ty list
 | TypeFunction    of collection * arg_ty list * ty
 | TypeVar         of nullary    * string
 | TypeSplice      of nullary    * expr
-and tuple_elem =
+and tuple_elem  =
 | TupleElem       of nullary    * expr
 | TupleSplice     of operator   * expr
 and tuple_elems = tuple_elem list
@@ -94,16 +94,16 @@ and record_elem =
 | RecordPair      of operator   * expr * expr
 | RecordSplice    of operator   * expr
 and record_elems = record_elem list
-and quote_elem =
+and quote_elem  =
 | QuoteString     of nullary    * string
 | QuoteSplice     of collection * expr
 and quote_elems = quote_elem list
-and pattern =
+and pattern     =
 | PatVariable     of let_bind   * local_var
 | PatTuple        of collection * pattern list
 | PatRecord       of collection * pat_extract list
-and pat_extract =      let_bind   * local_var * pattern
-and expr =
+and pat_extract = let_bind   * local_var * pattern
+and expr        =
 | Self            of nullary
 | Truth           of nullary (* true  *)
 | Lies            of nullary (* false *)
@@ -140,7 +140,7 @@ and expr =
 | DefSelfMethod   of nullary    * string * formal_args * ty option * exprs
 | DefIVar         of nullary    * string * ivar_kind * ty
 | InvokePrimitive of nullary    * string * expr list
-and exprs = expr list
+and exprs       = expr list
 with sexp
 
 let loc expr =

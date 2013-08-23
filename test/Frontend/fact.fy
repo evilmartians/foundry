@@ -1,10 +1,12 @@
-# RUN: %foundry_vm fact.fy -o %t1
+# RUN: %foundry_vm %s -o %t1
 # RUN: %foundry_xfrm %t1 \
 # RUN:    -resolve -specialize -infer \
 # RUN:    -resolve -specialize -infer \
 # RUN:    -resolve -specialize -infer \
 # RUN:    -infer -gdce -o %t2
 # RUN: %foundry_gen %t2 | lli | %file_check %s
+
+# CHECK: [DEBUG: 0x00375f00]
 
 class Unsigned
   def ==(other)
@@ -29,7 +31,6 @@ def fact(n)
 end
 
 def main
-# CHECK: [DEBUG: 0x00375f00]
   invokeprimitive debug(self.fact(10u32));
   nil
 end

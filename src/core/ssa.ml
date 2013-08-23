@@ -335,14 +335,17 @@ let iter_uses ~f instr =
   List.iter f instr.n_uses
 
 let create_instr ?(id="") ty opcode =
-  {
-    id;
-    ty;
-    opcode;
-    n_parent  = ParentNone;
-    n_uses    = [];
-    n_hash    = 0;
-  }
+  let instr = {
+      id;
+      ty;
+      opcode;
+      n_parent  = ParentNone;
+      n_uses    = [];
+      n_hash    = 0;
+    }
+  in
+  add_uses instr;
+  instr
 
 let insert_instr ?pivot f_some f_none instr blockn =
   let block = block_of_name blockn in
@@ -571,14 +574,15 @@ let overload capsule funcn ty' =
     (* If unification does not change the signature of callee, do
        not specialize it. *)
     let env    = Typing.unify funcn.ty ty' in
-    if (Typing.subst env funcn.ty) <> funcn.ty then begin
+    if Rt.equal (Typing.subst env funcn.ty) funcn.ty then
+      funcn
+    else begin
       let funcn' = copy_func funcn in
       add_func     capsule funcn';
       add_overload capsule funcn funcn';
       specialize   funcn'  env;
       funcn'
-    end else
-      funcn
+    end
 
 let add_lambda capsule lambda funcn =
   ignore (func_of_name funcn);

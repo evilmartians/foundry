@@ -31,6 +31,15 @@ let append ?(ty=Rt.NilTy) ~opcode blockn =
   instr
 
 let rec ssa_of_expr ~entry ~state ~expr =
+  let load ~entry name =
+    entry, append entry
+              ~ty:(lvar_type state.frame_ty name)
+              ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
+  in
+  let store ~entry name value =
+    entry, append entry
+              ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value))
+  in
   match expr with
   (* Constants. *)
   | Syntax.Nil (_)
@@ -51,13 +60,14 @@ let rec ssa_of_expr ~entry ~state ~expr =
         entry, List.hd names)
   (* Variable access and assignment. *)
   | Syntax.Self (_)
-  -> entry, append entry
-                ~ty:(lvar_type state.frame_ty "self")
-                ~opcode:(Ssa.LVarLoadInstr (state.frame, "self"))
+  -> load ~entry "self"
   | Syntax.Var (_, name)
-  -> entry, append entry
-                ~ty:(lvar_type state.frame_ty name)
-                ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
+  -> load ~entry name
+  | Syntax.Assign (_, Syntax.Var (_, name), expr)
+  -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
+      store ~entry name value)
+  | Syntax.Let (_, pattern, _ty, expr)
+  -> ssa_of_pattern ~entry ~state ~pattern ~expr
   (* Method calls. *)
   | Syntax.Send (_, receiver, selector, actual_args)
   -> (let entry, receiver = ssa_of_expr ~entry ~state ~expr:receiver in
@@ -98,6 +108,22 @@ let rec ssa_of_expr ~entry ~state ~expr =
       tail, append tail ~ty:(tvar ())
                 ~opcode:(Ssa.PhiInstr [true_entry,  true_value;
                                        false_entry, false_value]))
+  | Syntax.While (_, cond, exprs)
+  | Syntax.Until (_, cond, exprs)
+  -> (let head = Ssa.create_block state.funcn in
+      ignore (append entry ~opcode:(Ssa.JumpInstr head));
+      let head, cond = ssa_of_expr ~entry:head ~state ~expr:cond in
+      let body = Ssa.create_block state.funcn in
+      let body, _ = ssa_of_seq ~entry:body ~state ~exprs in
+      ignore (append body ~opcode:(Ssa.JumpInstr head));
+      let tail = Ssa.create_block state.funcn in
+      let if_true, if_false =
+        match expr with
+        | Syntax.While _ -> body, tail
+        | Syntax.Until _ -> tail, body
+        | _ -> assert false
+      in
+      tail, append head ~opcode:(Ssa.JumpIfInstr (cond, if_true, if_false)))
   (* Miscellanea. *)
   | Syntax.InvokePrimitive (_, name, operands)
   -> (let entry, operands = ssa_of_exprs ~entry ~state ~exprs:operands in
@@ -124,6 +150,19 @@ and ssa_of_seq ~entry ~state ~exprs =
   -> entry, Ssa.name_of_value Rt.Nil
   | expr :: []
   -> entry, expr
+
+and ssa_of_pattern ~entry ~state ~pattern ~expr =
+  match pattern with
+  | Syntax.PatVariable (_, (kind, name))
+  -> (let ty = tvar () in
+      Table.set state.frame_ty.Rt.e_bindings_ty name {
+        Rt.b_location_ty = Location.empty;
+        Rt.b_kind_ty     = kind;
+        Rt.b_value_ty    = ty;
+      };
+      let entry, expr = ssa_of_expr ~entry ~state ~expr in
+      ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, name, expr)));
+      entry, expr)
 
 and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
   let args =
@@ -154,8 +193,7 @@ let ssa_of_formal_arg ~entry ~state ~formal_arg =
       Rt.b_kind_ty     = kind;
       Rt.b_value_ty    = ty;
     };
-    ignore (append entry ~ty:Rt.NilTy
-        ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
+    ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
     entry
   in
   match formal_arg with
@@ -215,10 +253,8 @@ let name_of_lambda ?(id="") lambda =
 
     (* Perform SSA conversion. *)
     let state = { funcn; lambda; frame; frame_ty; args; arg_idx = 0; kwargs } in
-    let entry =
-      ssa_of_formal_args ~entry ~state ~formal_args:lambda.Rt.l_args in
-    let entry, names =
-      ssa_of_exprs ~entry ~state ~exprs:lambda.Rt.l_body in
-    ignore (append entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr (List.hd names)));
+    let entry = ssa_of_formal_args ~entry ~state ~formal_args:lambda.Rt.l_args in
+    let entry, value = ssa_of_seq ~entry ~state ~exprs:lambda.Rt.l_body in
+    ignore (append entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr value));
 
     funcn
