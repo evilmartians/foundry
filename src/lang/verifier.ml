@@ -40,29 +40,30 @@ let rec check_pattern cx pat =
        []
   in
   match pat with
-  | PatVariable((loc,_),lvar)
+  | PatVariable((loc, _), lvar)
   -> bind lvar loc
-  | PatTuple(_,pats)
+  | PatTuple(_, pats)
   -> check_pattern cx @: pats
-  | PatRecord(_,pats)
+  | PatRecord(_, pats)
   -> (fun ((loc,_),lvar,pat) ->
         let ds = bind lvar loc in
           ds @ check_pattern cx pat) @: pats
 
 and check_ty cx ty =
   match ty with
-  | TypeVar(_,_)
+  | TypeVar(_, _)
   -> []
-  | TypeTuple(_,tys)
+  | TypeTuple(_, tys)
   -> check_ty cx @: tys
-  | TypeRecord(_,pairs)
+  | TypeRecord(_, pairs)
   -> (fun (_,_,ty) -> check_ty cx ty) @: pairs
-  | TypeFunction(_,args,ty)
+  | TypeFunction(_, args, ty)
   -> (let check_arg arg =
         match arg with
-        | TypeArg(_,ty) | TypeArgKw(_,_,ty) -> check_ty cx ty
+        | TypeArg(_, ty) | TypeArgKw(_, _, ty)
+        -> check_ty cx ty
       in (check_arg @: args) @ check_ty cx ty)
-  | TypeConstr((loc,_),name,pairs)
+  | TypeConstr((loc, _), name, pairs)
   -> (if name = "Tuple" then
         ["Use [...] syntax to construct tuple types.", [loc]]
       else if name = "Record" then
@@ -70,7 +71,7 @@ and check_ty cx ty =
       else if name = "Lambda" then
         ["Use (...) -> ... syntax to construct function types.", [loc]]
       else
-        (fun (_,_,ty) -> check_ty cx ty) @: pairs)
+        (fun (_, _, ty) -> check_ty cx ty) @: pairs)
   | TypeSplice(_,expr)
   -> check_expr cx expr
 
@@ -114,7 +115,7 @@ and check_lambda cx f_args ty exprs =
     | FormalSelf(_) :: args
     -> check_formal_args args ~opt ~rest ~kwrest
 
-    | FormalArg((loc,_),lvar) :: args
+    | FormalArg((loc, _), lvar) :: args
     -> (let ds = bind lvar ~loc in
         ds @ match rest, opt with
         | Some restloc, _
@@ -128,7 +129,7 @@ and check_lambda cx f_args ty exprs =
         | None, None
         -> check_formal_args args ~opt ~rest ~kwrest)
 
-    | FormalOptArg((loc,_),lvar,expr) :: args
+    | FormalOptArg((loc, _), lvar, expr) :: args
     -> (let ds = bind lvar ~loc in
         ds @ let ds = check_expr cx expr in
           match rest with
@@ -139,7 +140,7 @@ and check_lambda cx f_args ty exprs =
               ["Optional argument cannot follow a rest argument.",
                [loc; restloc]]))
 
-    | FormalRest((loc,_),lvar) :: args
+    | FormalRest((loc, _), lvar) :: args
     -> (let ds = bind lvar ~loc in
         ds @ match rest with
         | None
@@ -149,7 +150,7 @@ and check_lambda cx f_args ty exprs =
             ["Rest argument can only be specified once.",
              [loc; restloc]]))
 
-    | FormalKwArg((loc,_),lvar) :: args
+    | FormalKwArg((loc, _), lvar) :: args
     -> (let ds = bind lvar ~loc in
          ds @ match kwrest with
         | None
@@ -159,7 +160,7 @@ and check_lambda cx f_args ty exprs =
             ["Keyword argument cannot follow a keyword rest argument.",
              [loc; kwrestloc]]))
 
-    | FormalKwOptArg((loc,_),lvar,expr) :: args
+    | FormalKwOptArg((loc, _), lvar, expr) :: args
     -> (let ds = bind lvar ~loc:loc in
          ds @ match kwrest with
         | None
@@ -169,7 +170,7 @@ and check_lambda cx f_args ty exprs =
             ["Optional keyword argument cannot follow a keyword rest argument.",
              [loc; kwrestloc]]))
 
-    | FormalKwRest((loc,_),lvar) :: args
+    | FormalKwRest((loc, _), lvar) :: args
     -> (let ds = bind lvar ~loc in
         ds @ match kwrest with
         | None
@@ -191,44 +192,53 @@ and check_expr cx expr =
   | TVar _ | IVar _ | Const _
   | Unsigned _ | Signed _
   -> []
-  | Tuple(_,elems)
+  | Tuple(_, elems)
   -> (let rec check_elem elem =
         match elem with
         | TupleElem(_,expr)   -> check_expr cx expr
         | TupleSplice(_,expr) -> check_expr cx expr
       in check_elem @: elems)
-  | Record(_,elems)
+  | Record(_, elems)
   -> (let rec check_elem elem =
         match elem with
         | RecordElem(_,_,expr)  -> check_expr cx expr
         | RecordSplice(_,expr)  -> check_expr cx expr
         | RecordPair(_,lhs,rhs) -> check_expr cx @: [lhs; rhs]
       in check_elem @: elems)
-  | Quote(_,_,elems)
+  | Quote(_, _, elems)
   -> (let rec check_elem elem =
         match elem with
         | QuoteString(_,_)    -> []
         | QuoteSplice(_,expr) -> check_expr cx expr
       in check_elem @: elems)
-  | Var((loc,_),name)
+  | Var((loc, _), name)
   -> (match lookup cx.env name with
       | Some binding -> []
       | None -> ["Local variable `" ^ name ^ "' is not declared.", [loc]])
-  | Assign(_,lhs,rhs) | OpAssign(_,lhs,_,rhs)
-  | OrAssign(_,lhs,rhs) | AndAssign(_,lhs,rhs)
+  | Assign(_, lhs, rhs) | OpAssign(_, lhs, _, rhs)
+  | OrAssign(_, lhs, rhs) | AndAssign(_, lhs, rhs)
   -> check_assign cx lhs rhs
-  | And(_,lhs,rhs) | Or(_,lhs,rhs)
+  | And(_, lhs, rhs) | Or(_, lhs, rhs)
   -> check_expr cx @: [lhs; rhs]
-  | Not(_,arg)
+  | Not(_, arg)
   -> check_expr cx arg
-  | Begin(_,exprs)
+  | Begin(_, exprs)
   -> check_expr cx @: exprs
-  | Let(_,pattern,ty,expr)
-  -> let ds = check_pattern cx pattern in
-       ds @ (check_ty cx $? ty) @ check_expr cx expr
-  | Type(_,ty)
+  | Let(_, pattern, ty, expr)
+  -> (let ds = check_pattern cx pattern in
+      ds @ (check_ty cx $? ty) @ check_expr cx expr)
+  | Type(_, ty)
   -> check_ty cx ty
-  | Send(_,expr,_,args)
+  | If(_, cond, exprs, tail)
+  -> (let ds = check_expr cx cond in
+      let ds = ds @ (check_expr cx @: exprs) in
+      ds @ (check_expr cx $? tail))
+  | Unless(_, cond, exprs)
+  | While(_, cond, exprs)
+  | Until(_, cond, exprs)
+  -> (let ds = check_expr cx cond in
+      ds @ (check_expr cx @: exprs))
+  | Send(_, expr, _, args)
   -> (let check_arg arg =
         match arg with
         | ActualArg(_,expr)     | ActualSplice(_,expr)
@@ -238,18 +248,18 @@ and check_expr cx expr =
         -> check_expr cx @: [lhs; rhs]
       in
       let ds = check_expr cx expr in
-        ds @ (check_arg @: args))
-  | Class(_,_,ancestor,exprs)
+      ds @ (check_arg @: args))
+  | Class(_, _, ancestor, exprs)
   -> (let ds = check_expr cx $? ancestor in
-        ds @ (check_expr cx @: exprs))
-  | DefIVar(_,_,_,ty)
+      ds @ (check_expr cx @: exprs))
+  | DefIVar(_, _, _, ty)
   -> check_ty cx ty
-  | Lambda(_,f_args,ty,expr)
+  | Lambda(_, f_args, ty, expr)
   -> check_lambda cx f_args ty [expr]
-  | DefMethod(_,_,f_args,ty,exprs)
-  | DefSelfMethod(_,_,f_args,ty,exprs)
+  | DefMethod(_, _, f_args, ty, exprs)
+  | DefSelfMethod(_, _, f_args, ty, exprs)
   -> check_lambda cx f_args ty exprs
-  | InvokePrimitive((loc,_),name,exprs)
+  | InvokePrimitive((loc, _), name, exprs)
   -> (if Primitive.exists name then
         check_expr cx @: exprs
       else

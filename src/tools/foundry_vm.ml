@@ -27,7 +27,13 @@ let _ =
 
   List.iter (fun input ->
       try
-        ignore (Vm.eval env (parse input))
+        let ast = parse input in
+        match Verifier.check ast with
+        | []
+        -> ignore (Vm.eval env (parse input))
+        | diags
+        -> (List.iter Diagnostic.print diags;
+            exit 1)
       with
       | Parser.StateError (token, state)
       -> (let diag = Diagnostic.Error,

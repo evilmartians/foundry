@@ -314,6 +314,7 @@ and string_of_instance env (klass, sp) ivars =
 let rec string_of_ssa_name env value =
   let print value =
     match value with
+    | { ty     = Rt.NilTy      } -> "nil"
     | { opcode = Const value   } -> string_of_value env value
     | { opcode = Function func } -> string_of_ssa_name env value
     | _ -> string_of_ident (Local value.id)
@@ -356,10 +357,10 @@ let rec string_of_ssa_name env value =
           "}\n")))
   | BasicBlock block ->
     let preds   = List.map print (predecessors value) in
-    let preds   = if preds <> [] then
-                    " ; preds = " ^ (String.concat ", " preds)
-                  else ""
-    in
+    let preds   = if preds = [] then
+                    if value == (func_entry (block_parent value)) then ""
+                    else " ; No predecessors!"
+                  else " ; preds = " ^ (String.concat ", " preds) in
     let ident   = (escape_as_ident value.id) ^ ":" in
     let header  = ident ^
       (String.make (50 - (String.length ident)) (Char.of_string " ")) ^

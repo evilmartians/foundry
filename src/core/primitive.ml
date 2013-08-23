@@ -48,6 +48,7 @@ let debug args =
 let prim = Table.create [
   (* name       side_eff  impl *)
   "debug",      (true,     debug);
+  "putchar",    (true,     (fun _ -> assert false));
   (*-- machine int and big int ------------------------- *)
   "int_add",    (false,    int_binop add_big_int);
   "int_sub",    (false,    int_binop sub_big_int);

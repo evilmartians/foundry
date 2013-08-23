@@ -240,16 +240,17 @@ let create_block ?(id="") funcn =
   func.basic_blocks <- func.basic_blocks @ [block];
   block
 
-let remove_block blockn =
+let block_parent blockn =
   match blockn.n_parent with
-  | ParentFunction funcn
-  -> (let func = func_of_name funcn in
-      func.basic_blocks <- List.remove_if ((==) blockn) func.basic_blocks)
-  | _
-  -> assert false
+  | ParentFunction funcn -> funcn
+  | _ -> assert false
 
-let iter_instrs ~f name =
-  match name with
+let remove_block blockn =
+  let func = (func_of_name (block_parent blockn)) in
+  func.basic_blocks <- List.remove_if ((==) blockn) func.basic_blocks
+
+let iter_instrs ~f blockn =
+  match blockn with
   | { opcode = Function func }
   -> (List.iter (fun blockn ->
           let block = block_of_name blockn in

@@ -109,9 +109,10 @@ val create_block  : ?id:string -> (*func*) name -> name
 val block_of_name : (*basic_block*) name -> basic_block
 val remove_block  : (*basic_block*) name -> unit
 
+val block_parent  : (*basic_block*) name -> (*func*) name
+
 val iter_instrs   : f:( (*func or basic_block*) name -> unit) ->
                         (*func*) name -> unit
-
 val terminator    : (*basic_block*) name -> name
 
 val successors    : (*basic_block*) name -> name list

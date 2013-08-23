@@ -80,7 +80,7 @@ let run_on_function funcn =
           match (prim :> latin1s) with
           (* Debug primitive is polymorphic; it accepts any amount of
              values of any kind. *)
-          | "debug"
+          | "debug" | "putchar"
           -> (let env = Typing.unify instr.ty Rt.NilTy in
               Some env)
           (* Operands to integer primitives must have the

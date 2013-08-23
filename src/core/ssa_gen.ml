@@ -113,17 +113,35 @@ let rec ssa_of_expr ~entry ~state ~expr =
   -> (let head = Ssa.create_block state.funcn in
       ignore (append entry ~opcode:(Ssa.JumpInstr head));
       let head, cond = ssa_of_expr ~entry:head ~state ~expr:cond in
-      let body = Ssa.create_block state.funcn in
-      let body, _ = ssa_of_seq ~entry:body ~state ~exprs in
+      let pred = Ssa.create_block state.funcn in
+      let body, _ = ssa_of_seq ~entry:pred ~state ~exprs in
       ignore (append body ~opcode:(Ssa.JumpInstr head));
       let tail = Ssa.create_block state.funcn in
       let if_true, if_false =
         match expr with
-        | Syntax.While _ -> body, tail
-        | Syntax.Until _ -> tail, body
+        | Syntax.While _ -> pred, tail
+        | Syntax.Until _ -> tail, pred
         | _ -> assert false
       in
-      tail, append head ~opcode:(Ssa.JumpIfInstr (cond, if_true, if_false)))
+      append head ~opcode:(Ssa.JumpIfInstr (cond, if_true, if_false));
+      tail, Ssa.name_of_value Rt.Nil)
+  | Syntax.Or (_, lhs, rhs)
+  | Syntax.And (_, lhs, rhs)
+  -> (let head, lhs_value = ssa_of_expr ~entry ~state ~expr:lhs in
+      let       rhs_pred  = Ssa.create_block state.funcn in
+      let body, rhs_value = ssa_of_expr ~entry:rhs_pred ~state ~expr:rhs in
+      let tail            = Ssa.create_block state.funcn in
+      ignore (append body ~opcode:(Ssa.JumpInstr tail));
+      let if_true, if_false =
+        match expr with
+        | Syntax.Or  _ -> tail, rhs_pred
+        | Syntax.And _ -> rhs_pred, tail
+        | _ -> assert false
+      in
+      ignore (append head ~opcode:(Ssa.JumpIfInstr (lhs_value, if_true, if_false)));
+      tail, append tail ~ty:(tvar ())
+                ~opcode:(Ssa.PhiInstr [head, lhs_value;
+                                       body, rhs_value]))
   (* Miscellanea. *)
   | Syntax.InvokePrimitive (_, name, operands)
   -> (let entry, operands = ssa_of_exprs ~entry ~state ~exprs:operands in
@@ -148,7 +166,7 @@ and ssa_of_seq ~entry ~state ~exprs =
   | []
   | { Ssa.ty = Rt.NilTy } :: _
   -> entry, Ssa.name_of_value Rt.Nil
-  | expr :: []
+  | expr :: _
   -> entry, expr
 
 and ssa_of_pattern ~entry ~state ~pattern ~expr =

@@ -142,6 +142,8 @@ let rec llconst_of_value llmod value =
         llglobal
   in
   match value with
+  | Rt.Nil
+  -> Llvm.const_struct ctx [||]
   | Rt.Truth
   -> Llvm.const_int (Llvm.integer_type ctx 1) 1
   | Rt.Lies
@@ -255,6 +257,14 @@ let rec gen_func llmod funcn =
     -> (match Llvm.lookup_function "__fy_debug" llmod with
         | Some lldebug -> Llvm.build_call lldebug [| map operand |] "" builder
         | None -> assert false)
+    | "putchar", [operand]
+    -> (let llputchar =
+          match Llvm.lookup_function "putchar" llmod with
+          | None -> Llvm.declare_function "putchar"
+                (Llvm.function_type (Llvm.i32_type ctx) [| Llvm.i32_type ctx |]) llmod
+          | Some f -> f
+        in
+        Llvm.build_call llputchar [| map operand |] "" builder)
     | "int_add",  [lhs; rhs] -> Llvm.build_add  (map lhs) (map rhs) id builder
     | "int_sub",  [lhs; rhs] -> Llvm.build_sub  (map lhs) (map rhs) id builder
     | "int_mul",  [lhs; rhs] -> Llvm.build_mul  (map lhs) (map rhs) id builder
