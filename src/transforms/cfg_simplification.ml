@@ -1,7 +1,9 @@
 open Unicode.Std
 open Ssa
 
-let run_on_function funcn =
+let name = "CFG Simplification"
+
+let run_on_function passmgr capsule funcn =
   let worklist = Worklist.create () in
   (* Populate worklist with all basic blocks in the function. *)
   iter_blocks (Worklist.put worklist) funcn;
@@ -30,8 +32,10 @@ let run_on_function funcn =
         Worklist.remove worklist succn;
 
         (* This transformation might have exposed another
-           opportunities, re-check current block. *)
-        Worklist.put worklist blockn
+           opportunities, re-check current block and its
+           predecessors. *)
+        Worklist.put worklist blockn;
+        Worklist.append worklist (predecessors blockn)
       end
     end;
 
@@ -43,6 +47,3 @@ let run_on_function funcn =
       Worklist.remove worklist blockn
     end
   done
-
-let run_on_capsule capsule =
-  List.iter run_on_function capsule.functions

@@ -7,13 +7,11 @@ let dump_ir omit_roots roots capsule =
   IrPrinter.string_of ~omit_roots roots capsule
 
 let _ =
-  let output   = ref "-"   in
-  let no_roots = ref false in
-  let inputs   = ref []    in
-  let xfrms    = ref []    in
-
-  let append_xfrm xfrm () =
-    xfrms := xfrm :: !xfrms
+  let output        = ref "-"
+  and no_roots      = ref false
+  and inputs        = ref []
+  and passmgr_stack = ref []
+  and passmgr       = ref (Pass_manager.create ~sequental:true)
   in
 
   Arg.parse (Arg.align [
@@ -26,28 +24,55 @@ let _ =
       "-no-roots", Arg.Set no_roots,
         " Don't print out root data structures";
 
-      "-dce", Arg.Unit (append_xfrm Dead_code_elim.run_on_capsule),
+      "-verbose", Arg.Set Pass_manager.verbose,
+        " Print each transformation pass and invalidation as they're performed";
+
+      "-worklist", Arg.Unit (fun () ->
+          passmgr := Pass_manager.create ~sequental:false),
+        " Erase all pending passes, and replace pass manager with a worklist-based one";
+
+      "-[", Arg.Unit (fun () ->
+          passmgr_stack := !passmgr :: !passmgr_stack;
+          passmgr := Pass_manager.create ~sequental:true),
+        " Push a pass manager";
+
+      "-]", Arg.Unit (fun () ->
+          let outer_passmgr = List.hd !passmgr_stack in
+          Pass_manager.add_pass_manager outer_passmgr !passmgr;
+          passmgr_stack := List.tl !passmgr_stack;
+          passmgr       := outer_passmgr),
+        " Pop a pass manager and merge current pass manager into it";
+
+      "-dce", Arg.Unit (fun () ->
+          Pass_manager.add_function_pass !passmgr (module Dead_code_elim)),
         " Dead Code Elimination";
 
-      "-gdce", Arg.Unit (append_xfrm Global_dce.run_on_capsule),
+      "-gdce", Arg.Unit (fun () ->
+          Pass_manager.add_capsule_pass !passmgr (module Global_dce)),
         " Global Dead Code Elimination";
 
-      "-simplify-cfg", Arg.Unit (append_xfrm Cfg_simplification.run_on_capsule),
+      "-simplify-cfg", Arg.Unit (fun () ->
+          Pass_manager.add_function_pass !passmgr (module Cfg_simplification)),
         " CFG Simplification";
 
-      "-simplify-frames", Arg.Unit (append_xfrm Frame_simplification.run_on_capsule),
+      "-simplify-frames", Arg.Unit (fun () ->
+          Pass_manager.add_function_pass !passmgr (module Frame_simplification)),
         " Frame Simplification";
 
-      "-infer", Arg.Unit (append_xfrm Local_inference.run_on_capsule),
+      "-infer", Arg.Unit (fun () ->
+          Pass_manager.add_function_pass !passmgr (module Local_inference)),
         " Local Type Inference";
 
-      "-specialize", Arg.Unit (append_xfrm Specialization.run_on_capsule),
+      "-specialize", Arg.Unit (fun () ->
+          Pass_manager.add_function_pass !passmgr (module Specialization)),
         " Code Specialization";
 
-      "-sccp", Arg.Unit (append_xfrm Constant_folding.run_on_capsule),
+      "-sccp", Arg.Unit (fun () ->
+          Pass_manager.add_function_pass !passmgr (module Constant_folding)),
         " Sparse Conditional Code Propagation";
 
-      "-resolve", Arg.Unit (append_xfrm Method_resolution.run_on_capsule),
+      "-resolve", Arg.Unit (fun () ->
+          Pass_manager.add_function_pass !passmgr (module Method_resolution)),
         " Method Resolution";
     ]) (fun arg ->
       inputs := arg :: !inputs)
@@ -64,7 +89,7 @@ let _ =
   let roots, capsule = load_ir (Lexing.from_string (input_ir :> string)) in
   Rt.roots := roots;
 
-  List.iter (fun xfrm -> xfrm capsule) (List.rev !xfrms);
+  Pass_manager.run !passmgr capsule;
 
   let output_ir = dump_ir !no_roots roots capsule in
   let out_chan  = Io.open_out !output in

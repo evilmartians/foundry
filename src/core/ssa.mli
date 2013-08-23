@@ -91,7 +91,7 @@ val iter_blocks   : f:( (*basic_block*) name -> unit) ->
                         (*func*) name -> unit
 
 val copy_func     : ?suffix:string -> (*func*) name -> (*func'*) name
-val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> unit
+val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> bool
 
 val overload        : capsule -> (*func*) name -> Rt.ty -> (*func'*) name
 val add_overload    : capsule -> (*func*) name -> (*func'*) name -> unit

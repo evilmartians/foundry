@@ -1,6 +1,8 @@
 open Unicode.Std
 open Ssa
 
+let name = "Dead Code Elimination"
+
 let has_side_effects instr =
   match instr.opcode with
   | FrameInstr _ | LVarLoadInstr _ | MakeClosureInstr _
@@ -10,7 +12,7 @@ let has_side_effects instr =
   | _
   -> true
 
-let run_on_function funcn =
+let run_on_function passmgr capsule funcn =
   let worklist = Worklist.create () in
   (* Populate worklist with all instructions in the function. *)
   iter_instrs (Worklist.put worklist) funcn;
@@ -25,6 +27,3 @@ let run_on_function funcn =
       erase_instr instr
     end
   done
-
-let run_on_capsule capsule =
-  List.iter run_on_function capsule.functions

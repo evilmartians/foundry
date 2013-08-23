@@ -9,10 +9,11 @@ let some worklist =
   !worklist <> []
 
 let put worklist elem =
-  worklist := elem :: !worklist
+  if not (List.memq elem !worklist) then
+    worklist := !worklist @ [elem]
 
 let append worklist elems =
-  worklist := elems @ !worklist
+  List.iter (put worklist) elems
 
 let take worklist =
   match !worklist with

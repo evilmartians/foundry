@@ -1,7 +1,9 @@
 open Unicode.Std
 open Ssa
 
-let run_on_capsule capsule =
+let name = "Global DCE"
+
+let run_on_capsule passmgr capsule =
   let worklist = Worklist.create () in
   let seen     = ref [] in
 

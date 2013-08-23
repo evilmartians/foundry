@@ -1,6 +1,8 @@
 open Unicode.Std
 open Ssa
 
+let name = "Constant Folding"
+
 (* See http://www.cs.rice.edu/~keith/512/2011/Lectures/L19-SCCP-1up.pdf *)
 
 type sccp_value =
@@ -24,7 +26,7 @@ let sccp_equal a b =
   | Const a, Const b -> Rt.equal a b
   | _,       _       -> false
 
-let run_on_function funcn =
+let run_on_function passmgr capsule funcn =
   let cfg_worklist  = Worklist.create () in
   let ssa_worklist  = Worklist.create () in
   let cfg_reachable = Nametbl.create 10  in
@@ -162,6 +164,3 @@ let run_on_function funcn =
       | _
       -> ())
     values
-
-let run_on_capsule capsule =
-  List.iter run_on_function capsule.functions

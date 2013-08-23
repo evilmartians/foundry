@@ -50,10 +50,13 @@ let map ~f table =
 let map2 ~f left right =
   if (Hashtbl.length left) <> (Hashtbl.length right) then
     raise (Invalid_argument ("Table.map2" :> latin1s));
-  newtable (Hashtbl.length left)
-    (fun result ->
-      iter (fun k v ->
-        Hashtbl.add result k (f v (Hashtbl.find right k))) left)
+  try
+    newtable (Hashtbl.length left)
+      (fun result ->
+        iter (fun k v ->
+          Hashtbl.add result k (f v (Hashtbl.find right k))) left)
+  with Not_found ->
+    raise (Invalid_argument ("Table.fold2" :> latin1s))
 
 let map_list ?(ordered=false) ~f table =
   let dest = ref [] in
@@ -66,8 +69,11 @@ let fold ~f acc table =
 let fold2 ~f acc left right =
   if (Hashtbl.length left) <> (Hashtbl.length right) then
     raise (Invalid_argument ("Table.fold2" :> latin1s));
-  fold acc left ~f:(fun k acc v ->
+  try
+    fold acc left ~f:(fun k acc v ->
       f k acc v (Hashtbl.find right k))
+  with Not_found ->
+    raise (Invalid_argument ("Table.fold2" :> latin1s))
 
 let join left right =
   newtable (max (Hashtbl.length left) (Hashtbl.length right))

@@ -480,7 +480,7 @@ let rec inspect_value value =
     | TupleTy(_) | RecordTy(_) | LambdaTy(_)
     -> "type " ^ (inspect_type value)
     | Package(p) -> p.p_name
-    | _ -> (string_of_value value))
+    | _ -> "<unknown>")
 
 and inspect_type ty =
   inspect_literal_or ty (fun x ->
@@ -503,7 +503,11 @@ and inspect_type ty =
           | o -> ["**" ^ (inspect_type o)]
         in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^
            ") -> " ^ (inspect_type lm.l_result_ty))
-    | _            -> "\\(" ^ (inspect_value ty) ^ ")")
+    | FunctionTy(args_ty, result_ty)
+    -> "`fun (" ^ (String.concat ", " (List.map inspect_type args_ty)) ^
+                ") -> " ^ (inspect_type result_ty)
+    | _
+    -> "\\(" ^ (inspect_value ty) ^ ")")
 
 let inspect value =
   let ty =

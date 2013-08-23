@@ -551,10 +551,17 @@ let copy_func ?(suffix="") funcn =
   funcn'
 
 let specialize funcn env =
-  let subst = Typing.subst env in
-  set_ty funcn (subst funcn.ty);
-  iter_instrs funcn ~f:(fun instr ->
-    set_ty instr (subst instr.ty))
+  let changed = ref false in
+  let update name =
+    let ty, ty' = name.ty, Typing.subst env name.ty in
+    if not (Rt.equal ty ty') then begin
+      set_ty name ty';
+      changed := true
+    end
+  in
+  update funcn;
+  iter_instrs update funcn;
+  !changed
 
 let add_overload capsule funcn funcn' =
   ignore (func_of_name funcn);

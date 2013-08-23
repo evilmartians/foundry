@@ -1,8 +1,10 @@
 open Unicode.Std
 open Ssa
 
-let run_on_function capsule funcn =
-  iter_instrs funcn ~f:(fun instr ->
+let name = "Method Resolution"
+
+let run_on_function passmgr capsule caller =
+  iter_instrs caller ~f:(fun instr ->
     match instr.opcode with
     | ResolveInstr (recvn, seln)
     -> (* Find all resolve instructions where:
@@ -29,6 +31,7 @@ let run_on_function capsule funcn =
                                   ~id:(klass.Rt.k_name ^ ":" ^ selector) lambda in
                   add_func   capsule callee;
                   add_lambda capsule imethod.Rt.im_body callee;
+                  Pass_manager.mark passmgr callee;
                   callee)
             in
             replace_instr instr callee)
@@ -36,6 +39,3 @@ let run_on_function capsule funcn =
         -> ())
     | _
     -> ())
-
-let run_on_capsule capsule =
-  List.iter (run_on_function capsule) capsule.functions

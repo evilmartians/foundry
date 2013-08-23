@@ -1,7 +1,9 @@
 open Unicode.Std
 open Ssa
 
-let run_on_function funcn =
+let name = "Frame Simplification"
+
+let run_on_function passmgr capsule funcn =
   let rec lookup env name =
     match Table.get env.Rt.e_bindings name with
     | Some binding -> binding
@@ -28,6 +30,3 @@ let run_on_function funcn =
           -> ()))
     | _
     -> ())
-
-let run_on_capsule capsule =
-  List.iter run_on_function capsule.functions

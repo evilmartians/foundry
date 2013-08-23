@@ -142,7 +142,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
         | Syntax.Until _ -> tail, pred
         | _ -> assert false
       in
-      append head ~opcode:(Ssa.JumpIfInstr (cond, if_true, if_false));
+      ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, if_true, if_false)));
       tail, Ssa.name_of_value Rt.Nil)
   | Syntax.Or (_, lhs, rhs)
   | Syntax.And (_, lhs, rhs)

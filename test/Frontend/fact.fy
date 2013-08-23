@@ -1,10 +1,6 @@
-# RUN: %foundry_vm %s -o %t1
-# RUN: %foundry_xfrm %t1 \
-# RUN:    -resolve -specialize -infer \
-# RUN:    -resolve -specialize -infer \
-# RUN:    -resolve -specialize -infer \
-# RUN:    -infer -gdce -o %t2
-# RUN: %foundry_gen %t2 | lli | %file_check %s
+# RUN: %foundry_vm   %s -o %t1
+# RUN: %foundry_xfrm %t1 -[ -worklist -resolve -specialize -infer -] -gdce -o %t2
+# RUN: %foundry_gen  %t2 | lli | %file_check %s
 
 # CHECK: [DEBUG: 0x00375f00]
 

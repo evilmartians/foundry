@@ -1,6 +1,7 @@
 features:
- * pass manager
+ * HOF
  * value types
+ * replace tvars in consts
  * inliner
  * better errors
  * store location map in fir
