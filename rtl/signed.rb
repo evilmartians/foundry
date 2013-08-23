@@ -1,4 +1,4 @@
-class Integer
+class Signed
   def +(other)
     invokeprimitive int_add(self, other)
   end

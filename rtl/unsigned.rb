@@ -1,4 +1,4 @@
-class Integer
+class Unsigned
   def +(other)
     invokeprimitive int_add(self, other)
   end
@@ -56,22 +56,22 @@ class Integer
   end
 
   def !=(other)
-    invokeprimitive int_ne(self, other)
+    invokeprimitive int_eq(self, other)
   end
 
   def >(other)
-    invokeprimitive int_sgt(self, other)
+    invokeprimitive int_ugt(self, other)
   end
 
   def >=(other)
-    invokeprimitive int_sge(self, other)
+    invokeprimitive int_uge(self, other)
   end
 
   def <(other)
-    invokeprimitive int_slt(self, other)
+    invokeprimitive int_ult(self, other)
   end
 
   def <=(other)
-    invokeprimitive int_sle(self, other)
+    invokeprimitive int_ule(self, other)
   end
 end
