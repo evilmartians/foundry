@@ -10,8 +10,8 @@ let open_out filename =
 
 let input_all channel =
   let rec input_some chunk pos len =
-    let new_pos = input channel chunk pos (len - pos) in
-    if new_pos = 0 then
+    let new_pos = pos + (input channel chunk pos (len - pos)) in
+    if new_pos = pos then
       ByteArray.sub chunk 0 pos
     else if new_pos < len then
       input_some chunk new_pos len

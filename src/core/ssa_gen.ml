@@ -32,6 +32,12 @@ let append blockn ~ty ~opcode =
 let rec ssa_of_expr ~entry ~state ~expr =
   match expr with
   (* Constants. *)
+  | Syntax.Nil (_)
+  -> entry, Ssa.name_of_value (Rt.Nil)
+  | Syntax.Truth (_)
+  -> entry, Ssa.name_of_value (Rt.Truth)
+  | Syntax.Lies (_)
+  -> entry, Ssa.name_of_value (Rt.Lies)
   | Syntax.Int (_, value)
   -> entry, Ssa.name_of_value (Rt.Integer value)
   | Syntax.Unsigned (_, width, value)
@@ -51,6 +57,22 @@ let rec ssa_of_expr ~entry ~state ~expr =
   -> entry, append entry
                 ~ty:(lvar_type state.frame_ty name)
                 ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
+  (* Method calls. *)
+  | Syntax.Send (_, receiver, selector, actual_args)
+  -> (let entry, receiver =
+        ssa_of_expr ~entry ~state ~expr:receiver
+      in
+      let callee =
+        append entry ~ty:(tvar ())
+                     ~opcode:(Ssa.ResolveInstr (receiver,
+                        (Ssa.name_of_value (Rt.Symbol selector))))
+      in
+      let entry, args, kwargs =
+        ssa_of_actual_args ~entry ~state ~receiver ~actual_args
+      in
+      entry, append entry
+                ~ty:(tvar ())
+                ~opcode:(Ssa.CallInstr (callee, [args; kwargs])))
   (* Miscellanea. *)
   | Syntax.InvokePrimitive (_, name, operands)
   -> (let entry, operands = ssa_of_exprs ~entry ~state ~exprs:operands in
@@ -63,18 +85,41 @@ let rec ssa_of_expr ~entry ~state ~expr =
           (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))))
 
 and ssa_of_exprs ~entry ~state ~exprs =
+  List.fold_left
+    (fun (entry, names) expr ->
+      let entry, name = ssa_of_expr ~entry ~state ~expr in
+        entry, name :: names)
+    (entry, []) exprs
+
+and ssa_of_seq ~entry ~state ~exprs =
+  let entry, exprs = ssa_of_exprs ~entry ~state ~exprs in
   match exprs with
   | []
-  -> entry, [Ssa.name_of_value Rt.Nil]
-  | _
-  -> (List.fold_left
-        (fun (entry, names) expr ->
-          let entry, name = ssa_of_expr ~entry ~state ~expr in
-            entry, name :: names)
-        (entry, [])
-        exprs)
+  | { Ssa.ty = Rt.NilTy } :: _
+  -> Ssa.name_of_value Rt.Nil
+  | expr :: []
+  -> expr
 
-let ssa_of_formal_arg ~entry ~state ~arg =
+and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
+  let args =
+    ref (append entry ~ty:(tvar ())
+          ~opcode:(Ssa.PrimitiveInstr ("tup_make", [receiver])))
+  and kwargs =
+    ref (Ssa.name_of_value (Rt.Record (Table.create [])))
+  in
+  let entry =
+    List.fold_left (fun entry actual_arg ->
+        match actual_arg with
+        | Syntax.ActualArg (_, expr)
+        -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
+            args := append entry ~ty:(tvar ())
+                  ~opcode:(Ssa.PrimitiveInstr ("tup_extend", [!args; value]));
+            entry))
+      entry actual_args
+  in
+  entry, !args, !kwargs
+
+let ssa_of_formal_arg ~entry ~state ~formal_arg =
   (* All bindings initially have a fresh type variable as
      their type. *)
   let ty = tvar () in
@@ -88,7 +133,7 @@ let ssa_of_formal_arg ~entry ~state ~arg =
         ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
     entry
   in
-  match arg with
+  match formal_arg with
   | Syntax.FormalSelf (_)
   -> (let arg =
         append entry ~ty
@@ -106,10 +151,10 @@ let ssa_of_formal_arg ~entry ~state ~arg =
       state.arg_idx <- state.arg_idx + 1;
       assign kind name arg)
 
-let ssa_of_formal_args ~entry ~state ~args =
-  List.fold_left (fun entry arg ->
-      ssa_of_formal_arg ~entry ~state ~arg)
-    entry args
+let ssa_of_formal_args ~entry ~state ~formal_args =
+  List.fold_left (fun entry formal_arg ->
+      ssa_of_formal_arg ~entry ~state ~formal_arg)
+    entry formal_args
 
 let name_of_lambda ?(id="") lambda =
   (* Create the function with the signature corresponding to that
@@ -146,7 +191,7 @@ let name_of_lambda ?(id="") lambda =
     (* Perform SSA conversion. *)
     let state = { lambda; frame; frame_ty; args; arg_idx = 0; kwargs } in
     let entry =
-      ssa_of_formal_args ~entry ~state ~args:lambda.Rt.l_args in
+      ssa_of_formal_args ~entry ~state ~formal_args:lambda.Rt.l_args in
     let entry, names =
       ssa_of_exprs ~entry ~state ~exprs:lambda.Rt.l_body in
     ignore (append entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr (List.hd names)));

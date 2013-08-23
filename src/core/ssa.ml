@@ -31,8 +31,7 @@ sig
     mutable basic_blocks : name list;
   }
   and func_naming = {
-    mutable next_id      : int;
-    mutable names        : string list;
+    mutable ids          : string list;
   }
   and basic_block = {
     mutable instructions : name list;
@@ -114,25 +113,31 @@ let mangle_id name id =
   let naming =
     match name with
     | { opcode = Function func }
-    | { n_parent = ParentFunction { opcode = Function func } }
+    | { n_parent = ParentFunction {
+          opcode = Function func } }
+    | { n_parent = ParentBasicBlock {
+        n_parent = ParentFunction {
+          opcode = Function func} } }
     -> func.naming
     | _
     -> assert false
   in
-  if id = "" || IrSupport.is_digits id then begin
-    naming.next_id <- naming.next_id + 1;
-    string_of_int naming.next_id
-  end else begin
-    let id =
-      if List.mem id naming.names then begin
-        naming.next_id <- naming.next_id + 1;
-        id ^ "." ^ (string_of_int naming.next_id)
-      end else id
-    in begin
-      naming.names <- id :: naming.names;
-      id
+  let rec try_rename suffix =
+    let new_id =
+      if id = "" then string_of_int suffix
+      else id ^ "." ^ (string_of_int suffix)
+    in
+    if List.mem new_id naming.ids then
+      try_rename (suffix + 1)
+    else begin
+      naming.ids <- new_id :: naming.ids;
+      new_id
     end
-  end
+  in
+  if id = "" || List.mem id naming.ids then
+    try_rename 1
+  else
+    id
 
 let name_of_value value =
   {
@@ -178,10 +183,7 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
   let func  = {
     arguments    = [];
     basic_blocks = [];
-    naming       = {
-      next_id = 0;
-      names   = [""];
-    }
+    naming       = { ids = [] };
   } in
   let funcn = {
     id;

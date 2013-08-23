@@ -471,7 +471,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
          local: id=Name_Local
                 { (fun (venv, block, fenv) ->
-                    Table.get_exn fenv id) }
+                    try  Table.get_exn fenv id
+                    with Not_found -> failwith (u"undefined %" ^ id)) }
 
        operand: x=local
                 { x }
@@ -511,9 +512,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun ((venv, block, fenv) as env) ->
                     let instr = create_instr ~id Rt.NilTy InvalidInstr in
                     append_instr instr block;
-                    if Table.exists fenv id && id <> u"" then
+                    if Table.exists fenv id then
                       failwith (u"Duplicate name %" ^ id);
-                    Table.set fenv instr.id instr;
+                    if id <> u"" then
+                      Table.set fenv instr.id instr;
                     (fun () ->
                       let ty, opcode = x env in
                       set_ty     instr ty;

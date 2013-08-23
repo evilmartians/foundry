@@ -28,10 +28,17 @@ let _ =
   List.iter (fun input ->
       try
         ignore (Vm.eval env (parse input))
-      with Rt.Exc exc ->
-        let diag = Diagnostic.Error, exc.Rt.ex_message, exc.Rt.ex_locations in
-        Diagnostic.print diag;
-        exit 1)
+      with
+      | Parser.StateError (token, state)
+      -> (let diag = Diagnostic.Error,
+                     Unicode.assert_utf8s (Parser_errors.message state token),
+                     [Parser_desc.loc_of_token token] in
+          Diagnostic.print diag;
+          exit 1)
+      | Rt.Exc exc
+      -> (let diag = Diagnostic.Error, exc.Rt.ex_message, exc.Rt.ex_locations in
+          Diagnostic.print diag;
+          exit 1))
     !inputs;
 
   let capsule = Ssa.create_capsule () in

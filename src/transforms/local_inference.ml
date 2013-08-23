@@ -63,6 +63,18 @@ let run_on_function funcn =
               -> None)
           (* Tuple and record primitives have type-level semantics not
              expressible with (non-dependent) type variables. *)
+          | "tup_make"
+          -> (let ty  = Rt.TupleTy (List.map (fun x -> x.ty) operands) in
+              let env = Typing.unify instr.ty ty in
+              Some env)
+          | "tup_extend"
+          -> (match operands with
+              | [ { ty = Rt.TupleTy xs };
+                  { ty = x } ]
+              -> (let ty = Rt.TupleTy (xs @ [x]) in
+                  Some (Typing.unify instr.Ssa.ty ty))
+              | _
+              -> None)
           | "tup_index"
           -> (match operands with
               | [ { ty = Rt.TupleTy xs };

@@ -349,8 +349,92 @@ and type_of_environment env =
       }) env.e_bindings;
   }
 
-let equal a b =
-  a = b (* TODO don't hang *)
+let rec equal a b =
+  let equal_list a b =
+    List.fold_left2 (fun acc a b -> acc && equal a b) true a b
+  in
+  let equal_table a b =
+    try  Table.fold2 ~f:(fun _ acc a b -> acc && equal a b) true a b
+    with Invalid_argument _ -> (* different length *) false
+  in
+  let rec equal_local_env_ty a b =
+    let equal_bindings_ty a b =
+      try
+        Table.fold2 ~f:(fun _ acc a b ->
+            acc &&
+              a.b_location_ty = b.b_location_ty &&
+              a.b_kind_ty     = b.b_kind_ty &&
+              equal a.b_value_ty b.b_value_ty)
+          true a b
+      with Invalid_argument _ -> (* different length *) false
+    in
+    let eq_parent =
+      match a.e_parent_ty, b.e_parent_ty with
+      | None, None -> true
+      | Some a, Some b -> equal_local_env_ty a b
+      | _, _ -> false
+    in
+    eq_parent && equal_bindings_ty a.e_bindings_ty b.e_bindings_ty
+  in
+  match a, b with
+  (* Immutable values and types. *)
+  | TvarTy,             TvarTy
+  | Nil,                Nil
+  | NilTy,              NilTy
+  | Truth,              Truth
+  | Lies,               Lies
+  | BooleanTy,          BooleanTy
+  | IntegerTy,          IntegerTy
+  | SymbolTy,           SymbolTy
+  | BasicBlockTy,       BasicBlockTy
+  -> true
+
+  (* Immutable values and types with immutable parameters. *)
+  | Tvar(a),            Tvar(b)
+  -> a = b
+  | Integer(a),         Integer(b)
+  -> a = b
+  | Symbol(a),          Symbol(b)
+  -> a = b
+  | UnsignedTy(a),      UnsignedTy(b)
+  | SignedTy(a),        SignedTy(b)
+  -> a = b
+  | Unsigned(wa,a),     Unsigned(wb,b)
+  | Signed(wa,a),       Signed(wb,b)
+  -> wa = wb && a = b
+
+  (* Immutable values and types with possibly mutable parameters. *)
+  | Tuple(a),           Tuple(b)
+  | TupleTy(a),         TupleTy(b)
+  -> equal_list a b
+  | Record(a),          Record(b)
+  | RecordTy(a),        RecordTy(b)
+  -> equal_table a b
+  | FunctionTy(aa,ar),  FunctionTy(ba,br)
+  | ClosureTy(aa,ar),   ClosureTy(ba,br)
+  -> equal_list aa ba && equal ar br
+  | LambdaTy(a),        LambdaTy(b)
+  -> (equal a.l_args_ty b.l_args_ty &&
+        equal a.l_kwargs_ty b.l_kwargs_ty &&
+        equal a.l_result_ty b.l_result_ty)
+
+  (* Mutable values and types. *)
+  | EnvironmentTy(a),   EnvironmentTy(b)
+  -> equal_local_env_ty a b
+  | Environment(a),     Environment(b)
+  -> a == b
+  | Lambda(a),          Lambda(b)
+  -> a == b
+  | Package(a),         Package(b)
+  -> a == b
+  | Instance(_,a),      Instance(_,b)
+  -> a == b
+  | Class(a,sa),        Class(b,sb)
+  -> a == b && equal_table sa sb
+  | Mixin(a,sa),        Mixin(b,sb)
+  -> a == b && equal_table sa sb
+  | _, _
+  -> false
 
 (* Inspecting types and values *)
 

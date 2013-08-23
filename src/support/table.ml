@@ -48,7 +48,8 @@ let map ~f table =
   ExtHashtbl.Hashtbl.map f table
 
 let map2 ~f left right =
-  assert ((Hashtbl.length left) = (Hashtbl.length right));
+  if (Hashtbl.length left) <> (Hashtbl.length right) then
+    raise (Invalid_argument ("Table.map2" :> latin1s));
   newtable (Hashtbl.length left)
     (fun result ->
       iter (fun k v ->
@@ -63,7 +64,8 @@ let fold ~f acc table =
   Hashtbl.fold (fun k v a -> f k a v) table acc
 
 let fold2 ~f acc left right =
-  assert ((Hashtbl.length left) = (Hashtbl.length right));
+  if (Hashtbl.length left) <> (Hashtbl.length right) then
+    raise (Invalid_argument ("Table.fold2" :> latin1s));
   fold acc left ~f:(fun k acc v ->
       f k acc v (Hashtbl.find right k))
 

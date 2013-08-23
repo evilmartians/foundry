@@ -13,7 +13,7 @@ let run_on_capsule capsule =
           (* If the call site signature and callee types do not match,
              unify them and replace the callee with a specialized
              function. *)
-          if call_site_ty <> callee.ty then
+          if not (Rt.equal call_site_ty callee.ty) then
             let callee' = overload capsule callee call_site_ty in
             set_opcode instr (CallInstr (callee', operands)))
       | _

@@ -193,6 +193,8 @@ let rec llconst_of_value llmod value =
         Llvm.const_struct ctx (Array.of_list content)))
   | Rt.Package pkg
   -> (Llvm.const_struct ctx [||]) (* TODO *)
+  | Rt.Class (klass, specz)
+  -> (Llvm.const_struct ctx [||]) (* TODO *)
   | _ -> failwith (u"llconst_of_value: " ^ (Rt.inspect_value value))
 
 let gen_proto llmod funcn =
@@ -246,7 +248,7 @@ let rec gen_func llmod funcn =
   in
 
   (* Map FSSA primitive to LLVM primitive. *)
-  let gen_prim id prim operands =
+  let gen_prim instr id prim operands =
     let module Icmp = Llvm.Icmp in
     match prim, operands with
     | "debug", [operand]
@@ -275,7 +277,28 @@ let rec gen_func llmod funcn =
     | "int_sge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sge (map lhs) (map rhs) id builder
     | "int_sgt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sgt (map lhs) (map rhs) id builder
 
-    | "tup_index", [tup; { Ssa.opcode = Ssa.Const (Rt.Integer idx) }]
+    | "tup_make", _
+    -> (let xs_ty = List.map (fun x -> x.Ssa.ty) operands in
+        let llty  = Llvm.struct_type ctx (Array.of_list
+                        (List.map lltype_of_ty xs_ty)) in
+        snd (List.fold_left (fun (idx, lltup) x ->
+            idx + 1, Llvm.build_insertvalue lltup (map x) idx "" builder)
+          (0, Llvm.undef llty) operands))
+    | "tup_extend", [tup; x]
+    -> (let lltup, llx = map tup, map x in
+        let lltys  = Llvm.struct_element_types (Llvm.type_of lltup) in
+        let llty'  = Llvm.struct_type ctx (Array.append lltys
+                            (Array.of_list [ Llvm.type_of llx ])) in
+        let lltup' = Llvm.undef llty' in
+        let rec move lltup' idx =
+          let llval  = Llvm.build_extractvalue lltup idx "" builder in
+          let lltup' = Llvm.build_insertvalue lltup' llval idx "" builder in
+          if idx > 0 then move lltup' (idx - 1)
+          else lltup'
+        in
+        let lltup' = move lltup' ((Array.length lltys) - 1) in
+        Llvm.build_insertvalue lltup' llx (Array.length lltys) "" builder)
+    | "tup_index",  [tup; { Ssa.opcode = Ssa.Const (Rt.Integer idx) }]
     -> Llvm.build_extractvalue (map tup) (int_of_big_int idx) "" builder
 
     | _, _
@@ -403,7 +426,7 @@ let rec gen_func llmod funcn =
           let llclosure = Llvm.build_insertvalue llclosure llenv  1 "" builder in
           llclosure)
       | Ssa.PrimitiveInstr (prim, operands)
-      -> gen_prim id (prim :> latin1s) operands
+      -> gen_prim instr id (prim :> latin1s) operands
       | _
       -> assert false
     in

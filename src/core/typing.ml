@@ -15,7 +15,7 @@ let rec unify' env a b =
   let a, b = subst_tvar a, subst_tvar b in
   (* Instantiate type variables. *)
   match a, b with
-  | _, _ when a = b
+  | _, _ when Rt.equal a b
   -> env
   | Rt.Tvar tvar, ty
   | ty, Rt.Tvar tvar
