@@ -1,8 +1,10 @@
 features:
  * pass manager
+ * value types
  * inliner
  * better errors
- * store loc map in fir
+ * store location map in fir
+ * name_of_value -> const
 
 bugs:
  * allocate fresh tvars on copy_func

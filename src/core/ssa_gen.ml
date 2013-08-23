@@ -37,8 +37,9 @@ let rec ssa_of_expr ~entry ~state ~expr =
               ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
   in
   let store ~entry name value =
-    entry, append entry
-              ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value))
+    ignore (append entry
+              ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
+    entry, value
   in
   match expr with
   (* Constants. *)
@@ -57,7 +58,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
   (* Code block. *)
   | Syntax.Begin (_, exprs)
   -> (let entry, names = ssa_of_exprs ~entry ~state ~exprs in
-        entry, List.hd names)
+      entry, List.hd names)
   (* Variable access and assignment. *)
   | Syntax.Self (_)
   -> load ~entry "self"
@@ -66,6 +67,24 @@ let rec ssa_of_expr ~entry ~state ~expr =
   | Syntax.Assign (_, Syntax.Var (_, name), expr)
   -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
       store ~entry name value)
+  | Syntax.OpAssign (_, Syntax.Var (_, name), selector, expr)
+  -> (let entry, value = load ~entry name in
+      let callee =
+        append entry ~ty:(tvar ())
+                     ~opcode:(Ssa.ResolveInstr (value,
+                        (Ssa.name_of_value (Rt.Symbol selector))))
+      in
+      let entry, arg = ssa_of_expr ~entry ~state ~expr in
+      let args, kwargs =
+        append entry ~ty:(tvar ())
+                     ~opcode:(Ssa.PrimitiveInstr ("tup_make", [value; arg])),
+        Ssa.name_of_value (Rt.Record (Table.create []))
+      in
+      let value' =
+        append entry ~ty:(tvar ())
+                     ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
+      in
+      store ~entry name value')
   | Syntax.Let (_, pattern, _ty, expr)
   -> ssa_of_pattern ~entry ~state ~pattern ~expr
   (* Method calls. *)
