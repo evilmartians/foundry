@@ -310,8 +310,8 @@
               | t=Kw_OR    | t=Kw_NOT   | t=Kw_LET    | t=Kw_MUT    | t=Kw_DYNAMIC
               | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE   | t=Kw_END    | t=Kw_PACKAGE
               | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE  | t=Kw_DEF    | t=Kw_PUBLIC
-              | t=Kw_DO    | t=Kw_WHILE | t=Kw_AS     | t=Kw_RETURN | t=Kw_ELSIF
-              | t=Kw_MATCH | t=Kw_META  | t=Kw_INVOKE | t=Kw_NEW
+              | t=Kw_DO    | t=Kw_WHILE | t=Kw_UNTIL  | t=Kw_AS     | t=Kw_RETURN
+              | t=Kw_ELSIF | t=Kw_MATCH | t=Kw_META   | t=Kw_INVOKE | t=Kw_NEW
               | t=Id_LOCAL | t=unop     | t=binop
                 { t }
 
@@ -359,9 +359,40 @@
               | local=local
                 { local }
 
+     cond_term: term | Kw_THEN
+                {}
+
+     loop_term: term /* | Kw_DO */
+                {}
+
+       if_tail: kw=Kw_ELSIF cond=expr cond_term stmts=compstmt tail=if_tail
+                { Some (Syntax.If (nullary (fst kw),
+                                   cond, stmts, tail)) }
+              | kw=Kw_ELSE stmts=compstmt nnd=Kw_END
+                { Some (Syntax.Begin (collection (fst kw) (fst nnd),
+                                      stmts)) }
+              | kw=Kw_END
+                { None }
+
      stmt_noid: kw=Kw_LET lhs=pattern ty=option(ty_decl) op=Tk_ASGN rhs=expr
                 { Syntax.Let (binary (Syntax.pat_loc lhs) op (Syntax.loc rhs),
                               lhs, ty, rhs) }
+
+              | kw=Kw_IF cond=expr cond_term stmts=compstmt tail=if_tail
+                { Syntax.If (nullary (fst kw),
+                             cond, stmts, tail) }
+
+              | kw=Kw_UNLESS cond=expr cond_term stmts=compstmt Kw_END
+                { Syntax.Unless (nullary (fst kw),
+                                 cond, stmts) }
+
+              | kw=Kw_WHILE cond=expr loop_term stmts=compstmt Kw_END
+                { Syntax.While (nullary (fst kw),
+                                cond, stmts) }
+
+              | kw=Kw_UNTIL cond=expr loop_term stmts=compstmt Kw_END
+                { Syntax.Until (nullary (fst kw),
+                                cond, stmts) }
 
               | kw=Kw_CLASS id=Id_CONST anc=ancestor stmts=compstmt Kw_END
                 { let anc_loc, anc = Option.map fst anc, Option.map snd anc in

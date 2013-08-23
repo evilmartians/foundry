@@ -20,13 +20,13 @@ let process code ~do_eval =
       | [] ->
         if do_eval then begin
           Rt.roots := Rt.create_roots ();
-          let env    = Vm.env_create () in
-          let result = Vm.eval env ast  in
-            (* Output (Rt.inspect result) *)
+          let capsule = Ssa.create_capsule () in
+            (* let env     = Vm.env_create () in
+            let result  = Vm.eval env ast  in
             let Rt.Lambda lam = result in
+            Output (Rt.inspect result)
             let func    = Ssa_gen.name_of_lambda lam in
-            let capsule = Ssa.create_capsule () in
-            Ssa.add_func capsule func;
+            Ssa.add_func capsule func; *)
             Output (IrPrinter.string_of !Rt.roots capsule)
 
         end else

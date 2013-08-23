@@ -2,14 +2,14 @@ open Unicode.Std
 open Big_int
 open Ssa
 
-let run_on_function funcn =
-  (* TODO don't allocate this each time :( *)
-  let tvar () = Rt.Tvar (Rt.new_tvar ()) in
-  let int_binop_ty =
-    let tv = tvar () in Rt.FunctionTy ([tv; tv], tv) in
-  let int_cmpop_ty =
-    let tv = tvar () in Rt.FunctionTy ([tv; tv], Rt.BooleanTy) in
+let stvar () = Rt.Tvar (Rt.new_static_tvar ())
 
+let int_binop_ty = (* val int_binop : 'a -> 'a -> 'a *)
+  let tv = stvar () in Rt.FunctionTy ([tv; tv], tv)
+let int_cmpop_ty = (* val int_cmpop : 'a -> 'a -> bool *)
+  let tv = stvar () in Rt.FunctionTy ([tv; tv], Rt.BooleanTy)
+
+let run_on_function funcn =
   iter_instrs funcn ~f:(fun instr ->
     match instr.opcode with
     (* Make sure that call and return instruction types match the
@@ -29,9 +29,34 @@ let run_on_function funcn =
               Ssa.specialize funcn env)
         | _
         -> ())
+    (* Phis are equivalent to HM unification points. *)
+    | PhiInstr incoming
+    -> (let tys = List.map (fun (_,value) -> value.ty) incoming in
+        let env = Typing.unify_list (instr.ty :: tys) in
+        Ssa.specialize funcn env)
     (* Primitives obey simple, primitive-specific typing rules. *)
     | PrimitiveInstr (prim, operands)
     -> (let env =
+          let unify_int_op int_op_ty =
+            (* Match de-facto type of this primitive invocation with
+                its polymorphic signature. *)
+            let ty =
+              match operands with
+              | [a; b] -> Rt.FunctionTy ([a.Ssa.ty; b.Ssa.ty], instr.Ssa.ty)
+              | _ -> assert false
+            in
+            let env = Typing.unify int_op_ty ty in
+            let ty  = Typing.subst env ty in
+            (* Verify that the substitution yields a valid primitive
+               signature, i.e. it is indeed an integer operation. *)
+            match ty with
+            | Rt.FunctionTy([Rt.IntegerTy;     Rt.IntegerTy],     _)
+            | Rt.FunctionTy([Rt.UnsignedTy(_); Rt.UnsignedTy(_)], _)
+            | Rt.FunctionTy([Rt.SignedTy(_);   Rt.SignedTy(_)],   _)
+            -> Some env
+            | _
+            -> None
+          in
           match (prim :> latin1s) with
           (* Debug primitive is polymorphic; it accepts any amount of
              values of any kind. *)
@@ -39,28 +64,15 @@ let run_on_function funcn =
           -> (let env = Typing.unify instr.ty Rt.NilTy in
               Some env)
           (* Operands to integer primitives must have the
-             same type. *)
-          | "int_add"  | "int_sub"  | "int_mul"  | "int_and"
-          | "int_or"   | "int_xor"  | "int_shl"  | "int_lshr"
+             same integral type. *)
+          | "int_add"  | "int_sub"  | "int_mul" | "int_and"
+          | "int_or"   | "int_xor"  | "int_shl" | "int_lshr"
           | "int_ashr" | "int_exp"
-          -> (* Match de-facto type of this primitive invocation with
-                its polymorphic signature. *)
-             (let ty =
-                match operands with
-                | [a; b] -> Rt.FunctionTy ([a.Ssa.ty; b.Ssa.ty], instr.Ssa.ty)
-                | _ -> assert false
-              in
-              let env = Typing.unify int_binop_ty ty in
-              let ty  = Typing.subst env ty in
-              (* Verify that the substitution yields a valid primitive
-                 signature, i.e. it is indeed an integer operation. *)
-              match ty with
-              | Rt.FunctionTy(_, Rt.IntegerTy)
-              | Rt.FunctionTy(_, Rt.UnsignedTy(_))
-              | Rt.FunctionTy(_, Rt.SignedTy(_))
-              -> Some env
-              | _
-              -> None)
+          -> unify_int_op int_binop_ty
+          | "int_eq"   | "int_neq"  | "int_ule" | "int_sle"
+          | "int_ult"  | "int_slt"  | "int_uge" | "int_sge"
+          | "int_ugt"  | "int_sgt"
+          -> unify_int_op int_cmpop_ty
           (* Tuple and record primitives have type-level semantics not
              expressible with (non-dependent) type variables. *)
           | "tup_make"

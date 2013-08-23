@@ -165,7 +165,9 @@ val create_roots  : unit -> roots
 
 val adopt_tvar    : int -> tvar
 
-val new_tvar      : unit -> tvar
+val new_tvar        : unit -> tvar
+val new_static_tvar : unit -> tvar
+
 val new_class     : ?ancestor:klass -> string -> klass
 val new_package   : string -> package
 

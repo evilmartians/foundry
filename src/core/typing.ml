@@ -44,6 +44,15 @@ let rec unify' env a b =
 
 let unify = unify' []
 
+let unify_list lst =
+  match lst with
+  | []
+  -> []
+  | [a]
+  -> []
+  | fst :: rest
+  -> List.fold_left (fun env ty -> unify' env fst ty) [] rest
+
 let rec subst env ty =
   match ty with
   | Rt.TvarTy | Rt.NilTy | Rt.BooleanTy | Rt.IntegerTy

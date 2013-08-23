@@ -3,6 +3,7 @@ open Big_int
 
 type ssa_conv_state = {
           lambda    : Rt.lambda;
+          funcn     : Ssa.name;
           frame     : Ssa.name;
           frame_ty  : Rt.local_env_ty;
           args      : Ssa.name;
@@ -24,7 +25,7 @@ let lvar_type ty name =
   in
   lookup ty
 
-let append blockn ~ty ~opcode =
+let append ?(ty=Rt.NilTy) ~opcode blockn =
   let instr = Ssa.create_instr ty opcode in
   Ssa.append_instr instr blockn;
   instr
@@ -59,9 +60,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
                 ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
   (* Method calls. *)
   | Syntax.Send (_, receiver, selector, actual_args)
-  -> (let entry, receiver =
-        ssa_of_expr ~entry ~state ~expr:receiver
-      in
+  -> (let entry, receiver = ssa_of_expr ~entry ~state ~expr:receiver in
       let callee =
         append entry ~ty:(tvar ())
                      ~opcode:(Ssa.ResolveInstr (receiver,
@@ -73,6 +72,32 @@ let rec ssa_of_expr ~entry ~state ~expr =
       entry, append entry
                 ~ty:(tvar ())
                 ~opcode:(Ssa.CallInstr (callee, [args; kwargs])))
+  (* Control flow. *)
+  | Syntax.If (_, cond, true_exprs, false_expr)
+  -> (let head, cond = ssa_of_expr ~entry ~state ~expr:cond in
+      let true_pred = Ssa.create_block state.funcn in
+      let true_entry, true_value =
+        ssa_of_seq ~entry:true_pred ~state ~exprs:true_exprs in
+      let false_tup =
+        Option.map (fun expr ->
+          let entry = Ssa.create_block state.funcn in
+          entry, ssa_of_expr ~entry ~state ~expr) false_expr
+      in
+      let tail = Ssa.create_block state.funcn in
+      let false_pred, false_entry, false_value =
+        match false_tup with
+        | Some (pred, (entry, value))
+        -> pred, entry, value
+        | None
+        -> head, tail, Ssa.name_of_value Rt.Nil
+      in
+      ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, true_pred, false_pred)));
+      ignore (append true_entry ~opcode:(Ssa.JumpInstr tail));
+      if false_entry != tail then
+        ignore (append false_entry ~opcode:(Ssa.JumpInstr tail));
+      tail, append tail ~ty:(tvar ())
+                ~opcode:(Ssa.PhiInstr [true_entry,  true_value;
+                                       false_entry, false_value]))
   (* Miscellanea. *)
   | Syntax.InvokePrimitive (_, name, operands)
   -> (let entry, operands = ssa_of_exprs ~entry ~state ~exprs:operands in
@@ -96,9 +121,9 @@ and ssa_of_seq ~entry ~state ~exprs =
   match exprs with
   | []
   | { Ssa.ty = Rt.NilTy } :: _
-  -> Ssa.name_of_value Rt.Nil
+  -> entry, Ssa.name_of_value Rt.Nil
   | expr :: []
-  -> expr
+  -> entry, expr
 
 and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
   let args =
@@ -189,7 +214,7 @@ let name_of_lambda ?(id="") lambda =
     in
 
     (* Perform SSA conversion. *)
-    let state = { lambda; frame; frame_ty; args; arg_idx = 0; kwargs } in
+    let state = { funcn; lambda; frame; frame_ty; args; arg_idx = 0; kwargs } in
     let entry =
       ssa_of_formal_args ~entry ~state ~formal_args:lambda.Rt.l_args in
     let entry, names =

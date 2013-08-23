@@ -79,13 +79,14 @@ let regexp operator    = ['+' '-' '*' '/' '%' '&' '|' '~'] |
 let regexp method_name = local | operator | '<' | '>' | "<=" | ">=" | "==" | "<=>"
 
 let rec lex_code state = lexer
-| w_space     -> lex_code state lexbuf
-| w_newline   -> (if state.is_begin then
-                    lex_code state lexbuf
-                  else begin
-                    expr_begin state true;
-                    Tk_NEWLINE (locate state lexbuf)
-                  end)
+| w_space       -> lex_code state lexbuf
+| w_newline     -> (if state.is_begin then
+                      lex_code state lexbuf
+                    else begin
+                      expr_begin state true;
+                      Tk_NEWLINE (locate state lexbuf)
+                    end)
+| '#' [^'\n']*  -> lex_code state lexbuf
 
 (* Punctuation *)
 | operator '=' -> expr_begin state true; Tk_OP_ASGN  (locate state lexbuf, sub_lexeme lexbuf 0 (-1))
@@ -152,8 +153,10 @@ let rec lex_code state = lexer
 | "let"    -> expr_begin state true;  Kw_LET     (locate state lexbuf, lexeme lexbuf)
 | "mut"    -> expr_begin state true;  Kw_MUT     (locate state lexbuf, lexeme lexbuf)
 | "while"  -> expr_begin state true;  Kw_WHILE   (locate state lexbuf, lexeme lexbuf)
+| "until"  -> expr_begin state true;  Kw_UNTIL   (locate state lexbuf, lexeme lexbuf)
 | "do"     -> expr_begin state true;  Kw_DO      (locate state lexbuf, lexeme lexbuf)
 | "if"     -> expr_begin state true;  Kw_IF      (locate state lexbuf, lexeme lexbuf)
+| "unless" -> expr_begin state true;  Kw_UNLESS  (locate state lexbuf, lexeme lexbuf)
 | "elsif"  -> expr_begin state true;  Kw_ELSIF   (locate state lexbuf, lexeme lexbuf)
 | "then"   -> expr_begin state true;  Kw_THEN    (locate state lexbuf, lexeme lexbuf)
 | "else"   -> expr_begin state true;  Kw_ELSE    (locate state lexbuf, lexeme lexbuf)

@@ -244,6 +244,12 @@ let new_tvar () : tvar =
   roots.last_tvar <- roots.last_tvar + 1;
   roots.last_tvar
 
+let last_static_tvar = ref 0
+
+let new_static_tvar () : tvar =
+  last_static_tvar := !last_static_tvar - 1;
+  !last_static_tvar
+
 let new_class ?ancestor name =
   let meta_ancestor =
     Option.map_default (fun k -> k.k_ancestor) None ancestor

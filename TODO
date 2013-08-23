@@ -1,6 +1,8 @@
 features:
- * inliner
  * pass manager
+ * inliner
+ * better errors
+ * store loc map in fir
 
 bugs:
  * allocate fresh tvars on copy_func

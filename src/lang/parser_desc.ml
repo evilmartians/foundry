@@ -87,6 +87,8 @@ let name_of_token = function
   | Tk_NEWLINE _ -> "Tk_NEWLINE"
   | Vl_UINT _ -> "Vl_UINT"
   | Vl_SINT _ -> "Vl_SINT"
+  | Kw_UNTIL _ -> "Kw_UNTIL"
+  | Kw_UNLESS _ -> "Kw_UNLESS"
 
 let loc_of_token token =
   match token with
@@ -141,6 +143,8 @@ let loc_of_token token =
   | Tk_AND_ASGN (loc) -> loc
   | Tk_AMPER (loc, _) -> loc
   | Kw_WHILE (loc, _) -> loc
+  | Kw_UNTIL (loc, _) -> loc
+  | Kw_UNLESS (loc, _) -> loc
   | Kw_TYPE (loc, _) -> loc
   | Kw_TRUE (loc, _) -> loc
   | Kw_THEN (loc, _) -> loc
