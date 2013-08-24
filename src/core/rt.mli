@@ -121,8 +121,7 @@ with sexp_of
 exception Exc of exc
 with sexp
 
-val exc_fail       : string -> Location.t list -> 'a
-val exc_type       : string -> value -> Location.t list -> 'a
+(* Types and values *)
 
 val type_of_value       : value -> ty
 val type_of_environment : local_env -> local_env_ty
@@ -140,6 +139,8 @@ val inspect_type   : ty    -> string
 val print          : value -> unit
 val print_value    : value -> unit
 val print_type     : ty    -> unit
+
+(* Virtual image *)
 
 type roots = {
   mutable last_tvar : int;
@@ -163,17 +164,50 @@ type roots = {
   pToplevel         : package;
 }
 
-val create_class  : unit -> klass * klass
-val create_roots  : unit -> roots
+val roots           : roots ref
 
-val adopt_tvar    : int -> tvar
+val create_class    : unit -> klass * klass
+val create_roots    : unit -> roots
+
+val adopt_tvar      : int -> tvar
 
 val new_tvar        : unit -> tvar
 val new_static_tvar : unit -> tvar
 
-val new_class     : ?ancestor:klass ->
-                        ?parameters:(string * tvar) list ->
-                        string -> klass
-val new_package   : string -> package
+val new_class       : ?ancestor:klass ->
+                          ?parameters:(string * tvar) list ->
+                          string -> klass
+val new_package     : string -> package
 
-val roots         : roots ref
+(* Exceptions *)
+
+val exc_fail        : string -> Location.t list -> 'a
+val exc_type        : string -> value -> Location.t list -> 'a
+
+(* Local environments *)
+
+val lenv_create     : local_env option -> local_env
+val lenv_bind       : local_env -> string ->
+                          kind:Syntax.lvar_kind -> value:value ->
+                          loc:Location.t -> unit
+val lenv_mutate     : local_env -> string -> value:value -> unit
+val lenv_lookup     : local_env -> string -> value
+
+(* Type environments *)
+
+val tenv_create     : unit -> type_env
+val tenv_fork       : type_env -> type_env
+val tenv_resolve    : type_env -> string -> tvar
+
+(* Constant environments *)
+
+exception CEnvUnbound
+exception CEnvAlreadyBound of value
+
+val cenv_create     : unit -> const_env ref
+val cenv_fork       : const_env ref -> const_env ref
+val cenv_extend     : const_env ref -> package -> unit
+val cenv_bind       : const_env ref -> string -> value -> unit
+val cenv_peek       : const_env ref -> string -> value option
+val cenv_lookup     : const_env ref -> string -> value
+
