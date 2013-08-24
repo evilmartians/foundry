@@ -46,14 +46,14 @@ and ty = value
 and 'a specialized = 'a * value Table.t
 and slots = value Table.t
 and binding_ty = {
-  b_location_ty   : Location.t;
-  b_kind_ty       : Syntax.lvar_kind;
-  b_value_ty      : ty;
+  b_ty_location   : Location.t;
+  b_ty_kind       : Syntax.lvar_kind;
+  b_ty            : ty;
 }
 and bindings_ty  = binding_ty Table.t
 and local_env_ty = {
-  e_parent_ty     : local_env_ty option;
-  e_bindings_ty   : bindings_ty;
+  e_ty_parent     : local_env_ty option;
+  e_ty_bindings   : bindings_ty;
 }
 and binding = {
   b_location      : Location.t;
@@ -78,9 +78,9 @@ and lambda    = {
   l_body          : Syntax.exprs;
 }
 and lambda_ty = {
-  l_args_ty       : ty;
-  l_kwargs_ty     : ty;
-  l_result_ty     : ty;
+  l_ty_args       : ty;
+  l_ty_kwargs     : ty;
+  l_ty_result     : ty;
 }
 and package = {
   p_name          : string;
@@ -347,12 +347,12 @@ let rec type_of_value value =
 
 and type_of_environment env =
   {
-    e_parent_ty   = Option.map type_of_environment env.e_parent;
-    e_bindings_ty =
+    e_ty_parent   = Option.map type_of_environment env.e_parent;
+    e_ty_bindings =
       Table.map (fun b -> {
-        b_location_ty = b.b_location;
-        b_kind_ty     = b.b_kind;
-        b_value_ty    = type_of_value b.b_value;
+        b_ty_location = b.b_location;
+        b_ty_kind     = b.b_kind;
+        b_ty    = type_of_value b.b_value;
       }) env.e_bindings;
   }
 
@@ -369,19 +369,19 @@ let rec equal a b =
       try
         Table.fold2 ~f:(fun _ acc a b ->
             acc &&
-              a.b_location_ty = b.b_location_ty &&
-              a.b_kind_ty     = b.b_kind_ty &&
-              equal a.b_value_ty b.b_value_ty)
+              a.b_ty_location = b.b_ty_location &&
+              a.b_ty_kind     = b.b_ty_kind &&
+              equal a.b_ty b.b_ty_value)
           true a b
       with Invalid_argument _ -> (* different length *) false
     in
     let eq_parent =
-      match a.e_parent_ty, b.e_parent_ty with
+      match a.e_ty_parent, b.e_ty_parent with
       | None, None -> true
       | Some a, Some b -> equal_local_env_ty a b
       | _, _ -> false
     in
-    eq_parent && equal_bindings_ty a.e_bindings_ty b.e_bindings_ty
+    eq_parent && equal_bindings_ty a.e_ty_bindings b.e_ty_bindings
   in
   match a, b with
   (* Immutable values and types. *)
@@ -421,9 +421,9 @@ let rec equal a b =
   | ClosureTy(aa,ar),   ClosureTy(ba,br)
   -> equal_list aa ba && equal ar br
   | LambdaTy(a),        LambdaTy(b)
-  -> (equal a.l_args_ty b.l_args_ty &&
-        equal a.l_kwargs_ty b.l_kwargs_ty &&
-        equal a.l_result_ty b.l_result_ty)
+  -> (equal a.l_ty_args b.l_ty_args &&
+        equal a.l_ty_kwargs b.l_ty_kwargs &&
+        equal a.l_ty_result b.l_ty_result)
 
   (* Mutable values and types. *)
   | EnvironmentTy(a),   EnvironmentTy(b)
@@ -494,16 +494,16 @@ and inspect_type ty =
                 (fun k v -> k ^ ": " ^ (inspect_type v)) xs)) ^ "}"
     | LambdaTy(lm)
     -> (let args_ty =
-          match lm.l_args_ty with
+          match lm.l_ty_args with
           | TupleTy(xs) -> List.map inspect_type xs
           | o -> ["*" ^ (inspect_type o)]
         in let kwargs_ty =
-          match lm.l_kwargs_ty with
+          match lm.l_ty_kwargs with
           | RecordTy(xs) -> Table.map_list
                               (fun k v -> k ^ ": " ^ (inspect_type v)) xs
           | o -> ["**" ^ (inspect_type o)]
         in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^
-           ") -> " ^ (inspect_type lm.l_result_ty))
+           ") -> " ^ (inspect_type lm.l_ty_result))
     | EnvironmentTy(env)
     -> "`env " ^ (inspect_local_env_ty env)
     | FunctionTy(args_ty, result_ty)
@@ -519,10 +519,10 @@ and inspect_local_env_ty env =
   "{" ^
     (String.concat ", "
       (Table.map_list (fun k v ->
-          k ^ ": " ^ (inspect_type v.b_value_ty))
-        env.e_bindings_ty)) ^
+          k ^ ": " ^ (inspect_type v.b_ty))
+        env.e_ty_bindings)) ^
   "}" ^
-    match env.e_parent_ty with
+    match env.e_ty_parent with
     | Some parent -> " -> " ^ (inspect_local_env_ty parent)
     | None -> ""
 

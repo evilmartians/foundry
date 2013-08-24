@@ -55,7 +55,7 @@ module Nametbl : Hashtbl.S with type key = name
 
 (* Generic *)
 
-val name_of_value : Rt.value -> name
+val const : Rt.value -> name
 val set_id        : name -> string -> unit
 val set_ty        : name -> Rt.ty  -> unit
 

@@ -16,10 +16,10 @@ let tvar () =
 
 let lvar_type ty name =
   let rec lookup env =
-    match Table.get env.Rt.e_bindings_ty name with
-    | Some binding -> binding.Rt.b_value_ty
+    match Table.get env.Rt.e_ty_bindings name with
+    | Some binding -> binding.Rt.b_ty
     | None
-    -> (match env.Rt.e_parent_ty with
+    -> (match env.Rt.e_ty_parent with
         | Some parent_ty -> lookup parent_ty
         | None -> assert false)
   in
@@ -44,17 +44,17 @@ let rec ssa_of_expr ~entry ~state ~expr =
   match expr with
   (* Constants. *)
   | Syntax.Nil (_)
-  -> entry, Ssa.name_of_value (Rt.Nil)
+  -> entry, Ssa.const (Rt.Nil)
   | Syntax.Truth (_)
-  -> entry, Ssa.name_of_value (Rt.Truth)
+  -> entry, Ssa.const (Rt.Truth)
   | Syntax.Lies (_)
-  -> entry, Ssa.name_of_value (Rt.Lies)
+  -> entry, Ssa.const (Rt.Lies)
   | Syntax.Integer (_, value)
-  -> entry, Ssa.name_of_value (Rt.Integer value)
+  -> entry, Ssa.const (Rt.Integer value)
   | Syntax.Unsigned (_, width, value)
-  -> entry, Ssa.name_of_value (Rt.Unsigned (width, value))
+  -> entry, Ssa.const (Rt.Unsigned (width, value))
   | Syntax.Signed (_, width, value)
-  -> entry, Ssa.name_of_value (Rt.Signed (width, value))
+  -> entry, Ssa.const (Rt.Signed (width, value))
   (* Code block. *)
   | Syntax.Begin (_, exprs)
   -> (let entry, names = ssa_of_exprs ~entry ~state ~exprs in
@@ -72,13 +72,13 @@ let rec ssa_of_expr ~entry ~state ~expr =
       let callee =
         append entry ~ty:(tvar ())
                      ~opcode:(Ssa.ResolveInstr (value,
-                        (Ssa.name_of_value (Rt.Symbol selector))))
+                        (Ssa.const (Rt.Symbol selector))))
       in
       let entry, arg = ssa_of_expr ~entry ~state ~expr in
       let args, kwargs =
         append entry ~ty:(tvar ())
                      ~opcode:(Ssa.PrimitiveInstr ("tup_make", [value; arg])),
-        Ssa.name_of_value (Rt.Record (Table.create []))
+        Ssa.const (Rt.Record (Table.create []))
       in
       let value' =
         append entry ~ty:(tvar ())
@@ -93,7 +93,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
       let callee =
         append entry ~ty:(tvar ())
                      ~opcode:(Ssa.ResolveInstr (receiver,
-                        (Ssa.name_of_value (Rt.Symbol selector))))
+                        (Ssa.const (Rt.Symbol selector))))
       in
       let entry, args, kwargs =
         ssa_of_actual_args ~entry ~state ~receiver ~actual_args
@@ -118,7 +118,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
         | Some (pred, (entry, value))
         -> pred, entry, value
         | None
-        -> head, tail, Ssa.name_of_value Rt.Nil
+        -> head, tail, Ssa.const Rt.Nil
       in
       ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, true_pred, false_pred)));
       ignore (append true_entry ~opcode:(Ssa.JumpInstr tail));
@@ -143,7 +143,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
         | _ -> assert false
       in
       ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, if_true, if_false)));
-      tail, Ssa.name_of_value Rt.Nil)
+      tail, Ssa.const Rt.Nil)
   | Syntax.Or (_, lhs, rhs)
   | Syntax.And (_, lhs, rhs)
   -> (let head, lhs_value = ssa_of_expr ~entry ~state ~expr:lhs in
@@ -186,7 +186,7 @@ and ssa_of_seq ~entry ~state ~exprs =
   match exprs with
   | []
   | { Ssa.ty = Rt.NilTy } :: _
-  -> entry, Ssa.name_of_value Rt.Nil
+  -> entry, Ssa.const Rt.Nil
   | expr :: _
   -> entry, expr
 
@@ -194,10 +194,10 @@ and ssa_of_pattern ~entry ~state ~pattern ~expr =
   match pattern with
   | Syntax.PatVariable (_, (kind, name))
   -> (let ty = tvar () in
-      Table.set state.frame_ty.Rt.e_bindings_ty name {
-        Rt.b_location_ty = Location.empty;
-        Rt.b_kind_ty     = kind;
-        Rt.b_value_ty    = ty;
+      Table.set state.frame_ty.Rt.e_ty_bindings name {
+        Rt.b_ty_location = Location.empty;
+        Rt.b_ty_kind     = kind;
+        Rt.b_ty    = ty;
       };
       let entry, expr = ssa_of_expr ~entry ~state ~expr in
       ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, name, expr)));
@@ -208,7 +208,7 @@ and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
     ref (append entry ~ty:(tvar ())
           ~opcode:(Ssa.PrimitiveInstr ("tup_make", [receiver])))
   and kwargs =
-    ref (Ssa.name_of_value (Rt.Record (Table.create [])))
+    ref (Ssa.const (Rt.Record (Table.create [])))
   in
   let entry =
     List.fold_left (fun entry actual_arg ->
@@ -262,7 +262,7 @@ and ssa_of_formal_args ~entry ~state ~formal_args =
       let ty = tvar () in
       (* Helper functions to assemble type-level calculations. *)
       let int n =
-        (Ssa.name_of_value (Rt.Integer (big_int_of_int n)))
+        (Ssa.const (Rt.Integer (big_int_of_int n)))
       in
       let right_idx idx =
         let args_len =
@@ -274,10 +274,10 @@ and ssa_of_formal_args ~entry ~state ~formal_args =
                                   [args_len; idx]))
       in
       let assign kind name value =
-        Table.set state.frame_ty.Rt.e_bindings_ty name {
-          Rt.b_location_ty = Location.empty;
-          Rt.b_kind_ty     = kind;
-          Rt.b_value_ty    = ty;
+        Table.set state.frame_ty.Rt.e_ty_bindings name {
+          Rt.b_ty_location = Location.empty;
+          Rt.b_ty_kind     = kind;
+          Rt.b_ty    = ty;
         };
         ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
         entry
@@ -335,8 +335,8 @@ and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
     (* Define a stack frame. Its type will be mutated while the function
        is converted. *)
     let frame_ty = {
-      Rt.e_parent_ty   = Some (state.frame_ty);
-      Rt.e_bindings_ty = Table.create [];
+      Rt.e_ty_parent   = Some (state.frame_ty);
+      Rt.e_ty_bindings = Table.create [];
     }
     in
     let frame =
@@ -365,8 +365,8 @@ let name_of_lambda ?(id="") lambda =
     let ty = lambda.Rt.l_ty in
     Ssa.create_func ~id
       ~arg_ids:["args"; "kwargs"]
-      [ty.Rt.l_args_ty; ty.Rt.l_kwargs_ty]
-      ty.Rt.l_result_ty
+      [ty.Rt.l_ty_args; ty.Rt.l_ty_kwargs]
+      ty.Rt.l_ty_result
   in
   let func = Ssa.func_of_name funcn in
   (* Extract arguments as SSA names. *)
@@ -380,13 +380,13 @@ let name_of_lambda ?(id="") lambda =
     (* Define a stack frame. Its type will be mutated while the function
        is converted. *)
     let frame_ty = {
-      Rt.e_parent_ty   = Some (Rt.type_of_environment lambda.Rt.l_local_env);
-      Rt.e_bindings_ty = Table.create [];
+      Rt.e_ty_parent   = Some (Rt.type_of_environment lambda.Rt.l_local_env);
+      Rt.e_ty_bindings = Table.create [];
     }
     in
     let frame =
       append entry ~ty:(Rt.EnvironmentTy frame_ty)
-          ~opcode:(Ssa.FrameInstr (Ssa.name_of_value
+          ~opcode:(Ssa.FrameInstr (Ssa.const
                     (Rt.Environment lambda.Rt.l_local_env)))
     in
 

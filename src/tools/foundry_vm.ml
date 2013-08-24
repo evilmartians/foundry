@@ -52,25 +52,25 @@ let _ =
     Ssa.add_func capsule funcn;
 
     let entry    = Ssa.create_block ~id:u"entry" funcn in
-    let toplevel = Ssa.name_of_value (Rt.Package (!Rt.roots).Rt.pToplevel) in
+    let toplevel = Ssa.const (Rt.Package (!Rt.roots).Rt.pToplevel) in
 
     let resolve  = Ssa.create_instr (Rt.Tvar (Rt.new_tvar ()))
                       (Ssa.ResolveInstr (toplevel,
-                          Ssa.name_of_value (Rt.Symbol u"main"))) in
+                          Ssa.const (Rt.Symbol u"main"))) in
     Ssa.append_instr resolve entry;
 
     let call     = Ssa.create_instr (Rt.Tvar (Rt.new_tvar ()))
                       (Ssa.CallInstr (resolve, [
-                          Ssa.name_of_value (Rt.Tuple ([
+                          Ssa.const (Rt.Tuple ([
                               Rt.Package (!Rt.roots).Rt.pToplevel ]));
-                          Ssa.name_of_value (Rt.Record (
+                          Ssa.const (Rt.Record (
                               Table.create []))
                        ])) in
     Ssa.append_instr call entry;
 
     let return   = Ssa.create_instr (Rt.UnsignedTy 32)
                       (Ssa.ReturnInstr (
-                          Ssa.name_of_value (Rt.Unsigned (32, (big_int_of_int 0))))) in
+                          Ssa.const (Rt.Unsigned (32, (big_int_of_int 0))))) in
     Ssa.append_instr return entry;
 
   let output_ir = IrPrinter.string_of !Rt.roots capsule in

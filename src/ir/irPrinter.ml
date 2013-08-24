@@ -211,9 +211,9 @@ and string_of_tvar env (tvar:tvar) =
 
 and string_of_lambda_ty env lambda_ty =
   "lambda (" ^
-    (string_of_ty env lambda_ty.l_args_ty) ^ ", " ^
-    (string_of_ty env lambda_ty.l_kwargs_ty) ^ ") -> " ^
-    (string_of_ty env lambda_ty.l_result_ty)
+    (string_of_ty env lambda_ty.l_ty_args) ^ ", " ^
+    (string_of_ty env lambda_ty.l_ty_kwargs) ^ ") -> " ^
+    (string_of_ty env lambda_ty.l_ty_result)
 
 and string_of_ivar env ivar =
   let kind =
@@ -259,14 +259,14 @@ and string_of_local_env env lenv =
       "}\n")
 
 and string_of_local_env_ty env ty =
-  "{" ^ string_of_assoc ty.e_bindings_ty (fun b ->
-    (string_of_loc b.b_location_ty) ^ " " ^
-    (match b.b_kind_ty with
+  "{" ^ string_of_assoc ty.e_ty_bindings (fun b ->
+    (string_of_loc b.b_ty_location) ^ " " ^
+    (match b.b_ty_kind with
     | Syntax.LVarImmutable -> "immutable"
     | Syntax.LVarMutable   -> "mutable") ^ " " ^
-    (string_of_ty env b.b_value_ty)) ^
+    (string_of_ty env b.b_ty)) ^
   "}" ^
-    (match ty.e_parent_ty with
+    (match ty.e_ty_parent with
     | Some parent_ty -> " -> " ^ (string_of_local_env_ty env parent_ty)
     | None -> "")
 
@@ -283,11 +283,11 @@ and string_of_bindings env bindings =
 and string_of_bindings_ty env bindings =
   "{" ^
     (string_of_table "  " bindings (fun b ->
-      (string_of_loc b.b_location_ty) ^ " " ^
-      (match b.b_kind_ty with
+      (string_of_loc b.b_ty_location) ^ " " ^
+      (match b.b_ty_kind with
       | Syntax.LVarImmutable -> "immutable"
       | Syntax.LVarMutable   -> "mutable") ^ " " ^
-      (string_of_value env b.b_value_ty))) ^
+      (string_of_value env b.b_ty))) ^
   "}"
 
 and string_of_package env package =

@@ -52,15 +52,15 @@ let rec unify' env a b =
 
 and unify_env' env a b =
   let env =
-    match a.Rt.e_parent_ty, b.Rt.e_parent_ty with
+    match a.Rt.e_ty_parent, b.Rt.e_ty_parent with
     | None,   None   -> env
     | Some a, Some b -> unify_env' env a b
     | _, _ -> assert false
   in
   Table.fold2 ~f:(fun _ env a b ->
-      assert (a.Rt.b_kind_ty = b.Rt.b_kind_ty);
-      unify' env a.Rt.b_value_ty b.Rt.b_value_ty) env
-    a.Rt.e_bindings_ty b.Rt.e_bindings_ty
+      assert (a.Rt.b_ty_kind = b.Rt.b_ty_kind);
+      unify' env a.Rt.b_ty b.Rt.b_ty_value) env
+    a.Rt.e_ty_bindings b.Rt.e_ty_bindings
 
 let unify = unify' []
 
@@ -101,12 +101,12 @@ let rec subst env ty =
   -> failwith ("Typing.subst: " ^ (Rt.inspect_type ty))
 
 and subst_local_env env ty =
-  { Rt.e_parent_ty   = Option.map (subst_local_env env) ty.Rt.e_parent_ty;
-    Rt.e_bindings_ty = Table.map (fun binding ->
-      { Rt.b_location_ty = binding.Rt.b_location_ty;
-        Rt.b_kind_ty     = binding.Rt.b_kind_ty;
-        Rt.b_value_ty    = subst env binding.Rt.b_value_ty;
-      }) ty.Rt.e_bindings_ty }
+  { Rt.e_ty_parent   = Option.map (subst_local_env env) ty.Rt.e_ty_parent;
+    Rt.e_ty_bindings = Table.map (fun binding ->
+      { Rt.b_ty_location = binding.Rt.b_ty_location;
+        Rt.b_ty_kind     = binding.Rt.b_ty_kind;
+        Rt.b_ty    = subst env binding.Rt.b_ty_value;
+      }) ty.Rt.e_ty_bindings }
 
 let print_env env =
   List.iter (fun (tvar, ty) ->

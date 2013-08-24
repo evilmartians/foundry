@@ -176,16 +176,16 @@
 
      lambda_ty: Lambda LParen args=ty Comma kwargs=ty RParen Arrow result=ty
                 { (fun env -> {
-                    l_args_ty   = args   env;
-                    l_kwargs_ty = kwargs env;
-                    l_result_ty = result env;
+                    l_ty_args   = args   env;
+                    l_ty_kwargs = kwargs env;
+                    l_ty_result = result env;
                   })
                 }
 
 environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> Some {
-                    e_parent_ty   = parent env;
-                    e_bindings_ty = xs env;
+                    e_ty_parent   = parent env;
+                    e_ty_bindings = xs env;
                   }) }
               | /* nothing */
                 { (fun env -> None) }
@@ -208,8 +208,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> RecordTy (xs env)) }
               | Environment xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> EnvironmentTy {
-                    e_parent_ty   = parent env;
-                    e_bindings_ty = xs env;
+                    e_ty_parent   = parent env;
+                    e_ty_bindings = xs env;
                   }) }
               | Class x=klass sp=table(value)
                 { (fun env -> Class (x env, sp env)) }
@@ -292,9 +292,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
        lvar_ty: loc=location kind=lvar_kind x=ty
                 { (fun env -> {
-                    b_location_ty = loc;
-                    b_kind_ty     = kind;
-                    b_value_ty    = x env;
+                    b_ty_location = loc;
+                    b_ty_kind     = kind;
+                    b_ty    = x env;
                   }) }
 
        method_: dynamic=boption(Dynamic) x=lambda
@@ -479,7 +479,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | x=func
                 { (fun (venv, block, fenv) -> x venv) }
               | x=value
-                { (fun (venv, block, fenv) -> name_of_value (x venv)) }
+                { (fun (venv, block, fenv) -> const (x venv)) }
 
         phi_op: LBrack name=Name_Local FatArrow operand=operand RBrack
                 { name, operand }
@@ -493,7 +493,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { x }
               | x=local_env
                 { (fun (venv, block, fenv) ->
-                      name_of_value (Rt.Environment (x venv))) }
+                      const (Rt.Environment (x venv))) }
 
        func_op: x=local
                 { x }

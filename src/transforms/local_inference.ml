@@ -19,10 +19,10 @@ let run_on_function passmgr capsule funcn =
   in
   let local_var_ty frame name =
     let rec lookup ty =
-      match Table.get ty.Rt.e_bindings_ty name with
-      | Some binding -> binding.Rt.b_value_ty
+      match Table.get ty.Rt.e_ty_bindings name with
+      | Some binding -> binding.Rt.b_ty
       | None ->
-        match ty.Rt.e_parent_ty with
+        match ty.Rt.e_ty_parent with
         | Some ty -> lookup ty
         | None -> assert false
     in

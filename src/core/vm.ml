@@ -225,9 +225,9 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
           | Syntax.TypeArgKw(_,n,ty) -> args, (n, (as_type ty)) :: kwargs)
         ([], []) all_args
       in LambdaTy {
-        l_args_ty   = TupleTy  args;
-        l_kwargs_ty = RecordTy (Table.create kwargs);
-        l_result_ty = as_type ret;
+        l_ty_args   = TupleTy  args;
+        l_ty_kwargs = RecordTy (Table.create kwargs);
+        l_ty_result = as_type ret;
       })
   | Syntax.TypeConstr((loc,_),name,args)
   -> (try
@@ -266,9 +266,9 @@ and eval_closure_ty (lenv, tenv, cenv) expr =
           -> exc_type "closure type" ty [Syntax.ty_loc ty_expr])
   | None
   -> (tenv, {
-        l_args_ty   = Tvar (new_tvar ());
-        l_kwargs_ty = Tvar (new_tvar ());
-        l_result_ty = Tvar (new_tvar ());
+        l_ty_args   = Tvar (new_tvar ());
+        l_ty_kwargs = Tvar (new_tvar ());
+        l_ty_result = Tvar (new_tvar ());
       })
 
 and eval_args env lst =

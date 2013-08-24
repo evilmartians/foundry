@@ -45,14 +45,14 @@ and ty = value
 and 'a specialized = 'a * ty Table.t
 and slots = value Table.t
 and binding_ty = {
-  b_location_ty   : Location.t;
-  b_kind_ty       : Syntax.lvar_kind;
-  b_value_ty      : ty;
+  b_ty_location   : Location.t;
+  b_ty_kind       : Syntax.lvar_kind;
+  b_ty            : ty;
 }
 and bindings_ty  = binding_ty Table.t
 and local_env_ty = {
-  e_parent_ty     : local_env_ty option;
-  e_bindings_ty   : bindings_ty;
+  e_ty_parent     : local_env_ty option;
+  e_ty_bindings   : bindings_ty;
 }
 and binding = {
   b_location      : Location.t;
@@ -77,9 +77,9 @@ and lambda    = {
   l_body          : Syntax.exprs;
 }
 and lambda_ty = {
-  l_args_ty       : ty;
-  l_kwargs_ty     : ty;
-  l_result_ty     : ty;
+  l_ty_args       : ty;
+  l_ty_kwargs     : ty;
+  l_ty_result     : ty;
 }
 and package = {
   p_name          : string;

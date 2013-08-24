@@ -138,7 +138,7 @@ let mangle_id name id =
   else
     id
 
-let name_of_value value =
+let const value =
   {
     id        = "";
     ty        = Rt.type_of_value value;

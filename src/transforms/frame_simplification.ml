@@ -25,7 +25,7 @@ let run_on_function passmgr capsule funcn =
                  it with the value itself. *)
               if binding.Rt.b_kind = Syntax.LVarImmutable then
                 replace_instr frame_user
-                  (name_of_value binding.Rt.b_value))
+                  (const binding.Rt.b_value))
           | _
           -> ()))
     | _

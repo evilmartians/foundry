@@ -171,7 +171,7 @@ let run_on_function passmgr capsule funcn =
             opportunities. *)
          (Pass_manager.mark ~reason:("%" ^ instr.id ^ " = " ^
                                 (Rt.inspect_value value)) passmgr funcn;
-          replace_instr instr (name_of_value value))
+          replace_instr instr (const value))
       | _
       -> ())
     values;

@@ -87,11 +87,11 @@ let rec env_map_of_local_env_ty ty =
   try
     Hashtbl.find env_maps ty
   with Not_found ->
-    let parent_map = Option.map env_map_of_local_env_ty ty.Rt.e_parent_ty in
+    let parent_map = Option.map env_map_of_local_env_ty ty.Rt.e_ty_parent in
     (* Serialize the environment. Rt.local_env_ty uses a hash table, which
        is inherently unordered, and LLVM requires an ordered collection. *)
-    let content    = Table.map_list ty.Rt.e_bindings_ty ~f:(fun name binding ->
-                          name, lltype_of_ty binding.Rt.b_value_ty)
+    let content    = Table.map_list ty.Rt.e_ty_bindings ~f:(fun name binding ->
+                          name, lltype_of_ty binding.Rt.b_ty)
     in
     let names   = List.map fst content in
     let lltypes = List.map snd content in
