@@ -19,14 +19,15 @@ if ! [ -x vendor/merr/merr.native ]; then
 fi
 
 echo "Building foundry..."
+
+if [ -n "$JS_OF_OCAML" ]; then
+  FOUNDRY_JS=foundry_web.js
+fi
+
 export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
 ocamlbuild -j 8 -use-ocamlfind \
   file_check.native    \
   foundry_vm.native    \
   foundry_xfrm.native  \
-  foundry_gen.native
-
-if [ -n "$JS_OF_OCAML" ]; then
-  ocamlbuild -j 8 -use-ocamlfind \
-    foundry_web.js
-fi
+  foundry_gen.native   \
+  $FOUNDRY_JS
