@@ -1,7 +1,6 @@
 (* See also: LLVM, utils/FileCheck/FileCheck.cpp. *)
 
 open ExtString
-open ExtHashtbl
 open ExtList
 
 exception Error   of Diagnostic.t
@@ -173,9 +172,11 @@ let patt_match patt env input start =
 let patt_failure_info patt env loc =
   List.iter (fun (var, _) ->
       let message =
-        match Hashtbl.find_option env var with
-        | Some value -> "with variable \"" ^ var ^ "\" equal to \"" ^ value ^ "\""
-        | None -> "uses undefined variable \"" ^ var ^ "\""
+        try
+          let value = Hashtbl.find env var in
+          "with variable \"" ^ var ^ "\" equal to \"" ^ value ^ "\""
+        with Not_found ->
+          "uses undefined variable \"" ^ var ^ "\""
       in Diagnostic.print (Diagnostic.Note, Unicode.assert_utf8s message, [loc]))
     patt.patt_uses
 

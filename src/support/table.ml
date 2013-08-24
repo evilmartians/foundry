@@ -23,7 +23,9 @@ let copy = Hashtbl.copy
 
 let set = Hashtbl.replace
 
-let get = ExtHashtbl.Hashtbl.find_option
+let get table key =
+  try  Some (Hashtbl.find table key)
+  with Not_found -> None
 
 let get_exn = Hashtbl.find
 
@@ -45,7 +47,9 @@ let pair k v =
     (fun table -> Hashtbl.add table k v)
 
 let map ~f table =
-  ExtHashtbl.Hashtbl.map f table
+  newtable (Hashtbl.length table)
+    (fun result ->
+      iter (fun k v -> Hashtbl.add result k (f v)) table)
 
 let map2 ~f left right =
   if (Hashtbl.length left) <> (Hashtbl.length right) then
@@ -82,12 +86,12 @@ let join left right =
       Hashtbl.iter (Hashtbl.replace table) right)
 
 let keys table =
-  List.sort (List.of_enum (ExtHashtbl.Hashtbl.keys table))
+  List.sort (Hashtbl.fold (fun k v acc -> k :: acc) table [])
 
 let except_keys table keys =
   let table = copy table in
-    List.iter (fun k -> Hashtbl.remove table k) keys;
-    table
+  List.iter (Hashtbl.remove table) keys;
+  table
 
 let equal_keys table other =
   (keys table) = (keys other)
