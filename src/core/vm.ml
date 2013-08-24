@@ -250,14 +250,13 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
               List.split_nth (List.length args) (List.map fst klass.k_parameters)
             in
             let new_specz = List.combine f_args args in
-            prerr_endline (string_of_int (List.length kw_args));
             let new_specz = List.fold_left (fun acc (kw, ty) ->
                 if List.mem_assoc kw new_specz then
                   exc_fail ("Type parameter `" ^ kw ^ "' is passed more than once") [loc]
                 else if not (List.mem_assoc kw klass.k_parameters) then
                   exc_fail ("Class `" ^ klass.k_name ^ "' is not parametric by `" ^ kw) [loc]
                 else
-                  (kw, ty) :: acc) kw_args new_specz
+                  (kw, ty) :: acc) new_specz kw_args
             in
             Class (klass, Table.join specz (Table.create new_specz)))
         | value
