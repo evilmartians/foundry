@@ -82,7 +82,6 @@ let name_of_token = function
   | Tk_ROCKET _ -> "Tk_ROCKET"
   | Kw_OR _ -> "Kw_OR"
   | Kw_INVOKE _ -> "Kw_INVOKE"
-  | Kw_NEW _ -> "Kw_NEW"
   | Tk_CARET _ -> "Tk_CARET"
   | Tk_NEWLINE _ -> "Tk_NEWLINE"
   | Vl_UINT _ -> "Vl_UINT"
@@ -155,7 +154,6 @@ let loc_of_token token =
   | Kw_OR (loc, _) -> loc
   | Kw_NOT (loc, _) -> loc
   | Kw_NIL (loc, _) -> loc
-  | Kw_NEW (loc, _) -> loc
   | Kw_MUT (loc, _) -> loc
   | Kw_MIXIN (loc, _) -> loc
   | Kw_META (loc, _) -> loc

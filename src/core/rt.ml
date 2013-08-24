@@ -92,8 +92,8 @@ and klass = {
   k_metaclass     : klass;
   k_ancestor      : klass   option;
   k_is_value      : bool;
-  k_tvars         : tvar    Table.t;
-  k_ivars         : ivar    Table.t;
+  k_parameters    : (string * tvar) list;
+  k_slots         : ivar    Table.t;
   k_methods       : imethod Table.t;
   mutable k_prepended : mixin list;
   mutable k_appended  : mixin list;
@@ -146,49 +146,54 @@ type roots = {
   pToplevel         : package;
 }
 
-let empty_class name ancestor metaclass =
-  { k_name      = name;
-    k_ancestor  = ancestor;
-    k_metaclass = metaclass;
-    k_is_value  = Option.map_default (fun k -> k.k_is_value) false ancestor;
-    k_tvars     = Table.create [];
-    k_ivars     = Table.create [];
-    k_methods   = Table.create [];
-    k_prepended = [];
-    k_appended  = []; }
+let empty_class name ancestor parameters metaclass =
+  { k_name        = name;
+    k_ancestor    = ancestor;
+    k_metaclass   = metaclass;
+    k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
+    k_parameters  = parameters;
+    k_slots       = Table.create [];
+    k_methods     = Table.create [];
+    k_prepended   = [];
+    k_appended    = []; }
 
 let create_class () =
   let rec kClass =
-    { k_name      = "Class";
-      k_ancestor  = None;
-      k_metaclass = kmetaClass;
-      k_is_value  = false;
-      k_tvars     = Table.create [];
-      k_ivars     = Table.create [];
-      k_methods   = Table.create [];
-      k_prepended = [];
-      k_appended  = []; }
+    { k_name        = "Class";
+      k_ancestor    = None;
+      k_metaclass   = kmetaClass;
+      k_is_value    = false;
+      k_parameters  = [];
+      k_slots       = Table.create [];
+      k_methods     = Table.create [];
+      k_prepended   = [];
+      k_appended    = []; }
   and kmetaClass =
-    { k_name      = "meta:Class";
-      k_ancestor  = Some kClass;
-      k_metaclass = kClass;
-      k_is_value  = false;
-      k_tvars     = Table.create [];
-      k_ivars     = Table.create [];
-      k_methods   = Table.create [];
-      k_prepended = [];
-      k_appended  = []; }
+    { k_name        = "meta:Class";
+      k_ancestor    = Some kClass;
+      k_metaclass   = kClass;
+      k_is_value    = false;
+      k_parameters  = [];
+      k_slots       = Table.create [];
+      k_methods     = Table.create [];
+      k_prepended   = [];
+      k_appended    = []; }
   in
   (kClass, kmetaClass)
 
 let create_roots () =
   let (kClass, kmetaClass) = create_class ()
   in
-  let new_class ?ancestor name =
+  let last_tvar = ref 0 in
+  let tvar () =
+    last_tvar := !last_tvar + 1;
+    (!last_tvar : tvar)
+  in
+  let new_class ?ancestor ?(parameters=[]) name =
     let meta_ancestor =
       Option.map_default (fun k -> k.k_ancestor) None ancestor
-    in empty_class name ancestor
-        (empty_class ("meta:" ^ name) meta_ancestor kClass)
+    in empty_class name ancestor parameters
+        (empty_class ("meta:" ^ name) meta_ancestor [] kClass)
   in
 
   let kObject     = new_class "Object" in
@@ -198,7 +203,7 @@ let create_roots () =
   let kPackage    = new_class ~ancestor:kObject "Package" in
 
   let roots = {
-    last_tvar     = 0;
+    last_tvar     = !last_tvar;
 
     kClass        = kClass;
     kObject       = kObject;
@@ -210,8 +215,14 @@ let create_roots () =
     kInteger      = new_class ~ancestor:kValue "Integer";
     kSymbol       = new_class ~ancestor:kValue "Symbol";
 
-    kUnsigned     = new_class ~ancestor:kValue "Unsigned";
-    kSigned       = new_class ~ancestor:kValue "Signed";
+    kUnsigned     = new_class ~ancestor:kValue
+                              ~parameters:["width", tvar ()]
+                              "Unsigned";
+
+    kSigned       = new_class ~ancestor:kValue
+                              ~parameters:["width", tvar ()]
+                              "Signed";
+
     kTuple        = new_class ~ancestor:kValue "Tuple";
     kRecord       = new_class ~ancestor:kValue "Record";
     kLambda       = new_class ~ancestor:kValue "Lambda";
@@ -221,7 +232,7 @@ let create_roots () =
 
     pToplevel     = {
       p_name      = "toplevel";
-      p_metaclass = empty_class "meta:toplevel" (Some kPackage) kClass;
+      p_metaclass = empty_class "meta:toplevel" (Some kPackage) [] kClass;
       p_constants = Table.create []
     }
   }
@@ -266,16 +277,16 @@ let new_static_tvar () : tvar =
   last_static_tvar := !last_static_tvar - 1;
   !last_static_tvar
 
-let new_class ?ancestor name =
+let new_class ?ancestor ?(parameters=[]) name =
   let meta_ancestor =
     Option.map_default (fun k -> k.k_ancestor) None ancestor
-  in empty_class name ancestor
-      (empty_class ("meta:" ^ name) meta_ancestor !roots.kClass)
+  in empty_class name ancestor parameters
+      (empty_class ("meta:" ^ name) meta_ancestor [] !roots.kClass)
 
 let new_package name =
   {
     p_name      = name;
-    p_metaclass = empty_class ("meta:" ^ name) (Some !roots.kPackage) !roots.kClass;
+    p_metaclass = empty_class ("meta:" ^ name) (Some !roots.kPackage) [] !roots.kClass;
     p_constants = Table.create [];
   }
 

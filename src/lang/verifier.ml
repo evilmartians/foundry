@@ -63,7 +63,7 @@ and check_ty cx ty =
         | TypeArg(_, ty) | TypeArgKw(_, _, ty)
         -> check_ty cx ty
       in (check_arg @: args) @ check_ty cx ty)
-  | TypeConstr((loc, _), name, pairs)
+  | TypeConstr((loc, _), name, args)
   -> (if name = "Tuple" then
         ["Use [...] syntax to construct tuple types.", [loc]]
       else if name = "Record" then
@@ -71,7 +71,11 @@ and check_ty cx ty =
       else if name = "Lambda" then
         ["Use (...) -> ... syntax to construct function types.", [loc]]
       else
-        (fun (_, _, ty) -> check_ty cx ty) @: pairs)
+        let check_arg arg =
+          match arg with
+          | TypeArg(_, ty) | TypeArgKw(_, _, ty)
+          -> check_ty cx ty
+        in check_arg @: args)
   | TypeSplice(_,expr)
   -> check_expr cx expr
 
@@ -212,9 +216,12 @@ and check_expr cx expr =
         | QuoteSplice(_,expr) -> check_expr cx expr
       in check_elem @: elems)
   | Var((loc, _), name)
-  -> (match lookup cx.env name with
-      | Some binding -> []
-      | None -> ["Local variable `" ^ name ^ "' is not declared.", [loc]])
+  -> (if name = "" then
+        ["Variable name `_' is a placeholder and can not be accessed.", [loc]]
+      else
+        match lookup cx.env name with
+        | Some binding -> []
+        | None -> ["Local variable `" ^ name ^ "' is not declared.", [loc]])
   | Assign(_, lhs, rhs) | OpAssign(_, lhs, _, rhs)
   | OrAssign(_, lhs, rhs) | AndAssign(_, lhs, rhs)
   -> check_assign cx lhs rhs
@@ -249,8 +256,25 @@ and check_expr cx expr =
       in
       let ds = check_expr cx expr in
       ds @ (check_arg @: args))
-  | Class(_, _, ancestor, exprs)
-  -> (let ds = check_expr cx $? ancestor in
+  | Class(_, name, params, ancestor, exprs)
+  -> (let rec check_params ds seen params =
+        match params with
+        | FormalTypeArg((loc, _), name) :: params
+        | FormalTypeKwArg((_, { operator = loc }), name, _) :: params
+        -> (let ds =
+              try
+                let seen_loc = List.assoc name seen in
+                ds @ ["Type variable `" ^ name ^
+                      "' is specified more than once.", [loc; seen_loc]]
+              with Not_found ->
+                ds
+            in
+            check_params ds ((name, loc) :: seen) params)
+        | []
+        -> ds
+      in
+      let ds = check_params [] [] params in
+      let ds = ds @ (check_expr cx $? ancestor) in
       ds @ (check_expr cx @: exprs))
   | DefIVar(_, _, _, ty)
   -> check_ty cx ty

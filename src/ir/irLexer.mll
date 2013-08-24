@@ -60,14 +60,14 @@ rule lex = parse
 | "type_env"      { Type_env }
 | "const_env"     { Const_env }
 
-| "metaclass"           { Metaclass }
-| "ancestor"            { Ancestor }
-| "type_variables"      { Type_variables }
-| "instance_variables"  { Instance_variables }
-| "methods"             { Methods }
-| "prepended"           { Prepended }
-| "appended"            { Appended }
-| "constants"           { Constants }
+| "metaclass"     { Metaclass }
+| "ancestor"      { Ancestor }
+| "parameters"    { Parameters }
+| "slots"         { Slots }
+| "methods"       { Methods }
+| "prepended"     { Prepended }
+| "appended"      { Appended }
+| "constants"     { Constants }
 
 | "args"
   { Syntax_Args (Syntax.formal_args_of_sexp (Sexplib.Sexp.scan_sexp lexbuf))  }

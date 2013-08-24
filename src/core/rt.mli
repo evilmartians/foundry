@@ -91,8 +91,8 @@ and klass = {
   k_metaclass     : klass;
   k_ancestor      : klass   option;
   k_is_value      : bool;
-  k_tvars         : tvar    Table.t;
-  k_ivars         : ivar    Table.t;
+  k_parameters    : (string * tvar) list;
+  k_slots         : ivar    Table.t;
   k_methods       : imethod Table.t;
   mutable k_prepended : mixin list;
   mutable k_appended  : mixin list;
@@ -171,7 +171,9 @@ val adopt_tvar    : int -> tvar
 val new_tvar        : unit -> tvar
 val new_static_tvar : unit -> tvar
 
-val new_class     : ?ancestor:klass -> string -> klass
+val new_class     : ?ancestor:klass ->
+                        ?parameters:(string * tvar) list ->
+                        string -> klass
 val new_package   : string -> package
 
 val roots         : roots ref

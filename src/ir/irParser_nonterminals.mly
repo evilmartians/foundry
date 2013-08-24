@@ -110,6 +110,12 @@
                           in Table.create xs)
                       }
 
+    %public assoc(X): LBrace
+                        xs=separated_list(Comma,
+                              separated_pair(Lit_String, Equal, X))
+                      RBrace
+                      { (fun env -> List.map (fun (name, x) -> name, x env) xs) }
+
       %public seq(X): LBrack
                         xs=separated_list(Comma, X)
                       RBrack
@@ -319,13 +325,13 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
    struct_body: bind_as=Name_Global Equal
                   Class name=Lit_String LBrace
-                    metaclass=prefix(Metaclass,           klass)
-                     ancestor=prefix(Ancestor,            klass)?
-                        tvars=prefix(Type_variables,      table(tvar))?
-                        ivars=prefix(Instance_variables,  table(ivar))?
-                      methods=prefix(Methods,             table(method_))?
-                    prepended=prefix(Prepended,           seq(mixin))?
-                     appended=prefix(Appended,            seq(mixin))?
+                    metaclass=prefix(Metaclass,  klass)
+                     ancestor=prefix(Ancestor,   klass)?
+                   parameters=prefix(Parameters, assoc(tvar))?
+                        slots=prefix(Slots,      table(ivar))?
+                      methods=prefix(Methods,    table(method_))?
+                    prepended=prefix(Prepended,  seq(mixin))?
+                     appended=prefix(Appended,   seq(mixin))?
                   RBrace
                 { (fun env ->
                     let klass =
@@ -337,31 +343,30 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       | None
                       -> (let ancestor = Option.map (fun x -> x env) ancestor in
                           let klass = {
-                            k_name      = name;
-                            k_ancestor  = ancestor;
-                            k_metaclass = metaclass env;
-                            k_is_value  = Option.map_default (fun k -> k.k_is_value) false ancestor;
-                            k_tvars     = Table.create [];
-                            k_ivars     = Table.create [];
-                            k_methods   = Table.create [];
-                            k_prepended = [];
-                            k_appended  = [];
+                            k_name        = name;
+                            k_ancestor    = ancestor;
+                            k_metaclass   = metaclass env;
+                            k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
+                            k_parameters  = Option.map_default (fun p -> p env) [] parameters;
+                            k_slots       = Table.create [];
+                            k_methods     = Table.create [];
+                            k_prepended   = [];
+                            k_appended    = [];
                           } in
                           Table.set env bind_as (NamedClass klass);
                           klass)
                     in
                     (fun () ->
-                      Option.may (fun x -> Table.replace klass.k_tvars   (x env)) tvars;
-                      Option.may (fun x -> Table.replace klass.k_ivars   (x env)) ivars;
-                      Option.may (fun x -> Table.replace klass.k_methods (x env)) methods;
+                      Option.may (fun x -> Table.replace klass.k_slots      (x env)) slots;
+                      Option.may (fun x -> Table.replace klass.k_methods    (x env)) methods;
                       Option.may (fun x -> klass.k_prepended <- (x env)) prepended;
                       Option.may (fun x -> klass.k_appended  <- (x env)) appended))
                 }
 
               | bind_as=Name_Global Equal
                   Mixin name=Lit_String LBrace
-                    metaclass=prefix(Metaclass,           klass)
-                      methods=prefix(Methods,             table(method_))?
+                    metaclass=prefix(Metaclass,  klass)
+                      methods=prefix(Methods,    table(method_))?
                   RBrace
                 { (fun env ->
                     let mixin = {
@@ -376,8 +381,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
               | bind_as=Name_Global Equal
                   Package name=Lit_String LBrace
-                    metaclass=prefix(Metaclass,           klass)
-                    constants=prefix(Constants,           table(value))?
+                    metaclass=prefix(Metaclass,  klass)
+                    constants=prefix(Constants,  table(value))?
                   RBrace
                 { (fun env ->
                     let package = {
@@ -392,10 +397,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
               | bind_as=Name_Global Equal
                   Lambda loc=location LBrace
-                    local_env=prefix(Local_env,           local_env)
-                     type_env=prefix(Type_env,            table(tvar))?
-                    const_env=prefix(Const_env,           seq(package))?
-                           ty=prefix(Type,                lambda_ty)
+                    local_env=prefix(Local_env,  local_env)
+                     type_env=prefix(Type_env,   table(tvar))?
+                    const_env=prefix(Const_env,  seq(package))?
+                           ty=prefix(Type,       lambda_ty)
                          code=lambda_code
                   RBrace
                 { (fun env ->
@@ -419,8 +424,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
               | bind_as=Name_Global Equal
                   Environment LBrace
-                       parent=prefix(Parent,              local_env)?
-                     bindings=prefix(Bindings,            table(lvar))?
+                       parent=prefix(Parent,     local_env)?
+                     bindings=prefix(Bindings,   table(lvar))?
                   RBrace
                 { (fun env ->
                     let local_env = {

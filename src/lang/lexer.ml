@@ -172,7 +172,6 @@ let rec lex_code state = lexer
 | "mixin"  -> expr_begin state true;  Kw_MIXIN   (locate state lexbuf, lexeme lexbuf)
 | "iface"  -> expr_begin state true;  Kw_IFACE   (locate state lexbuf, lexeme lexbuf)
 | "def"    -> expr_begin state true;  Kw_DEF     (locate state lexbuf, lexeme lexbuf)
-| "new"    -> expr_begin state true;  Kw_NEW     (locate state lexbuf, lexeme lexbuf)
 | "return" -> expr_begin state false; Kw_RETURN  (locate state lexbuf, lexeme lexbuf)
 
 | "invokeprimitive" ->

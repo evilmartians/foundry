@@ -52,8 +52,8 @@
 
 %token Metaclass
 %token Ancestor
-%token Type_variables
-%token Instance_variables
+%token Parameters
+%token Slots
 %token Methods
 %token Prepended
 %token Appended

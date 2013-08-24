@@ -173,13 +173,14 @@ and string_of_klass env klass =
         (Option.map_default (fun klass ->
             "  ancestor " ^ (string_of_ident (string_of_klass env klass)) ^ "\n")
           "" klass.k_ancestor) ^
-        (string_of_some (Table.empty klass.k_tvars) (fun () ->
-          "  type_variables {" ^
-            (string_of_table "  " klass.k_tvars (string_of_tvar env)) ^
-          "}\n")) ^
-        (string_of_some (Table.empty klass.k_ivars) (fun () ->
-          "  instance_variables {" ^
-            (string_of_table "  " klass.k_ivars (string_of_ivar env)) ^
+        (string_of_some (klass.k_parameters = []) (fun () ->
+          "  parameters { " ^
+            (string_of_seq klass.k_parameters (fun (name, tvar) ->
+              (escape_as_literal name) ^ " = " ^ (string_of_tvar env tvar))) ^
+          " }\n")) ^
+        (string_of_some (Table.empty klass.k_slots) (fun () ->
+          "  slots {" ^
+            (string_of_table "  " klass.k_slots (string_of_ivar env)) ^
           "}\n")) ^
         (string_of_some (Table.empty klass.k_methods) (fun () ->
           "  methods {" ^

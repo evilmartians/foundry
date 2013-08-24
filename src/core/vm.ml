@@ -132,14 +132,14 @@ let define_method obj name body loc =
 let define_ivar obj name body loc =
   match obj with
   | Class (klass,_)
-  -> (match Table.get klass.k_ivars name with
+  -> (match Table.get klass.k_slots name with
       | Some ivar
       -> exc_fail ("Cannot define @" ^ name ^ " on " ^
                    (inspect_value obj) ^
                    ": it is already defined with type " ^
                    (inspect_type ivar.iv_ty)) [loc; ivar.iv_location]
       | None
-      -> Table.set klass.k_ivars name body)
+      -> Table.set klass.k_slots name body)
   | value -> exc_type "Class" value [loc]
 
 (* E V A L *)
@@ -217,35 +217,47 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
   -> TupleTy (List.map as_type xs)
   | Syntax.TypeRecord(_,xs)
   -> RecordTy (Table.create (List.map (fun (_,k,v) -> k, as_type v) xs))
-  | Syntax.TypeFunction(_,all_args,ret)
+  | Syntax.TypeFunction(_, args, ret)
   -> (let args, kwargs =
         List.fold_left (fun (args, kwargs) arg ->
           match arg with
           | Syntax.TypeArg(_,ty)     -> ((as_type ty) :: args), kwargs
-          | Syntax.TypeArgKw(_,n,ty) -> args, (n, (as_type ty)) :: kwargs)
-        ([], []) all_args
+          | Syntax.TypeArgKw(_,n,ty) -> args, (n, as_type ty) :: kwargs)
+        ([], []) args
       in LambdaTy {
         l_ty_args   = TupleTy  args;
         l_ty_kwargs = RecordTy (Table.create kwargs);
         l_ty_result = as_type ret;
       })
-  | Syntax.TypeConstr((loc,_),name,args)
+  | Syntax.TypeConstr((loc, _), name, args)
   -> (try
         match cenv_lookup cenv name with
         | (NilTy | BooleanTy | IntegerTy | SymbolTy | TvarTy) as ty
         -> (match args with
             | [] -> ty
             | _  -> exc_fail ("Type " ^ name ^ " is not parametric") [loc])
-        | Class(klass,specz)
-        -> (let new_specz =
-              Table.create (List.map
-                (fun ((loc,_), name, expr) ->
-                  if Table.exists klass.k_tvars name then
-                    name, eval_type env expr
-                  else
-                    exc_fail ("Type " ^ klass.k_name ^
-                              " is not parametric by " ^ name) [loc]) args)
-            in Class(klass, Table.join specz new_specz))
+        | Class (klass, specz)
+        -> (let args, kw_args =
+              List.fold_left (fun (args, kwargs) arg ->
+                match arg with
+                | Syntax.TypeArg(_,ty)     -> ((as_type ty) :: args), kwargs
+                | Syntax.TypeArgKw(_,n,ty) -> args, (n, as_type ty) :: kwargs)
+              ([], []) args
+            in
+            let f_args, kw_f_args =
+              List.split_nth (List.length args) (List.map fst klass.k_parameters)
+            in
+            let new_specz = List.combine f_args args in
+            prerr_endline (string_of_int (List.length kw_args));
+            let new_specz = List.fold_left (fun acc (kw, ty) ->
+                if List.mem_assoc kw new_specz then
+                  exc_fail ("Type parameter `" ^ kw ^ "' is passed more than once") [loc]
+                else if not (List.mem_assoc kw klass.k_parameters) then
+                  exc_fail ("Class `" ^ klass.k_name ^ "' is not parametric by `" ^ kw) [loc]
+                else
+                  (kw, ty) :: acc) new_specz kw_args
+            in
+            Class (klass, Table.join specz (Table.create new_specz)))
         | value
         -> exc_fail ("Name " ^ name ^ " is bound to " ^ (inspect value) ^
                      " which is not a type") [loc]
@@ -318,47 +330,47 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Unsigned(_,w,x) -> Unsigned(w,x)
   | Syntax.Signed(_,w,x)   -> Signed(w,x)
 
-  | Syntax.Tuple(_,xs)
+  | Syntax.Tuple(_, xs)
   -> List.fold_left concat_tuple
         (Tuple []) (List.map (eval_tuple env) xs)
 
-  | Syntax.Record(_,xs)
+  | Syntax.Record(_, xs)
   -> List.fold_left concat_record
         (Record (Table.create [])) (List.map (eval_record env) xs)
 
-  | Syntax.Type(_,ty_expr)
+  | Syntax.Type(_, ty_expr)
   -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
 
-  | Syntax.Let(_,pat,_ty,expr)
+  | Syntax.Let(_, pat, ty, expr)
   -> (let value = eval_expr env expr in
         eval_pattern env pat value;
         value)
 
-  | Syntax.Var(loc,name)
+  | Syntax.Var(loc, name)
   -> lenv_lookup lenv name
 
   | Syntax.Self(loc)
   -> lenv_lookup lenv "self"
 
-  | Syntax.Const(loc,name)
+  | Syntax.Const(loc, name)
   -> (try
         cenv_lookup cenv name
       with CEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
 
-  | Syntax.Assign(_,lhs,rhs)
+  | Syntax.Assign(_, lhs, rhs)
   -> (let value = eval_expr env rhs in
         eval_assign env lhs value;
         value)
 
-  | Syntax.OpAssign((loc,_),lhs,meth,rhs)
+  | Syntax.OpAssign((loc, _), lhs, meth, rhs)
   -> (let value  = eval_expr env lhs in
       let arg    = eval_expr env rhs in
       let result = eval_send value meth ~args:[arg] ~kwargs:(Table.create []) ~loc in
         eval_assign env lhs result;
         result)
 
-  | Syntax.Lambda(_,args,ty_expr,body)
+  | Syntax.Lambda(_, args, ty_expr, body)
   -> (let tenv, ty = eval_closure_ty env ty_expr in
         Lambda {
           l_hash      = Hash_seed.make ();
@@ -371,29 +383,31 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
           l_body      = [body]
         })
 
-  | Syntax.Class((loc,_),name,ancestor,body)
+  | Syntax.Class((loc,_), name, params, ancestor, body)
   -> (let ancestor, specz =
-        (* Extract ancestor class object and ancestor specialization table *)
+        (* Extract ancestor class object and ancestor specialization table. *)
         match ancestor with
         | Some expr
         -> (match eval_expr env expr with
-            | Class (klass,specz) -> Some klass, Some specz
+            | Class (klass, specz) -> Some klass, Some specz
             | value -> exc_type "inheritable class" value [Syntax.loc expr])
         | None
         -> None, None
       in
       (* Check if we should extend existing class, or create a new one
-         and bind it *)
+         and bind it. *)
       let klass =
         match cenv_peek cenv name with
         (* There's an existing one, and it is compatible *)
-        | Some(Class (klass,_) as value) when klass.k_ancestor = ancestor
+        | Some(Class (klass, _) as value)
+          when klass.k_ancestor = ancestor && params = []
         -> value
-        | Some(Class (klass,_) as value) when ancestor = None
+        | Some(Class (klass, _) as value)
+          when ancestor = None && params = []
         -> value
         (* There's an existing one, and it is not compatible with
-           the present definition *)
-        | Some(Class (klass,_))
+           the present definition. *)
+        | Some(Class (klass, _))
         -> (let inspect_ancestor ancestor =
               match ancestor with
               | Some klass -> "has ancestor " ^ klass.k_name
@@ -403,30 +417,39 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
                         (inspect_ancestor klass.k_ancestor) ^
                         ", and the definition " ^
                         (inspect_ancestor ancestor)) [loc]) (* TODO loc *)
-        (* Special classes *)
-        | Some(TvarTy as value)      | Some(BooleanTy as value)
-        | Some(NilTy as value)       | Some(IntegerTy as value)
-        | Some(SymbolTy as value)    | Some(TupleTy(_) as value)
-        | Some(RecordTy(_) as value) | Some(LambdaTy(_) as value)
+        (* Special classes. *)
+        | Some(TvarTy as value)         | Some(BooleanTy as value)
+        | Some(NilTy as value)          | Some(IntegerTy as value)
+        | Some(SymbolTy as value)       | Some(TupleTy(_) as value)
+        | Some(RecordTy(_) as value)    | Some(LambdaTy(_) as value)
+        | Some(UnsignedTy(_) as value)  | Some(SignedTy(_) as value)
         -> (match ancestor with
             | Some klass
             -> exc_fail ("Cannot reopen internal class " ^ name ^ " with an ancestor.") [loc]
             | None
             -> Class (klass_of_value value, Table.create []))
-        (* Not a class *)
+        (* Not a class. *)
         | Some value
         -> exc_fail ("Cannot reopen " ^ name ^ ": it is bound to " ^
                      (inspect value) ^ ", which is not a class") [loc]
         (* No class present, create one and inherit specializations from
-           its ancestor *)
+           its ancestor. *)
         | None
-        -> (let specz = Option.map_default Table.copy (Table.create []) specz
-            in let value = Class (new_class ?ancestor name, specz)
-               in cenv_bind cenv name value; value)
+        -> (let eval_param arg =
+              match arg with
+              | Syntax.FormalTypeArg (_, name)
+              -> name, tenv_resolve tenv name
+              | Syntax.FormalTypeKwArg (_, kw, name)
+              -> kw,   tenv_resolve tenv name
+            in
+            let parameters = List.map eval_param params in
+            let specz = Option.map_default Table.copy (Table.create []) specz in
+            let value = Class (new_class ?ancestor ~parameters name, specz) in
+            cenv_bind cenv name value; value)
       in
       (* Evaluate class body in a context where self is bound to the class *)
       let lenv = lenv_create (Some lenv) in
-        lenv_bind lenv "self" ~value:klass ~kind:Syntax.LVarImmutable ~loc:loc;
+        lenv_bind lenv "self" ~value:klass ~kind:Syntax.LVarImmutable ~loc;
           eval (lenv, tenv, cenv) body)
 
   | Syntax.DefMethod((loc,_),name,args,ty_expr,body)
@@ -485,10 +508,10 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   -> (let args = List.map (eval_expr env) args in
         Primitive.invoke name args)
 
-  | Syntax.Send((_,loc),recv,name,args)
+  | Syntax.Send((_, { Syntax.selector = loc }),recv,name,args)
   -> (let recv = eval_expr env recv in
       let args, kwargs = eval_args env args in
-        eval_send recv name ~args ~kwargs ~loc:loc.Syntax.selector)
+        eval_send recv name ~args ~kwargs ~loc)
 
   | _
   -> failwith ("cannot eval " ^

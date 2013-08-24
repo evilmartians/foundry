@@ -275,15 +275,15 @@
 
             ty: id=Id_CONST
                 { let (id_loc, id) = id in
-                    Syntax.TypeConstr (unary id_loc id_loc, id, []) }
-              | id=Id_CONST lp=Tk_LPAREN args_ty=separated_list(Tk_COMMA, pair_ty) rp=Tk_RPAREN
+                  Syntax.TypeConstr (unary id_loc id_loc, id, []) }
+              | id=Id_CONST lp=Tk_LPAREN args_ty=separated_list(Tk_COMMA, arg_ty) rp=Tk_RPAREN
                 { let (id_loc, id) = id in
-                    Syntax.TypeConstr (unary id_loc rp, id, args_ty) }
+                  Syntax.TypeConstr (unary id_loc rp, id, args_ty) }
               | expr=splice_ty
                 { Syntax.TypeSplice (nullary (Syntax.loc expr), expr) }
               | id=Id_TVAR
                 { let (id_loc, id) = id in
-                    Syntax.TypeVar (nullary id_loc, id) }
+                  Syntax.TypeVar (nullary id_loc, id) }
               | lb=Tk_LBRACK elems_ty=separated_list(Tk_COMMA, ty) rb=Tk_RBRACK
                 { Syntax.TypeTuple (collection lb rb, elems_ty) }
               | lc=Tk_LCURLY elems_ty=separated_list(Tk_COMMA, pair_ty) rc=Tk_RCURLY
@@ -311,7 +311,7 @@
               | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE   | t=Kw_END    | t=Kw_PACKAGE
               | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE  | t=Kw_DEF    | t=Kw_PUBLIC
               | t=Kw_DO    | t=Kw_WHILE | t=Kw_UNTIL  | t=Kw_AS     | t=Kw_RETURN
-              | t=Kw_ELSIF | t=Kw_MATCH | t=Kw_META   | t=Kw_INVOKE | t=Kw_NEW
+              | t=Kw_ELSIF | t=Kw_MATCH | t=Kw_META   | t=Kw_INVOKE
               | t=Id_LOCAL | t=unop     | t=binop
                 { t }
 
@@ -374,6 +374,18 @@
               | kw=Kw_END
                 { None }
 
+    type_param: id=Id_TVAR
+                { Syntax.FormalTypeArg (nullary (fst id),
+                                        snd id) }
+              | id=Id_LABEL tv=Id_TVAR
+                { Syntax.FormalTypeKwArg (unary (fst id) (fst tv),
+                                          snd id, snd tv) }
+
+   type_params: Tk_LPAREN xs=separated_list(Tk_COMMA, type_param) Tk_RPAREN
+                { xs }
+              | /* nothing */
+                { [] }
+
      stmt_noid: kw=Kw_LET lhs=pattern ty=option(ty_decl) op=Tk_ASGN rhs=expr
                 { Syntax.Let (binary (Syntax.pat_loc lhs) op (Syntax.loc rhs),
                               lhs, ty, rhs) }
@@ -394,10 +406,11 @@
                 { Syntax.Until (nullary (fst kw),
                                 cond, stmts) }
 
-              | kw=Kw_CLASS id=Id_CONST anc=ancestor stmts=compstmt Kw_END
+              | kw=Kw_CLASS id=Id_CONST params=type_params
+                  anc=ancestor stmts=compstmt Kw_END
                 { let anc_loc, anc = Option.map fst anc, Option.map snd anc in
                     Syntax.Class (nullary (fst id),
-                                  snd id, anc, stmts) }
+                                  snd id, params, anc, stmts) }
 
               | kw=Kw_DEF id=method_name args=f_def_args
                   ty=option(ty_decl) term stmts=compstmt Kw_END

@@ -74,17 +74,21 @@ and formal_arg  =
 | FormalKwOptArg  of operator   * local_var * expr
 | FormalKwRest    of operator   * local_var
 and formal_args = formal_arg list
-and pair_ty     = operator   * string * ty
+and pair_ty     = operator * string * ty
 and arg_ty      =
 | TypeArg         of nullary    * ty
 | TypeArgKw       of operator   * string * ty
 and ty          =
-| TypeConstr      of operator   * string * pair_ty list
+| TypeConstr      of operator   * string * arg_ty list
 | TypeTuple       of collection * ty list
 | TypeRecord      of collection * pair_ty list
 | TypeFunction    of collection * arg_ty list * ty
 | TypeVar         of nullary    * string
 | TypeSplice      of nullary    * expr
+and formal_ty_arg =
+| FormalTypeArg   of nullary    * string
+| FormalTypeKwArg of operator   * string * string
+and formal_ty_args = formal_ty_arg list
 and tuple_elem  =
 | TupleElem       of nullary    * expr
 | TupleSplice     of operator   * expr
@@ -102,7 +106,7 @@ and pattern     =
 | PatVariable     of let_bind   * local_var
 | PatTuple        of collection * pattern list
 | PatRecord       of collection * pat_extract list
-and pat_extract = let_bind   * local_var * pattern
+and pat_extract = let_bind  * local_var * pattern
 and expr        =
 | Self            of nullary
 | Truth           of nullary (* true  *)
@@ -135,7 +139,7 @@ and expr        =
 | AndAssign       of operator   * expr * expr
 | OpAssign        of operator   * expr * string * expr
 | Type            of operator   * ty
-| Class           of nullary    * string * expr option * exprs
+| Class           of nullary    * string * formal_ty_args * expr option * exprs
 | DefMethod       of nullary    * string * formal_args * ty option * exprs
 | DefSelfMethod   of nullary    * string * formal_args * ty option * exprs
 | DefIVar         of nullary    * string * ivar_kind * ty
@@ -148,7 +152,7 @@ let loc expr =
   | Self (loc)    | Truth (loc) | Lies (loc)   | Nil (loc)
   | Integer (loc,_)   | Signed(loc,_,_) | Unsigned(loc,_,_)
   | Var (loc,_)   | TVar (loc,_) | IVar (loc,_)
-  | Const (loc,_) | Symbol(loc,_) | Class(loc,_,_,_)
+  | Const (loc,_) | Symbol(loc,_) | Class(loc,_,_,_,_)
   | DefMethod(loc,_,_,_,_) | DefSelfMethod(loc,_,_,_,_)
   | DefIVar(loc,_,_,_) | If(loc,_,_,_) | Unless(loc,_,_)
   | While(loc,_,_) | Until(loc,_,_)
