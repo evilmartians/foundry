@@ -240,8 +240,10 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
         -> (let args, kw_args =
               List.fold_left (fun (args, kwargs) arg ->
                 match arg with
-                | Syntax.TypeArg(_,ty)     -> ((as_type ty) :: args), kwargs
-                | Syntax.TypeArgKw(_,n,ty) -> args, (n, as_type ty) :: kwargs)
+                | Syntax.TypeArg(_, value)
+                -> (eval_type env value) :: args, kwargs
+                | Syntax.TypeArgKw(_, name, value)
+                -> args, (name, eval_type env value) :: kwargs)
               ([], []) args
             in
             let f_args, kw_f_args =
@@ -255,7 +257,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
                 else if not (List.mem_assoc kw klass.k_parameters) then
                   exc_fail ("Class `" ^ klass.k_name ^ "' is not parametric by `" ^ kw) [loc]
                 else
-                  (kw, ty) :: acc) new_specz kw_args
+                  (kw, ty) :: acc) kw_args new_specz
             in
             Class (klass, Table.join specz (Table.create new_specz)))
         | value
