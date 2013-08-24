@@ -101,7 +101,7 @@ and check_lambda cx f_args ty exprs =
   }
   in
   let bind (kind, name) ~loc =
-    match lookup cx.env name with
+    match Table.get cx.env.bindings name with
     | Some binding
     -> ["Argument name `" ^ name ^ "' is already bound.",
         [loc; binding.location]]
