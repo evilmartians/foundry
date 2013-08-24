@@ -410,8 +410,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       l_location  = loc;
                       l_ty        = ty env;
                       l_local_env = dummy_local_env;
-                      l_type_env  = Table.create [];
-                      l_const_env = [];
+                      l_type_env  = Rt.tenv_create ();
+                      l_const_env = Rt.cenv_create ();
                       l_args      = args;
                       l_body      = exprs;
                     } in

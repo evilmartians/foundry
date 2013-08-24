@@ -204,10 +204,8 @@ val tenv_resolve    : type_env -> string -> tvar
 exception CEnvUnbound
 exception CEnvAlreadyBound of value
 
-val cenv_create     : unit -> const_env ref
-val cenv_fork       : const_env ref -> const_env ref
-val cenv_extend     : const_env ref -> package -> unit
-val cenv_bind       : const_env ref -> string -> value -> unit
-val cenv_peek       : const_env ref -> string -> value option
-val cenv_lookup     : const_env ref -> string -> value
-
+val cenv_create     : unit -> const_env
+val cenv_extend     : const_env -> package -> const_env
+val cenv_bind       : const_env -> string -> value -> unit
+val cenv_peek       : const_env -> string -> value option
+val cenv_lookup     : const_env -> string -> value

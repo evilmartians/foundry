@@ -6,6 +6,8 @@ type ssa_conv_state = {
           funcn     : Ssa.name;
           frame     : Ssa.name;
           frame_ty  : Rt.local_env_ty;
+  mutable const_env : Rt.const_env;
+          type_env  : Rt.type_env;
           args      : Ssa.name;
           kwargs    : Ssa.name;
   mutable arg_idx   : int;

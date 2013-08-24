@@ -12,7 +12,7 @@ let env_create () =
   in lenv_bind lenv "self" ~value:(Package !roots.pToplevel)
                            ~kind:Syntax.LVarImmutable
                            ~loc:Location.empty;
-     lenv, tenv_create (), cenv_create ()
+  lenv, tenv_create (), ref (cenv_create ())
 
 let concat_tuple lhs rhs =
   match lhs, rhs with
@@ -102,7 +102,7 @@ and eval_assign (lenv, tenv, cenv) lhs value =
   -> lenv_mutate lenv name ~value:value
   | Syntax.Const((loc,_),name)
   -> (try
-        cenv_bind cenv name value
+        cenv_bind !cenv name value
       with CEnvAlreadyBound(value) ->
         exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value) ^ ".") [loc])
   | _ -> assert false
@@ -139,7 +139,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
       })
   | Syntax.TypeConstr((loc, _), name, args)
   -> (try
-        match cenv_lookup cenv name with
+        match cenv_lookup !cenv name with
         | (NilTy | BooleanTy | IntegerTy | SymbolTy | TvarTy) as ty
         -> (match args with
             | [] -> ty
@@ -263,7 +263,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
 
   | Syntax.Const(loc, name)
   -> (try
-        cenv_lookup cenv name
+        cenv_lookup !cenv name
       with CEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
 
@@ -306,7 +306,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       (* Check if we should extend existing class, or create a new one
          and bind it. *)
       let klass =
-        match cenv_peek cenv name with
+        match cenv_peek !cenv name with
         (* There's an existing one, and it is compatible *)
         | Some(Class (klass, _) as value)
           when klass.k_ancestor = ancestor && params = []
@@ -352,9 +352,10 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
               -> kw,   tenv_resolve tenv name
             in
             let parameters = List.map eval_param params in
-            let specz = Option.map_default Table.copy (Table.create []) specz in
-            let value = Class (new_class ?ancestor ~parameters name, specz) in
-            cenv_bind cenv name value; value)
+            let specz      = Option.map_default Table.copy (Table.create []) specz in
+            let ancestor   = Option.default !roots.kObject ancestor in
+            let value      = Class (new_class ~ancestor ~parameters name, specz) in
+            cenv_bind !cenv name value; value)
       in
       (* Evaluate class body in a context where self is bound to the class *)
       let lenv = lenv_create (Some lenv) in

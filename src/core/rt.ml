@@ -640,23 +640,20 @@ let tenv_resolve env name =
 exception CEnvUnbound
 exception CEnvAlreadyBound of value
 
-let cenv_create () : const_env ref =
-  ref [!roots.pToplevel]
-
-let cenv_fork env =
-  ref !env
+let cenv_create () : const_env =
+  [!roots.pToplevel]
 
 let cenv_extend env pkg =
-  env := pkg :: !env
+  pkg :: env
 
 let cenv_bind env name value =
-  let pkg = List.hd !env in
+  let pkg = List.hd env in
     match Table.get pkg.p_constants name with
     | Some value -> raise (CEnvAlreadyBound value)
     | None -> Table.set pkg.p_constants name value
 
 let cenv_peek env name =
-  let pkg = List.hd !env in
+  let pkg = List.hd env in
     Table.get pkg.p_constants name
 
 let cenv_lookup env name =
@@ -669,4 +666,4 @@ let cenv_lookup env name =
     | []
     -> raise CEnvUnbound
 
-  in lookup !env
+  in lookup env
