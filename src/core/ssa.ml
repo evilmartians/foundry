@@ -55,8 +55,7 @@ sig
   | LVarLoadInstr     of (*environment*) name * (*var*) string
   | LVarStoreInstr    of (*environment*) name * (*var*) string * (*value*) name
   | CallInstr         of (*func*) name    * (*operands*) name list
-  | MakeClosureInstr  of (*func*) name    * (*environment*) name
-  | CallClosureInstr  of (*closure*) name * (*operands*) name list
+  | ClosureInstr      of (*func*) name    * (*environment*) name
   | ResolveInstr      of (*object*)  name * (*method*)   name
   | PrimitiveInstr    of (*name*) string  * (*operands*) name list
 end = NameType
@@ -306,9 +305,8 @@ let instr_operands instr =
   | LVarStoreInstr (env, _, value)
   -> [env; value]
   | CallInstr (callee, operands)
-  | CallClosureInstr (callee, operands)
   -> callee :: operands
-  | MakeClosureInstr (func, env)
+  | ClosureInstr (func, env)
   -> [func; env]
   | ResolveInstr (obj, meth)
   -> [obj; meth]
@@ -454,10 +452,9 @@ let map_instr_operands instr operands =
   | LVarStoreInstr (_, name, _), [frame; value]
   -> LVarStoreInstr (frame, name, value)
   | CallInstr (_, _), callee :: operands
-  | CallClosureInstr (_, _), callee :: operands
   -> CallInstr (callee, operands)
-  | MakeClosureInstr (_, _), [func; env]
-  -> MakeClosureInstr (func, env)
+  | ClosureInstr (_, _), [func; env]
+  -> ClosureInstr (func, env)
   | ResolveInstr (_, _), [obj; meth]
   -> ResolveInstr (obj, meth)
   | PrimitiveInstr (name, _), _
@@ -586,9 +583,9 @@ let overload capsule funcn ty' =
       funcn
     else begin
       let funcn' = copy_func funcn in
-      add_func     capsule funcn';
+      add_func capsule funcn';
       add_overload capsule funcn funcn';
-      specialize   funcn'  env;
+      ignore (specialize funcn' env);
       funcn'
     end
 

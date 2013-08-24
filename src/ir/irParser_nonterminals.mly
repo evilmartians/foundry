@@ -546,12 +546,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,
                     (CallInstr (func env, args env))) }
-              | ty=instr_ty Make_closure func=func_op Comma lenv=local_env_op
-                { (fun env -> ty env, MakeClosureInstr (func env, lenv env) )}
-              | ty=instr_ty? Call_closure closure=operand args=args(operand)
-                { (fun env ->
-                    Option.map_default (fun ty -> ty env) Rt.NilTy ty,
-                    (CallClosureInstr (closure env, args env))) }
+              | ty=instr_ty Closure func=func_op Comma lenv=local_env_op
+                { (fun env -> ty env, ClosureInstr (func env, lenv env) )}
               | ty=instr_ty Resolve obj=operand Comma meth=operand
                 { (fun env ->
                     ty env, ResolveInstr (obj env, meth env)) }

@@ -99,8 +99,7 @@ rule lex = parse
 | "lvar_store"    { Lvar_store }
 | "resolve"       { Resolve }
 | "call"          { Call }
-| "make_closure"  { Make_closure }
-| "call_closure"  { Call_closure }
+| "closure"       { Closure }
 | "primitive"     { Primitive }
 
 | "map"           { Map }

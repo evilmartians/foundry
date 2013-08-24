@@ -6,6 +6,7 @@ features:
  * better errors
  * store location map in fir
  * name_of_value -> const
+ * x_foo_ty -> x_ty_foo
 
 bugs:
  * allocate fresh tvars on copy_func

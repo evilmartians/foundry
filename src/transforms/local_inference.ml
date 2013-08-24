@@ -1,5 +1,6 @@
 open Unicode.Std
 open Big_int
+open ExtList
 open Ssa
 
 let name = "Local Inference"
@@ -46,13 +47,21 @@ let run_on_function passmgr capsule funcn =
     -> (let _, return_ty = func_ty funcn in
         if not (Rt.equal value.ty return_ty) then
           unify return_ty value.ty)
-    | CallInstr (callee, _)
-    -> (* Call instruction does not necessarily point directly to
-          the function; it can be a function pointer. *)
-       (match callee.ty with
-        | Rt.FunctionTy (_, return_ty)
-        -> (if not (Rt.equal instr.ty return_ty) then
-              unify instr.ty return_ty)
+    | CallInstr (callee, args)
+    -> (match callee.ty with
+        (* Call instruction does not necessarily point directly to
+           the function; it can be a function pointer. *)
+        | Rt.FunctionTy _
+        -> (let args_ty = List.map (fun x -> x.ty) args in
+            let sig_ty  = Rt.FunctionTy (args_ty, instr.ty) in
+            unify callee.ty sig_ty)
+        | _
+        -> ())
+    | ClosureInstr (callee, frame)
+    -> (match callee.ty, instr.ty with
+        | Rt.FunctionTy _, Rt.ClosureTy (args_ty, ret_ty)
+        -> (let sig_ty = Rt.FunctionTy (frame.ty :: args_ty, ret_ty) in
+            unify callee.ty sig_ty)
         | _
         -> ())
     (* Local variable accesses are unification points. *)
@@ -96,6 +105,7 @@ let run_on_function passmgr capsule funcn =
            values of any kind. *)
         | "debug" | "putchar"
         -> unify instr.ty Rt.NilTy
+
         (* Operands to integer primitives must have the
            same integral type. *)
         | "int_add"  | "int_sub"  | "int_mul" | "int_and"
@@ -106,8 +116,9 @@ let run_on_function passmgr capsule funcn =
         | "int_ult"  | "int_slt"  | "int_uge" | "int_sge"
         | "int_ugt"  | "int_sgt"
         -> unify_int_op int_cmpop_ty
+
         (* Tuple and record primitives have type-level semantics not
-           expressible with (non-dependent) type variables. *)
+           expressible with type variables. *)
         | "tup_make"
         -> (let ty  = Rt.TupleTy (List.map (fun x -> x.ty) operands) in
             unify instr.ty ty)
@@ -121,10 +132,32 @@ let run_on_function passmgr capsule funcn =
             -> ())
         | "tup_index"
         -> (match operands with
-            | [ { ty = Rt.TupleTy xs };
+            | [ { ty     = Rt.TupleTy xs };
                 { opcode = Const (Rt.Integer idx) } ]
             -> (let ty = List.nth xs (int_of_big_int idx) in
                 unify instr.ty ty)
+            | _
+            -> ())
+        | "tup_slice"
+        -> (match operands with
+            | [ { ty     = Rt.TupleTy xs };
+                { opcode = Const (Rt.Integer lft) };
+                { opcode = Const (Rt.Integer rgt) } ]
+            -> (let lft = int_of_big_int lft
+                and rgt = int_of_big_int rgt in
+                let _, lft_slice = List.split_nth lft xs in
+                let rgt_slice, _ = List.split_nth (rgt - lft) lft_slice in
+                unify instr.ty (Rt.TupleTy rgt_slice))
+            | _
+            -> ())
+
+        (* Lambda invocations have semantics similar to function calls. *)
+        | "lam_call"
+        -> (match operands with
+            | callee :: args
+            -> (let args_ty = List.map (fun x -> x.ty) args in
+                let sig_ty  = Rt.ClosureTy (args_ty, instr.ty) in
+                unify callee.ty sig_ty)
             | _
             -> ())
         | _

@@ -312,8 +312,8 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Nil(_)   -> Nil
   | Syntax.Truth(_) -> Truth
   | Syntax.Lies(_)  -> Lies
-  | Syntax.Int(_,x) -> Integer(x)
-  | Syntax.Sym(_,x) -> Symbol(x)
+  | Syntax.Integer(_,x) -> Integer(x)
+  | Syntax.Symbol(_,x) -> Symbol(x)
 
   | Syntax.Unsigned(_,w,x) -> Unsigned(w,x)
   | Syntax.Signed(_,w,x)   -> Signed(w,x)

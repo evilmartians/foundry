@@ -3,17 +3,16 @@ open Big_int
 open Rt
 
 let int_binop op =
-  let f args =
+  (fun args ->
     match args with
     | [Unsigned(wl,lhs); Unsigned(wr,rhs)] when wl = wr
     -> Unsigned(wl, mod_big_int (op lhs rhs) (big_int_of_int wl))
     | [Integer(lhs); Integer(rhs)]
     -> Integer(op lhs rhs)
-    | _ -> assert false
-  in f
+    | _ -> assert false)
 
 let int_cmpop op =
-  let f args =
+  (fun args ->
     match args with
     | [Unsigned(wl,lhs); Unsigned(wr,rhs)]
     | [  Signed(wl,lhs);   Signed(wr,rhs)]
@@ -21,8 +20,7 @@ let int_cmpop op =
     -> if op lhs rhs then Rt.Truth else Rt.Lies
     | [Integer(lhs); Integer(rhs)]
     -> if op lhs rhs then Rt.Truth else Rt.Lies
-    | _ -> assert false
-  in f
+    | _ -> assert false)
 
 let int_shl = int_binop (fun lhs rhs -> shift_left_big_int  lhs (int_of_big_int rhs))
 let int_shr = int_binop (fun lhs rhs -> shift_right_big_int lhs (int_of_big_int rhs))
@@ -46,7 +44,8 @@ let debug args =
   | _ -> assert false
 
 let prim = Table.create [
-  (* name       side_eff  impl *)
+  (* name       side-eff?  impl *)
+  (*-- debug ------------------------------------------- *)
   "debug",      (true,     debug);
   "putchar",    (true,     (fun _ -> assert false));
   (*-- machine int and big int ------------------------- *)
@@ -73,6 +72,14 @@ let prim = Table.create [
   "int_sge",    (false,    int_cmpop ge_big_int);
   "int_ugt",    (false,    int_cmpop gt_big_int);
   "int_sgt",    (false,    int_cmpop gt_big_int);
+  (* -- tuples ----------------------------------------- *)
+  "tup_make",   (false,    fun xs -> Rt.Tuple xs);
+  "tup_extend", (false,    (fun _ -> assert false));
+  "tup_length", (false,    (fun _ -> assert false));
+  "tup_index",  (false,    (fun _ -> assert false));
+  "tup_slice",  (false,    (fun _ -> assert false));
+  (* -- closures --------------------------------------- *)
+  "lam_call",   (true,     (fun _ -> assert false));
 ]
 
 let exists = Table.exists prim

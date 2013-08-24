@@ -391,10 +391,8 @@ let rec string_of_ssa_name env value =
     term "lvar_store" [print env; escape_as_literal var; print value]
   | CallInstr (func, operands) ->
     call_like_instr ("call " ^ (print func)) operands
-  | MakeClosureInstr (func, env) ->
-    instr "make_closure" [print func; print env]
-  | CallClosureInstr (func, operands) ->
-    call_like_instr ("call " ^ (print func)) operands
+  | ClosureInstr (func, env) ->
+    instr "closure" [print func; print env]
   | ResolveInstr (obj, meth) ->
     instr "resolve" [print obj; print meth]
   | PrimitiveInstr (name, operands) ->

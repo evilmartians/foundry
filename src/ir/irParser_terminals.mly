@@ -71,8 +71,6 @@
 %token Lvar_store
 %token Resolve
 %token Call
-%token Make_closure
-%token Call_closure
 %token Primitive
 
 %token Map

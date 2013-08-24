@@ -188,7 +188,7 @@ and check_lambda cx f_args ty exprs =
 
 and check_expr cx expr =
   match expr with
-  | Self _ | Truth _ | Lies _ | Nil _ | Int _ | Sym _
+  | Self _ | Truth _ | Lies _ | Nil _ | Integer _ | Symbol _
   | TVar _ | IVar _ | Const _
   | Unsigned _ | Signed _
   -> []

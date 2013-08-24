@@ -36,11 +36,33 @@ let rec unify' env a b =
   -> List.fold_left2 unify' env xsa xsb
   | Rt.RecordTy(xsa), Rt.RecordTy(xsb)
   -> Table.fold2 ~f:(fun _ -> unify') env xsa xsb
+  | Rt.EnvironmentTy(xa), Rt.EnvironmentTy(xb)
+  ->  Rt.print_type a;
+      Rt.print_type b;
+    unify_env' env xa xb
+  | Rt.Class(ka, spa), Rt.Class(kb, spb)
+    when ka == kb
+  -> Table.fold2 ~f:(fun _ -> unify') env spa spb
   | Rt.FunctionTy(args_ty, ret_ty), Rt.FunctionTy(args_ty', ret_ty')
+  -> (let env = List.fold_left2 unify' env args_ty args_ty' in
+      unify' env ret_ty ret_ty')
+  | Rt.ClosureTy(args_ty, ret_ty), Rt.ClosureTy(args_ty', ret_ty')
   -> (let env = List.fold_left2 unify' env args_ty args_ty' in
       unify' env ret_ty ret_ty')
   | a, b
   -> failwith ("Typing.unify': " ^ (Rt.inspect_type a) ^ " " ^ (Rt.inspect_type b))
+
+and unify_env' env a b =
+  let env =
+    match a.Rt.e_parent_ty, b.Rt.e_parent_ty with
+    | None,   None   -> env
+    | Some a, Some b -> unify_env' env a b
+    | _, _ -> assert false
+  in
+  Table.fold2 ~f:(fun _ env a b ->
+      assert (a.Rt.b_kind_ty = b.Rt.b_kind_ty);
+      unify' env a.Rt.b_value_ty b.Rt.b_value_ty) env
+    a.Rt.e_bindings_ty b.Rt.e_bindings_ty
 
 let unify = unify' []
 
@@ -75,6 +97,8 @@ let rec subst env ty =
   -> Rt.Class (klass, Table.map (subst env) specz)
   | Rt.FunctionTy (args, ret)
   -> Rt.FunctionTy (List.map (subst env) args, subst env ret)
+  | Rt.ClosureTy (args, ret)
+  -> Rt.ClosureTy (List.map (subst env) args, subst env ret)
   | _
   -> failwith ("Typing.subst: " ^ (Rt.inspect_type ty))
 

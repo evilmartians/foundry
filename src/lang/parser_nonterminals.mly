@@ -529,13 +529,13 @@
                 { let (loc, _) = kw in Syntax.Nil (nullary loc) }
 
               | vl=Vl_INT
-                { let (loc, num) = vl in Syntax.Int (nullary loc, num) }
+                { let (loc, num) = vl in Syntax.Integer (nullary loc, num) }
               | vl=Vl_UINT
                 { let (loc, width, num) = vl in Syntax.Unsigned (nullary loc, width, num) }
               | vl=Vl_SINT
                 { let (loc, width, num) = vl in Syntax.Signed (nullary loc, width, num) }
               | vl=Vl_SYMBOL
-                { let (loc, sym) = vl in Syntax.Sym (nullary loc, sym) }
+                { let (loc, sym) = vl in Syntax.Symbol (nullary loc, sym) }
               | lq=Vl_BEGIN elems=quote_elems rq=Vl_END
                 { let (lq_loc, kind) = lq in
                     Syntax.Quote (collection lq_loc rq, kind, elems) }

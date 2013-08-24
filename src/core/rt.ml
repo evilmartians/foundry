@@ -279,6 +279,7 @@ let klass_of_type ?(dispatch=false) ty =
   | RecordTy(_)   -> !roots.kRecord
 
   | LambdaTy(_)   -> !roots.kLambda
+  | ClosureTy(_)  -> !roots.kLambda
 
   | Class(k,_)    -> k
 
@@ -480,7 +481,7 @@ let rec inspect_value value =
     | TupleTy(_) | RecordTy(_) | LambdaTy(_)
     -> "type " ^ (inspect_type value)
     | Package(p) -> p.p_name
-    | _ -> "<unknown>")
+    | _ -> string_of_value value)
 
 and inspect_type ty =
   inspect_literal_or ty (fun x ->
@@ -503,11 +504,27 @@ and inspect_type ty =
           | o -> ["**" ^ (inspect_type o)]
         in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^
            ") -> " ^ (inspect_type lm.l_result_ty))
+    | EnvironmentTy(env)
+    -> "`env " ^ (inspect_local_env_ty env)
     | FunctionTy(args_ty, result_ty)
     -> "`fun (" ^ (String.concat ", " (List.map inspect_type args_ty)) ^
                 ") -> " ^ (inspect_type result_ty)
+    | ClosureTy(args_ty, result_ty)
+    -> "`lam (" ^ (String.concat ", " (List.map inspect_type args_ty)) ^
+                ") -> " ^ (inspect_type result_ty)
     | _
     -> "\\(" ^ (inspect_value ty) ^ ")")
+
+and inspect_local_env_ty env =
+  "{" ^
+    (String.concat ", "
+      (Table.map_list (fun k v ->
+          k ^ ": " ^ (inspect_type v.b_value_ty))
+        env.e_bindings_ty)) ^
+  "}" ^
+    match env.e_parent_ty with
+    | Some parent -> " -> " ^ (inspect_local_env_ty parent)
+    | None -> ""
 
 let inspect value =
   let ty =

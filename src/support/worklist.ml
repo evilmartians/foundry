@@ -13,7 +13,7 @@ let put worklist elem =
     worklist := !worklist @ [elem]
 
 let append worklist elems =
-  List.iter (put worklist) elems
+  worklist := List.unique ~cmp:(==) (!worklist @ elems)
 
 let take worklist =
   match !worklist with

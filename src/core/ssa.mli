@@ -46,8 +46,7 @@ and opcode =
 | LVarLoadInstr     of (*environment*) name * (*var*) string
 | LVarStoreInstr    of (*environment*) name * (*var*) string * (*value*) name
 | CallInstr         of (*func*) name    * (*operands*) name list
-| MakeClosureInstr  of (*func*) name    * (*environment*) name
-| CallClosureInstr  of (*closure*) name * (*operands*) name list
+| ClosureInstr      of (*func*) name    * (*environment*) name
 | ResolveInstr      of (*object*)  name * (*method*)   name
 | PrimitiveInstr    of (*name*) string  * (*operands*) name list
 

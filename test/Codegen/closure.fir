@@ -11,7 +11,7 @@ entry:
 
 @add_three = function (closure (unsigned(32)) -> nil %adder) -> nil {
 entry:
-  call_closure %adder (unsigned(32) 3)
+  primitive "lam_call" (%adder, unsigned(32) 3)
   return nil
 }
 
@@ -20,7 +20,7 @@ entry:
   %env = environment {"x" = (0 0) mutable unsigned(32)} -> {} frame empty
   lvar_store %env, "x", unsigned(32) 0
 
-  %adder.globl = closure (unsigned(32)) -> nil make_closure @add, %env
+  %adder.globl = closure (unsigned(32)) -> nil closure @add, %env
   call @add_three (%adder.globl)
 
 ; CHECK: [DEBUG: 0x00000003]

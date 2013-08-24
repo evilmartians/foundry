@@ -43,7 +43,7 @@ let gen_debug llmod =
 let rec lltype_of_ty ty =
   match ty with
   | Rt.NilTy
-  -> Llvm.void_type ctx
+  -> Llvm.struct_type ctx [||]
   | Rt.BooleanTy
   -> Llvm.i1_type ctx
   | Rt.UnsignedTy width
@@ -253,6 +253,7 @@ let rec gen_func llmod funcn =
   let gen_prim instr id prim operands =
     let module Icmp = Llvm.Icmp in
     match prim, operands with
+    (* Debug primitives. *)
     | "debug", [operand]
     -> (match Llvm.lookup_function "__fy_debug" llmod with
         | Some lldebug -> Llvm.build_call lldebug [| map operand |] "" builder
@@ -265,6 +266,8 @@ let rec gen_func llmod funcn =
           | Some f -> f
         in
         Llvm.build_call llputchar [| map operand |] "" builder)
+
+    (* Integer operations. *)
     | "int_add",  [lhs; rhs] -> Llvm.build_add  (map lhs) (map rhs) id builder
     | "int_sub",  [lhs; rhs] -> Llvm.build_sub  (map lhs) (map rhs) id builder
     | "int_mul",  [lhs; rhs] -> Llvm.build_mul  (map lhs) (map rhs) id builder
@@ -287,6 +290,7 @@ let rec gen_func llmod funcn =
     | "int_sge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sge (map lhs) (map rhs) id builder
     | "int_sgt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sgt (map lhs) (map rhs) id builder
 
+    (* Tuple operations. *)
     | "tup_make", _
     -> (let xs_ty = List.map (fun x -> x.Ssa.ty) operands in
         let llty  = Llvm.struct_type ctx (Array.of_list
@@ -311,6 +315,20 @@ let rec gen_func llmod funcn =
     | "tup_index",  [tup; { Ssa.opcode = Ssa.Const (Rt.Integer idx) }]
     -> Llvm.build_extractvalue (map tup) (int_of_big_int idx) "" builder
 
+    (* Closure operations. *)
+    | "lam_call", closure :: operands
+    -> (* Construct a call instruction with environment substitution. The
+          closure is a value type: forall f. { f*, i8* }, where f is the type
+          of closure without prepended environment argument, and i8* is the
+          generalized type for all environments.
+
+          See also Ssa.CallInstr branch. *)
+       (let llclosure = map closure in
+        let llfunc    = Llvm.build_extractvalue llclosure 0 "" builder in
+        let llenv     = Llvm.build_extractvalue llclosure 1 "" builder in
+        let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
+        Llvm.build_call llfunc (Array.of_list (llenv :: (List.map map operands))) id builder)
+
     | _, _
     -> failwith (u"gen_func/gen_prim: " ^ (Unicode.assert_utf8s prim) ^
                  u"/" ^ (string_of_int (List.length operands)))
@@ -333,9 +351,7 @@ let rec gen_func llmod funcn =
               (Llvm.block_of_value (map falsen))
             builder
       | Ssa.ReturnInstr valuen
-      -> (match valuen.Ssa.ty with
-          | Rt.NilTy -> Llvm.build_ret_void builder
-          | _        -> Llvm.build_ret (map valuen) builder)
+      -> Llvm.build_ret (map valuen) builder
       (* Value-returning instructions. *)
       | Ssa.PhiInstr operands
       -> (* Divide all FSSA incoming values into predecessor values
@@ -411,20 +427,8 @@ let rec gen_func llmod funcn =
             it unnamed: otherwise LLVM will reject the module. *)
          (let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
           Llvm.build_call (map funcn) (Array.of_list (List.map map operands)) id builder)
-      | Ssa.CallClosureInstr (closure, operands)
-      -> (* Construct a call instruction with environment substitution. The
-            closure is a value type: forall f. { f*, i8* }, where f is the type
-            of closure without prepended environment argument, and i8* is the
-            generalized type for all environments.
-
-            See also Ssa.CallInstr branch. *)
-         (let llclosure = map closure in
-          let llfunc    = Llvm.build_extractvalue llclosure 0 "" builder in
-          let llenv     = Llvm.build_extractvalue llclosure 1 "" builder in
-          let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
-          Llvm.build_call llfunc (Array.of_list (llenv :: (List.map map operands))) id builder)
-      | Ssa.MakeClosureInstr (callee, env)
-      -> (* See Ssa.CallClosureInstr branch. *)
+      | Ssa.ClosureInstr (callee, env)
+      -> (* See also lam_call primitive. *)
          (let llfunc, llenv = map callee, map env in
           let llenv = Llvm.build_bitcast llenv (Llvm.pointer_type (Llvm.i8_type ctx)) "" builder in
           let llclosurety = Llvm.struct_type ctx [|

@@ -1,4 +1,5 @@
 open Unicode.Std
+open Big_int
 open Ssa
 
 let name = "Constant Folding"
@@ -121,12 +122,18 @@ let run_on_function passmgr capsule funcn =
       (* Handle primitives. Fold non-side-effectful primitives, possibly
          with primitive-specific knowledge. *)
       | PrimitiveInstr (name, operands)
-      -> (if Primitive.has_side_effects name then
-            Bottom
-          else
-            match lookup_operands operands with
-            | Some values -> Const (Primitive.invoke name values)
-            | None -> Bottom)
+      -> (match (name :> latin1s), operands with
+          | "tup_length", [tup]
+          -> (match tup.ty with
+              | Rt.TupleTy(xs) -> Const (Rt.Integer (big_int_of_int (List.length xs)))
+              | _ -> Bottom)
+          | _
+          -> (if Primitive.has_side_effects name then
+                Bottom
+              else
+                match lookup_operands operands with
+                | Some values -> Const (Primitive.invoke name values)
+                | None -> Bottom))
       (* All unknown instructions are treated as varying by default; this
          is always safe. *)
       | _
@@ -159,8 +166,11 @@ let run_on_function passmgr capsule funcn =
   (* Replace known constant instructions with their values. *)
   Nametbl.iter (fun instr value ->
       match value with
-      | Const value
-      -> replace_instr instr (name_of_value value)
-      | _
-      -> ())
-    values
+      | Const value -> replace_instr instr (name_of_value value)
+      | _ -> ())
+    values;
+
+  (* Constant propagation has likely opened more transformation
+     opportunities. *)
+  if (Nametbl.length values) > 0 then
+    Pass_manager.mark passmgr funcn
