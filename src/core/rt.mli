@@ -90,6 +90,7 @@ and klass = {
   k_name          : string;
   k_metaclass     : klass;
   k_ancestor      : klass   option;
+  k_is_value      : bool;
   k_tvars         : tvar    Table.t;
   k_ivars         : ivar    Table.t;
   k_methods       : imethod Table.t;
@@ -144,6 +145,8 @@ type roots = {
   mutable last_tvar : int;
 
   kClass            : klass;
+  kObject           : klass;
+  kValue            : klass;
   kTypeVariable     : klass;
   kNil              : klass;
   kBoolean          : klass;

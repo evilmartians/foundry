@@ -91,6 +91,7 @@ and klass = {
   k_name          : string;
   k_metaclass     : klass;
   k_ancestor      : klass   option;
+  k_is_value      : bool;
   k_tvars         : tvar    Table.t;
   k_ivars         : ivar    Table.t;
   k_methods       : imethod Table.t;
@@ -127,6 +128,8 @@ type roots = {
   mutable last_tvar : int;
 
   kClass            : klass;
+  kObject           : klass;
+  kValue            : klass;
   kTypeVariable     : klass;
   kNil              : klass;
   kBoolean          : klass;
@@ -147,6 +150,7 @@ let empty_class name ancestor metaclass =
   { k_name      = name;
     k_ancestor  = ancestor;
     k_metaclass = metaclass;
+    k_is_value  = Option.map_default (fun k -> k.k_is_value) false ancestor;
     k_tvars     = Table.create [];
     k_ivars     = Table.create [];
     k_methods   = Table.create [];
@@ -158,6 +162,7 @@ let create_class () =
     { k_name      = "Class";
       k_ancestor  = None;
       k_metaclass = kmetaClass;
+      k_is_value  = false;
       k_tvars     = Table.create [];
       k_ivars     = Table.create [];
       k_methods   = Table.create [];
@@ -167,6 +172,7 @@ let create_class () =
     { k_name      = "meta:Class";
       k_ancestor  = Some kClass;
       k_metaclass = kClass;
+      k_is_value  = false;
       k_tvars     = Table.create [];
       k_ivars     = Table.create [];
       k_methods   = Table.create [];
@@ -185,26 +191,33 @@ let create_roots () =
         (empty_class ("meta:" ^ name) meta_ancestor kClass)
   in
 
-  let kPackage    = new_class "Package"
-  in
+  let kObject     = new_class "Object" in
+  let kValue      = new_class "Value"  in
+  let kValue      = { kValue with k_is_value = true } in
+
+  let kPackage    = new_class ~ancestor:kObject "Package" in
+
   let roots = {
     last_tvar     = 0;
 
     kClass        = kClass;
-    kMixin        = new_class "Mixin";
+    kObject       = kObject;
+    kValue        = kValue;
+
+    kTypeVariable = new_class ~ancestor:kValue "TypeVariable";
+    kNil          = new_class ~ancestor:kValue "Nil";
+    kBoolean      = new_class ~ancestor:kValue "Boolean";
+    kInteger      = new_class ~ancestor:kValue "Integer";
+    kSymbol       = new_class ~ancestor:kValue "Symbol";
+
+    kUnsigned     = new_class ~ancestor:kValue "Unsigned";
+    kSigned       = new_class ~ancestor:kValue "Signed";
+    kTuple        = new_class ~ancestor:kValue "Tuple";
+    kRecord       = new_class ~ancestor:kValue "Record";
+    kLambda       = new_class ~ancestor:kValue "Lambda";
+
+    kMixin        = new_class ~ancestor:kObject "Mixin";
     kPackage      = kPackage;
-
-    kTypeVariable = new_class "TypeVariable";
-    kNil          = new_class "Nil";
-    kBoolean      = new_class "Boolean";
-    kInteger      = new_class "Integer";
-    kSymbol       = new_class "Symbol";
-
-    kUnsigned     = new_class "Unsigned";
-    kSigned       = new_class "Signed";
-    kTuple        = new_class "Tuple";
-    kRecord       = new_class "Record";
-    kLambda       = new_class "Lambda";
 
     pToplevel     = {
       p_name      = "toplevel";
@@ -216,21 +229,24 @@ let create_roots () =
   let constants = roots.pToplevel.p_constants in
     List.iter (fun (k, v) ->
         Table.set constants k (Class (v, Table.create []))) [
-      "Class",    roots.kClass;
-      "Mixin",    roots.kMixin;
-      "Package",  roots.kPackage;
+      "Class",        roots.kClass;
+      "Object",       roots.kObject;
+      "Value",        roots.kValue;
 
       "TypeVariable", roots.kTypeVariable;
-      "Nil",      roots.kNil;
-      "Boolean",  roots.kBoolean;
-      "Integer",  roots.kInteger;
-      "Symbol",   roots.kSymbol;
+      "Nil",          roots.kNil;
+      "Boolean",      roots.kBoolean;
+      "Integer",      roots.kInteger;
+      "Symbol",       roots.kSymbol;
 
-      "Signed",   roots.kSigned;
-      "Unsigned", roots.kUnsigned;
-      "Tuple",    roots.kTuple;
-      "Record",   roots.kRecord;
-      "Lambda",   roots.kLambda;
+      "Signed",       roots.kSigned;
+      "Unsigned",     roots.kUnsigned;
+      "Tuple",        roots.kTuple;
+      "Record",       roots.kRecord;
+      "Lambda",       roots.kLambda;
+
+      "Mixin",        roots.kMixin;
+      "Package",      roots.kPackage;
     ];
     roots
 

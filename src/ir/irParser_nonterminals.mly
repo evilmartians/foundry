@@ -19,6 +19,10 @@
       Table.create [
         (u"c.Class",              NamedClass roots.kClass);
         (u"c.meta:Class",         NamedClass roots.kClass.k_metaclass);
+        (u"c.Object",             NamedClass roots.kObject);
+        (u"c.meta:Object",        NamedClass roots.kObject.k_metaclass);
+        (u"c.Value",              NamedClass roots.kValue);
+        (u"c.meta:Value",         NamedClass roots.kValue.k_metaclass);
         (u"c.TypeVariable",       NamedClass roots.kTypeVariable);
         (u"c.meta:TypeVariable",  NamedClass roots.kTypeVariable.k_metaclass);
         (u"c.Nil",                NamedClass roots.kNil);
@@ -61,6 +65,8 @@
       last_tvar;
 
       kClass        = get_class (u"c.Class");
+      kObject       = get_class (u"c.Object");
+      kValue        = get_class (u"c.Value");
       kTypeVariable = get_class (u"c.TypeVariable");
       kNil          = get_class (u"c.Nil");
       kBoolean      = get_class (u"c.Boolean");
@@ -329,10 +335,12 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       | Some _
                       -> assert false
                       | None
-                      -> (let klass = {
+                      -> (let ancestor = Option.map (fun x -> x env) ancestor in
+                          let klass = {
                             k_name      = name;
-                            k_ancestor  = Option.map (fun x -> x env) ancestor;
+                            k_ancestor  = ancestor;
                             k_metaclass = metaclass env;
+                            k_is_value  = Option.map_default (fun k -> k.k_is_value) false ancestor;
                             k_tvars     = Table.create [];
                             k_ivars     = Table.create [];
                             k_methods   = Table.create [];
