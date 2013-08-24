@@ -9,7 +9,7 @@ and seq_passes = {
 and dep_passes = {
   mutable capsule_passes  : (string * (Ssa.capsule -> unit)) list;
   mutable function_passes : (string * (Ssa.capsule -> Ssa.name -> unit)) list;
-          worklist        : Ssa.name Worklist.t;
+  mutable worklist        : Ssa.name Worklist.t;
 }
 
 module type FunctionPass =
@@ -66,22 +66,32 @@ let run passmgr capsule =
       let terminate  = ref false in
       let old_sigint = Sys.signal Sys.sigint
             (Sys.Signal_handle (fun _ -> terminate := true)) in
+
       (* Initially, put all functions in the worklist. *)
       Ssa.iter_funcs capsule ~f:(Worklist.put passmgr'.worklist);
+
+      (* Repeat until the whole program converges. *)
       while Worklist.some passmgr'.worklist && not !terminate do
+        (* Worklist will be mutated by the transformations, so
+           work off a copy. *)
+        let worklist = Worklist.copy passmgr'.worklist in
+        passmgr'.worklist <- Worklist.create ();
+
         (* Converge all function passes (inference, etc). *)
-        while Worklist.some passmgr'.worklist && not !terminate do
-          let funcn = Worklist.take passmgr'.worklist in
+        while Worklist.some worklist && not !terminate do
+          let funcn = Worklist.take worklist in
           List.iter (run_function funcn) passmgr'.function_passes
         done;
 
         (* Perform all capsule passes (specialization, etc). *)
         List.iter run_capsule passmgr'.capsule_passes;
-
-        (* If the program did not converge yet, repeat. *)
       done;
+
       if !terminate then
         prerr_endline "Convergence terminated.";
+
+      (* Restore the old signal. This also makes the pass manager
+         reentrant. *)
       Sys.set_signal Sys.sigint old_sigint)
 
 let mark passmgr ?reason funcn =

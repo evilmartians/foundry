@@ -5,6 +5,9 @@ type 'a t = 'a list ref
 let create () =
   ref []
 
+let copy worklist =
+  ref !worklist
+
 let some worklist =
   !worklist <> []
 

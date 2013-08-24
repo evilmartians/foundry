@@ -1,6 +1,7 @@
 type 'a t
 
 val create  : unit -> 'a t
+val copy    : 'a t -> 'a t
 val some    : 'a t -> bool
 val put     : 'a t -> 'a -> unit
 val append  : 'a t -> 'a list -> unit
