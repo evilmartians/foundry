@@ -7,6 +7,7 @@
 # CHECK:     [DEBUG: 0x00000002]
 # CHECK:     [DEBUG: 0x00000003]
 # CHECK:     [DEBUG: 0x00000004]
+# CHECK:     [DEBUG: 0x0000000a]
 # CHECK-NOT: [DEBUG
 
 class Unsigned
@@ -34,5 +35,10 @@ class Lambda
 end
 
 def main
-  5u32.times((x) { invokeprimitive debug(x) })
+  let mut a = 0u32
+  5u32.times((x) do
+    a += x
+    invokeprimitive debug(x)
+  end)
+  invokeprimitive debug(a)
 end
