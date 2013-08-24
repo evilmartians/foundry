@@ -166,11 +166,12 @@ let run_on_function passmgr capsule funcn =
   (* Replace known constant instructions with their values. *)
   Nametbl.iter (fun instr value ->
       match value with
-      | Const value -> replace_instr instr (name_of_value value)
-      | _ -> ())
+      | Const value
+      -> (* Constant propagation has likely opened more transformation
+            opportunities. *)
+         (Pass_manager.mark ~reason:("%" ^ instr.id ^ " = " ^
+                                (Rt.inspect_value value)) passmgr funcn;
+          replace_instr instr (name_of_value value))
+      | _
+      -> ())
     values;
-
-  (* Constant propagation has likely opened more transformation
-     opportunities. *)
-  if (Nametbl.length values) > 0 then
-    Pass_manager.mark passmgr funcn

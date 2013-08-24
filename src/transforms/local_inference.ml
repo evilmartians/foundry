@@ -176,17 +176,34 @@ let run_on_function passmgr capsule funcn =
   (* If operand types of any call instructions have changed, revisit
      the callee. Here, a weaker version of the check is implemented:
      if operand types are more specific than signature of any call
-     instruction, revisit the callee. *)
+     instruction, revisit the callee.
+
+     Note that this check is different from the one above: the former
+     aims to substitute type variables in caller (this function) function
+     with type information from callee, and the latter (the check below)
+     aims to let the specialization pass decide if it wants to duplucate
+     the body.
+   *)
   iter_instrs funcn ~f:(fun instr ->
     match instr.opcode with
     | CallInstr (callee, operands)
-    -> (match callee with
-        | { opcode = Function _; ty = callee_sig ;}
-        -> (let operands_ty = List.map (fun x -> x.ty) operands in
-            let caller_sig  = Rt.FunctionTy (operands_ty, instr.ty) in
-            let env         = Typing.unify callee_sig caller_sig in
-            let unified_sig = Typing.subst env callee_sig in
-            if not (Rt.equal unified_sig callee_sig) then
+    -> (match callee.opcode with
+        | Function _
+        -> (let args_ty = List.map (fun x -> x.ty) operands in
+            let sig_ty  = Rt.FunctionTy (args_ty, instr.ty) in
+            let env     = Typing.unify callee.ty sig_ty in
+            let sig_ty' = Typing.subst env callee.ty in
+            if not (Rt.equal sig_ty' callee.ty) then
+              Pass_manager.mark ~reason:"signature mismatch" passmgr callee)
+        | _
+        -> ())
+    | ClosureInstr (callee, frame)
+    -> (match callee.opcode, instr.ty with
+        | Function _, Rt.ClosureTy (args_ty, ret_ty)
+        -> (let sig_ty  = Rt.FunctionTy (frame.ty :: args_ty, ret_ty) in
+            let env     = Typing.unify callee.ty sig_ty in
+            let sig_ty' = Typing.subst env callee.ty in
+            if not (Rt.equal sig_ty' callee.ty) then
               Pass_manager.mark ~reason:"signature mismatch" passmgr callee)
         | _
         -> ())

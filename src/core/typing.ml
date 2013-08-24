@@ -37,9 +37,7 @@ let rec unify' env a b =
   | Rt.RecordTy(xsa), Rt.RecordTy(xsb)
   -> Table.fold2 ~f:(fun _ -> unify') env xsa xsb
   | Rt.EnvironmentTy(xa), Rt.EnvironmentTy(xb)
-  ->  Rt.print_type a;
-      Rt.print_type b;
-    unify_env' env xa xb
+  -> unify_env' env xa xb
   | Rt.Class(ka, spa), Rt.Class(kb, spb)
     when ka == kb
   -> Table.fold2 ~f:(fun _ -> unify') env spa spb

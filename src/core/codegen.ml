@@ -304,14 +304,30 @@ let rec gen_func llmod funcn =
         let llty'  = Llvm.struct_type ctx (Array.append lltys
                             (Array.of_list [ Llvm.type_of llx ])) in
         let lltup' = Llvm.undef llty' in
-        let rec move lltup' idx =
+        let rec blit lltup' idx =
           let llval  = Llvm.build_extractvalue lltup idx "" builder in
           let lltup' = Llvm.build_insertvalue lltup' llval idx "" builder in
-          if idx > 0 then move lltup' (idx - 1)
+          if idx > 0 then blit lltup' (idx - 1)
           else lltup'
         in
-        let lltup' = move lltup' ((Array.length lltys) - 1) in
+        let lltup' = blit lltup' ((Array.length lltys) - 1) in
         Llvm.build_insertvalue lltup' llx (Array.length lltys) "" builder)
+    | "tup_slice",  [tup; { Ssa.opcode = Ssa.Const (Rt.Integer lft) };
+                          { Ssa.opcode = Ssa.Const (Rt.Integer rgt) }]
+    -> (let lft    = int_of_big_int lft
+        and rgt    = int_of_big_int rgt
+        and lltup  = map tup in
+        let lltys  = Llvm.struct_element_types (Llvm.type_of lltup) in
+        let llty'  = Llvm.struct_type ctx (Array.sub lltys lft (rgt - lft)) in
+        let lltup' = Llvm.undef llty' in
+        let rec blit lltup' src_idx dst_idx len =
+          let llval  = Llvm.build_extractvalue lltup src_idx "" builder in
+          let lltup' = Llvm.build_insertvalue lltup' llval dst_idx "" builder in
+          let len    = len - 1 in
+          if len > 0 then blit lltup' (src_idx + 1) (dst_idx + 1) len
+          else lltup'
+        in
+        blit lltup' lft 0 (rgt - lft))
     | "tup_index",  [tup; { Ssa.opcode = Ssa.Const (Rt.Integer idx) }]
     -> Llvm.build_extractvalue (map tup) (int_of_big_int idx) "" builder
 

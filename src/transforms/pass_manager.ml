@@ -95,10 +95,10 @@ let run passmgr capsule =
       Sys.set_signal Sys.sigint old_sigint)
 
 let mark passmgr ?reason funcn =
+  print_invalidate funcn.Ssa.id reason;
   match passmgr with
   | Worklist { worklist }
-  -> (print_invalidate funcn.Ssa.id reason;
-      Worklist.put worklist funcn)
+  -> Worklist.put worklist funcn
   | _
   -> ()
 

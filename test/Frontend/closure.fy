@@ -1,7 +1,6 @@
 # RUN: %foundry_vm   %s -o %t1
-# RUN: %foundry_xfrm %t1 -[ -worklist -resolve -specialize -infer -] -gdce -o %t2
+# RUN: %foundry_xfrm %t1 -[ -worklist -resolve -specialize -infer -sccp -] -gdce -o %t2
 # RUN: %foundry_gen  %t2 | lli | %file_check %s
-# XFAIL: *
 
 # CHECK:     [DEBUG: 0x00000000]
 # CHECK:     [DEBUG: 0x00000001]
