@@ -27,6 +27,16 @@ let _ =
       "-verbose", Arg.Set Pass_manager.verbose,
         " Print each transformation pass and invalidation as they're performed";
 
+      "-std-xfrms", Arg.Unit (fun () ->
+          let dep_passmgr = Pass_manager.create ~sequental:false in
+            Pass_manager.add_function_pass dep_passmgr (module Method_resolution);
+            Pass_manager.add_function_pass dep_passmgr (module Specialization);
+            Pass_manager.add_function_pass dep_passmgr (module Local_inference);
+            Pass_manager.add_function_pass dep_passmgr (module Constant_folding);
+          Pass_manager.add_pass_manager !passmgr dep_passmgr;
+          Pass_manager.add_capsule_pass !passmgr (module Global_dce)),
+        " Include standard transformations";
+
       "-worklist", Arg.Unit (fun () ->
           passmgr := Pass_manager.create ~sequental:false),
         " Erase all pending passes, and replace pass manager with a worklist-based one";
