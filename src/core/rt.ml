@@ -191,7 +191,7 @@ let create_roots () =
   in
   let new_class ?ancestor ?(parameters=[]) name =
     let meta_ancestor =
-      Option.map_default (fun k -> k.k_ancestor) None ancestor
+      Option.map_default (fun k -> Some k.k_metaclass) None ancestor
     in empty_class name ancestor parameters
         (empty_class ("meta:" ^ name) meta_ancestor [] kClass)
   in
@@ -279,7 +279,7 @@ let new_static_tvar () : tvar =
 
 let new_class ?ancestor ?(parameters=[]) name =
   let meta_ancestor =
-    Option.map_default (fun k -> k.k_ancestor) None ancestor
+    Option.map_default (fun k -> Some k.k_metaclass) None ancestor
   in empty_class name ancestor parameters
       (empty_class ("meta:" ^ name) meta_ancestor [] !roots.kClass)
 
