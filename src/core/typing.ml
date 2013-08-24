@@ -59,7 +59,7 @@ and unify_env' env a b =
   in
   Table.fold2 ~f:(fun _ env a b ->
       assert (a.Rt.b_ty_kind = b.Rt.b_ty_kind);
-      unify' env a.Rt.b_ty b.Rt.b_ty_value) env
+      unify' env a.Rt.b_ty b.Rt.b_ty) env
     a.Rt.e_ty_bindings b.Rt.e_ty_bindings
 
 let unify = unify' []
@@ -105,7 +105,7 @@ and subst_local_env env ty =
     Rt.e_ty_bindings = Table.map (fun binding ->
       { Rt.b_ty_location = binding.Rt.b_ty_location;
         Rt.b_ty_kind     = binding.Rt.b_ty_kind;
-        Rt.b_ty    = subst env binding.Rt.b_ty_value;
+        Rt.b_ty          = subst env binding.Rt.b_ty;
       }) ty.Rt.e_ty_bindings }
 
 let print_env env =

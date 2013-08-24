@@ -371,7 +371,7 @@ let rec equal a b =
             acc &&
               a.b_ty_location = b.b_ty_location &&
               a.b_ty_kind     = b.b_ty_kind &&
-              equal a.b_ty b.b_ty_value)
+              equal a.b_ty b.b_ty)
           true a b
       with Invalid_argument _ -> (* different length *) false
     in
