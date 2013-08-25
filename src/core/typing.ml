@@ -1,18 +1,19 @@
 open Unicode.Std
 open Big_int
+open Rt
 
-exception Conflict of Rt.ty * Rt.ty
+exception Conflict of ty * ty
 
 let fold_equiv ty =
-  let roots = !Rt.roots in
+  let roots = !roots in
   match ty with
-  | Rt.Class (klass, specz) when klass == roots.Rt.kUnsigned
+  | Class (klass, specz) when klass == roots.kUnsigned
   -> (match Table.get specz "width" with
-      | Some (Rt.Integer width) -> Rt.UnsignedTy (int_of_big_int width)
+      | Some (Integer width) -> UnsignedTy (int_of_big_int width)
       | _ -> ty)
-  | Rt.Class (klass, specz) when klass == roots.Rt.kSigned
+  | Class (klass, specz) when klass == roots.kSigned
   -> (match Table.get specz "width" with
-      | Some (Rt.Integer width) -> Rt.SignedTy (int_of_big_int width)
+      | Some (Integer width) -> SignedTy (int_of_big_int width)
       | _ -> ty)
   | _
   -> ty
@@ -21,7 +22,7 @@ let rec unify' env a b =
   (* Substitute already instantiated type variables. *)
   let rec subst_tvar ty =
     match ty with
-    | Rt.Tvar tvar
+    | Tvar tvar
     -> (try  subst_tvar (List.assoc tvar env)
         with Not_found -> ty)
     | _
@@ -31,52 +32,50 @@ let rec unify' env a b =
   let a, b = fold_equiv a, fold_equiv b in
   (* Instantiate type variables. *)
   match a, b with
-  | _, _ when Rt.equal a b
+  | _, _ when equal a b
   -> env
-  | Rt.Tvar tvar, ty
-  | ty, Rt.Tvar tvar
+  | Tvar tvar, ty
+  | ty, Tvar tvar
   -> (try
         let subst = List.assoc tvar env in
         if not (subst = ty) then
-          (*raise (Conflict (ty, subst));*)
-          failwith ("Typing.unify' subst=" ^ (Rt.inspect_type subst) ^
-                    " <> ty=" ^ (Rt.inspect_type ty));
+          raise (Conflict (ty, subst));
         env
       with Not_found ->
         (tvar, ty) :: env)
-  | Rt.UnsignedTy(wa), Rt.UnsignedTy(wb)
-  | Rt.SignedTy(wa),   Rt.SignedTy(wb)
+  | UnsignedTy(wa), UnsignedTy(wb)
+  | SignedTy(wa),   SignedTy(wb)
     when wa = wb
   -> env
-  | Rt.TupleTy(xsa), Rt.TupleTy(xsb)
+  | TupleTy(xsa), TupleTy(xsb)
   -> List.fold_left2 unify' env xsa xsb
-  | Rt.RecordTy(xsa), Rt.RecordTy(xsb)
+  | RecordTy(xsa), RecordTy(xsb)
   -> Table.fold2 ~f:(fun _ -> unify') env xsa xsb
-  | Rt.EnvironmentTy(xa), Rt.EnvironmentTy(xb)
+  | EnvironmentTy(xa), EnvironmentTy(xb)
   -> unify_env' env xa xb
-  | Rt.Class(ka, spa), Rt.Class(kb, spb)
+  | Class(ka, spa), Class(kb, spb)
     when ka == kb
   -> Table.fold2 ~f:(fun _ -> unify') env spa spb
-  | Rt.FunctionTy(args_ty, ret_ty), Rt.FunctionTy(args_ty', ret_ty')
+  | FunctionTy(args_ty, ret_ty), FunctionTy(args_ty', ret_ty')
   -> (let env = List.fold_left2 unify' env args_ty args_ty' in
       unify' env ret_ty ret_ty')
-  | Rt.ClosureTy(args_ty, ret_ty), Rt.ClosureTy(args_ty', ret_ty')
+  | ClosureTy(args_ty, ret_ty), ClosureTy(args_ty', ret_ty')
   -> (let env = List.fold_left2 unify' env args_ty args_ty' in
       unify' env ret_ty ret_ty')
   | a, b
-  -> failwith ("Typing.unify': " ^ (Rt.inspect_type a) ^ " " ^ (Rt.inspect_type b))
+  -> raise (Conflict (a, b))
 
 and unify_env' env a b =
   let env =
-    match a.Rt.e_ty_parent, b.Rt.e_ty_parent with
+    match a.e_ty_parent, b.e_ty_parent with
     | None,   None   -> env
     | Some a, Some b -> unify_env' env a b
     | _, _ -> assert false
   in
   Table.fold2 ~f:(fun _ env a b ->
-      assert (a.Rt.b_ty_kind = b.Rt.b_ty_kind);
-      unify' env a.Rt.b_ty b.Rt.b_ty) env
-    a.Rt.e_ty_bindings b.Rt.e_ty_bindings
+      assert (a.b_ty_kind = b.b_ty_kind);
+      unify' env a.b_ty b.b_ty) env
+    a.e_ty_bindings b.e_ty_bindings
 
 let unify = unify' []
 
@@ -91,48 +90,48 @@ let unify_list lst =
 
 let rec subst env ty =
   match ty with
-  | Rt.TvarTy | Rt.NilTy | Rt.BooleanTy | Rt.IntegerTy
-  | Rt.UnsignedTy _ | Rt.SignedTy _ | Rt.SymbolTy
-  | Rt.Nil | Rt.Truth | Rt.Lies | Rt.Integer _
-  | Rt.Unsigned _ | Rt.Signed _ | Rt.Symbol _
+  | TvarTy | NilTy | BooleanTy | IntegerTy
+  | UnsignedTy _ | SignedTy _ | SymbolTy
+  | Nil | Truth | Lies | Integer _
+  | Unsigned _ | Signed _ | Symbol _
   -> ty
-  | Rt.Tvar tvar
+  | Tvar tvar
   -> (try  List.assoc tvar env
       with Not_found -> ty)
-  | Rt.TupleTy xs
-  -> Rt.TupleTy (List.map (subst env) xs)
-  | Rt.Tuple xs
-  -> Rt.Tuple (List.map (subst env) xs)
-  | Rt.RecordTy xs
-  -> Rt.RecordTy (Table.map (subst env) xs)
-  | Rt.Record xs
-  -> Rt.Record (Table.map (subst env) xs)
-  | Rt.EnvironmentTy ty
-  -> Rt.EnvironmentTy (subst_local_env env ty)
-  | Rt.Class (klass, specz)
-  -> Rt.Class (klass, Table.map (subst env) specz)
-  | Rt.FunctionTy (args, ret)
-  -> Rt.FunctionTy (List.map (subst env) args, subst env ret)
-  | Rt.ClosureTy (args, ret)
-  -> Rt.ClosureTy (List.map (subst env) args, subst env ret)
+  | TupleTy xs
+  -> TupleTy (List.map (subst env) xs)
+  | Tuple xs
+  -> Tuple (List.map (subst env) xs)
+  | RecordTy xs
+  -> RecordTy (Table.map (subst env) xs)
+  | Record xs
+  -> Record (Table.map (subst env) xs)
+  | EnvironmentTy ty
+  -> EnvironmentTy (subst_local_env env ty)
+  | Class (klass, specz)
+  -> Class (klass, Table.map (subst env) specz)
+  | FunctionTy (args, ret)
+  -> FunctionTy (List.map (subst env) args, subst env ret)
+  | ClosureTy (args, ret)
+  -> ClosureTy (List.map (subst env) args, subst env ret)
   | _
-  -> failwith ("Typing.subst: " ^ (Rt.inspect_type ty))
+  -> failwith ("Typing.subst: " ^ (inspect_type ty))
 
 and subst_local_env env ty =
-  { Rt.e_ty_parent   = Option.map (subst_local_env env) ty.Rt.e_ty_parent;
-    Rt.e_ty_bindings = Table.map (fun binding ->
-      { Rt.b_ty_location = binding.Rt.b_ty_location;
-        Rt.b_ty_kind     = binding.Rt.b_ty_kind;
-        Rt.b_ty          = subst env binding.Rt.b_ty;
-      }) ty.Rt.e_ty_bindings }
+  { e_ty_parent   = Option.map (subst_local_env env) ty.e_ty_parent;
+    e_ty_bindings = Table.map (fun binding ->
+      { b_ty_location = binding.b_ty_location;
+        b_ty_kind     = binding.b_ty_kind;
+        b_ty          = subst env binding.b_ty;
+      }) ty.e_ty_bindings }
 
 let print_env env =
   List.iter (fun (tvar, ty) ->
-      print_endline ((Rt.inspect_type (Rt.Tvar tvar)) ^
-                     " -> " ^ (Rt.inspect_type ty)))
+      print_endline ((inspect_type (Tvar tvar)) ^
+                     " -> " ^ (inspect_type ty)))
     env
 
-let slot_ty (klass, specz) name =
+let rec slot_ty (klass, specz) name =
   (* Instance variable types and class parameters reside in one type variable
      "namespace" (that is, disjoint block), and specializations reside in another.
      They are linked by specializations named in the same way as class parameters,
@@ -142,5 +141,10 @@ let slot_ty (klass, specz) name =
      This is probably very slow.
    *)
   let env = Table.fold [] specz ~f:(fun name env value ->
-              unify' env value (Rt.Tvar (List.assoc name klass.Rt.k_parameters))) in
-  subst env (List.assoc name klass.Rt.k_slots).Rt.iv_ty
+              unify' env value (Tvar (List.assoc name klass.k_parameters))) in
+  try
+    subst env (List.assoc name klass.k_slots).iv_ty
+  with Not_found ->
+    match klass.k_ancestor with
+    | Some ancestor -> slot_ty (ancestor, specz) name
+    | None -> failwith ("Typing.slot_ty: @" ^ name)
