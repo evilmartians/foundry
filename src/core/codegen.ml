@@ -20,7 +20,24 @@ let gen_debug llmod =
     ignore (Llvm.build_ret_void builder);
     lldebug
 
-let rec lltype_of_ty ty =
+let types = Rt.Valuetbl.create 10
+
+let rec lltype_of_ty ?(ptr=true) ty =
+  let memoize name generate =
+    let llty =
+      try
+        Rt.Valuetbl.find types ty
+      with Not_found ->
+        (* Create and populate a named struct type. *)
+        let llty = Llvm.named_struct_type ctx name in
+        let elts, is_packed = generate () in
+        Llvm.struct_set_body llty elts is_packed;
+        (* Memoize and return this type. *)
+        Rt.Valuetbl.add types ty llty;
+        llty
+    in
+    if ptr then Llvm.pointer_type llty else llty
+  in
   match ty with
   | Rt.NilTy
   -> Llvm.struct_type ctx [||]
@@ -33,11 +50,12 @@ let rec lltype_of_ty ty =
   -> Llvm.struct_type ctx (Array.of_list (List.map lltype_of_ty xs))
   | Rt.RecordTy xs
   -> Llvm.struct_type ctx (Array.of_list
-        (Table.map_list ~ordered:true ~f:(fun _ -> lltype_of_ty) xs))
+        (Table.map_list ~ordered:true ~f:(fun _ -> lltype_of_ty ~ptr:false) xs))
   | Rt.EnvironmentTy env_ty
   -> Llvm.pointer_type (Llvm.i8_type ctx)
-  | Rt.Class (klass, specz) (* TODO *)
-  -> Llvm.struct_type ctx [||]
+  | Rt.Class (klass, specz)
+  -> (memoize (klass.Rt.k_name :> string) (fun () ->
+        [||], false))
   | Rt.FunctionTy (args_ty, ret_ty)
   -> (Llvm.function_type
         (lltype_of_ty ret_ty)
@@ -172,9 +190,16 @@ let rec llconst_of_value llmod value =
         in
         Llvm.const_struct ctx (Array.of_list content)))
   | Rt.Package pkg
-  -> (Llvm.const_struct ctx [||]) (* TODO *)
+  -> (let metaklass = Rt.Class (pkg.Rt.p_metaclass, Table.create []) in
+      let llty = lltype_of_ty ~ptr:false metaklass in
+      memoize llty (fun value ->
+        Llvm.set_value_name ("package." ^ (pkg.Rt.p_name :> string)) value;
+        Llvm.const_named_struct llty [||]))
   | Rt.Class (klass, specz)
-  -> (Llvm.const_struct ctx [||]) (* TODO *)
+  -> (let llty = lltype_of_ty ~ptr:false (Rt.type_of_value value) in
+      memoize llty (fun value ->
+        Llvm.set_value_name ("class." ^ (klass.Rt.k_name :> string)) value;
+        Llvm.const_named_struct llty [||]))
   | _
   -> failwith ("llconst_of_value: " ^ ((Rt.inspect_value value) :> string))
 
