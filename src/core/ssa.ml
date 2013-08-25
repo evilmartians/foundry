@@ -586,6 +586,14 @@ let overload capsule funcn ty' =
       let overloads = Nametbl.find_all capsule.overloads funcn in
       List.find (fun overload ->
           try
+            (* Note that the success of this comparison depends on the way
+               Typing.unify unifies type variables: currently, Typing.unify lhs rhs
+               will associate all tvars in lhs to their counterparts in rhs. If this
+               would be the other way around, the equality condition below would never
+               be true for types with type variables.
+
+               Perhaps this should be rewritten to be more robust.
+             *)
             let env = Typing.unify overload.ty ty' in
             Rt.equal ty' (Typing.subst env ty')
           with Typing.Conflict _ -> false)
