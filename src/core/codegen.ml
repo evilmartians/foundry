@@ -331,6 +331,27 @@ let rec gen_func llmod funcn =
         let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
         Llvm.build_call llfunc (Array.of_list (llenv :: (List.map map operands))) id builder)
 
+    (* Object operations. *)
+    | "obj_alloc", [ cls ]
+    -> (* For reference types, allocate an object in system heap (for now).
+          For value types, create an object filled with undef. *)
+       (match instr.Ssa.ty with
+        (* obj_alloc ignors its operand, which only serves a purpose for type
+           propagation, and uses its return type to determine an object of which
+           type it should return (duh). *)
+        | Rt.Class(klass, _) as cls
+        -> (let llty = lltype_of_ty cls in
+            if klass.Rt.k_is_value then
+              Llvm.undef llty
+            else
+              let llmalloc = gen_llfunc llmod "malloc"
+                                [| Llvm.i64_type ctx |]
+                                (Llvm.pointer_type (Llvm.i8_type ctx)) in
+              let llobj = Llvm.build_call llmalloc [| Llvm.size_of llty |] "" builder in
+              Llvm.build_bitcast llobj llty id builder)
+        | _
+        -> assert false)
+
     | _, _
     -> failwith ("gen_func/gen_prim: " ^ prim ^
                  "/" ^ (string_of_int (List.length operands)))
