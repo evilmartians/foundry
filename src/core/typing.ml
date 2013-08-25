@@ -143,4 +143,4 @@ let slot_ty (klass, specz) name =
    *)
   let env = Table.fold [] specz ~f:(fun name env value ->
               unify' env value (Rt.Tvar (List.assoc name klass.Rt.k_parameters))) in
-  subst env (Table.get_exn klass.Rt.k_slots name).Rt.iv_ty
+  subst env (List.assoc name klass.Rt.k_slots).Rt.iv_ty

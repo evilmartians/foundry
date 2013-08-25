@@ -96,9 +96,9 @@ and klass = {
   mutable k_objectclass   : klass option;
           k_ancestor      : klass option;
           k_is_value      : bool;
-          k_parameters    : (string * tvar) list;
-          k_slots         : ivar    Table.t;
-          k_methods       : imethod Table.t;
+          k_parameters    : (string * tvar)    list;
+  mutable k_slots         : (string * ivar)    list;
+  mutable k_methods       : (string * imethod) list;
   mutable k_prepended     : mixin list;
   mutable k_appended      : mixin list;
 }
@@ -106,7 +106,7 @@ and mixin = {
           m_hash          : int;
           m_name          : string;
           m_metaclass     : klass;
-          m_methods       : imethod Table.t;
+  mutable m_methods       : (string * imethod) list;
 }
 and imethod = {
           im_hash         : int;
@@ -163,8 +163,8 @@ let empty_class kClass ?ancestor ?(parameters=[]) name =
       k_objectclass = None;
       k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
       k_parameters  = parameters;
-      k_slots       = Table.create [];
-      k_methods     = Table.create [];
+      k_slots       = [];
+      k_methods     = [];
       k_prepended   = [];
       k_appended    = []; }
   and metaklass =
@@ -175,8 +175,8 @@ let empty_class kClass ?ancestor ?(parameters=[]) name =
       k_objectclass = Some klass;
       k_is_value    = false;
       k_parameters  = parameters;
-      k_slots       = Table.create [];
-      k_methods     = Table.create [];
+      k_slots       = [];
+      k_methods     = [];
       k_prepended   = [];
       k_appended    = []; }
   in
@@ -192,8 +192,8 @@ let empty_metaclass kClass ~ancestor name =
     k_objectclass = None;
     k_is_value    = false;
     k_parameters  = [];
-    k_slots       = Table.create [];
-    k_methods     = Table.create [];
+    k_slots       = [];
+    k_methods     = [];
     k_prepended   = [];
     k_appended    = []; }
 
@@ -208,8 +208,8 @@ let create_class () =
       k_objectclass = None;
       k_is_value    = false;
       k_parameters  = [];
-      k_slots       = Table.create [];
-      k_methods     = Table.create [];
+      k_slots       = [];
+      k_methods     = [];
       k_prepended   = [];
       k_appended    = []; }
   and kmetaClass =
@@ -220,8 +220,8 @@ let create_class () =
       k_objectclass = Some kClass;
       k_is_value    = false;
       k_parameters  = [];
-      k_slots       = Table.create [];
-      k_methods     = Table.create [];
+      k_slots       = [];
+      k_methods     = [];
       k_prepended   = [];
       k_appended    = []; }
   in

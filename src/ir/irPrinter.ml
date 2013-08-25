@@ -94,17 +94,23 @@ let with_lookup env value name printer =
         name
       )
 
-let string_of_table prefix table f =
+let string_of_table prefix table xfrm =
   (String.concat ","
     (Table.map_list ~ordered:(!ordered) ~f:(fun key value ->
-      "\n  " ^ prefix ^ (escape_as_literal key) ^ " = " ^ (f value))
+      "\n  " ^ prefix ^ (escape_as_literal key) ^ " = " ^ (xfrm value))
     table)) ^ (if Table.empty table then "" else "\n" ^ prefix)
 
 let string_of_seq elems xfrm =
   String.concat ", "
     (List.map xfrm elems)
 
-let string_of_assoc elems xfrm =
+let string_of_assoc prefix elems xfrm =
+  (String.concat ", "
+    (List.map (fun (key, value) ->
+      "\n  " ^ prefix ^ (escape_as_literal key) ^ " = " ^ (xfrm value))
+    elems)) ^ (if elems = [] then "" else "\n" ^ prefix)
+
+let string_of_table_inline elems xfrm =
   String.concat ", "
     (Table.map_list ~ordered:(!ordered) ~f:(fun key value ->
       (escape_as_literal key) ^ " = " ^ (xfrm value))
@@ -127,13 +133,13 @@ let rec string_of_value env value =
   | Unsigned(w,v)     -> "unsigned(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
   | Signed(w,v)       -> "signed(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
   | Tuple(xs)         -> "[" ^ (string_of_seq xs (string_of_value env)) ^ "]"
-  | Record(xs)        -> "{" ^ (string_of_assoc xs (string_of_value env)) ^ "}"
+  | Record(xs)        -> "{" ^ (string_of_table_inline xs (string_of_value env)) ^ "}"
   | Environment(e)    -> string_of_ident (string_of_local_env env e)
   | Lambda(l)         -> "lambda " ^ (string_of_ident (string_of_lambda env l))
   | Class(k,sp)       -> "class " ^ (string_of_ident (string_of_klass env k)) ^
-                           "{" ^(string_of_assoc sp (string_of_value env))  ^ "}"
+                           "{" ^(string_of_table_inline sp (string_of_value env))  ^ "}"
   | Mixin(k,sp)       -> "mixin " ^ (string_of_ident (string_of_mixin env k)) ^
-                           "{" ^(string_of_assoc sp (string_of_value env))  ^ "}"
+                           "{" ^(string_of_table_inline sp (string_of_value env))  ^ "}"
   | Package(p)        -> "package " ^ (string_of_ident (string_of_package env p))
   | Instance(c,iv)    -> "instance " ^ (string_of_ident (string_of_instance env c iv))
 
@@ -153,7 +159,7 @@ and string_of_ty env ty =
   | UnsignedTy(w)     -> "unsigned(" ^ (string_of_int w) ^ ")"
   | SignedTy(w)       -> "signed(" ^ (string_of_int w) ^ ")"
   | TupleTy(xs)       -> "[" ^ (string_of_seq xs (string_of_ty env)) ^ "]"
-  | RecordTy(xs)      -> "{" ^ (string_of_assoc xs (string_of_ty env)) ^ "}"
+  | RecordTy(xs)      -> "{" ^ (string_of_table_inline xs (string_of_ty env)) ^ "}"
   | LambdaTy(lt)      -> string_of_lambda_ty env lt
   | EnvironmentTy(x)  -> "environment " ^ (string_of_local_env_ty env x)
   | FunctionTy(xs,x)  -> "function (" ^ (string_of_seq xs (string_of_ty env)) ^ ") -> " ^
@@ -162,7 +168,7 @@ and string_of_ty env ty =
                             (string_of_ty env x)
   | BasicBlockTy      -> assert false
   | Class(k,sp)       -> "class " ^ (string_of_ident (string_of_klass env k)) ^
-                           "{" ^(string_of_assoc sp (string_of_value env))  ^ "}"
+                           "{" ^(string_of_table_inline sp (string_of_value env))  ^ "}"
   | _                 -> assert false (* interpolation *)
 
 and string_of_klass env klass =
@@ -178,16 +184,15 @@ and string_of_klass env klass =
           "" klass.k_ancestor) ^
         (string_of_some (klass.k_parameters = []) (fun () ->
           "  parameters { " ^
-            (string_of_seq klass.k_parameters (fun (name, tvar) ->
-              (escape_as_literal name) ^ " = " ^ (string_of_tvar env tvar))) ^
+            (string_of_assoc "  " klass.k_parameters (string_of_tvar env)) ^
           " }\n")) ^
-        (string_of_some (Table.empty klass.k_slots) (fun () ->
+        (string_of_some (klass.k_slots = []) (fun () ->
           "  slots {" ^
-            (string_of_table "  " klass.k_slots (string_of_ivar env)) ^
+            (string_of_assoc "  " klass.k_slots (string_of_ivar env)) ^
           "}\n")) ^
-        (string_of_some (Table.empty klass.k_methods) (fun () ->
+        (string_of_some (klass.k_methods = []) (fun () ->
           "  methods {" ^
-            (string_of_table "  " klass.k_methods (string_of_method env)) ^
+            (string_of_assoc "  " klass.k_methods (string_of_method env)) ^
           "}\n")) ^
         (string_of_some (klass.k_prepended = []) (fun () ->
           "  prepended [" ^
@@ -204,9 +209,9 @@ and string_of_mixin env mixin =
     (fun () ->
       "mixin " ^ (escape_as_literal mixin.m_name) ^ " {\n" ^
         "  metaclass " ^ (string_of_ident (string_of_klass env mixin.m_metaclass)) ^ "\n" ^
-        (string_of_some (Table.empty mixin.m_methods) (fun () ->
+        (string_of_some (mixin.m_methods = []) (fun () ->
           "  methods {" ^
-            (string_of_table "  " mixin.m_methods (string_of_method env)) ^
+            (string_of_assoc "  " mixin.m_methods (string_of_method env)) ^
           "}\n")) ^
       "}\n")
 
@@ -263,7 +268,7 @@ and string_of_local_env env lenv =
       "}\n")
 
 and string_of_local_env_ty env ty =
-  "{" ^ string_of_assoc ty.e_ty_bindings (fun b ->
+  "{" ^ string_of_table_inline ty.e_ty_bindings (fun b ->
     (string_of_loc b.b_ty_location) ^ " " ^
     (match b.b_ty_kind with
     | Syntax.LVarImmutable -> "immutable"
@@ -310,7 +315,7 @@ and string_of_instance env (klass, sp) ivars =
   with_lookup env (NamedInstance ivars) (Global "")
     (fun () ->
       "instance " ^ (string_of_ident (string_of_klass env klass)) ^
-        "{" ^ (string_of_assoc sp (string_of_value env)) ^ "} {\n" ^
+        "{" ^ (string_of_table_inline sp (string_of_value env)) ^ "} {\n" ^
         (string_of_table "  " ivars (string_of_value env)) ^
       "}\n"
     )

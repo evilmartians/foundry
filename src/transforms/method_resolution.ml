@@ -18,7 +18,7 @@ let run_on_function passmgr capsule caller =
         | { ty }, { opcode = Const (Rt.Symbol selector) }
         -> (let klass   = Rt.klass_of_type ty in
             let imethod =
-              try  Table.get_exn klass.Rt.k_methods selector
+              try  List.assoc selector klass.Rt.k_methods
               with Not_found -> failwith ("Method_resolution: " ^ selector)
             in
             let callee =

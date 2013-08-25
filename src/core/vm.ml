@@ -29,25 +29,25 @@ let concat_record lhs rhs =
 let define_method obj name body loc =
   match obj with
   | Class (klass,_)
-  -> (match Table.get klass.k_methods name with
-      | Some meth
-      -> exc_fail ("Cannot define method " ^ name ^ " on " ^ (inspect_value obj) ^
-                   ": it is already defined") [loc; meth.im_body.l_location]
-      | None
-      -> Table.set klass.k_methods name body)
+  -> (try
+        let meth = List.assoc name klass.k_methods in
+        exc_fail ("Cannot define method " ^ name ^ " on " ^ (inspect_value obj) ^
+                  ": it is already defined") [loc; meth.im_body.l_location]
+      with Not_found ->
+        klass.k_methods <- klass.k_methods @ [name, body])
   | value -> exc_type "Class" value [loc]
 
 let define_ivar obj name body loc =
   match obj with
   | Class (klass,_)
-  -> (match Table.get klass.k_slots name with
-      | Some ivar
-      -> exc_fail ("Cannot define @" ^ name ^ " on " ^
-                   (inspect_value obj) ^
-                   ": it is already defined with type " ^
-                   (inspect_type ivar.iv_ty)) [loc; ivar.iv_location]
-      | None
-      -> Table.set klass.k_slots name body)
+  -> (try
+        let ivar = List.assoc name klass.k_slots in
+        exc_fail ("Cannot define @" ^ name ^ " on " ^
+                  (inspect_value obj) ^
+                  ": it is already defined with type " ^
+                  (inspect_type ivar.iv_ty)) [loc; ivar.iv_location]
+      with Not_found ->
+        klass.k_slots <- klass.k_slots @ [name, body])
   | value -> exc_type "Class" value [loc]
 
 (* E V A L *)
@@ -431,12 +431,12 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
 
 and eval_send recv name ~args ~kwargs ~loc =
   let method_table = (klass_of_value ~dispatch:true recv).k_methods in
-    match Table.get method_table name with
-    | None
-    -> exc_fail ("Undefined instance method " ^ (inspect_type (type_of_value recv)) ^
-                 "#" ^ name ^ " for " ^ (inspect_value recv) ^ ".") [loc]
-    | Some meth
-    -> eval_lambda meth.im_body (recv :: args) kwargs
+    try
+      let meth = List.assoc name method_table in
+      eval_lambda meth.im_body (recv :: args) kwargs
+    with Not_found ->
+      exc_fail ("Undefined instance method " ^ (inspect_type (type_of_value recv)) ^
+                "#" ^ name ^ " for " ^ (inspect_value recv) ^ ".") [loc]
 
 and eval_lambda body args kwargs =
   let lenv = lenv_create (Some body.l_local_env) in

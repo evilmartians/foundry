@@ -331,8 +331,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   objectclass=prefix(Objectclass, klass)?
                      ancestor=prefix(Ancestor,    klass)?
                    parameters=prefix(Parameters,  assoc(tvar))?
-                        slots=prefix(Slots,       table(ivar))?
-                      methods=prefix(Methods,     table(method_))?
+                        slots=prefix(Slots,       assoc(ivar))?
+                      methods=prefix(Methods,     assoc(method_))?
                     prepended=prefix(Prepended,   seq(mixin))?
                      appended=prefix(Appended,    seq(mixin))?
                   RBrace
@@ -353,8 +353,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                             k_objectclass = None;
                             k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
                             k_parameters  = Option.map_default (fun p -> p env) [] parameters;
-                            k_slots       = Table.create [];
-                            k_methods     = Table.create [];
+                            k_slots       = [];
+                            k_methods     = [];
                             k_prepended   = [];
                             k_appended    = [];
                           } in
@@ -363,8 +363,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     in
                     (fun () ->
                       Option.may (fun x -> klass.k_objectclass  <- Some (x env)) objectclass;
-                      Option.may (fun x -> Table.replace klass.k_slots   (x env)) slots;
-                      Option.may (fun x -> Table.replace klass.k_methods (x env)) methods;
+                      Option.may (fun x -> klass.k_slots        <- x env) slots;
+                      Option.may (fun x -> klass.k_methods      <- x env) methods;
                       Option.may (fun x -> klass.k_prepended    <- x env) prepended;
                       Option.may (fun x -> klass.k_appended     <- x env) appended))
                 }
@@ -372,18 +372,18 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | bind_as=Name_Global Equal
                   Mixin name=Lit_String LBrace
                     metaclass=prefix(Metaclass,  klass)
-                      methods=prefix(Methods,    table(method_))?
+                      methods=prefix(Methods,    assoc(method_))?
                   RBrace
                 { (fun env ->
                     let mixin = {
                       m_hash      = Hash_seed.make ();
                       m_name      = name;
                       m_metaclass = metaclass env;
-                      m_methods   = Table.create [];
+                      m_methods   = [];
                     } in
                     Table.set env bind_as (NamedMixin mixin);
                     (fun () ->
-                      Option.may (fun x -> Table.replace mixin.m_methods (x env)) methods))
+                      Option.may (fun x -> mixin.m_methods <- x env) methods))
                 }
 
               | bind_as=Name_Global Equal
