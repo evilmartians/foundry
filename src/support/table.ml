@@ -31,7 +31,7 @@ let get_exn = Hashtbl.find
 
 let exists = Hashtbl.mem
 
-let empty table =
+let is_empty table =
   Hashtbl.length table = 0
 
 let iter ?(ordered=false) ~f table =
@@ -86,33 +86,4 @@ let join left right =
       Hashtbl.iter (Hashtbl.replace table) right)
 
 let keys table =
-  List.sort (Hashtbl.fold (fun k v acc -> k :: acc) table [])
-
-let except_keys table keys =
-  let table = copy table in
-  List.iter (Hashtbl.remove table) keys;
-  table
-
-let equal_keys table other =
-  (keys table) = (keys other)
-
-let diff_keys table other =
-  List.fold_left2
-    (fun accum tk ok ->
-      if tk = ok then accum else ok :: accum)
-    [] (keys table) (keys other)
-
-let includes_keys table other =
-  let rec zip table other =
-    match table, other with
-    (* keys match -- ok *)
-    | kt :: trest, ko :: orest when kt = ko
-    -> zip trest orest
-    (* keys do not match -- skip the key from table *)
-    | _  :: trest, _  :: orest
-    -> zip trest other
-    (* table is empty, but there are keys in other -- not includes *)
-    | [], _ :: _ -> false
-    (* other is empty, and there may or may not be keys in table -- includes *)
-    | _,  []     -> true
-  in zip (keys table) (keys other)
+  Hashtbl.fold (fun k v acc -> k :: acc) table []

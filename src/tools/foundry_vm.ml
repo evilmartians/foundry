@@ -64,7 +64,7 @@ let _ =
                           Ssa.const (Rt.Tuple ([
                               Rt.Package (!Rt.roots).Rt.pToplevel ]));
                           Ssa.const (Rt.Record (
-                              Table.create []))
+                              Assoc.empty))
                        ])) in
     Ssa.append_instr call entry;
 

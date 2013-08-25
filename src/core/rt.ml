@@ -24,9 +24,9 @@ type value =
 | SymbolTy
 (* Product types *)
 | Tuple         of value list
-| TupleTy       of ty list
-| Record        of value Table.t
-| RecordTy      of ty Table.t
+| TupleTy       of ty    list
+| Record        of value Assoc.sorted_t
+| RecordTy      of ty    Assoc.sorted_t
 (* Function type *)
 | Environment   of local_env
 | EnvironmentTy of local_env_ty
@@ -43,8 +43,8 @@ type value =
 | ClosureTy     of ty list * ty
 | BasicBlockTy
 and ty = value
-and 'a specialized = 'a * value Table.t
-and slots = value Table.t
+and 'a specialized = 'a * value Assoc.sorted_t
+and slots          = value Table.t
 and binding_ty = {
           b_ty_location   : Location.t;
           b_ty_kind       : Syntax.lvar_kind;
@@ -96,9 +96,9 @@ and klass = {
   mutable k_objectclass   : klass option;
           k_ancestor      : klass option;
           k_is_value      : bool;
-          k_parameters    : (string * tvar)    list;
-  mutable k_slots         : (string * ivar)    list;
-  mutable k_methods       : (string * imethod) list;
+          k_parameters    : tvar    Assoc.sequental_t;
+  mutable k_ivars         : ivar    Assoc.sequental_t;
+  mutable k_methods       : imethod Assoc.sequental_t;
   mutable k_prepended     : mixin list;
   mutable k_appended      : mixin list;
 }
@@ -106,7 +106,7 @@ and mixin = {
           m_hash          : int;
           m_name          : string;
           m_metaclass     : klass;
-  mutable m_methods       : (string * imethod) list;
+  mutable m_methods       : imethod Assoc.sequental_t;
 }
 and imethod = {
           im_hash         : int;
@@ -162,9 +162,9 @@ let empty_class kClass ?ancestor ?(parameters=[]) name =
       k_metaclass   = metaklass;
       k_objectclass = None;
       k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
-      k_parameters  = parameters;
-      k_slots       = [];
-      k_methods     = [];
+      k_parameters  = Assoc.sequental parameters;
+      k_ivars       = Assoc.empty;
+      k_methods     = Assoc.empty;
       k_prepended   = [];
       k_appended    = []; }
   and metaklass =
@@ -174,9 +174,9 @@ let empty_class kClass ?ancestor ?(parameters=[]) name =
       k_metaclass   = kClass;
       k_objectclass = Some klass;
       k_is_value    = false;
-      k_parameters  = parameters;
-      k_slots       = [];
-      k_methods     = [];
+      k_parameters  = Assoc.sequental parameters;
+      k_ivars       = Assoc.empty;
+      k_methods     = Assoc.empty;
       k_prepended   = [];
       k_appended    = []; }
   in
@@ -191,9 +191,9 @@ let empty_metaclass kClass ~ancestor name =
     k_metaclass   = kClass;
     k_objectclass = None;
     k_is_value    = false;
-    k_parameters  = [];
-    k_slots       = [];
-    k_methods     = [];
+    k_parameters  = Assoc.empty;
+    k_ivars       = Assoc.empty;
+    k_methods     = Assoc.empty;
     k_prepended   = [];
     k_appended    = []; }
 
@@ -207,9 +207,9 @@ let create_class () =
       k_metaclass   = kmetaClass;
       k_objectclass = None;
       k_is_value    = false;
-      k_parameters  = [];
-      k_slots       = [];
-      k_methods     = [];
+      k_parameters  = Assoc.empty;
+      k_ivars       = Assoc.empty;
+      k_methods     = Assoc.empty;
       k_prepended   = [];
       k_appended    = []; }
   and kmetaClass =
@@ -219,9 +219,9 @@ let create_class () =
       k_metaclass   = kClass;
       k_objectclass = Some kClass;
       k_is_value    = false;
-      k_parameters  = [];
-      k_slots       = [];
-      k_methods     = [];
+      k_parameters  = Assoc.empty;
+      k_ivars       = Assoc.empty;
+      k_methods     = Assoc.empty;
       k_prepended   = [];
       k_appended    = []; }
   in
@@ -282,7 +282,7 @@ let create_roots () =
   in
   let constants = roots.pToplevel.p_constants in
   List.iter (fun (k, v) ->
-      Table.set constants k (Class (v, Table.create [])))
+      Table.set constants k (Class (v, Assoc.empty)))
     [
       "Class",        roots.kClass;
       "Object",       roots.kObject;
@@ -393,19 +393,19 @@ let rec type_of_value value =
   | Unsigned(w,_)   -> UnsignedTy(w)
   | Signed(w,_)     -> SignedTy(w)
   | Tuple(xs)       -> TupleTy (List.map type_of_value xs)
-  | Record(xs)      -> RecordTy (Table.map (fun v -> type_of_value v) xs)
+  | Record(xs)      -> RecordTy (Assoc.map (fun _ -> type_of_value) xs)
 
   | Environment(e)  -> EnvironmentTy (type_of_environment e)
   | Lambda(c)       -> LambdaTy c.l_ty
 
-  | Package(p)      -> Class (p.p_metaclass, Table.create [])
-  | Class(k,_)      -> Class (k.k_metaclass, Table.create [])
+  | Package(p)      -> Class (p.p_metaclass, Assoc.empty)
+  | Class(k,_)      -> Class (k.k_metaclass, Assoc.empty)
   | Instance(k,_)   -> Class k
 
   | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
   | TupleTy(_) | RecordTy(_) | LambdaTy(_)
   | SignedTy(_) | UnsignedTy(_)
-  -> Class (klass_of_type value, Table.create [])
+  -> Class (klass_of_type value, Assoc.empty)
 
   | _ -> failwith ("type_of_value " ^
                    (Unicode.assert_utf8s
@@ -417,7 +417,7 @@ and type_of_environment env =
       Table.map (fun b -> {
         b_ty_location = b.b_location;
         b_ty_kind     = b.b_kind;
-        b_ty    = type_of_value b.b_value;
+        b_ty          = type_of_value b.b_value;
       }) env.e_bindings;
   }
 
@@ -443,10 +443,6 @@ let rec equal_local_env_ty a b =
 and equal a b =
   let equal_list a b =
     try  List.fold_left2 (fun acc a b -> acc && equal a b) true a b
-    with Invalid_argument _ -> (* different length *) false
-  in
-  let equal_table a b =
-    try  Table.fold2 ~f:(fun _ acc a b -> acc && equal a b) true a b
     with Invalid_argument _ -> (* different length *) false
   in
   match a, b with
@@ -482,7 +478,7 @@ and equal a b =
   -> equal_list a b
   | Record(a),          Record(b)
   | RecordTy(a),        RecordTy(b)
-  -> equal_table a b
+  -> Assoc.equal ~eq:equal a b
   | FunctionTy(aa,ar),  FunctionTy(ba,br)
   | ClosureTy(aa,ar),   ClosureTy(ba,br)
   -> equal_list aa ba && equal ar br
@@ -502,10 +498,10 @@ and equal a b =
   -> a == b
   | Instance(_,a),      Instance(_,b)
   -> a == b
-  | Class(a,sa),        Class(b,sb)
-  -> a == b && equal_table sa sb
-  | Mixin(a,sa),        Mixin(b,sb)
-  -> a == b && equal_table sa sb
+  | Class(a, sa),       Class(b, sb)
+  -> a == b && Assoc.equal ~eq:equal sa sb
+  | Mixin(a, sa),       Mixin(b, sb)
+  -> a == b && Assoc.equal ~eq:equal sa sb
   | _, _
   -> false
 
@@ -522,8 +518,8 @@ let rec hash value =
   let hash_list lst =
     Hashtbl.hash (List.map hash lst)
   in
-  let hash_table table =
-    Hashtbl.hash (Table.map_list ~ordered:true ~f:(fun k _ -> k) table)
+  let hash_assoc (assoc : 'a Assoc.sorted_t) =
+    Hashtbl.hash (Assoc.keys assoc)
   in
   match value with
   (* Immutable values and types. *)
@@ -538,7 +534,7 @@ let rec hash value =
   | Tuple(x) | TupleTy(x)
   -> hash_list x
   | Record(x) | RecordTy(x)
-  -> hash_table x
+  -> hash_assoc x
   | EnvironmentTy(x)
   -> hash_local_env_ty x
   | LambdaTy(x)
@@ -556,9 +552,9 @@ let rec hash value =
   | Instance(_, xs)
   -> (* BIG FAT TODO *) Hashtbl.hash xs
   | Class(x, sp)
-  -> Hashtbl.hash [x.k_hash; hash_table sp]
+  -> Hashtbl.hash [x.k_hash; hash_assoc sp]
   | Mixin(x, sp)
-  -> Hashtbl.hash [x.m_hash; hash_table sp]
+  -> Hashtbl.hash [x.m_hash; hash_assoc sp]
 
 module ValueIdentity =
 struct
@@ -602,7 +598,7 @@ let rec inspect_literal_or value f =
   | UnsignedTy(w) -> "Unsigned(" ^ (string_of_int w) ^ ")"
   | Signed(w,v)   -> (string_of_big_int v) ^ "s" ^ (string_of_int w)
   | SignedTy(w)   -> "Signed(" ^ (string_of_int w) ^ ")"
-  | Class(k,sp)   -> k.k_name ^ "(" ^ (String.concat ", " (Table.map_list
+  | Class(k,sp)   -> k.k_name ^ "(" ^ (String.concat ", " (Assoc.map_list
                           (fun k v -> k ^ ": " ^ (inspect_type v)) sp)) ^ ")"
   | _             -> f value
 
@@ -612,7 +608,7 @@ and inspect_value value =
     | Tuple(xs)
     -> "[" ^ (String.concat ", " (List.map inspect_value xs)) ^ "]"
     | Record(xs)
-    -> "{" ^ (String.concat ", " (Table.map_list
+    -> "{" ^ (String.concat ", " (Assoc.map_list
                 (fun k v -> k ^ ": " ^ (inspect_value v)) xs)) ^ "}"
     | Lambda(lm)
     -> "#<Lambda " ^ Location.at(lm.l_location) ^ ">"
@@ -628,7 +624,7 @@ and inspect_type ty =
     | TupleTy(xs)
     -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
     | RecordTy(xs)
-    -> "{" ^ (String.concat ", " (Table.map_list
+    -> "{" ^ (String.concat ", " (Assoc.map_list
                 (fun k v -> k ^ ": " ^ (inspect_type v)) xs)) ^ "}"
     | LambdaTy(lm)
     -> (let args_ty =
@@ -637,7 +633,7 @@ and inspect_type ty =
           | o -> ["*" ^ (inspect_type o)]
         in let kwargs_ty =
           match lm.l_ty_kwargs with
-          | RecordTy(xs) -> Table.map_list
+          | RecordTy(xs) -> Assoc.map_list
                               (fun k v -> k ^ ": " ^ (inspect_type v)) xs
           | o -> ["**" ^ (inspect_type o)]
         in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^

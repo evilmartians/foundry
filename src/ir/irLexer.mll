@@ -64,7 +64,7 @@ rule lex = parse
 | "objectclass"   { Objectclass }
 | "ancestor"      { Ancestor }
 | "parameters"    { Parameters }
-| "slots"         { Slots }
+| "ivars"         { Ivars }
 | "methods"       { Methods }
 | "prepended"     { Prepended }
 | "appended"      { Appended }

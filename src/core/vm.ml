@@ -22,32 +22,32 @@ let concat_tuple lhs rhs =
 
 let concat_record lhs rhs =
   match lhs, rhs with
-  | Record(l), Record(r)
-  -> Record(Table.join l r)
+  | Record(lft), Record(rgt)
+  -> Record(Assoc.merge lft rgt)
   | _ -> assert false
 
 let define_method obj name body loc =
   match obj with
   | Class (klass,_)
   -> (try
-        let meth = List.assoc name klass.k_methods in
+        let meth = Assoc.find klass.k_methods name in
         exc_fail ("Cannot define method " ^ name ^ " on " ^ (inspect_value obj) ^
                   ": it is already defined") [loc; meth.im_body.l_location]
       with Not_found ->
-        klass.k_methods <- klass.k_methods @ [name, body])
+        klass.k_methods <- Assoc.append klass.k_methods name body)
   | value -> exc_type "Class" value [loc]
 
 let define_ivar obj name body loc =
   match obj with
   | Class (klass,_)
   -> (try
-        let ivar = List.assoc name klass.k_slots in
+        let ivar = Assoc.find klass.k_ivars name in
         exc_fail ("Cannot define @" ^ name ^ " on " ^
                   (inspect_value obj) ^
                   ": it is already defined with type " ^
                   (inspect_type ivar.iv_ty)) [loc; ivar.iv_location]
       with Not_found ->
-        klass.k_slots <- klass.k_slots @ [name, body])
+        klass.k_ivars <- Assoc.append klass.k_ivars name body)
   | value -> exc_type "Class" value [loc]
 
 (* E V A L *)
@@ -65,7 +65,7 @@ let rec eval_tuple env elem =
 and eval_record env elem =
   match elem with
   | Syntax.RecordElem(_,k,v)
-  -> Record (Table.pair k (eval_expr env v))
+  -> Record (Assoc.sorted [k, (eval_expr env v)])
 
   | Syntax.RecordSplice(_,expr)
   -> (match (eval_expr env expr) with
@@ -74,7 +74,7 @@ and eval_record env elem =
 
   | Syntax.RecordPair(_,k,v)
   -> (match (eval_expr env k) with
-     | Symbol(s) -> Record (Table.pair s (eval_expr env v))
+     | Symbol(s) -> Record (Assoc.sorted [s, (eval_expr env v)])
      | o -> exc_type "Symbol" o [Syntax.loc k])
 
 and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
@@ -124,7 +124,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
   | Syntax.TypeTuple(_,xs)
   -> TupleTy (List.map as_type xs)
   | Syntax.TypeRecord(_,xs)
-  -> RecordTy (Table.create (List.map (fun (_,k,v) -> k, as_type v) xs))
+  -> RecordTy (Assoc.sorted (List.map (fun (_,k,v) -> k, as_type v) xs))
   | Syntax.TypeFunction(_, args, ret)
   -> (let args, kwargs =
         List.fold_left (fun (args, kwargs) arg ->
@@ -134,7 +134,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
         ([], []) args
       in LambdaTy {
         l_ty_args   = TupleTy  args;
-        l_ty_kwargs = RecordTy (Table.create kwargs);
+        l_ty_kwargs = RecordTy (Assoc.sorted kwargs);
         l_ty_result = as_type ret;
       })
   | Syntax.TypeConstr((loc, _), name, args)
@@ -155,18 +155,18 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
               ([], []) args
             in
             let f_args, kw_f_args =
-              List.split_nth (List.length args) (List.map fst klass.k_parameters)
+              List.split_nth (List.length args) (Assoc.keys klass.k_parameters)
             in
             let new_specz = List.combine f_args args in
             let new_specz = List.fold_left (fun acc (kw, ty) ->
                 if List.mem_assoc kw new_specz then
                   exc_fail ("Type parameter `" ^ kw ^ "' is passed more than once") [loc]
-                else if not (List.mem_assoc kw klass.k_parameters) then
+                else if not (Assoc.mem klass.k_parameters kw) then
                   exc_fail ("Class `" ^ klass.k_name ^ "' is not parametric by `" ^ kw) [loc]
                 else
                   (kw, ty) :: acc) new_specz kw_args
             in
-            let cls = Class (klass, Table.join specz (Table.create new_specz)) in
+            let cls = Class (klass, Assoc.merge specz (Assoc.sorted new_specz)) in
             Typing.fold_equiv cls)
         | value
         -> exc_fail ("Name " ^ name ^ " is bound to " ^ (inspect value) ^
@@ -207,27 +207,27 @@ and eval_args env lst =
     | _ :: rest -> eval_args rest
     | []        -> []
   in
-  let rec eval_kwargs args table =
+  let rec eval_kwargs args assoc =
     match args with
     | Syntax.ActualKwArg(_,k,v) :: rest
-    -> Table.set table k (eval_expr env v);
-       eval_kwargs rest table
+    -> (let assoc = Assoc.add assoc k (eval_expr env v) in
+        eval_kwargs rest assoc)
 
     | Syntax.ActualKwSplice(_,expr) :: rest
     -> (match (eval_expr env expr) with
-        | Record(r) -> eval_kwargs rest (Table.join table r)
+        | Record(r) -> eval_kwargs rest (Assoc.merge assoc r)
         | o         -> exc_type "Record" o [Syntax.loc expr])
 
     | Syntax.ActualKwPair(_,k,v) :: rest
     -> (match (eval_expr env k) with
-        | Symbol(k) -> Table.set table k (eval_expr env v);
-                       eval_kwargs rest table
+        | Symbol(k) -> (let assoc = Assoc.add assoc k (eval_expr env v) in
+                        eval_kwargs rest assoc)
         | o         -> exc_type "Symbol" o [Syntax.loc k])
 
-    | _ :: rest -> eval_kwargs rest table
-    | []        -> table
+    | _ :: rest -> eval_kwargs rest assoc
+    | []        -> assoc
   in
-  eval_args lst, eval_kwargs lst (Table.create [])
+  eval_args lst, eval_kwargs lst Assoc.empty
 
 and eval_expr ((lenv, tenv, cenv) as env) expr =
   match expr with
@@ -246,7 +246,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
 
   | Syntax.Record(_, xs)
   -> List.fold_left concat_record
-        (Record (Table.create [])) (List.map (eval_record env) xs)
+        (Record Assoc.empty) (List.map (eval_record env) xs)
 
   | Syntax.Type(_, ty_expr)
   -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
@@ -276,7 +276,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.OpAssign((loc, _), lhs, meth, rhs)
   -> (let value  = eval_expr env lhs in
       let arg    = eval_expr env rhs in
-      let result = eval_send value meth ~args:[arg] ~kwargs:(Table.create []) ~loc in
+      let result = eval_send value meth ~args:[arg] ~kwargs:Assoc.empty ~loc in
         eval_assign env lhs result;
         result)
 
@@ -337,7 +337,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
             | Some klass
             -> exc_fail ("Cannot reopen internal class " ^ name ^ " with an ancestor.") [loc]
             | None
-            -> Class (klass_of_value value, Table.create []))
+            -> Class (klass_of_value value, Assoc.empty))
         (* Not a class. *)
         | Some value
         -> exc_fail ("Cannot reopen " ^ name ^ ": it is bound to " ^
@@ -353,7 +353,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
               -> kw,   tenv_resolve tenv name
             in
             let parameters = List.map eval_param params in
-            let specz      = Option.map_default Table.copy (Table.create []) specz in
+            let specz      = Option.default Assoc.empty specz in
             let ancestor   = Option.default !roots.kObject ancestor in
             let value      = Class (new_class ~ancestor ~parameters name, specz) in
             cenv_bind !cenv name value; value)
@@ -367,7 +367,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   -> (let definee  =
         match lenv_lookup lenv "self" with
         | Package(p) when p == !roots.pToplevel
-        -> Class(p.p_metaclass, Table.create [])
+        -> Class(p.p_metaclass, Assoc.empty)
         | other
         -> other
       in
@@ -391,7 +391,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.DefSelfMethod((loc,_),name,args,ty_expr,body)
   -> (let tenv, ty = eval_closure_ty env ty_expr in
       let definee  = Class (klass_of_value ~dispatch:true (lenv_lookup lenv "self"),
-                            Table.create []) in
+                            Assoc.empty) in
         define_method definee name {
           im_hash     = Hash_seed.make ();
           im_dynamic  = false;
@@ -423,7 +423,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Send((_, { Syntax.selector = loc }),recv,name,args)
   -> (let recv = eval_expr env recv in
       let args, kwargs = eval_args env args in
-        eval_send recv name ~args ~kwargs ~loc)
+      eval_send recv name ~args ~kwargs ~loc)
 
   | _
   -> failwith ("cannot eval " ^
@@ -433,7 +433,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
 and eval_send recv name ~args ~kwargs ~loc =
   let method_table = (klass_of_value ~dispatch:true recv).k_methods in
     try
-      let meth = List.assoc name method_table in
+      let meth = Assoc.find method_table name in
       eval_lambda meth.im_body (recv :: args) kwargs
     with Not_found ->
       exc_fail ("Undefined instance method " ^ (inspect_type (type_of_value recv)) ^
@@ -451,52 +451,46 @@ and eval_lambda body args kwargs =
 
   and bind_args f_args args kwseen =
     match f_args, args with
-    | Syntax.FormalSelf((loc,_)) :: f_rest,
-      value :: rest
+    | Syntax.FormalSelf((loc,_)) :: f_rest, value :: rest
     -> bind (Syntax.LVarImmutable, "self") ~loc ~value ~f_rest ~rest ~kwseen
 
-    | Syntax.FormalArg((loc,_),lvar) :: f_rest,
-      value :: rest
-    | Syntax.FormalOptArg((loc,_),lvar,_) :: f_rest,
-      value :: rest
+    | Syntax.FormalArg((loc,_),lvar) :: f_rest, value :: rest
+    | Syntax.FormalOptArg((loc,_),lvar,_) :: f_rest, value :: rest
     -> bind lvar ~loc ~value ~f_rest ~rest ~kwseen
 
-    | Syntax.FormalOptArg((loc,_),lvar,expr) :: f_rest,
-      []
+    | Syntax.FormalOptArg((loc,_),lvar,expr) :: f_rest, []
     -> bind lvar ~loc ~value:(eval_expr env expr) ~f_rest ~rest:[] ~kwseen
 
-    | Syntax.FormalRest((loc,_),lvar) :: f_rest,
-      rest
+    | Syntax.FormalRest((loc,_),lvar) :: f_rest, rest
     -> bind lvar ~loc ~value:(Tuple rest) ~f_rest ~rest:[] ~kwseen
 
-    | Syntax.FormalKwArg((loc,_),((_,name) as lvar)) :: f_rest,
-      rest
+    | Syntax.FormalKwArg((loc,_),((_,name) as lvar)) :: f_rest, rest
     -> (let value =
-          match Table.get kwargs name with
+          match Assoc.find_option kwargs name with
           | Some v -> v
-        in bind lvar ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
+        in
+        bind lvar ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
 
-    | Syntax.FormalKwOptArg((loc,_),((_,name) as lvar),expr) :: f_rest,
-      rest
+    | Syntax.FormalKwOptArg((loc,_),((_,name) as lvar),expr) :: f_rest, rest
     -> (let value =
-          match Table.get kwargs name with
+          match Assoc.find_option kwargs name with
           | Some v -> v
           | None   -> eval_expr env expr
-        in bind lvar ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
+        in
+        bind lvar ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
 
-    | Syntax.FormalKwRest((loc,_),((name,_) as lvar)) :: f_rest,
-      rest
-    -> (let value  = Record (Table.except_keys kwargs kwseen) in
-        let kwseen = Table.keys kwargs in
-          bind lvar ~loc ~value ~f_rest ~rest ~kwseen)
+    | Syntax.FormalKwRest((loc,_),((name,_) as lvar)) :: f_rest, rest
+    -> (let value  = Record (Assoc.filter kwargs ~f:(fun kw _ -> List.mem kw kwseen)) in
+        let kwseen = Assoc.keys kwargs in
+        bind lvar ~loc ~value ~f_rest ~rest ~kwseen)
 
     | [], []
-    -> (if kwseen <> (Table.keys kwargs) then
+    -> (if kwseen <> (Assoc.keys kwargs) then
           assert false
         else ())
   in
-    bind_args body.l_args args [];
-    eval env body.l_body
+  bind_args body.l_args args [];
+  eval env body.l_body
 
 and eval env exprs =
   Option.default Nil

@@ -18,7 +18,7 @@ let run_on_function passmgr capsule caller =
         | { ty }, { opcode = Const (Rt.Symbol selector) }
         -> (let rec lookup klass =
               try
-                klass, List.assoc selector klass.Rt.k_methods
+                klass, Assoc.find klass.Rt.k_methods selector
               with Not_found ->
                 match klass.Rt.k_ancestor with
                 | Some ancestor -> lookup ancestor

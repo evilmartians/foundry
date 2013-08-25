@@ -111,11 +111,14 @@
                           in Table.create xs)
                       }
 
-    %public assoc(X): LBrace
+%public assoc_seq(X): LBrace
                         xs=separated_list(Comma,
                               separated_pair(Lit_String, Equal, X))
                       RBrace
-                      { (fun env -> List.map (fun (name, x) -> name, x env) xs) }
+                      { (fun env -> Assoc.sequental (List.map (fun (name, x) -> name, x env) xs)) }
+
+%public assoc_ord(X): xs=assoc_seq(X)
+                      { (fun env -> Assoc.sort (xs env)) }
 
       %public seq(X): LBrack
                         xs=separated_list(Comma, X)
@@ -217,14 +220,14 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> SymbolTy) }
               | xs=seq(ty)
                 { (fun env -> TupleTy (xs env)) }
-              | xs=table(ty)
+              | xs=assoc_ord(ty)
                 { (fun env -> RecordTy (xs env)) }
               | Environment xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> EnvironmentTy {
                     e_ty_parent   = parent env;
                     e_ty_bindings = xs env;
                   }) }
-              | Class x=klass sp=table(value)
+              | Class x=klass sp=assoc_ord(value)
                 { (fun env -> Class (x env, sp env)) }
               | x=lambda_ty
                 { (fun env -> LambdaTy (x env)) }
@@ -262,15 +265,15 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> Symbol x) }
               | xs=seq(value)
                 { (fun env -> Tuple (xs env)) }
-              | xs=table(value)
+              | xs=assoc_ord(value)
                 { (fun env -> Record (xs env)) }
               | Environment x=local_env
                 { (fun env -> Environment (x env)) }
               | Lambda x=lambda
                 { (fun env -> Lambda (x env)) }
-              | Class x=klass sp=table(value)
+              | Class x=klass sp=assoc_ord(value)
                 { (fun env -> Class (x env, sp env)) }
-              | Mixin x=mixin sp=table(value)
+              | Mixin x=mixin sp=assoc_ord(value)
                 { (fun env -> Mixin (x env, sp env)) }
               | Package x=package
                 { (fun env -> Package (x env)) }
@@ -330,9 +333,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     metaclass=prefix(Metaclass,   klass)
                   objectclass=prefix(Objectclass, klass)?
                      ancestor=prefix(Ancestor,    klass)?
-                   parameters=prefix(Parameters,  assoc(tvar))?
-                        slots=prefix(Slots,       assoc(ivar))?
-                      methods=prefix(Methods,     assoc(method_))?
+                   parameters=prefix(Parameters,  assoc_seq(tvar))?
+                        ivars=prefix(Ivars,       assoc_seq(ivar))?
+                      methods=prefix(Methods,     assoc_seq(method_))?
                     prepended=prefix(Prepended,   seq(mixin))?
                      appended=prefix(Appended,    seq(mixin))?
                   RBrace
@@ -352,9 +355,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                             k_metaclass   = metaclass env;
                             k_objectclass = None;
                             k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
-                            k_parameters  = Option.map_default (fun p -> p env) [] parameters;
-                            k_slots       = [];
-                            k_methods     = [];
+                            k_parameters  = Option.map_default (fun p -> p env) (Assoc.empty) parameters;
+                            k_ivars       = Assoc.empty;
+                            k_methods     = Assoc.empty;
                             k_prepended   = [];
                             k_appended    = [];
                           } in
@@ -363,7 +366,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     in
                     (fun () ->
                       Option.may (fun x -> klass.k_objectclass  <- Some (x env)) objectclass;
-                      Option.may (fun x -> klass.k_slots        <- x env) slots;
+                      Option.may (fun x -> klass.k_ivars        <- x env) ivars;
                       Option.may (fun x -> klass.k_methods      <- x env) methods;
                       Option.may (fun x -> klass.k_prepended    <- x env) prepended;
                       Option.may (fun x -> klass.k_appended     <- x env) appended))
@@ -372,14 +375,14 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | bind_as=Name_Global Equal
                   Mixin name=Lit_String LBrace
                     metaclass=prefix(Metaclass,  klass)
-                      methods=prefix(Methods,    assoc(method_))?
+                      methods=prefix(Methods,    assoc_seq(method_))?
                   RBrace
                 { (fun env ->
                     let mixin = {
                       m_hash      = Hash_seed.make ();
                       m_name      = name;
                       m_metaclass = metaclass env;
-                      m_methods   = [];
+                      m_methods   = Assoc.empty;
                     } in
                     Table.set env bind_as (NamedMixin mixin);
                     (fun () ->
@@ -447,7 +450,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 }
 
               | bind_as=Name_Global Equal
-                  Instance klass=klass sp=table(value) slots=table(value)
+                  Instance klass=klass sp=assoc_ord(value) slots=table(value)
                 { (fun env ->
                     let i_klass = klass env in
                     let i_sp    = sp env in

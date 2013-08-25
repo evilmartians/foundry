@@ -91,7 +91,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
       let args, kwargs =
         append entry ~ty:(tvar ())
                      ~opcode:(Ssa.PrimitiveInstr ("tup_make", [value; arg])),
-        Ssa.const (Rt.Record (Table.create []))
+        Ssa.const (Rt.Record Assoc.empty)
       in
       let value' =
         append entry ~ty:(tvar ())
@@ -221,7 +221,7 @@ and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
     ref (append entry ~ty:(tvar ())
           ~opcode:(Ssa.PrimitiveInstr ("tup_make", [receiver])))
   and kwargs =
-    ref (Ssa.const (Rt.Record (Table.create [])))
+    ref (Ssa.const (Rt.Record Assoc.empty))
   in
   let entry =
     List.fold_left (fun entry actual_arg ->

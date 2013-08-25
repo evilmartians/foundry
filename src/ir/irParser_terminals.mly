@@ -54,7 +54,7 @@
 %token Objectclass
 %token Ancestor
 %token Parameters
-%token Slots
+%token Ivars
 %token Methods
 %token Prepended
 %token Appended

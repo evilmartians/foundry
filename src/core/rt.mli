@@ -23,9 +23,9 @@ type value =
 | SymbolTy
 (* Product types *)
 | Tuple         of value list
-| TupleTy       of ty list
-| Record        of value Table.t
-| RecordTy      of ty Table.t
+| TupleTy       of ty    list
+| Record        of value Assoc.sorted_t
+| RecordTy      of ty    Assoc.sorted_t
 (* Function type *)
 | Environment   of local_env
 | EnvironmentTy of local_env_ty
@@ -42,8 +42,8 @@ type value =
 | ClosureTy     of ty list * ty
 | BasicBlockTy
 and ty = value
-and 'a specialized = 'a * ty Table.t
-and slots = value Table.t
+and 'a specialized = 'a * ty Assoc.sorted_t
+and slots          = value Table.t
 and binding_ty = {
           b_ty_location   : Location.t;
           b_ty_kind       : Syntax.lvar_kind;
@@ -95,9 +95,9 @@ and klass = {
   mutable k_objectclass   : klass option;
           k_ancestor      : klass option;
           k_is_value      : bool;
-          k_parameters    : (string * tvar)    list;
-  mutable k_slots         : (string * ivar)    list;
-  mutable k_methods       : (string * imethod) list;
+          k_parameters    : tvar    Assoc.sequental_t;
+  mutable k_ivars         : ivar    Assoc.sequental_t;
+  mutable k_methods       : imethod Assoc.sequental_t;
   mutable k_prepended     : mixin list;
   mutable k_appended      : mixin list;
 }
@@ -105,7 +105,7 @@ and mixin = {
           m_hash          : int;
           m_name          : string;
           m_metaclass     : klass;
-  mutable m_methods       : (string * imethod) list;
+  mutable m_methods       : imethod Assoc.sequental_t;
 }
 and imethod = {
           im_hash         : int;

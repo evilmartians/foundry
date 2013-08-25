@@ -8,11 +8,11 @@ let fold_equiv ty =
   let roots = !roots in
   match ty with
   | Class (klass, specz) when klass == roots.kUnsigned
-  -> (match Table.get specz "width" with
+  -> (match Assoc.find_option specz "width" with
       | Some (Integer width) -> UnsignedTy (int_of_big_int width)
       | _ -> ty)
   | Class (klass, specz) when klass == roots.kSigned
-  -> (match Table.get specz "width" with
+  -> (match Assoc.find_option specz "width" with
       | Some (Integer width) -> SignedTy (int_of_big_int width)
       | _ -> ty)
   | _
@@ -50,12 +50,12 @@ let rec unify' env a b =
   | TupleTy(xsa), TupleTy(xsb)
   -> List.fold_left2 unify' env xsa xsb
   | RecordTy(xsa), RecordTy(xsb)
-  -> Table.fold2 ~f:(fun _ -> unify') env xsa xsb
+  -> Assoc.fold2 ~f:(fun _ -> unify') env xsa xsb
   | EnvironmentTy(xa), EnvironmentTy(xb)
   -> unify_env' env xa xb
   | Class(ka, spa), Class(kb, spb)
     when ka == kb
-  -> Table.fold2 ~f:(fun _ -> unify') env spa spb
+  -> Assoc.fold2 ~f:(fun _ -> unify') env spa spb
   | FunctionTy(args_ty, ret_ty), FunctionTy(args_ty', ret_ty')
   -> (let env = List.fold_left2 unify' env args_ty args_ty' in
       unify' env ret_ty ret_ty')
@@ -103,13 +103,13 @@ let rec subst env ty =
   | Tuple xs
   -> Tuple (List.map (subst env) xs)
   | RecordTy xs
-  -> RecordTy (Table.map (subst env) xs)
+  -> RecordTy (Assoc.map (fun _ -> subst env) xs)
   | Record xs
-  -> Record (Table.map (subst env) xs)
+  -> Record (Assoc.map (fun _ -> subst env) xs)
   | EnvironmentTy ty
   -> EnvironmentTy (subst_local_env env ty)
   | Class (klass, specz)
-  -> Class (klass, Table.map (subst env) specz)
+  -> Class (klass, Assoc.map (fun _ -> subst env) specz)
   | FunctionTy (args, ret)
   -> FunctionTy (List.map (subst env) args, subst env ret)
   | ClosureTy (args, ret)
@@ -140,10 +140,10 @@ let rec slot_ty (klass, specz) name =
 
      This is probably very slow.
    *)
-  let env = Table.fold [] specz ~f:(fun name env value ->
-              unify' env value (Tvar (List.assoc name klass.k_parameters))) in
+  let env = Assoc.fold [] specz ~f:(fun name env value ->
+              unify' env value (Tvar (Assoc.find klass.k_parameters name))) in
   try
-    subst env (List.assoc name klass.k_slots).iv_ty
+    subst env (Assoc.find klass.k_ivars name).iv_ty
   with Not_found ->
     match klass.k_ancestor with
     | Some ancestor -> slot_ty (ancestor, specz) name

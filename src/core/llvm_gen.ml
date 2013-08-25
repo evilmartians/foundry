@@ -50,14 +50,15 @@ let rec lltype_of_ty ?(ptr=true) ty =
   -> Llvm.struct_type ctx (Array.of_list (List.map lltype_of_ty xs))
   | Rt.RecordTy xs
   -> Llvm.struct_type ctx (Array.of_list
-        (Table.map_list ~ordered:true ~f:(fun _ -> lltype_of_ty ~ptr:false) xs))
+        (Assoc.map_list xs ~f:(fun _ -> lltype_of_ty ~ptr:false)))
   | Rt.EnvironmentTy env_ty
   -> Llvm.pointer_type (Llvm.i8_type ctx)
   | Rt.Class (klass, specz)
   -> (memoize (klass.Rt.k_name :> string) (fun () ->
-        let slots = List.map (fun (name, _) ->
+        let slots = Assoc.map_list (fun name _ ->
                         lltype_of_ty (Typing.slot_ty (klass, specz) name))
-                      klass.Rt.k_slots in
+                      klass.Rt.k_ivars
+        in
         let slots =
           match klass.Rt.k_ancestor with
           | None -> slots
@@ -173,7 +174,7 @@ let rec llconst_of_value llmod heap value =
   -> Llvm.const_struct ctx (Array.of_list (List.map (llconst_of_value llmod heap) xs))
   | Rt.Record xs
   -> Llvm.const_struct ctx (Array.of_list
-      (Table.map_list ~ordered:true ~f:(fun _ -> llconst_of_value llmod heap) xs))
+      (Assoc.map_list xs ~f:(fun _ -> llconst_of_value llmod heap)))
   | Rt.Environment env
   -> (let env_map = env_map_of_ty (Rt.type_of_value value) in
       memoize env_map.e_lltype (fun _ ->
@@ -196,7 +197,7 @@ let rec llconst_of_value llmod heap value =
         in
         Llvm.const_struct ctx (Array.of_list content)))
   | Rt.Package pkg
-  -> (let metaklass = Rt.Class (pkg.Rt.p_metaclass, Table.create []) in
+  -> (let metaklass = Rt.Class (pkg.Rt.p_metaclass, Assoc.empty) in
       let llty = lltype_of_ty ~ptr:false metaklass in
       memoize llty (fun value ->
         Llvm.set_value_name ("package." ^ (pkg.Rt.p_name :> string)) value;
@@ -496,9 +497,7 @@ let rec gen_func llmod heap funcn =
             (* Build a getelementptr instruction for the field. *)
             let rec lookup klass indices =
               try
-                let index, _ =
-                  List.findi (fun idx (name, _) -> var = name) klass.Rt.k_slots
-                in
+                let index = Assoc.index klass.Rt.k_ivars var in
                 match klass.Rt.k_ancestor with
                 | Some _ -> (index + 1) :: indices
                 | None   -> index :: indices
