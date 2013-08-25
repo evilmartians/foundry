@@ -215,6 +215,11 @@ let gen_proto llmod funcn =
       assert (Llvm.element_type (Llvm.type_of f) == llty);
       f
 
+let gen_llfunc llmod name args ret =
+  match Llvm.lookup_function name llmod with
+  | None   -> Llvm.declare_function name (Llvm.function_type ret args) llmod
+  | Some f -> f
+
 let rec gen_func llmod funcn =
   let llfunc  = gen_proto llmod funcn in
   let builder = Llvm.builder ctx in
@@ -259,12 +264,8 @@ let rec gen_func llmod funcn =
         | Some lldebug -> Llvm.build_call lldebug [| map operand |] "" builder
         | None -> assert false)
     | "putchar", [operand]
-    -> (let llputchar =
-          match Llvm.lookup_function "putchar" llmod with
-          | None -> Llvm.declare_function "putchar"
-                (Llvm.function_type (Llvm.i32_type ctx) [| Llvm.i32_type ctx |]) llmod
-          | Some f -> f
-        in
+    -> (let llputchar = gen_llfunc llmod "putchar"
+                          [| Llvm.i32_type ctx |] (Llvm.i32_type ctx) in
         Llvm.build_call llputchar [| map operand |] "" builder)
 
     (* Integer operations. *)
@@ -298,6 +299,7 @@ let rec gen_func llmod funcn =
         snd (List.fold_left (fun (idx, lltup) x ->
             idx + 1, Llvm.build_insertvalue lltup (map x) idx "" builder)
           (0, Llvm.undef llty) operands))
+
     | "tup_extend", [tup; x]
     -> (let lltup, llx = map tup, map x in
         let lltys  = Llvm.struct_element_types (Llvm.type_of lltup) in
@@ -312,6 +314,7 @@ let rec gen_func llmod funcn =
         in
         let lltup' = blit lltup' ((Array.length lltys) - 1) in
         Llvm.build_insertvalue lltup' llx (Array.length lltys) "" builder)
+
     | "tup_slice",  [tup; { Ssa.opcode = Ssa.Const (Rt.Integer lft) };
                           { Ssa.opcode = Ssa.Const (Rt.Integer rgt) }]
     -> (let lft    = int_of_big_int lft
