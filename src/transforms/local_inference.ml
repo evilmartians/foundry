@@ -35,10 +35,13 @@ let run_on_function passmgr capsule funcn =
 
   iter_instrs funcn ~f:(fun instr ->
     let unify ty ty' =
-      specialize ~reason:("unified " ^ (Rt.inspect_type ty) ^
-                          " and " ^ (Rt.inspect_type ty') ^
-                          " for " ^ instr.id)
-                 (Typing.unify ty ty');
+      try
+        specialize ~reason:("unified " ^ (Rt.inspect_type ty) ^
+                            " and " ^ (Rt.inspect_type ty') ^
+                            " for " ^ instr.id)
+                   (Typing.unify ty ty');
+      with exn ->
+        Pass_manager.print_exn exn ("inferring on %" ^ instr.id)
     in
     match instr.opcode with
     (* Make sure that call and return instruction types match the

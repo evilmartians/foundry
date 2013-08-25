@@ -19,7 +19,8 @@ val add_function_pass : t -> (module FunctionPass) -> unit
 val add_capsule_pass  : t -> (module CapsulePass)  -> unit
 val add_pass_manager  : t -> t -> unit
 
-val verbose : bool ref
+val verbose   : bool ref
+val print_exn : exn -> string -> unit
 
-val run     : t -> Ssa.capsule -> unit
-val mark    : t -> ?reason:string -> (*func*) Ssa.name -> unit
+val run       : t -> Ssa.capsule -> unit
+val mark      : t -> ?reason:string -> (*func*) Ssa.name -> unit

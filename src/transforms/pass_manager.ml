@@ -36,6 +36,19 @@ let print_invalidate name reason =
   | None   -> print_verbose ("Invalidating function @" ^ name ^ ".")
   | Some r -> print_verbose ("Invalidating function @" ^ name ^ ": " ^ r ^ ".")
 
+let print_exn exn reason =
+  let exn_desc =
+    match exn with
+    | Typing.Conflict (a, b)
+    -> "Typing.Conflict (" ^ (Rt.inspect_type a) ^
+          ", " ^ (Rt.inspect_type b) ^ ")"
+    | _
+    -> Unicode.assert_utf8s (Printexc.to_string exn)
+  in
+  print_verbose ("Exception: " ^ exn_desc);
+  print_verbose ("Reason: " ^ reason);
+  if !verbose then raise Exit else raise exn
+
 let create ~sequental =
   if sequental
   then Sequental {
@@ -47,7 +60,7 @@ let create ~sequental =
     worklist        = Worklist.create ();
   }
 
-let run passmgr capsule =
+let run' passmgr capsule =
   let run_capsule (name, pass) =
     print_verbose ("Entering module pass '" ^ name ^ "'.");
     pass capsule;
@@ -88,11 +101,25 @@ let run passmgr capsule =
       done;
 
       if !terminate then
-        prerr_endline "Convergence terminated.";
+        prerr_endline "Convergence terminated by ^C.";
 
       (* Restore the old signal. This also makes the pass manager
          reentrant. *)
       Sys.set_signal Sys.sigint old_sigint)
+
+let run passmgr capsule =
+  try
+    run' passmgr capsule
+  with
+  | Exit ->
+    ()
+  | exn ->
+    print_exn exn "uncaught";
+    prerr_endline "Convergence terminated by uncaught exception";
+    if not !verbose then begin
+      prerr_endline (Unicode.assert_utf8s (Printexc.to_string exn));
+      Printexc.print_backtrace stderr
+    end
 
 let mark passmgr ?reason funcn =
   print_invalidate funcn.Ssa.id reason;
@@ -131,7 +158,7 @@ let add_pass_manager passmgr inner_passmgr =
     "Nested Pass Manager",
     (fun capsule ->
       level := !level + 1;
-      run inner_passmgr capsule;
+      run' inner_passmgr capsule;
       level := !level - 1)
   in
   match passmgr with
