@@ -421,32 +421,32 @@ and type_of_environment env =
       }) env.e_bindings;
   }
 
-let rec equal a b =
+let rec equal_local_env_ty a b =
+  let equal_bindings_ty a b =
+    try
+      Table.fold2 ~f:(fun _ acc a b ->
+          acc &&
+            a.b_ty_location = b.b_ty_location &&
+            a.b_ty_kind     = b.b_ty_kind &&
+            equal a.b_ty b.b_ty)
+        true a b
+    with Invalid_argument _ -> (* different length *) false
+  in
+  let eq_parent =
+    match a.e_ty_parent, b.e_ty_parent with
+    | None, None -> true
+    | Some a, Some b -> equal_local_env_ty a b
+    | _, _ -> false
+  in
+  eq_parent && equal_bindings_ty a.e_ty_bindings b.e_ty_bindings
+
+and equal a b =
   let equal_list a b =
     List.fold_left2 (fun acc a b -> acc && equal a b) true a b
   in
   let equal_table a b =
     try  Table.fold2 ~f:(fun _ acc a b -> acc && equal a b) true a b
     with Invalid_argument _ -> (* different length *) false
-  in
-  let rec equal_local_env_ty a b =
-    let equal_bindings_ty a b =
-      try
-        Table.fold2 ~f:(fun _ acc a b ->
-            acc &&
-              a.b_ty_location = b.b_ty_location &&
-              a.b_ty_kind     = b.b_ty_kind &&
-              equal a.b_ty b.b_ty)
-          true a b
-      with Invalid_argument _ -> (* different length *) false
-    in
-    let eq_parent =
-      match a.e_ty_parent, b.e_ty_parent with
-      | None, None -> true
-      | Some a, Some b -> equal_local_env_ty a b
-      | _, _ -> false
-    in
-    eq_parent && equal_bindings_ty a.e_ty_bindings b.e_ty_bindings
   in
   match a, b with
   (* Immutable values and types. *)
@@ -508,20 +508,21 @@ let rec equal a b =
   | _, _
   -> false
 
+let rec hash_local_env_ty env =
+  let seed =
+    match env.e_ty_parent with
+    | Some env -> hash_local_env_ty env
+    | None     -> 0
+  in
+  Hashtbl.hash (seed, (Table.map_list ~ordered:true
+                        ~f:(fun k _ -> k) env.e_ty_bindings))
+
 let rec hash value =
   let hash_list lst =
     Hashtbl.hash (List.map hash lst)
   in
   let hash_table table =
-    Hashtbl.hash (Table.map_list (fun k _ -> k) table)
-  in
-  let rec hash_local_env_ty env =
-    let seed =
-      match env.e_ty_parent with
-      | Some env -> hash_local_env_ty env
-      | None     -> 0
-    in
-    Hashtbl.hash (seed, (Table.map_list (fun k _ -> k) env.e_ty_bindings))
+    Hashtbl.hash (Table.map_list ~ordered:true ~f:(fun k _ -> k) table)
   in
   match value with
   (* Immutable values and types. *)
@@ -567,6 +568,16 @@ struct
 end
 
 module Valuetbl = Hashtbl.Make(ValueIdentity)
+
+module EnvTyIdentity =
+struct
+  type t = local_env_ty
+
+  let equal = equal_local_env_ty
+  let hash  = hash_local_env_ty
+end
+
+module EnvTytbl = Hashtbl.Make(EnvTyIdentity)
 
 (* Inspecting types and values *)
 

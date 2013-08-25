@@ -127,28 +127,29 @@ with sexp_of
 exception Exc of exc
 with sexp
 
-(* Valuetbl is safe to use in presence of key mutation. *)
+(* These tables are safe to use in presence of key mutation. *)
 module Valuetbl : Hashtbl.S with type key = value
+module EnvTytbl : Hashtbl.S with type key = local_env_ty
 
 (* Types and values *)
 
 val type_of_value       : value -> ty
 val type_of_environment : local_env -> local_env_ty
 
-val klass_of_type  : ?dispatch:bool -> ty -> klass
-val klass_of_value : ?dispatch:bool -> ?meta:bool -> value -> klass
+val klass_of_type   : ?dispatch:bool -> ty -> klass
+val klass_of_value  : ?dispatch:bool -> ?meta:bool -> value -> klass
 
 (* Correctly handles cyclic structures. *)
-val equal          : value -> value -> bool
-val hash           : value -> int
+val equal           : value -> value -> bool
+val hash            : value -> int
 
-val inspect        : value -> string
-val inspect_value  : value -> string
-val inspect_type   : ty    -> string
+val inspect         : value -> string
+val inspect_value   : value -> string
+val inspect_type    : ty    -> string
 
-val print          : value -> unit
-val print_value    : value -> unit
-val print_type     : ty    -> unit
+val print           : value -> unit
+val print_value     : value -> unit
+val print_type      : ty    -> unit
 
 (* Virtual image *)
 

@@ -61,11 +61,11 @@ type env_map = {
   e_content : Unicode.utf8s list;
   e_lltype  : Llvm.lltype;
 }
-let env_maps = Hashtbl.create 10
+let env_maps = Rt.EnvTytbl.create 10
 
 let rec env_map_of_local_env_ty ty =
   try
-    Hashtbl.find env_maps ty
+    Rt.EnvTytbl.find env_maps ty
   with Not_found ->
     let parent_map = Option.map env_map_of_local_env_ty ty.Rt.e_ty_parent in
     (* Serialize the environment. Rt.local_env_ty uses a hash table, which
@@ -88,9 +88,8 @@ let rec env_map_of_local_env_ty ty =
       e_lltype  = Llvm.struct_type ctx (Array.of_list lltypes);
     }
     in
-    (* Memoize the environment. Bare Hashtbl uses structural equality, which is
-       exactly what we need. *)
-    Hashtbl.add env_maps ty env_map;
+    (* Memoize the environment. *)
+    Rt.EnvTytbl.add env_maps ty env_map;
     env_map
 
 let env_map_of_ty ty =
