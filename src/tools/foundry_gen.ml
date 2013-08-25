@@ -43,7 +43,7 @@ let _ =
   let roots, capsule = load_ir (Lexing.from_string (input_ir :> string)) in
   Rt.roots := roots;
 
-  let llmod = Codegen.llvm_module_of_ssa_capsule capsule in
+  let llmod = Llvm_gen.llvm_module_of_ssa_capsule capsule in
 
   (* Set the architectural parameters for LLVM. *)
   let (triple, datalayout) = List.assoc !target profiles in

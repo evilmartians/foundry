@@ -1,1 +1,1 @@
-<codegen.{ml,mli}>: package(llvm), -use_utf8str, use_utf8str_safe
+<llvm_gen.{ml,mli}>: package(llvm), -use_utf8str, use_utf8str_safe
