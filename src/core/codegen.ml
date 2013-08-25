@@ -30,8 +30,8 @@ let rec lltype_of_ty ?(ptr=true) ty =
       with Not_found ->
         (* Create and populate a named struct type. *)
         let llty = Llvm.named_struct_type ctx name in
-        let elts, is_packed = generate () in
-        Llvm.struct_set_body llty elts is_packed;
+        let is_packed, elts = generate () in
+        Llvm.struct_set_body llty (Array.of_list elts) is_packed;
         (* Memoize and return this type. *)
         Rt.Valuetbl.add types ty llty;
         llty
@@ -55,7 +55,8 @@ let rec lltype_of_ty ?(ptr=true) ty =
   -> Llvm.pointer_type (Llvm.i8_type ctx)
   | Rt.Class (klass, specz)
   -> (memoize (klass.Rt.k_name :> string) (fun () ->
-        [||], false))
+        let slots = List.map (fun (_, iv) -> lltype_of_ty iv.Rt.iv_ty) klass.Rt.k_slots in
+        false, slots))
   | Rt.FunctionTy (args_ty, ret_ty)
   -> (Llvm.function_type
         (lltype_of_ty ret_ty)

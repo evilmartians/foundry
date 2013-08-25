@@ -3,7 +3,7 @@ open Big_int
 
 exception Conflict of Rt.ty * Rt.ty
 
-let subst_equiv ty =
+let fold_equiv ty =
   let roots = !Rt.roots in
   match ty with
   | Rt.Class (klass, specz) when klass == roots.Rt.kUnsigned
@@ -27,8 +27,8 @@ let rec unify' env a b =
     | _
     -> ty
   in
-  let a, b = subst_tvar  a, subst_tvar  b in
-  let a, b = subst_equiv a, subst_equiv b in
+  let a, b = subst_tvar a, subst_tvar b in
+  let a, b = fold_equiv a, fold_equiv b in
   (* Instantiate type variables. *)
   match a, b with
   | _, _ when Rt.equal a b

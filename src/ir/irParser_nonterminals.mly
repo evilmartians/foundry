@@ -284,7 +284,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | Meta_mutable
                 { Syntax.IVarMetaMutable }
 
-          ivar: loc=location kind=ivar_kind x=value
+          ivar: loc=location kind=ivar_kind x=ty
                 { (fun env -> {
                     iv_hash     = Hash_seed.make ();
                     iv_location = loc;

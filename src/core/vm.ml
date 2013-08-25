@@ -166,7 +166,8 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
                 else
                   (kw, ty) :: acc) new_specz kw_args
             in
-            Class (klass, Table.join specz (Table.create new_specz)))
+            let cls = Class (klass, Table.join specz (Table.create new_specz)) in
+            Typing.fold_equiv cls)
         | value
         -> exc_fail ("Name " ^ name ^ " is bound to " ^ (inspect value) ^
                      " which is not a type") [loc]

@@ -7,6 +7,8 @@ val unify       : ty -> ty -> (tvar * ty) list
 val unify_list  : ty list  -> (tvar * ty) list
 val subst       : (tvar * ty) list -> ty -> ty
 
+val fold_equiv  : ty -> ty
+
 val slot_ty     : klass specialized -> string -> ty
 
 val print_env   : (tvar * ty) list -> unit
