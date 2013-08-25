@@ -579,19 +579,29 @@ let iter_overloads ~f capsule =
   Nametbl.iter f capsule.overloads
 
 let overload capsule funcn ty' =
-  try
-    let overloads = Nametbl.find_all capsule.overloads funcn in
-    List.find (fun overload ->
-        try  ignore (Typing.unify overload.ty ty'); true
-        with Typing.Conflict _ -> false)
-      overloads
-  with Not_found ->
-    (* If unification does not change the signature of callee, do
-       not specialize it. *)
-    let env    = Typing.unify funcn.ty ty' in
+  let funcn =
+    (* Try to find a more specific function, but not more specific. Unification
+       of such function with the signature must produce the signature itself. *)
+    try
+      let overloads = Nametbl.find_all capsule.overloads funcn in
+      List.find (fun overload ->
+          try
+            let env = Typing.unify overload.ty ty' in
+            Rt.equal ty' (Typing.subst env ty')
+          with Typing.Conflict _ -> false)
+        overloads
+    with Not_found ->
+      funcn
+  in
+    (* Check if we need to specialize this function even more, or it's
+       specific enough. *)
+    let env = Typing.unify funcn.ty ty' in
     if Rt.equal (Typing.subst env funcn.ty) funcn.ty then
+      (* Unification produced a signature exactly equal to the overload
+         being considered. *)
       funcn
     else begin
+      (* Unification changed the signature of callee. *)
       let funcn' = copy_func funcn in
       add_func capsule funcn';
       add_overload capsule funcn funcn';

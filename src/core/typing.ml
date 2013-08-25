@@ -127,7 +127,7 @@ and subst_local_env env ty =
 
 let print_env env =
   List.iter (fun (tvar, ty) ->
-      print_endline ((inspect_type (Tvar tvar)) ^
+      prerr_endline ((inspect_type (Tvar tvar)) ^
                      " -> " ^ (inspect_type ty)))
     env
 

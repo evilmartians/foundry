@@ -450,7 +450,7 @@ let string_of_capsule env capsule =
 
 let print_name name =
   let env = create_env () in
-    print_endline (string_of_ssa_name env name)
+    prerr_endline (string_of_ssa_name env name)
 
 let string_of ?(omit_roots=false) roots capsule =
   let env = create_env () in

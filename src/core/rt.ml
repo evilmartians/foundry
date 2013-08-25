@@ -671,13 +671,13 @@ let inspect value =
   in (inspect_value value) ^ " : " ^ ty
 
 let print_type value =
-  print_endline (inspect_type value)
+  prerr_endline (inspect_type value)
 
 let print_value value =
-  print_endline (inspect_value value)
+  prerr_endline (inspect_value value)
 
 let print value =
-  print_endline (inspect value)
+  prerr_endline (inspect value)
 
 (* Exceptions *)
 
