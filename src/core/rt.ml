@@ -442,7 +442,8 @@ let rec equal_local_env_ty a b =
 
 and equal a b =
   let equal_list a b =
-    List.fold_left2 (fun acc a b -> acc && equal a b) true a b
+    try  List.fold_left2 (fun acc a b -> acc && equal a b) true a b
+    with Invalid_argument _ -> (* different length *) false
   in
   let equal_table a b =
     try  Table.fold2 ~f:(fun _ acc a b -> acc && equal a b) true a b
