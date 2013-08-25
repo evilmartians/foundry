@@ -1,6 +1,21 @@
 open Unicode.Std
+open Big_int
 
 exception Conflict of Rt.ty * Rt.ty
+
+let subst_equiv ty =
+  let roots = !Rt.roots in
+  match ty with
+  | Rt.Class (klass, specz) when klass == roots.Rt.kUnsigned
+  -> (match Table.get specz "width" with
+      | Some (Rt.Integer width) -> Rt.UnsignedTy (int_of_big_int width)
+      | _ -> ty)
+  | Rt.Class (klass, specz) when klass == roots.Rt.kSigned
+  -> (match Table.get specz "width" with
+      | Some (Rt.Integer width) -> Rt.SignedTy (int_of_big_int width)
+      | _ -> ty)
+  | _
+  -> ty
 
 let rec unify' env a b =
   (* Substitute already instantiated type variables. *)
@@ -12,7 +27,8 @@ let rec unify' env a b =
     | _
     -> ty
   in
-  let a, b = subst_tvar a, subst_tvar b in
+  let a, b = subst_tvar  a, subst_tvar  b in
+  let a, b = subst_equiv a, subst_equiv b in
   (* Instantiate type variables. *)
   match a, b with
   | _, _ when Rt.equal a b
@@ -77,6 +93,8 @@ let rec subst env ty =
   match ty with
   | Rt.TvarTy | Rt.NilTy | Rt.BooleanTy | Rt.IntegerTy
   | Rt.UnsignedTy _ | Rt.SignedTy _ | Rt.SymbolTy
+  | Rt.Nil | Rt.Truth | Rt.Lies | Rt.Integer _
+  | Rt.Unsigned _ | Rt.Signed _ | Rt.Symbol _
   -> ty
   | Rt.Tvar tvar
   -> (try  List.assoc tvar env
@@ -113,3 +131,16 @@ let print_env env =
       print_endline ((Rt.inspect_type (Rt.Tvar tvar)) ^
                      " -> " ^ (Rt.inspect_type ty)))
     env
+
+let slot_ty (klass, specz) name =
+  (* Instance variable types and class parameters reside in one type variable
+     "namespace" (that is, disjoint block), and specializations reside in another.
+     They are linked by specializations named in the same way as class parameters,
+     so if we unify their respective types, and then substitute tvars in instance
+     variable type with the info we got, we'll get a fully qualified ivar type.
+
+     This is probably very slow.
+   *)
+  let env = Table.fold [] specz ~f:(fun name env value ->
+              unify' env value (Rt.Tvar (List.assoc name klass.Rt.k_parameters))) in
+  subst env (Table.get_exn klass.Rt.k_slots name).Rt.iv_ty
