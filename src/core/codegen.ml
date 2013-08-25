@@ -55,7 +55,14 @@ let rec lltype_of_ty ?(ptr=true) ty =
   -> Llvm.pointer_type (Llvm.i8_type ctx)
   | Rt.Class (klass, specz)
   -> (memoize (klass.Rt.k_name :> string) (fun () ->
-        let slots = List.map (fun (_, iv) -> lltype_of_ty iv.Rt.iv_ty) klass.Rt.k_slots in
+        let slots = List.map (fun (name, _) ->
+                        lltype_of_ty (Typing.slot_ty (klass, specz) name))
+                      klass.Rt.k_slots in
+        let slots =
+          match klass.Rt.k_ancestor with
+          | None -> slots
+          | Some ancestor -> (lltype_of_ty ~ptr:false (Rt.Class (ancestor, specz))) :: slots
+        in
         false, slots))
   | Rt.FunctionTy (args_ty, ret_ty)
   -> (Llvm.function_type
@@ -390,6 +397,7 @@ let rec gen_func llmod funcn =
       (* Constants are handled within `map'. *)
       | Ssa.Const _ | Ssa.Function _
       -> assert false
+
       (* Terminator instructions. *)
       | Ssa.JumpInstr blockn
       -> Llvm.build_br (Llvm.block_of_value (Ssa.Nametbl.find names blockn)) builder
@@ -400,7 +408,8 @@ let rec gen_func llmod funcn =
             builder
       | Ssa.ReturnInstr valuen
       -> Llvm.build_ret (map valuen) builder
-      (* Value-returning instructions. *)
+
+      (* Phis. *)
       | Ssa.PhiInstr operands
       -> (* Divide all FSSA incoming values into predecessor values
             and successor values. It is assumed here that the basic blocks
@@ -422,6 +431,8 @@ let rec gen_func llmod funcn =
           (* Add all not yet existing values into the fixup list. *)
           List.iter (fun (block, op) -> fixups := (llphi, block, op) :: !fixups) succ;
           llphi)
+
+      (* Local variables. *)
       | Ssa.FrameInstr nextn
       -> (let env_map = env_map_of_ty instr.Ssa.ty in
           (* Allocate an environment for this function. *)
@@ -434,8 +445,9 @@ let rec gen_func llmod funcn =
           ignore (Llvm.build_store llnext llparentptr builder);
           (* Return the newly built environment. *)
           llenv)
-      | Ssa.LVarStoreInstr (envn, var, _)
+
       | Ssa.LVarLoadInstr (envn, var)
+      | Ssa.LVarStoreInstr (envn, var, _)
       -> (let env_map = env_map_of_ty envn.Ssa.ty in
           (* Get a pointer to the variable in the environment. *)
           let rec lookup env_map llenv =
@@ -464,11 +476,51 @@ let rec gen_func llmod funcn =
           let llvar   = lookup env_map llenv in
           (* Actually load or store the variable value. *)
           match instr.Ssa.opcode with
-          | Ssa.LVarStoreInstr (_, _, valuen)
-          -> Llvm.build_store (map valuen) llvar builder
           | Ssa.LVarLoadInstr (_, _)
           -> Llvm.build_load llvar id builder
+          | Ssa.LVarStoreInstr (_, _, value)
+          -> Llvm.build_store (map value) llvar builder
           | _ -> assert false)
+
+      (* Instance variables. *)
+      | Ssa.IVarLoadInstr (obj, var)
+      | Ssa.IVarStoreInstr (obj, var, _)
+      -> (let klass =
+            match obj.Ssa.ty with
+            | Rt.Class (klass, _) -> klass
+            | _ -> assert false
+          in
+          if klass.Rt.k_is_value then
+            assert false
+          else
+            (* Build a getelementptr instruction for the field. *)
+            let rec lookup klass indices =
+              try
+                let index, _ =
+                  List.findi (fun idx (name, _) -> var = name) klass.Rt.k_slots
+                in
+                match klass.Rt.k_ancestor with
+                | Some _ -> (index + 1) :: indices
+                | None   -> index :: indices
+              with Not_found ->
+                match klass.Rt.k_ancestor with
+                | Some ancestor -> lookup ancestor (0 :: indices)
+                | None -> assert false
+            in
+            let lli32ty = Llvm.i32_type ctx in
+            let indices = List.rev (lookup klass [0]) in
+            let indices = List.map (Llvm.const_int lli32ty) indices in
+            let llgep   = Llvm.build_in_bounds_gep (map obj) (Array.of_list indices)
+                              ((var :> string) ^ ".p") builder in
+            (* Actually load or store the slot value. *)
+            match instr.Ssa.opcode with
+            | Ssa.IVarLoadInstr (_, _)
+            -> Llvm.build_load llgep id builder
+            | Ssa.IVarStoreInstr (_, _, value)
+            -> Llvm.build_store (map value) llgep builder
+            | _ -> assert false)
+
+      (* Functions and closures. *)
       | Ssa.CallInstr (funcn, operands)
       -> (* Construct a call instruction. The instruction has the same type
             as the result type of the function it calls, so if that's nil, make
@@ -487,8 +539,11 @@ let rec gen_func llmod funcn =
           let llclosure = Llvm.build_insertvalue llclosure llfunc 0 "" builder in
           let llclosure = Llvm.build_insertvalue llclosure llenv  1 "" builder in
           llclosure)
+
+      (* Primitives. *)
       | Ssa.PrimitiveInstr (prim, operands)
       -> gen_prim instr id (prim :> string) operands
+
       | _
       -> assert false
     in
