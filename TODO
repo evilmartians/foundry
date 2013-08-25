@@ -8,6 +8,7 @@ features:
 bugs:
  * don't store heap globally in codegen
  * don't use hashtbl for immutable stuff
+ * Assoc.t
  * allocate fresh tvars on copy_func
  * better value_env
  * better mangling
