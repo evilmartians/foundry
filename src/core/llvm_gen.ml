@@ -132,9 +132,7 @@ let local_var_index env_map name =
   | Some _ -> index + 1
   | None   -> index
 
-let heap = Rt.Valuetbl.create 10
-
-let rec llconst_of_value llmod value =
+let rec llconst_of_value llmod heap value =
   let memoize lltype f =
     try
       Rt.Valuetbl.find heap value
@@ -172,10 +170,10 @@ let rec llconst_of_value llmod value =
            There is no direct big_int -> llvalue converter. *)
         Llvm.const_int_of_string llty ((string_of_big_int ivalue) :> string) 10)
   | Rt.Tuple xs
-  -> Llvm.const_struct ctx (Array.of_list (List.map (llconst_of_value llmod) xs))
+  -> Llvm.const_struct ctx (Array.of_list (List.map (llconst_of_value llmod heap) xs))
   | Rt.Record xs
   -> Llvm.const_struct ctx (Array.of_list
-      (Table.map_list ~ordered:true ~f:(fun _ -> llconst_of_value llmod) xs))
+      (Table.map_list ~ordered:true ~f:(fun _ -> llconst_of_value llmod heap) xs))
   | Rt.Environment env
   -> (let env_map = env_map_of_ty (Rt.type_of_value value) in
       memoize env_map.e_lltype (fun _ ->
@@ -183,12 +181,12 @@ let rec llconst_of_value llmod value =
            compatible with the map env_map_of_ty returns. *)
         let content =
           List.map (fun name ->
-              llconst_of_value llmod (Table.get_exn env.Rt.e_bindings name).Rt.b_value)
+              llconst_of_value llmod heap (Table.get_exn env.Rt.e_bindings name).Rt.b_value)
             env_map.e_content
         in
         (* Recur and convert parent environment as well. *)
         let parent = Option.map (fun parent ->
-                          llconst_of_value llmod (Rt.Environment parent))
+                          llconst_of_value llmod heap (Rt.Environment parent))
                         env.Rt.e_parent in
         (* Prepend parent environment to the structure content, if it exists. *)
         let content =
@@ -239,7 +237,9 @@ let rec llblit builder src src_idx dst dst_idx len =
   if len > 0 then llblit builder src (src_idx + 1) dst (dst_idx + 1) len
   else dst
 
-let rec gen_func llmod funcn =
+let rec gen_func llmod heap funcn =
+  let llconst_of_value = llconst_of_value llmod heap in
+
   let llfunc  = gen_proto llmod funcn in
   let builder = Llvm.builder ctx in
 
@@ -258,7 +258,7 @@ let rec gen_func llmod funcn =
       match name.Ssa.opcode with
       | Ssa.Const value
       -> (* This is an FSSA constant, convert it to an LLVM constant. *)
-         (let llvalue = llconst_of_value llmod value in
+         (let llvalue = llconst_of_value value in
           Ssa.Nametbl.add names name llvalue;
           llvalue)
       | Ssa.Function _
@@ -594,7 +594,8 @@ let rec gen_func llmod funcn =
 
 let llvm_module_of_ssa_capsule capsule =
   let llmod = Llvm.create_module ctx "foundry" in
+  let heap  = Rt.Valuetbl.create 10 in
     ignore (gen_debug llmod);
     Ssa.iter_funcs capsule ~f:(fun funcn ->
-      ignore (gen_func llmod funcn));
+      ignore (gen_func llmod heap funcn));
     llmod
