@@ -64,12 +64,17 @@ let run_on_function passmgr capsule funcn =
             unify callee.ty sig_ty)
         | _
         -> ())
-    (* Local variable accesses are unification points. *)
+    (* Local variable access. *)
     | LVarLoadInstr (frame, name)
     -> unify instr.ty (local_var_ty frame name)
     | LVarStoreInstr (frame, name, value)
     -> unify value.ty (local_var_ty frame name)
-    (* Phis are unification points. *)
+    (* Instance variable access. *)
+    | IVarLoadInstr ({ ty = Rt.Class cls }, name)
+    -> unify instr.ty (Typing.slot_ty cls name)
+    | IVarStoreInstr ({ ty = Rt.Class cls }, name, value)
+    -> unify value.ty (Typing.slot_ty cls name)
+    (* Phi. *)
     | PhiInstr incoming
     -> (let tys = List.map (fun (_,value) -> value.ty) incoming in
         let env = Typing.unify_list (instr.ty :: tys) in
@@ -124,9 +129,15 @@ let run_on_function passmgr capsule funcn =
             unify instr.ty ty)
         | "tup_extend"
         -> (match operands with
-            | [ { ty = Rt.TupleTy xs };
-                { ty = x } ]
+            | [ { ty = Rt.TupleTy xs }; { ty = x } ]
             -> (let ty = Rt.TupleTy (xs @ [x]) in
+                unify instr.ty ty)
+            | _
+            -> ())
+        | "tup_concat"
+        -> (match operands with
+            | [ { ty = Rt.TupleTy xs }; { ty = Rt.TupleTy ys } ]
+            -> (let ty = Rt.TupleTy (xs @ ys) in
                 unify instr.ty ty)
             | _
             -> ())
@@ -160,6 +171,24 @@ let run_on_function passmgr capsule funcn =
                 unify callee.ty sig_ty)
             | _
             -> ())
+
+        (* Object primitives. *)
+        | "obj_alloc"
+        -> (match operands with
+            | [klass]
+            -> (* The klass is not generally constant here; however, its type
+                  is always known, and we can figure out the objectclass based
+                  on metaclass. *)
+               (match klass.ty with
+                | Rt.Class ({ Rt.k_objectclass = None }, _)
+                -> (* Someone is trying to allocate a value, or a Class instance. *)
+                   (failwith "obj_alloc: objectclass=None")
+                | Rt.Class ({ Rt.k_objectclass = Some klass }, specz)
+                -> unify instr.ty (Rt.Class (klass, specz))
+                | _
+                -> ())
+            | _
+            -> ())
         | _
         -> ())
     | _
@@ -183,6 +212,10 @@ let run_on_function passmgr capsule funcn =
      with type information from callee, and the latter (the check below)
      aims to let the specialization pass decide if it wants to duplucate
      the body.
+
+     This seems to cause infinite loops for some kinds of untypable code
+     (like two mutually recursive closures), so probably this should be
+     rewritten.
    *)
   iter_instrs funcn ~f:(fun instr ->
     match instr.opcode with

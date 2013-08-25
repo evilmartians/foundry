@@ -171,6 +171,9 @@ and string_of_klass env klass =
       "class " ^ (escape_as_literal klass.k_name) ^ " {\n" ^
         "  metaclass " ^ (string_of_ident (string_of_klass env klass.k_metaclass)) ^ "\n" ^
         (Option.map_default (fun klass ->
+            "  objectclass " ^ (string_of_ident (string_of_klass env klass)) ^ "\n")
+          "" klass.k_objectclass) ^
+        (Option.map_default (fun klass ->
             "  ancestor " ^ (string_of_ident (string_of_klass env klass)) ^ "\n")
           "" klass.k_ancestor) ^
         (string_of_some (klass.k_parameters = []) (fun () ->
@@ -390,6 +393,10 @@ let rec string_of_ssa_name env value =
     instr "lvar_load" [print env; escape_as_literal var]
   | LVarStoreInstr (env, var, value) ->
     term "lvar_store" [print env; escape_as_literal var; print value]
+  | IVarLoadInstr (obj, var) ->
+    instr "ivar_load" [print obj; escape_as_literal var]
+  | IVarStoreInstr (obj, var, value) ->
+    term "ivar_store" [print obj; escape_as_literal var; print value]
   | CallInstr (func, operands) ->
     call_like_instr ("call " ^ (print func)) operands
   | ClosureInstr (func, env) ->

@@ -61,6 +61,7 @@ rule lex = parse
 | "const_env"     { Const_env }
 
 | "metaclass"     { Metaclass }
+| "objectclass"   { Objectclass }
 | "ancestor"      { Ancestor }
 | "parameters"    { Parameters }
 | "slots"         { Slots }
@@ -97,6 +98,8 @@ rule lex = parse
 | "frame"         { Frame }
 | "lvar_load"     { Lvar_load }
 | "lvar_store"    { Lvar_store }
+| "ivar_load"     { Ivar_load }
+| "ivar_store"    { Ivar_store }
 | "resolve"       { Resolve }
 | "call"          { Call }
 | "closure"       { Closure }
@@ -104,8 +107,9 @@ rule lex = parse
 
 | "map"           { Map }
 
-| (['a'-'z']+) as kw { failwith ("unknown keyword: " ^ kw) }
-| eof                { EOF }
+| (['a'-'z' '_']+) as kw
+                  { failwith ("unknown keyword: " ^ kw) }
+| eof             { EOF }
 
 {
   let next lexbuf =

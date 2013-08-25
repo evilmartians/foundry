@@ -1,6 +1,7 @@
+open Unicode.Std
 open Rt
 
-exception Conflict of Rt.ty * Rt.ty
+exception Conflict of ty * ty
 
 val unify       : ty -> ty -> (tvar * ty) list
 val unify_list  : ty list  -> (tvar * ty) list

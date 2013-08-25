@@ -2,6 +2,18 @@ open Unicode.Std
 open Big_int
 open Rt
 
+(* Debug primitive implementations. *)
+
+let debug args =
+  match args with
+  | [arg] ->
+    print_endline (Unicode.assert_utf8s
+      (Sexplib.Sexp.to_string_hum (sexp_of_value arg)));
+    Rt.Nil
+  | _ -> assert false
+
+(* Integer primitive implementations. *)
+
 let int_binop op =
   (fun args ->
     match args with
@@ -35,12 +47,11 @@ let int_divmod args =
         Tuple [Integer(quo); Integer(rem)])
   | _ -> assert false
 
-let debug args =
+(* Tuple primitive implementations. *)
+
+let tup_extend args =
   match args with
-  | [arg] ->
-    print_endline (Unicode.assert_utf8s
-      (Sexplib.Sexp.to_string_hum (sexp_of_value arg)));
-    Rt.Nil
+  | [Tuple(xs); x] -> Tuple(xs @ [x])
   | _ -> assert false
 
 let prim = Table.create [
@@ -74,12 +85,15 @@ let prim = Table.create [
   "int_sgt",    (false,    int_cmpop gt_big_int);
   (* -- tuples ----------------------------------------- *)
   "tup_make",   (false,    fun xs -> Rt.Tuple xs);
-  "tup_extend", (false,    (fun _ -> assert false));
+  "tup_extend", (false,    tup_extend);
+  "tup_concat", (false,    (fun _ -> assert false));
   "tup_length", (false,    (fun _ -> assert false));
   "tup_index",  (false,    (fun _ -> assert false));
   "tup_slice",  (false,    (fun _ -> assert false));
   (* -- closures --------------------------------------- *)
   "lam_call",   (true,     (fun _ -> assert false));
+  (* -- objects ---------------------------------------- *)
+  "obj_alloc",  (false,    (fun _ -> assert false));
 ]
 
 let exists = Table.exists prim

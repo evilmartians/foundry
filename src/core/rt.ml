@@ -88,15 +88,16 @@ and package = {
   p_constants     : value Table.t;
 }
 and klass = {
-  k_name          : string;
-  k_metaclass     : klass;
-  k_ancestor      : klass   option;
-  k_is_value      : bool;
-  k_parameters    : (string * tvar) list;
-  k_slots         : ivar    Table.t;
-  k_methods       : imethod Table.t;
-  mutable k_prepended : mixin list;
-  mutable k_appended  : mixin list;
+          k_name          : string;
+          k_metaclass     : klass;
+  mutable k_objectclass   : klass option;
+          k_ancestor      : klass option;
+          k_is_value      : bool;
+          k_parameters    : (string * tvar) list;
+          k_slots         : ivar    Table.t;
+          k_methods       : imethod Table.t;
+  mutable k_prepended     : mixin list;
+  mutable k_appended      : mixin list;
 }
 and mixin = {
   m_name          : string;
@@ -146,22 +147,56 @@ type roots = {
   pToplevel         : package;
 }
 
-let empty_class name ancestor parameters metaclass =
-  { k_name        = name;
-    k_ancestor    = ancestor;
-    k_metaclass   = metaclass;
-    k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
-    k_parameters  = parameters;
+(* Empty regular class -- e.g. for "class Foo". *)
+
+let empty_class kClass ?ancestor ?(parameters=[]) name =
+  let rec klass =
+    { k_name        = name;
+      k_ancestor    = ancestor;
+      k_metaclass   = metaklass;
+      k_objectclass = None;
+      k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
+      k_parameters  = parameters;
+      k_slots       = Table.create [];
+      k_methods     = Table.create [];
+      k_prepended   = [];
+      k_appended    = []; }
+  and metaklass =
+    { k_name        = "meta:" ^ name;
+      k_ancestor    = Option.map (fun k -> k.k_metaclass) ancestor;
+      k_metaclass   = kClass;
+      k_objectclass = Some klass;
+      k_is_value    = false;
+      k_parameters  = parameters;
+      k_slots       = Table.create [];
+      k_methods     = Table.create [];
+      k_prepended   = [];
+      k_appended    = []; }
+  in
+  klass
+
+(* Empty metaclass for a non-class object -- e.g. "package Foo". *)
+
+let empty_metaclass kClass ~ancestor name =
+  { k_name        = "meta:" ^ name;
+    k_ancestor    = Some ancestor;
+    k_metaclass   = kClass;
+    k_objectclass = None;
+    k_is_value    = false;
+    k_parameters  = [];
     k_slots       = Table.create [];
     k_methods     = Table.create [];
     k_prepended   = [];
     k_appended    = []; }
+
+(* Empty class Class for bootstrapping. *)
 
 let create_class () =
   let rec kClass =
     { k_name        = "Class";
       k_ancestor    = None;
       k_metaclass   = kmetaClass;
+      k_objectclass = None;
       k_is_value    = false;
       k_parameters  = [];
       k_slots       = Table.create [];
@@ -172,6 +207,7 @@ let create_class () =
     { k_name        = "meta:Class";
       k_ancestor    = Some kClass;
       k_metaclass   = kClass;
+      k_objectclass = Some kClass;
       k_is_value    = false;
       k_parameters  = [];
       k_slots       = Table.create [];
@@ -182,18 +218,14 @@ let create_class () =
   (kClass, kmetaClass)
 
 let create_roots () =
-  let (kClass, kmetaClass) = create_class ()
-  in
+  let (kClass, kmetaClass) = create_class () in
   let last_tvar = ref 0 in
   let tvar () =
     last_tvar := !last_tvar + 1;
     (!last_tvar : tvar)
   in
-  let new_class ?ancestor ?(parameters=[]) name =
-    let meta_ancestor =
-      Option.map_default (fun k -> Some k.k_metaclass) None ancestor
-    in empty_class name ancestor parameters
-        (empty_class ("meta:" ^ name) meta_ancestor [] kClass)
+  let new_class ?ancestor ?parameters name =
+    empty_class kClass ?ancestor ?parameters name
   in
 
   let kObject     = new_class "Object" in
@@ -232,14 +264,15 @@ let create_roots () =
 
     pToplevel     = {
       p_name      = "toplevel";
-      p_metaclass = empty_class "meta:toplevel" (Some kPackage) [] kClass;
+      p_metaclass = empty_metaclass kClass ~ancestor:kPackage "toplevel";
       p_constants = Table.create []
     }
   }
   in
   let constants = roots.pToplevel.p_constants in
-    List.iter (fun (k, v) ->
-        Table.set constants k (Class (v, Table.create []))) [
+  List.iter (fun (k, v) ->
+      Table.set constants k (Class (v, Table.create [])))
+    [
       "Class",        roots.kClass;
       "Object",       roots.kObject;
       "Value",        roots.kValue;
@@ -259,7 +292,7 @@ let create_roots () =
       "Mixin",        roots.kMixin;
       "Package",      roots.kPackage;
     ];
-    roots
+  roots
 
 let roots = ref (create_roots ())
 
@@ -277,16 +310,12 @@ let new_static_tvar () : tvar =
   last_static_tvar := !last_static_tvar - 1;
   !last_static_tvar
 
-let new_class ?ancestor ?(parameters=[]) name =
-  let meta_ancestor =
-    Option.map_default (fun k -> Some k.k_metaclass) None ancestor
-  in empty_class name ancestor parameters
-      (empty_class ("meta:" ^ name) meta_ancestor [] !roots.kClass)
+let new_class = empty_class !roots.kClass
 
 let new_package name =
   {
     p_name      = name;
-    p_metaclass = empty_class ("meta:" ^ name) (Some !roots.kPackage) [] !roots.kClass;
+    p_metaclass = empty_metaclass !roots.kClass ~ancestor:!roots.kPackage name;
     p_constants = Table.create [];
   }
 
@@ -476,7 +505,7 @@ let string_of_value value =
   (Unicode.assert_utf8s
     (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
 
-let inspect_literal_or value f =
+let rec inspect_literal_or value f =
   match value with
   | TvarTy        -> "TypeVariable"
   | Truth         -> "true"
@@ -492,10 +521,11 @@ let inspect_literal_or value f =
   | UnsignedTy(w) -> "Unsigned(" ^ (string_of_int w) ^ ")"
   | Signed(w,v)   -> (string_of_big_int v) ^ "s" ^ (string_of_int w)
   | SignedTy(w)   -> "Signed(" ^ (string_of_int w) ^ ")"
-  | Class(k,_)    -> k.k_name ^ "()"
+  | Class(k,sp)   -> k.k_name ^ "(" ^ (String.concat ", " (Table.map_list
+                          (fun k v -> k ^ ": " ^ (inspect_type v)) sp)) ^ ")"
   | _             -> f value
 
-let rec inspect_value value =
+and inspect_value value =
   inspect_literal_or value (fun x ->
     match value with
     | Tuple(xs)

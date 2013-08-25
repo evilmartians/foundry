@@ -51,6 +51,7 @@
 %token Const_env
 
 %token Metaclass
+%token Objectclass
 %token Ancestor
 %token Parameters
 %token Slots
@@ -69,6 +70,8 @@
 %token Frame
 %token Lvar_load
 %token Lvar_store
+%token Ivar_load
+%token Ivar_store
 %token Resolve
 %token Call
 %token Primitive

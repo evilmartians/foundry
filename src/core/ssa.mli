@@ -43,8 +43,10 @@ and opcode =
 | ReturnInstr       of (*value*) name
 (* Language-specific opcodes *)
 | FrameInstr        of (*parent*) name
-| LVarLoadInstr     of (*environment*) name * (*var*) string
-| LVarStoreInstr    of (*environment*) name * (*var*) string * (*value*) name
+| LVarLoadInstr     of (*environment*) name * (*name*) string
+| LVarStoreInstr    of (*environment*) name * (*name*) string * (*value*) name
+| IVarLoadInstr     of (*object*) name  * (*name*) string
+| IVarStoreInstr    of (*object*) name  * (*name*) string * (*value*) name
 | CallInstr         of (*func*) name    * (*operands*) name list
 | ClosureInstr      of (*func*) name    * (*environment*) name
 | ResolveInstr      of (*object*)  name * (*method*)   name

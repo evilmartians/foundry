@@ -33,12 +33,12 @@ let append ?(ty=Rt.NilTy) ~opcode blockn =
   instr
 
 let rec ssa_of_expr ~entry ~state ~expr =
-  let load ~entry name =
+  let load entry name =
     entry, append entry
               ~ty:(lvar_type state.frame_ty name)
               ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
   in
-  let store ~entry name value =
+  let store entry name value =
     ignore (append entry
               ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
     entry, value
@@ -61,16 +61,27 @@ let rec ssa_of_expr ~entry ~state ~expr =
   | Syntax.Begin (_, exprs)
   -> (let entry, names = ssa_of_exprs ~entry ~state ~exprs in
       entry, List.hd names)
+  (* Constants. *)
+  | Syntax.Const (_, name)
+  -> entry, Ssa.const (Rt.cenv_lookup state.const_env name)
   (* Variable access and assignment. *)
   | Syntax.Self (_)
-  -> load ~entry "self"
+  -> load entry "self"
   | Syntax.Var (_, name)
-  -> load ~entry name
+  -> load entry name
+  | Syntax.IVar (_, name)
+  -> (let entry, self = load entry "self" in
+      entry, append entry ~ty:(tvar ())
+                          ~opcode:(Ssa.IVarLoadInstr (self, name)))
   | Syntax.Assign (_, Syntax.Var (_, name), expr)
   -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
-      store ~entry name value)
+      store entry name value)
+  | Syntax.Assign (_, Syntax.IVar (_, name), expr)
+  -> (let entry, self  = load entry "self" in
+      let entry, value = ssa_of_expr ~entry ~state ~expr in
+      entry, append entry ~opcode:(Ssa.IVarStoreInstr (self, name, value)))
   | Syntax.OpAssign (_, Syntax.Var (_, name), selector, expr)
-  -> (let entry, value = load ~entry name in
+  -> (let entry, value = load entry name in
       let callee =
         append entry ~ty:(tvar ())
                      ~opcode:(Ssa.ResolveInstr (value,
@@ -86,7 +97,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
         append entry ~ty:(tvar ())
                      ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
       in
-      store ~entry name value')
+      store entry name value')
   | Syntax.Let (_, pattern, _ty, expr)
   -> ssa_of_pattern ~entry ~state ~pattern ~expr
   (* Method calls. *)
@@ -219,6 +230,11 @@ and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
         -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
             args := append entry ~ty:(tvar ())
                   ~opcode:(Ssa.PrimitiveInstr ("tup_extend", [!args; value]));
+            entry)
+        | Syntax.ActualSplice (_, expr)
+        -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
+            args := append entry ~ty:(tvar ())
+                  ~opcode:(Ssa.PrimitiveInstr ("tup_concat", [!args; value]));
             entry))
       entry actual_args
   in
@@ -347,7 +363,10 @@ and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
     in
 
     (* Perform SSA conversion. *)
-    let lam_state = { funcn; frame; frame_ty; args; arg_idx = 0; kwargs } in
+    let lam_state = { funcn; frame; frame_ty;
+                      type_env  = Table.copy state.type_env;
+                      const_env = state.const_env;
+                      args; arg_idx = 0; kwargs } in
     let lam_entry = ssa_of_formal_args ~entry:lam_entry ~state:lam_state ~formal_args in
     let lam_entry, lam_value = ssa_of_seq ~entry:lam_entry ~state:lam_state ~exprs:[expr] in
     ignore (append lam_entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr lam_value));
@@ -393,7 +412,10 @@ let name_of_lambda ?(id="") lambda =
     in
 
     (* Perform SSA conversion. *)
-    let state = { funcn; frame; frame_ty; args; arg_idx = 0; kwargs } in
+    let state = { funcn; frame; frame_ty;
+                  type_env  = lambda.Rt.l_type_env;
+                  const_env = lambda.Rt.l_const_env;
+                  args; arg_idx = 0; kwargs } in
     let entry = ssa_of_formal_args ~entry ~state ~formal_args:lambda.Rt.l_args in
     let entry, value = ssa_of_seq ~entry ~state ~exprs:lambda.Rt.l_body in
     ignore (append entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr value));

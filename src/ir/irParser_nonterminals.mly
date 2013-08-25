@@ -325,13 +325,14 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
    struct_body: bind_as=Name_Global Equal
                   Class name=Lit_String LBrace
-                    metaclass=prefix(Metaclass,  klass)
-                     ancestor=prefix(Ancestor,   klass)?
-                   parameters=prefix(Parameters, assoc(tvar))?
-                        slots=prefix(Slots,      table(ivar))?
-                      methods=prefix(Methods,    table(method_))?
-                    prepended=prefix(Prepended,  seq(mixin))?
-                     appended=prefix(Appended,   seq(mixin))?
+                    metaclass=prefix(Metaclass,   klass)
+                  objectclass=prefix(Objectclass, klass)?
+                     ancestor=prefix(Ancestor,    klass)?
+                   parameters=prefix(Parameters,  assoc(tvar))?
+                        slots=prefix(Slots,       table(ivar))?
+                      methods=prefix(Methods,     table(method_))?
+                    prepended=prefix(Prepended,   seq(mixin))?
+                     appended=prefix(Appended,    seq(mixin))?
                   RBrace
                 { (fun env ->
                     let klass =
@@ -346,6 +347,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                             k_name        = name;
                             k_ancestor    = ancestor;
                             k_metaclass   = metaclass env;
+                            k_objectclass = None;
                             k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
                             k_parameters  = Option.map_default (fun p -> p env) [] parameters;
                             k_slots       = Table.create [];
@@ -357,10 +359,11 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                           klass)
                     in
                     (fun () ->
-                      Option.may (fun x -> Table.replace klass.k_slots      (x env)) slots;
-                      Option.may (fun x -> Table.replace klass.k_methods    (x env)) methods;
-                      Option.may (fun x -> klass.k_prepended <- (x env)) prepended;
-                      Option.may (fun x -> klass.k_appended  <- (x env)) appended))
+                      Option.may (fun x -> klass.k_objectclass  <- Some (x env)) objectclass;
+                      Option.may (fun x -> Table.replace klass.k_slots   (x env)) slots;
+                      Option.may (fun x -> Table.replace klass.k_methods (x env)) methods;
+                      Option.may (fun x -> klass.k_prepended    <- x env) prepended;
+                      Option.may (fun x -> klass.k_appended     <- x env) appended))
                 }
 
               | bind_as=Name_Global Equal
@@ -551,6 +554,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | Lvar_store
                     lenv=local_env_op Comma name=Lit_String Comma value=operand
                 { (fun env -> Rt.NilTy, LVarStoreInstr (lenv env, name, value env)) }
+              | ty=instr_ty Ivar_load obj=operand Comma name=Lit_String
+                { (fun env -> ty env, IVarLoadInstr (obj env, name)) }
+              | Ivar_store obj=operand Comma name=Lit_String Comma value=operand
+                { (fun env -> Rt.NilTy, IVarStoreInstr (obj env, name, value env)) }
               | ty=instr_ty? Primitive name=Lit_String args=args(operand)
                 { (fun env ->
                     Option.map_default (fun ty -> ty env) Rt.NilTy ty,

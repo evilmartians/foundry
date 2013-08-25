@@ -52,8 +52,10 @@ sig
   | ReturnInstr       of (*value*) name
   (* Language-specific opcodes *)
   | FrameInstr        of (*parent*) name
-  | LVarLoadInstr     of (*environment*) name * (*var*) string
-  | LVarStoreInstr    of (*environment*) name * (*var*) string * (*value*) name
+  | LVarLoadInstr     of (*environment*) name * (*name*) string
+  | LVarStoreInstr    of (*environment*) name * (*name*) string * (*value*) name
+  | IVarLoadInstr     of (*object*) name  * (*name*) string
+  | IVarStoreInstr    of (*object*) name  * (*name*) string * (*value*) name
   | CallInstr         of (*func*) name    * (*operands*) name list
   | ClosureInstr      of (*func*) name    * (*environment*) name
   | ResolveInstr      of (*object*)  name * (*method*)   name
@@ -304,6 +306,10 @@ let instr_operands instr =
   -> [env]
   | LVarStoreInstr (env, _, value)
   -> [env; value]
+  | IVarLoadInstr (obj, _)
+  -> [obj]
+  | IVarStoreInstr (obj, _, value)
+  -> [obj; value]
   | CallInstr (callee, operands)
   -> callee :: operands
   | ClosureInstr (func, env)
@@ -451,6 +457,10 @@ let map_instr_operands instr operands =
   -> LVarLoadInstr (frame, name)
   | LVarStoreInstr (_, name, _), [frame; value]
   -> LVarStoreInstr (frame, name, value)
+  | IVarLoadInstr (_, name), [obj]
+  -> IVarLoadInstr (obj, name)
+  | IVarStoreInstr (_, name, _), [obj; value]
+  -> IVarStoreInstr (obj, name, value)
   | CallInstr (_, _), callee :: operands
   -> CallInstr (callee, operands)
   | ClosureInstr (_, _), [func; env]

@@ -87,15 +87,16 @@ and package = {
   p_constants     : value Table.t;
 }
 and klass = {
-  k_name          : string;
-  k_metaclass     : klass;
-  k_ancestor      : klass   option;
-  k_is_value      : bool;
-  k_parameters    : (string * tvar) list;
-  k_slots         : ivar    Table.t;
-  k_methods       : imethod Table.t;
-  mutable k_prepended : mixin list;
-  mutable k_appended  : mixin list;
+          k_name          : string;
+          k_metaclass     : klass;
+  mutable k_objectclass   : klass option;
+          k_ancestor      : klass option;
+          k_is_value      : bool;
+          k_parameters    : (string * tvar) list;
+          k_slots         : ivar    Table.t;
+          k_methods       : imethod Table.t;
+  mutable k_prepended     : mixin list;
+  mutable k_appended      : mixin list;
 }
 and mixin = {
   m_name          : string;
