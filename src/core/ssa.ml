@@ -570,56 +570,17 @@ let specialize funcn env =
   iter_instrs update funcn;
   !changed
 
+let iter_overloads ~f capsule =
+  Nametbl.iter f capsule.overloads
+
+let find_overload ~f capsule funcn =
+  let overloads = Nametbl.find_all capsule.overloads funcn in
+  List.find f overloads
+
 let add_overload capsule funcn funcn' =
   ignore (func_of_name funcn);
   ignore (func_of_name funcn');
   Nametbl.add capsule.overloads funcn funcn'
-
-let iter_overloads ~f capsule =
-  Nametbl.iter f capsule.overloads
-
-let overload capsule funcn ty' =
-  let funcn =
-    (* Try to find a more specific function, but not more specific. Unification
-       of such function with the signature must produce the signature itself. *)
-    try
-      let overloads = Nametbl.find_all capsule.overloads funcn in
-      List.find (fun overload ->
-          try
-            (* Note that the success of this comparison depends on the way
-               Typing.unify unifies type variables: currently, Typing.unify lhs rhs
-               will associate all tvars in lhs to their counterparts in rhs. If this
-               would be the other way around, the equality condition below would never
-               be true for types with type variables.
-
-               Perhaps this should be rewritten to be more robust.
-             *)
-            let env = Typing.unify overload.ty ty' in
-            Rt.equal ty' (Typing.subst env ty')
-          with Typing.Conflict _ -> false)
-        overloads
-    with Not_found ->
-      funcn
-  in
-    (* Check if we need to specialize this function even more, or it's
-       specific enough. *)
-    let env = Typing.unify funcn.ty ty' in
-    if Rt.equal (Typing.subst env funcn.ty) funcn.ty then
-      (* Unification produced a signature exactly equal to the overload
-         being considered. *)
-      funcn
-    else begin
-      (* Unification changed the signature of callee. *)
-      let funcn' = copy_func funcn in
-      add_func capsule funcn';
-      add_overload capsule funcn funcn';
-      ignore (specialize funcn' env);
-      funcn'
-    end
-
-let add_lambda capsule lambda funcn =
-  ignore (func_of_name funcn);
-  Lambdatbl.add capsule.lambda_cache lambda funcn
 
 let iter_lambdas ~f capsule =
   Lambdatbl.iter f capsule.lambda_cache
@@ -627,3 +588,7 @@ let iter_lambdas ~f capsule =
 let lookup_lambda capsule lambda =
   try  Some (Lambdatbl.find capsule.lambda_cache lambda)
   with Not_found -> None
+
+let add_lambda capsule lambda funcn =
+  ignore (func_of_name funcn);
+  Lambdatbl.add capsule.lambda_cache lambda funcn
