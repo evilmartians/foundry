@@ -409,6 +409,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
 
   | Syntax.DefIVar((loc,_),name,kind,ty_expr)
   -> (define_ivar (lenv_lookup lenv "self") name {
+        iv_hash     = Hash_seed.make ();
         iv_location = loc;
         iv_ty       = eval_type env ty_expr;
         iv_kind     = kind;

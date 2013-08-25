@@ -1,25 +1,5 @@
-open Unicode.Std
 open ExtList
-open Big_int
-
-type named_value =
-| NamedLocalEnv of Rt.local_env
-
-let named_value_of_value value =
-  match value with
-  | Rt.Environment env -> NamedLocalEnv env
-  | _ -> assert false
-
-module Valuetbl = Hashtbl.Make(
-  struct
-    type t = named_value
-
-    let equal a b =
-      match a, b with
-      | NamedLocalEnv(a), NamedLocalEnv(b) -> a == b
-
-    let hash = Hashtbl.hash
-  end)
+open Fy_big_int
 
 let ctx = Llvm.global_context ()
 
@@ -74,11 +54,11 @@ let rec lltype_of_ty ty =
         Llvm.pointer_type (Llvm.i8_type ctx) (* i8* *)
       |])
   | _
-  -> failwith (u"lltype_of_ty: " ^ Rt.inspect_value ty)
+  -> failwith ("lltype_of_ty: " ^ ((Rt.inspect_value ty) :> string))
 
 type env_map = {
   e_parent  : env_map option;
-  e_content : string list;
+  e_content : Unicode.utf8s list;
   e_lltype  : Llvm.lltype;
 }
 let env_maps = Hashtbl.create 10
@@ -127,18 +107,17 @@ let local_var_index env_map name =
   | Some _ -> index + 1
   | None   -> index
 
-let heap = Valuetbl.create 10
+let heap = Rt.Valuetbl.create 10
 
 let rec llconst_of_value llmod value =
   let memoize lltype f =
-    let key = named_value_of_value value in
     try
-      Valuetbl.find heap key
+      Rt.Valuetbl.find heap value
     with Not_found ->
       let llglobal = Llvm.declare_global lltype "" llmod in
       let llvalue  = (f llglobal) in
         Llvm.set_initializer llvalue llglobal;
-        Valuetbl.add heap key llglobal;
+        Rt.Valuetbl.add heap value llglobal;
         llglobal
   in
   match value with
@@ -166,7 +145,7 @@ let rec llconst_of_value llmod value =
       with Failure _ ->
         (* Very slow path. > 64 bits.
            There is no direct big_int -> llvalue converter. *)
-        Llvm.const_int_of_string llty ((string_of_big_int ivalue) :> latin1s) 10)
+        Llvm.const_int_of_string llty ((string_of_big_int ivalue) :> string) 10)
   | Rt.Tuple xs
   -> Llvm.const_struct ctx (Array.of_list (List.map (llconst_of_value llmod) xs))
   | Rt.Record xs
@@ -182,7 +161,7 @@ let rec llconst_of_value llmod value =
               llconst_of_value llmod (Table.get_exn env.Rt.e_bindings name).Rt.b_value)
             env_map.e_content
         in
-        (* Recurse and convert parent environment as well. *)
+        (* Recur and convert parent environment as well. *)
         let parent = Option.map (fun parent ->
                           llconst_of_value llmod (Rt.Environment parent))
                         env.Rt.e_parent in
@@ -200,7 +179,7 @@ let rec llconst_of_value llmod value =
   | _ -> failwith (u"llconst_of_value: " ^ (Rt.inspect_value value))
 
 let gen_proto llmod funcn =
-  let name = (funcn.Ssa.id :> latin1s) in
+  let name = (funcn.Ssa.id :> string) in
   let args_ty, ret_ty = Ssa.func_ty funcn in
   (* Map FSSA prototype to LLVM prototype. *)
   let llargs_ty = Array.of_list (List.map lltype_of_ty args_ty)
@@ -247,11 +226,11 @@ let rec gen_func llmod funcn =
             a constant within this context, but has different lookup rules.
             Either look it up, or emit a prototype and hopefully fill it
             later in gen_func. *)
-         (match Llvm.lookup_function (name.Ssa.id :> latin1s) llmod with
+         (match Llvm.lookup_function (name.Ssa.id :> string) llmod with
           | Some llfunc -> llfunc
           | None -> gen_proto llmod name)
       | _
-      -> failwith (u"gen_func/map " ^ name.Ssa.id)
+      -> failwith ("gen_func/map " ^ (name.Ssa.id :> string))
   in
 
   (* Map FSSA primitive to LLVM primitive. *)
@@ -349,13 +328,13 @@ let rec gen_func llmod funcn =
         Llvm.build_call llfunc (Array.of_list (llenv :: (List.map map operands))) id builder)
 
     | _, _
-    -> failwith (u"gen_func/gen_prim: " ^ (Unicode.assert_utf8s prim) ^
-                 u"/" ^ (string_of_int (List.length operands)))
+    -> failwith ("gen_func/gen_prim: " ^ prim ^
+                 "/" ^ (string_of_int (List.length operands)))
   in
 
   (* Build LLVM instruction out of FSSA instruction. *)
   let gen_instr instr =
-    let id = (instr.Ssa.id :> latin1s) in
+    let id = (instr.Ssa.id :> string) in
     let llvalue =
       match instr.Ssa.opcode with
       (* Constants are handled within `map'. *)
@@ -459,7 +438,7 @@ let rec gen_func llmod funcn =
           let llclosure = Llvm.build_insertvalue llclosure llenv  1 "" builder in
           llclosure)
       | Ssa.PrimitiveInstr (prim, operands)
-      -> gen_prim instr id (prim :> latin1s) operands
+      -> gen_prim instr id (prim :> string) operands
       | _
       -> assert false
     in
@@ -474,13 +453,13 @@ let rec gen_func llmod funcn =
   List.iteri (fun index argn ->
       let llparam = llparams.(index) in
       Ssa.Nametbl.add names argn llparam;
-      Llvm.set_value_name (argn.Ssa.id :> latin1s) llparam)
+      Llvm.set_value_name (argn.Ssa.id :> string) llparam)
     func.Ssa.arguments;
 
   (* Create LLVM basic blocks for corresponding FSSA basic
      blocks. *)
   List.iter (fun blockn ->
-      let llblock = Llvm.append_block ctx (blockn.Ssa.id :> latin1s) llfunc in
+      let llblock = Llvm.append_block ctx (blockn.Ssa.id :> string) llfunc in
       Ssa.Nametbl.add names blockn (Llvm.value_of_block llblock))
     func.Ssa.basic_blocks;
 

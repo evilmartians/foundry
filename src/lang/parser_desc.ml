@@ -88,6 +88,7 @@ let name_of_token = function
   | Vl_SINT _ -> "Vl_SINT"
   | Kw_UNTIL _ -> "Kw_UNTIL"
   | Kw_UNLESS _ -> "Kw_UNLESS"
+  | Kw_ASSERT _ -> "Kw_ASSERT"
 
 let loc_of_token token =
   match token with
@@ -170,6 +171,7 @@ let loc_of_token token =
   | Kw_DO (loc, _) -> loc
   | Kw_DEF (loc, _) -> loc
   | Kw_CLASS (loc, _) -> loc
+  | Kw_ASSERT (loc, _) -> loc
   | Kw_AS (loc, _) -> loc
   | Kw_AND (loc, _) -> loc
   | Id_TVAR (loc, _) -> loc

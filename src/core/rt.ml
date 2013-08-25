@@ -46,48 +46,51 @@ and ty = value
 and 'a specialized = 'a * value Table.t
 and slots = value Table.t
 and binding_ty = {
-  b_ty_location   : Location.t;
-  b_ty_kind       : Syntax.lvar_kind;
-  b_ty            : ty;
+          b_ty_location   : Location.t;
+          b_ty_kind       : Syntax.lvar_kind;
+          b_ty            : ty;
 }
 and bindings_ty  = binding_ty Table.t
 and local_env_ty = {
-  e_ty_parent     : local_env_ty option;
-  e_ty_bindings   : bindings_ty;
+          e_ty_parent     : local_env_ty option;
+          e_ty_bindings   : bindings_ty;
 }
 and binding = {
-  b_location      : Location.t;
-  b_kind          : Syntax.lvar_kind;
-  b_value         : value;
+          b_location      : Location.t;
+          b_kind          : Syntax.lvar_kind;
+          b_value         : value;
 }
 and bindings  = binding Table.t
 and local_env = {
-  e_parent        : local_env option;
-  e_bindings      : bindings;
+          e_hash          : int;
+          e_parent        : local_env option;
+          e_bindings      : bindings;
 }
 and type_env  = tvar Table.t
 and const_env = package list
 and lambda    = {
-  l_hash          : int;
-  l_location      : Location.t;
-  l_ty            : lambda_ty;
-  mutable l_local_env : local_env;
-  mutable l_type_env  : type_env;
-  mutable l_const_env : const_env;
-  l_args          : Syntax.formal_args;
-  l_body          : Syntax.exprs;
+          l_hash          : int;
+          l_location      : Location.t;
+          l_ty            : lambda_ty;
+  mutable l_local_env     : local_env;
+  mutable l_type_env      : type_env;
+  mutable l_const_env     : const_env;
+          l_args          : Syntax.formal_args;
+          l_body          : Syntax.exprs;
 }
 and lambda_ty = {
-  l_ty_args       : ty;
-  l_ty_kwargs     : ty;
-  l_ty_result     : ty;
+          l_ty_args       : ty;
+          l_ty_kwargs     : ty;
+          l_ty_result     : ty;
 }
 and package = {
-  p_name          : string;
-  p_metaclass     : klass;
-  p_constants     : value Table.t;
+          p_hash          : int;
+          p_name          : string;
+          p_metaclass     : klass;
+          p_constants     : value Table.t;
 }
 and klass = {
+          k_hash          : int;
           k_name          : string;
           k_metaclass     : klass;
   mutable k_objectclass   : klass option;
@@ -100,23 +103,25 @@ and klass = {
   mutable k_appended      : mixin list;
 }
 and mixin = {
-  m_name          : string;
-  m_metaclass     : klass;
-  m_methods       : imethod Table.t;
+          m_hash          : int;
+          m_name          : string;
+          m_metaclass     : klass;
+          m_methods       : imethod Table.t;
 }
 and imethod = {
-  im_hash         : int;
-  im_body         : lambda;
-  im_dynamic      : bool;
+          im_hash         : int;
+          im_body         : lambda;
+          im_dynamic      : bool;
 }
 and ivar = {
-  iv_location     : Location.t;
-  iv_kind         : Syntax.ivar_kind;
-  iv_ty           : ty;
+          iv_hash         : int;
+          iv_location     : Location.t;
+          iv_kind         : Syntax.ivar_kind;
+          iv_ty           : ty;
 }
 and exc = {
-  ex_message      : string;
-  ex_locations    : Location.t list;
+          ex_message      : string;
+          ex_locations    : Location.t list;
 }
 with sexp_of
 
@@ -151,7 +156,8 @@ type roots = {
 
 let empty_class kClass ?ancestor ?(parameters=[]) name =
   let rec klass =
-    { k_name        = name;
+    { k_hash        = Hash_seed.make ();
+      k_name        = name;
       k_ancestor    = ancestor;
       k_metaclass   = metaklass;
       k_objectclass = None;
@@ -162,7 +168,8 @@ let empty_class kClass ?ancestor ?(parameters=[]) name =
       k_prepended   = [];
       k_appended    = []; }
   and metaklass =
-    { k_name        = "meta:" ^ name;
+    { k_hash        = Hash_seed.make ();
+      k_name        = "meta:" ^ name;
       k_ancestor    = Option.map (fun k -> k.k_metaclass) ancestor;
       k_metaclass   = kClass;
       k_objectclass = Some klass;
@@ -178,7 +185,8 @@ let empty_class kClass ?ancestor ?(parameters=[]) name =
 (* Empty metaclass for a non-class object -- e.g. "package Foo". *)
 
 let empty_metaclass kClass ~ancestor name =
-  { k_name        = "meta:" ^ name;
+  { k_hash        = Hash_seed.make ();
+    k_name        = "meta:" ^ name;
     k_ancestor    = Some ancestor;
     k_metaclass   = kClass;
     k_objectclass = None;
@@ -193,7 +201,8 @@ let empty_metaclass kClass ~ancestor name =
 
 let create_class () =
   let rec kClass =
-    { k_name        = "Class";
+    { k_hash        = Hash_seed.make ();
+      k_name        = "Class";
       k_ancestor    = None;
       k_metaclass   = kmetaClass;
       k_objectclass = None;
@@ -204,7 +213,8 @@ let create_class () =
       k_prepended   = [];
       k_appended    = []; }
   and kmetaClass =
-    { k_name        = "meta:Class";
+    { k_hash        = Hash_seed.make ();
+      k_name        = "meta:Class";
       k_ancestor    = Some kClass;
       k_metaclass   = kClass;
       k_objectclass = Some kClass;
@@ -263,6 +273,7 @@ let create_roots () =
     kPackage      = kPackage;
 
     pToplevel     = {
+      p_hash      = Hash_seed.make ();
       p_name      = "toplevel";
       p_metaclass = empty_metaclass kClass ~ancestor:kPackage "toplevel";
       p_constants = Table.create []
@@ -313,11 +324,10 @@ let new_static_tvar () : tvar =
 let new_class = empty_class !roots.kClass
 
 let new_package name =
-  {
+  { p_hash      = Hash_seed.make ();
     p_name      = name;
     p_metaclass = empty_metaclass !roots.kClass ~ancestor:!roots.kPackage name;
-    p_constants = Table.create [];
-  }
+    p_constants = Table.create []; }
 
 (* Types and classes *)
 
@@ -402,8 +412,7 @@ let rec type_of_value value =
                     (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
 
 and type_of_environment env =
-  {
-    e_ty_parent   = Option.map type_of_environment env.e_parent;
+  { e_ty_parent   = Option.map type_of_environment env.e_parent;
     e_ty_bindings =
       Table.map (fun b -> {
         b_ty_location = b.b_location;
@@ -498,6 +507,66 @@ let rec equal a b =
   -> a == b && equal_table sa sb
   | _, _
   -> false
+
+let rec hash value =
+  let hash_list lst =
+    Hashtbl.hash (List.map hash lst)
+  in
+  let hash_table table =
+    Hashtbl.hash (Table.map_list (fun k _ -> k) table)
+  in
+  let rec hash_local_env_ty env =
+    let seed =
+      match env.e_ty_parent with
+      | Some env -> hash_local_env_ty env
+      | None     -> 0
+    in
+    Hashtbl.hash (seed, (Table.map_list (fun k _ -> k) env.e_ty_bindings))
+  in
+  match value with
+  (* Immutable values and types. *)
+  | TvarTy | Nil | NilTy | Truth | Lies
+  | BooleanTy | IntegerTy | SymbolTy | BasicBlockTy
+  (* Immutable values and types with immutable parameters. *)
+  | Tvar _ | Integer _ | Symbol _ | UnsignedTy _ | SignedTy _
+  | Unsigned _ | Signed _
+  -> Hashtbl.hash value
+
+  (* Immutable values and types with possibly mutable parameters. *)
+  | Tuple(x) | TupleTy(x)
+  -> hash_list x
+  | Record(x) | RecordTy(x)
+  -> hash_table x
+  | EnvironmentTy(x)
+  -> hash_local_env_ty x
+  | LambdaTy(x)
+  -> hash_list [x.l_ty_args; x.l_ty_kwargs; x.l_ty_result]
+  | FunctionTy(xa,xr) | ClosureTy(xa,xr)
+  -> hash_list (xr :: xa)
+
+  (* Mutable values and types. *)
+  | Environment(x)
+  -> x.e_hash
+  | Lambda(x)
+  -> x.l_hash
+  | Package(x)
+  -> x.p_hash
+  | Instance(_, xs)
+  -> (* BIG FAT TODO *) Hashtbl.hash xs
+  | Class(x, sp)
+  -> Hashtbl.hash [x.k_hash; hash_table sp]
+  | Mixin(x, sp)
+  -> Hashtbl.hash [x.m_hash; hash_table sp]
+
+module ValueIdentity =
+struct
+  type t = value
+
+  let equal = equal
+  let hash  = hash
+end
+
+module Valuetbl = Hashtbl.Make(ValueIdentity)
 
 (* Inspecting types and values *)
 
@@ -612,7 +681,8 @@ let exc_type expected obj =
 (* Local environment *)
 
 let lenv_create parent : local_env =
-  { e_parent   = parent;
+  { e_hash     = Hash_seed.make ();
+    e_parent   = parent;
     e_bindings = Table.create [] }
 
 let lenv_bind env name ~kind ~value ~loc =

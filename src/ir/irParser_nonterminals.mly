@@ -84,7 +84,8 @@
     }
 
   let dummy_local_env =
-    { e_parent   = None;
+    { e_hash     = Hash_seed.make ();
+      e_parent   = None;
       e_bindings = Table.create [] }
 
   type definitions = {
@@ -285,6 +286,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
 
           ivar: loc=location kind=ivar_kind x=value
                 { (fun env -> {
+                    iv_hash     = Hash_seed.make ();
                     iv_location = loc;
                     iv_kind     = kind;
                     iv_ty       = x env;
@@ -344,6 +346,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                       | None
                       -> (let ancestor = Option.map (fun x -> x env) ancestor in
                           let klass = {
+                            k_hash        = Hash_seed.make ();
                             k_name        = name;
                             k_ancestor    = ancestor;
                             k_metaclass   = metaclass env;
@@ -373,6 +376,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   RBrace
                 { (fun env ->
                     let mixin = {
+                      m_hash      = Hash_seed.make ();
                       m_name      = name;
                       m_metaclass = metaclass env;
                       m_methods   = Table.create [];
@@ -389,6 +393,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   RBrace
                 { (fun env ->
                     let package = {
+                      p_hash      = Hash_seed.make ();
                       p_name      = name;
                       p_metaclass = metaclass env;
                       p_constants = Table.create [];
@@ -432,6 +437,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                   RBrace
                 { (fun env ->
                     let local_env = {
+                      e_hash     = Hash_seed.make ();
                       e_parent   = Option.map (fun x -> x env) parent;
                       e_bindings = Table.create [];
                     } in

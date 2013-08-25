@@ -6,6 +6,8 @@ features:
  * store location map in fir
 
 bugs:
+ * don't store heap globally in codegen
+ * don't use hashtbl for immutable stuff
  * allocate fresh tvars on copy_func
  * better value_env
  * better mangling

@@ -45,48 +45,51 @@ and ty = value
 and 'a specialized = 'a * ty Table.t
 and slots = value Table.t
 and binding_ty = {
-  b_ty_location   : Location.t;
-  b_ty_kind       : Syntax.lvar_kind;
-  b_ty            : ty;
+          b_ty_location   : Location.t;
+          b_ty_kind       : Syntax.lvar_kind;
+          b_ty            : ty;
 }
 and bindings_ty  = binding_ty Table.t
 and local_env_ty = {
-  e_ty_parent     : local_env_ty option;
-  e_ty_bindings   : bindings_ty;
+          e_ty_parent     : local_env_ty option;
+          e_ty_bindings   : bindings_ty;
 }
 and binding = {
-  b_location      : Location.t;
-  b_kind          : Syntax.lvar_kind;
-  b_value         : value;
+          b_location      : Location.t;
+          b_kind          : Syntax.lvar_kind;
+          b_value         : value;
 }
 and bindings  = binding Table.t
 and local_env = {
-  e_parent        : local_env option;
-  e_bindings      : bindings;
+          e_hash          : int;
+          e_parent        : local_env option;
+          e_bindings      : bindings;
 }
 and type_env  = tvar Table.t
 and const_env = package list
 and lambda    = {
-  l_hash          : int;
-  l_location      : Location.t;
-  l_ty            : lambda_ty;
-  mutable l_local_env : local_env;
-  mutable l_type_env  : type_env;
-  mutable l_const_env : const_env;
-  l_args          : Syntax.formal_args;
-  l_body          : Syntax.exprs;
+          l_hash          : int;
+          l_location      : Location.t;
+          l_ty            : lambda_ty;
+  mutable l_local_env     : local_env;
+  mutable l_type_env      : type_env;
+  mutable l_const_env     : const_env;
+          l_args          : Syntax.formal_args;
+          l_body          : Syntax.exprs;
 }
 and lambda_ty = {
-  l_ty_args       : ty;
-  l_ty_kwargs     : ty;
-  l_ty_result     : ty;
+          l_ty_args       : ty;
+          l_ty_kwargs     : ty;
+          l_ty_result     : ty;
 }
 and package = {
-  p_name          : string;
-  p_metaclass     : klass;
-  p_constants     : value Table.t;
+          p_hash          : int;
+          p_name          : string;
+          p_metaclass     : klass;
+          p_constants     : value Table.t;
 }
 and klass = {
+          k_hash          : int;
           k_name          : string;
           k_metaclass     : klass;
   mutable k_objectclass   : klass option;
@@ -99,28 +102,33 @@ and klass = {
   mutable k_appended      : mixin list;
 }
 and mixin = {
-  m_name          : string;
-  m_metaclass     : klass;
-  m_methods       : imethod Table.t;
+          m_hash          : int;
+          m_name          : string;
+          m_metaclass     : klass;
+          m_methods       : imethod Table.t;
 }
 and imethod = {
-  im_hash         : int;
-  im_body         : lambda;
-  im_dynamic      : bool;
+          im_hash         : int;
+          im_body         : lambda;
+          im_dynamic      : bool;
 }
 and ivar = {
-  iv_location     : Location.t;
-  iv_kind         : Syntax.ivar_kind;
-  iv_ty           : ty;
+          iv_hash         : int;
+          iv_location     : Location.t;
+          iv_kind         : Syntax.ivar_kind;
+          iv_ty           : ty;
 }
 and exc = {
-  ex_message      : string;
-  ex_locations    : Location.t list;
+          ex_message      : string;
+          ex_locations    : Location.t list;
 }
 with sexp_of
 
 exception Exc of exc
 with sexp
+
+(* Valuetbl is safe to use in presence of key mutation. *)
+module Valuetbl : Hashtbl.S with type key = value
 
 (* Types and values *)
 
@@ -132,6 +140,7 @@ val klass_of_value : ?dispatch:bool -> ?meta:bool -> value -> klass
 
 (* Correctly handles cyclic structures. *)
 val equal          : value -> value -> bool
+val hash           : value -> int
 
 val inspect        : value -> string
 val inspect_value  : value -> string
