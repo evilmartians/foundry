@@ -27,14 +27,18 @@ end
 let verbose = ref false
 let level   = ref 0
 
+let unique_id name =
+  "@" ^ name.Ssa.id ^ "/" ^ (string_of_int name.Ssa.n_hash)
+
 let print_verbose str =
   if !verbose then
     prerr_endline ((String.make (!level * 2) ' ') ^ str)
 
 let print_invalidate name reason =
+  let id = unique_id name in
   match reason with
-  | None   -> print_verbose ("Invalidating function @" ^ name ^ ".")
-  | Some r -> print_verbose ("Invalidating function @" ^ name ^ ": " ^ r ^ ".")
+  | None   -> print_verbose ("Invalidating " ^ id ^ ".")
+  | Some r -> print_verbose ("Invalidating " ^ id ^ ": " ^ r ^ ".")
 
 let print_exn exn reason =
   let exn_desc =
@@ -67,7 +71,7 @@ let run' passmgr capsule =
     print_verbose ("Leaving module pass '" ^ name ^ "'.")
   in
   let run_function funcn (name, pass) =
-    print_verbose ("Entering function pass '" ^ name ^ "' for @" ^ (funcn.Ssa.id) ^ ".");
+    print_verbose ("Entering function pass '" ^ name ^ "' for " ^ (unique_id funcn) ^ ".");
     pass capsule funcn;
     print_verbose ("Leaving function pass '" ^ name ^ "'.")
   in
@@ -114,7 +118,6 @@ let run passmgr capsule =
   | Exit ->
     ()
   | exn ->
-    print_exn exn "uncaught";
     prerr_endline "Convergence terminated by uncaught exception";
     if not !verbose then begin
       prerr_endline (Unicode.assert_utf8s (Printexc.to_string exn));
@@ -122,7 +125,7 @@ let run passmgr capsule =
     end
 
 let mark passmgr ?reason funcn =
-  print_invalidate funcn.Ssa.id reason;
+  print_invalidate funcn reason;
   match passmgr with
   | Worklist { worklist }
   -> Worklist.put worklist funcn
