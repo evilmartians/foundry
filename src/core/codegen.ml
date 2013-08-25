@@ -176,7 +176,8 @@ let rec llconst_of_value llmod value =
   -> (Llvm.const_struct ctx [||]) (* TODO *)
   | Rt.Class (klass, specz)
   -> (Llvm.const_struct ctx [||]) (* TODO *)
-  | _ -> failwith (u"llconst_of_value: " ^ (Rt.inspect_value value))
+  | _
+  -> failwith ("llconst_of_value: " ^ ((Rt.inspect_value value) :> string))
 
 let gen_proto llmod funcn =
   let name = (funcn.Ssa.id :> string) in
