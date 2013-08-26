@@ -569,15 +569,40 @@ let copy_func ?(suffix="") funcn =
 
 let specialize funcn env =
   let changed = ref false in
-  let update name =
+  (* Update type of an SSA name. *)
+  let update_ty name =
     let ty, ty' = name.ty, Typing.subst env name.ty in
     if not (Rt.equal ty ty') then begin
       set_ty name ty';
       changed := true
     end
   in
-  update funcn;
-  iter_instrs update funcn;
+  (* Update operands of an instruction. *)
+  let update_operands instr =
+    let op_changed = ref false in
+    let operands   = instr_operands instr in
+    let operands'  = List.map (fun operand ->
+        match operand with
+        | { opcode = Const value }
+        -> (let value' = Typing.subst env value in
+            if not (Rt.equal value value') then
+              op_changed := true;
+              const value')
+        | _
+        -> operand)
+      operands
+    in
+    if !op_changed then
+      changed := true;
+      set_instr_operands instr operands'
+  in
+  (* Specialize function type. *)
+  update_ty funcn;
+  (* Specialize instruction types and constant arguments. *)
+  iter_instrs (fun instr ->
+      update_ty instr;
+      update_operands instr)
+    funcn;
   !changed
 
 let iter_overloads ~f capsule =

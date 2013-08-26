@@ -57,11 +57,12 @@ let rec unify' env a b =
     when ka == kb
   -> Assoc.fold2 ~f:(fun _ -> unify') env spa spb
   | FunctionTy(args_ty, ret_ty), FunctionTy(args_ty', ret_ty')
-  -> (let env = List.fold_left2 unify' env args_ty args_ty' in
-      unify' env ret_ty ret_ty')
-  | ClosureTy(args_ty, ret_ty), ClosureTy(args_ty', ret_ty')
-  -> (let env = List.fold_left2 unify' env args_ty args_ty' in
-      unify' env ret_ty ret_ty')
+  | ClosureTy(args_ty, ret_ty),  ClosureTy(args_ty', ret_ty')
+  -> (try
+        let env = List.fold_left2 unify' env args_ty args_ty' in
+        unify' env ret_ty ret_ty'
+      with Invalid_argument _ ->
+        raise (Conflict (a, b)))
   | a, b
   -> raise (Conflict (a, b))
 
@@ -88,16 +89,16 @@ let unify_list lst =
   | fst :: rest
   -> List.fold_left (fun env ty -> unify' env fst ty) [] rest
 
-let rec subst env ty =
-  match ty with
+let rec subst env value =
+  match value with
   | TvarTy | NilTy | BooleanTy | IntegerTy
   | UnsignedTy _ | SignedTy _ | SymbolTy
   | Nil | Truth | Lies | Integer _
   | Unsigned _ | Signed _ | Symbol _
-  -> ty
+  -> value
   | Tvar tvar
   -> (try  List.assoc tvar env
-      with Not_found -> ty)
+      with Not_found -> value)
   | TupleTy xs
   -> TupleTy (List.map (subst env) xs)
   | Tuple xs
@@ -106,16 +107,20 @@ let rec subst env ty =
   -> RecordTy (Assoc.map (fun _ -> subst env) xs)
   | Record xs
   -> Record (Assoc.map (fun _ -> subst env) xs)
-  | EnvironmentTy ty
-  -> EnvironmentTy (subst_local_env env ty)
+  | Environment _
+  -> value
+  | EnvironmentTy x
+  -> EnvironmentTy (subst_local_env env x)
   | Class (klass, specz)
   -> Class (klass, Assoc.map (fun _ -> subst env) specz)
+  | Package _
+  -> value
   | FunctionTy (args, ret)
   -> FunctionTy (List.map (subst env) args, subst env ret)
   | ClosureTy (args, ret)
   -> ClosureTy (List.map (subst env) args, subst env ret)
   | _
-  -> failwith ("Typing.subst: " ^ (inspect_type ty))
+  -> failwith ("Typing.subst: " ^ (inspect_type value))
 
 and subst_local_env env ty =
   { e_ty_parent   = Option.map (subst_local_env env) ty.e_ty_parent;

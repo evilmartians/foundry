@@ -1,6 +1,5 @@
 open Sexplib.Std
 open Unicode.Std
-open ExtList
 
 type ('a, 'b) t     = (string * 'a) list
 and  sequental
@@ -21,7 +20,7 @@ let sequental lst =
   lst
 
 let sorted lst =
-  List.sort ~cmp lst
+  List.sort cmp lst
 
 let sort = sorted
 
@@ -38,7 +37,7 @@ let find_option assoc key =
     None
 
 let index assoc key =
-  fst (List.findi (fun idx (k, v) -> key = k) assoc)
+  fst (ExtList.List.findi (fun idx (k, v) -> key = k) assoc)
 
 let mem assoc key =
   List.mem_assoc key assoc
@@ -64,7 +63,9 @@ let fold ~f acc assoc =
     f key acc value) acc assoc
 
 let fold2 ~f acc lft rgt =
-  assert false
+  List.fold_left2 (fun acc (k1, v1) (k2, v2) ->
+    assert (k1 = k2);
+    f k1 acc v1 v2) acc lft rgt
 
 let filter ~f assoc =
   List.filter (fun (key, value) ->
@@ -80,10 +81,10 @@ let append assoc key value =
   assoc @ [key, value]
 
 let add assoc key value =
-  List.unique ~cmp:eq (List.merge cmp assoc [key, value])
+  ExtList.List.unique ~cmp:eq (List.merge cmp assoc [key, value])
 
 let merge lft rgt =
-  List.unique ~cmp:eq (List.merge cmp lft rgt)
+  ExtList.List.unique ~cmp:eq (List.merge cmp lft rgt)
 
 let remove assoc key =
   List.remove_assoc key assoc

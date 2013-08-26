@@ -399,7 +399,7 @@ let rec type_of_value value =
   | Lambda(c)       -> LambdaTy c.l_ty
 
   | Package(p)      -> Class (p.p_metaclass, Assoc.empty)
-  | Class(k,_)      -> Class (k.k_metaclass, Assoc.empty)
+  | Class(k,sp)     -> Class (k.k_metaclass, sp)
   | Instance(k,_)   -> Class k
 
   | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
@@ -446,6 +446,10 @@ and equal a b =
     with Invalid_argument _ -> (* different length *) false
   in
   match a, b with
+  (* Shortcut for physical equality (fast check). *)
+  | _, _ when a == b
+  -> true
+
   (* Immutable values and types. *)
   | TvarTy,             TvarTy
   | Nil,                Nil
