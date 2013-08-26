@@ -16,15 +16,21 @@ let run_on_function passmgr capsule caller =
         | { ty = Rt.Tvar _ }, _
         -> ()
         | { ty }, { opcode = Const (Rt.Symbol selector) }
-        -> (let rec lookup klass =
+        -> (let rec lookup klass selector =
               try
                 klass, Assoc.find klass.Rt.k_methods selector
               with Not_found ->
                 match klass.Rt.k_ancestor with
-                | Some ancestor -> lookup ancestor
-                | None -> failwith ("Method_resolution: " ^ selector)
+                | Some ancestor -> lookup ancestor selector
+                | None -> raise Not_found
             in
-            let klass, imethod = lookup (Rt.klass_of_type ty) in
+            let klass = Rt.klass_of_type ty in
+            let klass, imethod =
+              try lookup klass selector
+              with Not_found ->
+                try lookup klass "method_missing"
+                with Not_found -> failwith ("no method " ^ (klass.Rt.k_name) ^ "#" ^ selector)
+            in
             let callee =
               (* Only translate each method once. *)
               match lookup_lambda capsule imethod.Rt.im_body with

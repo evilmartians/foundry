@@ -232,10 +232,10 @@ let gen_llfunc llmod name args ret =
   | Some f -> f
 
 let rec llblit builder src src_idx dst dst_idx len =
-  let llval = Llvm.build_extractvalue src src_idx "" builder in
-  let dst   = Llvm.build_insertvalue dst llval dst_idx "" builder in
-  let len   = len - 1 in
-  if len > 0 then llblit builder src (src_idx + 1) dst (dst_idx + 1) len
+  if len > 0 then
+    let llval = Llvm.build_extractvalue src src_idx "" builder in
+    let dst   = Llvm.build_insertvalue dst llval dst_idx "" builder in
+    llblit builder src (src_idx + 1) dst (dst_idx + 1) (len - 1)
   else dst
 
 let rec gen_func llmod heap funcn =
