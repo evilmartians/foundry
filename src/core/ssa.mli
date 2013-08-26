@@ -100,7 +100,7 @@ val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> bool
 
 val iter_overloads  : f:( (*func*)  name -> (*func'*) name -> unit) ->
                         capsule -> unit
-val find_overload   : f:( (*func'*) name -> bool) ->
+val find_overload   : f:( (*func'*) name -> int option) ->
                         capsule -> (*func*) name -> (*func'*) name
 val add_overload    : capsule -> (*func*) name -> (*func'*) name -> unit
 

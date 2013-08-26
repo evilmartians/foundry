@@ -610,7 +610,22 @@ let iter_overloads ~f capsule =
 
 let find_overload ~f capsule funcn =
   let overloads = Nametbl.find_all capsule.overloads funcn in
-  List.find f overloads
+  (* Assign a specifity to all possible overloads. *)
+  let overloads =
+    List.filter_map (fun overload ->
+        Option.map (fun specifity ->
+            overload, specifity)
+          (f overload))
+      overloads
+  in
+  (* Sort overloads by specifity; from high to low. *)
+  let overloads =
+    List.sort ~cmp:(fun a b -> compare (fst b) (fst a)) overloads
+  in
+  (* Pick the most specific overload or raise. *)
+  match overloads with
+  | (overload, _) :: _ -> overload
+  | [] -> raise Not_found
 
 let add_overload capsule funcn funcn' =
   ignore (func_of_name funcn);

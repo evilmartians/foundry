@@ -15,13 +15,19 @@ let overload capsule funcn ty' =
              Unification succeeded, which means the signatures are compatible;
              type variable sets are considered disjoint in different functions,
              so it does not matter which ones associate to which. *)
-          let env = List.filter (fun (tv,ty) ->
-                        match ty with
-                        | Rt.Tvar _ -> false
-                        | _ -> true)
-                      env in
-          Rt.equal ty' (Typing.subst env ty')
-        with Typing.Conflict _ -> false)
+          let env =
+            List.filter (fun (tv,ty) ->
+                match ty with
+                | Rt.Tvar _ -> false
+                | _ -> true)
+              env
+          in
+          if Rt.equal ty' (Typing.subst env ty') then
+            (* Amount of the substitutions is used as a measurement of specifity. *)
+            Some (List.length env)
+          else
+            None
+        with Typing.Conflict _ -> None)
     with Not_found ->
       funcn
   in
