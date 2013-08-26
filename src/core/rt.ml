@@ -541,7 +541,7 @@ let rec hash value =
   -> hash_local_env_ty x
   | LambdaTy(x)
   -> hash_list [x.l_ty_args; x.l_ty_kwargs; x.l_ty_result]
-  | FunctionTy(xa,xr) | ClosureTy(xa,xr)
+  | FunctionTy(xa, xr) | ClosureTy(xa, xr)
   -> hash_list (xr :: xa)
 
   (* Mutable values and types. *)
@@ -551,8 +551,8 @@ let rec hash value =
   -> x.l_hash
   | Package(x)
   -> x.p_hash
-  | Instance(_, xs)
-  -> (* BIG FAT TODO *) Hashtbl.hash xs
+  | Instance((k, sp), _)
+  -> Hashtbl.hash [k.k_hash; hash_assoc sp]
   | Class(x, sp)
   -> Hashtbl.hash [x.k_hash; hash_assoc sp]
   | Mixin(x, sp)
