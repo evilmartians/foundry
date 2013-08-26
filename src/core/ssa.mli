@@ -15,15 +15,19 @@ and capsule = private {
   mutable functions    : name list;
           overloads    : overloads;
           lambda_cache : lambda_cache;
+
+  (* Internal fields *)
+          c_symtab     : Symtab.t;
 }
 and overloads
 and lambda_cache
 and func = private {
-          naming       : func_naming;
   mutable arguments    : name list;
   mutable basic_blocks : name list;
+
+  (* Internal fields *)
+          f_symtab     : Symtab.t;
 }
-and func_naming
 and basic_block = private {
   mutable instructions : name list;
 }

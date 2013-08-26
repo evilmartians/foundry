@@ -22,16 +22,14 @@ sig
     mutable functions    : name list;
             overloads    : overloads;
             lambda_cache : lambda_cache;
+            c_symtab     : Symtab.t;
   }
   and overloads    = name Nametbl.t
   and lambda_cache = name Lambdatbl.t
   and func = {
-            naming       : func_naming;
     mutable arguments    : name list;
     mutable basic_blocks : name list;
-  }
-  and func_naming = {
-    mutable ids          : string list;
+            f_symtab     : Symtab.t;
   }
   and basic_block = {
     mutable instructions : name list;
@@ -110,35 +108,17 @@ let block_of_name name =
   | _
   -> assert false
 
-let mangle_id name id =
-  let naming =
-    match name with
-    | { opcode = Function func }
-    | { n_parent = ParentFunction {
-          opcode = Function func } }
-    | { n_parent = ParentBasicBlock {
-        n_parent = ParentFunction {
-          opcode = Function func} } }
-    -> func.naming
-    | _
-    -> assert false
-  in
-  let rec try_rename suffix =
-    let new_id =
-      if id = "" then string_of_int suffix
-      else id ^ "." ^ (string_of_int suffix)
-    in
-    if List.mem new_id naming.ids then
-      try_rename (suffix + 1)
-    else begin
-      naming.ids <- new_id :: naming.ids;
-      new_id
-    end
-  in
-  if id = "" || List.mem id naming.ids then
-    try_rename 1
-  else
-    id
+let symtab_of_name name =
+  match name with
+  | { opcode = Function func }
+  | { n_parent = ParentFunction {
+        opcode = Function func } }
+  | { n_parent = ParentBasicBlock {
+      n_parent = ParentFunction {
+        opcode = Function func} } }
+  -> func.f_symtab
+  | _
+  -> assert false
 
 let const value =
   {
@@ -151,12 +131,14 @@ let const value =
   }
 
 let set_id name id =
-  name.id <- mangle_id name id
+  let symtab = symtab_of_name name in
+  name.id <- Symtab.update symtab name.id id
 
 let create_capsule () =
   { functions     = [];
     overloads     = Nametbl.create 10;
-    lambda_cache  = Lambdatbl.create 10; }
+    lambda_cache  = Lambdatbl.create 10;
+    c_symtab      = Symtab.create (); }
 
 let iter_funcs ~f capsule =
   List.iter f capsule.functions
@@ -165,15 +147,35 @@ let find_func capsule id =
   List.find (fun funcn -> funcn.id = id) capsule.functions
 
 let add_func capsule funcn =
+  funcn.id <- Symtab.add capsule.c_symtab funcn.id;
   capsule.functions <- funcn :: capsule.functions
 
 let remove_func capsule funcn =
+  Symtab.remove capsule.c_symtab funcn.id;
   capsule.functions <- List.remove_if ((==) funcn) capsule.functions;
+
   (* Remove overloads where this function is either source or target. *)
   Nametbl.iter (fun source target ->
       if funcn == source || funcn == target then
-        Nametbl.remove capsule.overloads source)
+        (* It's not possible to remove one particular name-value binding
+           if there are some, so remove all of them and then re-add the
+           ones we keep. *)
+        let lst = Nametbl.find_all capsule.overloads source in
+
+        (* Remove all bindings. *)
+        for i = 0 to (List.length lst) do
+          Nametbl.remove capsule.overloads source
+        done;
+
+        (* Don't add anything if we're removing the source. *)
+        if funcn != source then
+          (* Re-add all bindings except the target. *)
+          let lst = List.remove_if ((==) target) lst in
+          List.iter (fun target ->
+              Nametbl.add capsule.overloads source target)
+            lst)
     capsule.overloads;
+
   (* Remove lambda cache entries where this function is the target. *)
   Lambdatbl.iter (fun lambda target ->
       if funcn == target then
@@ -181,10 +183,11 @@ let remove_func capsule funcn =
     capsule.lambda_cache
 
 let create_func ?(id="") ?arg_ids args_ty result_ty =
+  let symtab = Symtab.create () in
   let func  = {
     arguments    = [];
     basic_blocks = [];
-    naming       = { ids = [] };
+    f_symtab     = symtab;
   } in
   let funcn = {
     id;
@@ -195,8 +198,8 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
     n_hash    = Hash_seed.make ();
   } in
   begin
-    let make_arg name ty = {
-      id        = mangle_id funcn name;
+    let make_arg id ty = {
+      id        = Symtab.add symtab id;
       ty;
       opcode    = Argument;
       n_parent  = ParentFunction funcn;
@@ -231,7 +234,7 @@ let iter_args ~f funcn =
 let create_block ?(id="") funcn =
   let func = func_of_name funcn in
   let block = {
-    id        = mangle_id funcn id;
+    id        = Symtab.add func.f_symtab id;
     ty        = Rt.BasicBlockTy;
     opcode    = BasicBlock { instructions = [] };
     n_parent  = ParentFunction funcn;
@@ -248,6 +251,7 @@ let block_parent blockn =
 
 let remove_block blockn =
   let func = (func_of_name (block_parent blockn)) in
+  Symtab.remove func.f_symtab blockn.id;
   func.basic_blocks <- List.remove_if ((==) blockn) func.basic_blocks
 
 let iter_instrs ~f blockn =
@@ -353,7 +357,7 @@ let create_instr ?(id="") ty opcode =
   instr
 
 let insert_instr ?pivot f_some f_none instr blockn =
-  let block = block_of_name blockn in
+  let block  = block_of_name blockn in
   begin
     (* Sanity checks: instr must be an instruction not
        attached to any block. *)
@@ -378,7 +382,8 @@ let insert_instr ?pivot f_some f_none instr blockn =
     | None
     -> block.instructions <- f_none block.instructions
   end;
-  instr.id <- mangle_id blockn instr.id;
+  let symtab = symtab_of_name blockn in
+  instr.id       <- Symtab.add symtab instr.id;
   instr.n_parent <- ParentBasicBlock blockn
 
 let prepend_instr ?before instr blockn =
@@ -418,6 +423,11 @@ let set_ty name ty =
   -> name.ty <- ty
 
 let remove_instr instr =
+  (* Remove the name from symbol table. *)
+  let symtab = symtab_of_name instr in
+  Symtab.remove symtab instr.id;
+
+  (* Remove the instruction from its parent basic block. *)
   match instr.n_parent with
   | ParentBasicBlock blockn
   -> (let block = block_of_name blockn in

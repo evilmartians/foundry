@@ -9,7 +9,7 @@ entry:
 }
 
 ; Verify that a specialized @add is added.
-; CHECK:      [[add:@add[.\d]*]] = function (unsigned(32) %x, unsigned(32) %y) -> unsigned(32) {
+; CHECK:      [[add:@add[0-9.]*]] = function (unsigned(32) %x, unsigned(32) %y) -> unsigned(32) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %r = unsigned(32) primitive "int_add" (%x, %y)
 ; CHECK-NEXT:   return %r

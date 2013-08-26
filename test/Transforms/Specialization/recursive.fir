@@ -2,7 +2,7 @@
 ; RUN: %file_check %s -input-file %t
 ; RUN: %foundry_gen %t | lli | %file_check %s -check-prefix EXEC
 
-; CHECK: [[fact:@fact[\d.]*]] = function (unsigned(32) %x, unsigned(32) %one) -> unsigned(32)
+; CHECK: [[fact:@fact[0-9.]*]] = function (unsigned(32) %x, unsigned(32) %one) -> unsigned(32)
 @fact = function (tvar(1) %x, tvar(1) %one) -> tvar(1) {
 entry:
   %is_one = boolean primitive "int_eq" (%x, %one)

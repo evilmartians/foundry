@@ -143,6 +143,9 @@ val klass_of_value  : ?dispatch:bool -> ?meta:bool -> value -> klass
 val equal           : value -> value -> bool
 val hash            : value -> int
 
+(* kawaii operator *)
+val (=^-^=)         : value -> value -> bool
+
 val inspect         : value -> string
 val inspect_value   : value -> string
 val inspect_type    : ty    -> string

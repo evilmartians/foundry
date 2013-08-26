@@ -505,6 +505,8 @@ and equal a b =
   | _, _
   -> false
 
+let (=^-^=) = equal
+
 let rec hash_local_env_ty env =
   let seed =
     match env.e_ty_parent with

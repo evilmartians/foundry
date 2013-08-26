@@ -7,5 +7,4 @@ features:
 
 bugs:
  * allocate fresh tvars on copy_func
- * better value_env
- * better mangling
+ * faster iv type lookup
