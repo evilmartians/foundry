@@ -97,7 +97,7 @@ let rec subst env value =
   | Unsigned _ | Signed _ | Symbol _
   -> value
   | Tvar tvar
-  -> (try  List.assoc tvar env
+  -> (try  subst env (List.assoc tvar env)
       with Not_found -> value)
   | TupleTy xs
   -> TupleTy (List.map (subst env) xs)
