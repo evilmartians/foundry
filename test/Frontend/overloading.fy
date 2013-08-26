@@ -1,7 +1,8 @@
 # RUN: %foundry_vm   %s -o %t1
-# RUN: %foundry_xfrm %t1 -std-xfrms 2>&1 | %file_check %s
+# RUN: %foundry_xfrm %t1 -std-xfrms | %foundry_gen -o %t2
+# RUN: llvm-dis %t2 -o - | %file_check %s
 
-# CHECK-NOT: Convergence terminated
+# CHECK: Unsigned
 
 class Unsigned
   def +(other)
