@@ -113,10 +113,12 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
       match ty with
       | Tvar(_) | TvarTy | NilTy | BooleanTy
       | IntegerTy | SymbolTy
+      | UnsignedTy(_) | SignedTy(_)
       | TupleTy(_) | RecordTy(_) | LambdaTy(_)
       | Class(_,_)
       -> ty
-      | _ -> exc_type "type" ty [Syntax.ty_loc expr]
+      | _
+      -> exc_type "type" ty [Syntax.ty_loc expr]
   in
   match expr with
   | Syntax.TypeVar(_,name)
@@ -133,7 +135,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
           | Syntax.TypeArgKw(_,n,ty) -> args, (n, as_type ty) :: kwargs)
         ([], []) args
       in LambdaTy {
-        l_ty_args   = TupleTy  args;
+        l_ty_args   = TupleTy  (List.rev args);
         l_ty_kwargs = RecordTy (Assoc.sorted kwargs);
         l_ty_result = as_type ret;
       })

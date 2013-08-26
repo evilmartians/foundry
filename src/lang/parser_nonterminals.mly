@@ -311,7 +311,8 @@
               | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE   | t=Kw_END    | t=Kw_PACKAGE
               | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE  | t=Kw_DEF    | t=Kw_PUBLIC
               | t=Kw_DO    | t=Kw_WHILE | t=Kw_UNTIL  | t=Kw_AS     | t=Kw_RETURN
-              | t=Kw_ELSIF | t=Kw_MATCH | t=Kw_META   | t=Kw_INVOKE
+              | t=Kw_ELSIF | t=Kw_MATCH | t=Kw_META
+              | t=Kw_INVOKEPRIMITIVE
               | t=Id_LOCAL | t=unop     | t=binop
                 { t }
 
@@ -490,7 +491,7 @@
                     Syntax.Send (send_unary name_loc recv,
                                  recv, name ^ u"@", []) }
 
-              | kw=Kw_INVOKE id=Id_LOCAL
+              | kw=Kw_INVOKEPRIMITIVE id=method_name
                     lp=Tk_LPAREN args=separated_list(Tk_COMMA, expr) rp=Tk_RPAREN
                 { let (kw_loc,_) = kw in
                   let (_,id) = id in

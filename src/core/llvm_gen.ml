@@ -232,6 +232,12 @@ let gen_llfunc llmod name args ret =
   | None   -> Llvm.declare_function name (Llvm.function_type ret args) llmod
   | Some f -> f
 
+let gen_llfunc_va llmod name args ret =
+  let llty = Llvm.var_arg_function_type ret args in
+  match Llvm.lookup_function name llmod with
+  | None   -> Llvm.declare_function name llty llmod
+  | Some f -> f
+
 let rec llblit builder src src_idx dst dst_idx len =
   if len > 0 then
     let llval = Llvm.build_extractvalue src src_idx "" builder in
@@ -284,10 +290,6 @@ let rec gen_func llmod heap funcn =
     -> (match Llvm.lookup_function "__fy_debug" llmod with
         | Some lldebug -> Llvm.build_call lldebug [| map operand |] "" builder
         | None -> assert false)
-    | "putchar", [operand]
-    -> (let llputchar = gen_llfunc llmod "putchar"
-                          [| Llvm.i32_type ctx |] (Llvm.i32_type ctx) in
-        Llvm.build_call llputchar [| map operand |] "" builder)
 
     (* Integer operations. *)
     | "int_add",  [lhs; rhs] -> Llvm.build_add  (map lhs) (map rhs) id builder
@@ -385,6 +387,23 @@ let rec gen_func llmod heap funcn =
               Llvm.build_bitcast llobj llty id builder)
         | _
         -> assert false)
+
+    (* Calling C functions. *)
+    | "external", { Ssa.opcode = Ssa.Const (Rt.Symbol ext_func) } :: args
+    -> (let llargs    = List.map map args in
+        let llargs_ty = Array.of_list (List.map Llvm.type_of llargs) in
+        let llret_ty  = lltype_of_ty instr.Ssa.ty in
+        let llfunc    = gen_llfunc llmod (ext_func :> string) llargs_ty llret_ty in
+        Llvm.build_call llfunc (Array.of_list llargs) "" builder)
+
+    | "externalva", { Ssa.opcode = Ssa.Const (Rt.Symbol ext_func) } ::
+                    { Ssa.opcode = Ssa.Const (Rt.Integer arg_cnt) } :: args
+    -> (let arg_cnt   = int_of_big_int arg_cnt in
+        let llargs, llrest = List.split_nth arg_cnt (List.map map args) in
+        let llargs_ty = Array.of_list (List.map Llvm.type_of llargs) in
+        let llret_ty  = lltype_of_ty instr.Ssa.ty in
+        let llfunc    = gen_llfunc_va llmod (ext_func :> string) llargs_ty llret_ty in
+        Llvm.build_call llfunc (Array.of_list (llargs @ llrest)) "" builder)
 
     | _, _
     -> failwith ("gen_func/gen_prim: " ^ prim ^
@@ -565,6 +584,7 @@ let rec gen_func llmod heap funcn =
             it unnamed: otherwise LLVM will reject the module. *)
          (let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
           Llvm.build_call (map funcn) (Array.of_list (List.map map operands)) id builder)
+
       | Ssa.ClosureInstr (callee, env)
       -> (* See also lam_call primitive. *)
          (let llfunc, llenv = map callee, map env in

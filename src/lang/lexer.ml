@@ -176,7 +176,7 @@ let rec lex_code state = lexer
 | "assert" -> expr_begin state false; Kw_ASSERT  (locate state lexbuf, lexeme lexbuf)
 
 | "invokeprimitive" ->
-              expr_begin state true; Kw_INVOKE (locate state lexbuf, lexeme lexbuf)
+              expr_begin state true;  Kw_INVOKEPRIMITIVE (locate state lexbuf, lexeme lexbuf)
 
 (* Values *)
 | digits          -> expr_begin state false;

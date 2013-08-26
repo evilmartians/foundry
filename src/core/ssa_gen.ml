@@ -59,6 +59,8 @@ let rec ssa_of_expr ~entry ~state ~expr =
   -> entry, Ssa.const (Rt.Truth)
   | Syntax.Lies (_)
   -> entry, Ssa.const (Rt.Lies)
+  | Syntax.Symbol (_, value)
+  -> entry, Ssa.const (Rt.Symbol value)
   | Syntax.Integer (_, value)
   -> entry, Ssa.const (Rt.Integer value)
   | Syntax.Unsigned (_, width, value)

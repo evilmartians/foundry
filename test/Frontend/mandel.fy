@@ -1,5 +1,5 @@
 # RUN: %foundry_vm   %s -o %t1
-# RUN: %foundry_xfrm %t1 -[ -worklist -resolve -specialize -infer -] -gdce -o %t2
+# RUN: %foundry_xfrm %t1 -std-xfrms -o %t2
 # RUN: %foundry_gen  %t2 | lli | %file_check %s
 
 # CHECK: **********************
@@ -55,17 +55,21 @@ class Signed
   end
 end
 
+def putchar(chr) : (\a, Unsigned(32i)) -> Unsigned(32i)
+  invokeprimitive external(:putchar, chr)
+end
+
 # mandelbrot converted to 24.8 fixed point
 
 def printdensity(d)
   if d > 8s32
-    invokeprimitive putchar(32u32); nil # ' '
+    self.putchar(32u32)
   elsif d > 4s32
-    invokeprimitive putchar(46u32); nil # '.'
+    self.putchar(46u32)
   elsif d > 2s32
-    invokeprimitive putchar(43u32); nil # '+'
+    self.putchar(43u32)
   else
-    invokeprimitive putchar(42u32); nil # '*'
+    self.putchar(42u32)
   end
 end
 
@@ -93,7 +97,7 @@ def mandelhelp(xmin, xmax, xstep, ymin, ymax, ystep)
       self.printdensity(self.mandelconverge(x, y))
       x += xstep
     end
-    invokeprimitive putchar(10u32) # "\n"
+    self.putchar(10u32) # "\n"
     y += ystep
   end
 end
