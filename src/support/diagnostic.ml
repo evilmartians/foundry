@@ -24,7 +24,7 @@ let string_of_severity severity =
 
 let print diag =
   (* Don't print escape sequences to non-terminals. *)
-  let isatty  = Unix.isatty (Unix.stdout) in
+  let isatty  = Unix.isatty (Unix.stderr) in
   let color x = if isatty then x else "" in
 
   let severity, message, locations = diag in
