@@ -3,46 +3,39 @@ open Ssa
 
 let name = "Specialization"
 
-let overload capsule funcn ty' =
-  let funcn =
+let overload capsule orig_funcn ty =
+  let best_funcn =
     (* Try to find a more specific function, but not too specific. Unification
        of such function with the signature must produce the signature itself. *)
     try
-      Ssa.find_overload capsule funcn ~f:(fun overload ->
+      Ssa.find_overload capsule orig_funcn ~f:(fun overload ->
         try
-          let env = Typing.unify ty' overload.ty in
-          (* Discard all tvar->tvar association from the type substitutions.
-             Unification succeeded, which means the signatures are compatible;
-             type variable sets are considered disjoint in different functions,
-             so it does not matter which ones associate to which. *)
-          let env =
-            List.filter (fun (tv,ty) ->
-                match ty with
-                | Rt.Tvar _ -> false
-                | _ -> true)
-              env
-          in
-          if Rt.equal ty' (Typing.subst env ty') then
+          let env = Typing.meaningful (Typing.unify overload.ty ty) in
+          if Rt.equal ty (Typing.subst env ty) then begin
             (* Amount of the substitutions is used as a measurement of specifity. *)
-            Some (List.length env)
-          else
+            if Rt.equal overload.ty ty then
+              Some 99999 (* Exactly our type. *)
+            else
+              Some (List.length env)
+          end else
             None
-        with Typing.Conflict _ -> None)
+        with Typing.Conflict _ ->
+          None)
     with Not_found ->
-      funcn
+      orig_funcn
   in
     (* Check if we need to specialize this function even more, or it's
        specific enough. *)
-    let env = Typing.unify funcn.ty ty' in
-    if Rt.equal (Typing.subst env funcn.ty) funcn.ty then
+    let env = Typing.meaningful (Typing.unify best_funcn.ty ty) in
+    if Rt.equal (Typing.subst env best_funcn.ty) best_funcn.ty then
       (* Unification produced a signature exactly equal to the overload
          being considered. *)
-      funcn
+      best_funcn
     else begin
       (* Unification changed the signature of callee. *)
-      let funcn' = copy_func funcn in
+      let funcn' = copy_func best_funcn in
       add_func capsule funcn';
-      add_overload capsule funcn funcn';
+      add_overload capsule best_funcn funcn';
       ignore (specialize funcn' env);
       funcn'
     end

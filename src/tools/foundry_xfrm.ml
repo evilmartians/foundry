@@ -29,6 +29,7 @@ let _ =
 
       "-std-xfrms", Arg.Unit (fun () ->
           let dep_passmgr = Pass_manager.create ~sequental:false in
+            Pass_manager.add_function_pass dep_passmgr (module Local_inference);
             Pass_manager.add_function_pass dep_passmgr (module Method_resolution);
             Pass_manager.add_function_pass dep_passmgr (module Specialization);
             Pass_manager.add_function_pass dep_passmgr (module Local_inference);

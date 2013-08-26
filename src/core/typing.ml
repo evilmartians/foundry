@@ -136,6 +136,13 @@ let print_env env =
                      " -> " ^ (inspect_type ty)))
     env
 
+let meaningful env =
+  List.filter (fun (tv, ty) ->
+      match ty with
+      | Rt.Tvar _ -> false
+      | _ -> true)
+    env
+
 let rec slot_ty (klass, specz) name =
   (* Instance variable types and class parameters reside in one type variable
      "namespace" (that is, disjoint block), and specializations reside in another.
