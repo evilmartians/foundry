@@ -10,6 +10,8 @@
 %token <Location.t> Vl_END      "end of quotation"
 
 %token <Location.t * Unicode.utf8s> Id_LOCAL  "local variable"
+%token <Location.t * Unicode.utf8s> Id_METHOD "method name"
+%token <Location.t * Unicode.utf8s> Id_ASSIGN "method name"
 %token <Location.t * Unicode.utf8s> Id_CONST  "constant"
 %token <Location.t * Unicode.utf8s> Id_LABEL  "label"
 %token <Location.t * Unicode.utf8s> Id_IVAR   "instance variable"
@@ -46,7 +48,6 @@
 %token <Location.t * Unicode.utf8s> Tk_CARET   "`^'"
 %token <Location.t * Unicode.utf8s> Tk_LSHFT   "`<<'"
 %token <Location.t * Unicode.utf8s> Tk_RSHFT   "`>>'"
-%token <Location.t * Unicode.utf8s> Tk_ARSHFT  "`>>>'"
 %token <Location.t * Unicode.utf8s> Tk_TILDE   "unary `~'"
 %token <Location.t * Unicode.utf8s> Tk_EQ      "`=='"
 %token <Location.t * Unicode.utf8s> Tk_LT      "`<'"

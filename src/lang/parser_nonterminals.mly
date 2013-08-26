@@ -95,7 +95,7 @@
 %left     Tk_PLUS Tk_MINUS
 %left     Tk_STAR Tk_DIVIDE Tk_PERCENT
 %left     Tk_DSTAR
-%left     Tk_LSHFT Tk_RSHFT Tk_ARSHFT
+%left     Tk_LSHFT Tk_RSHFT
 %left     Tk_AMPER Tk_PIPE Tk_CARET
 %right    Tk_TILDE Tk_UPLUS Tk_UMINUS
 %nonassoc Tk_LBRACK Tk_DOT
@@ -273,12 +273,15 @@
               | lit=literal
                 { lit }
 
-            ty: id=Id_CONST
-                { let (id_loc, id) = id in
-                  Syntax.TypeConstr (unary id_loc id_loc, id, []) }
-              | id=Id_CONST lp=Tk_LPAREN args_ty=separated_list(Tk_COMMA, arg_ty) rp=Tk_RPAREN
+     ty_constr: id=Id_CONST lp=Tk_LPAREN args_ty=separated_list(Tk_COMMA, arg_ty) rp=Tk_RPAREN
                 { let (id_loc, id) = id in
                   Syntax.TypeConstr (unary id_loc rp, id, args_ty) }
+
+            ty: ty=ty_constr
+                { ty }
+              | id=Id_CONST
+                { let (id_loc, id) = id in
+                  Syntax.TypeConstr (unary id_loc id_loc, id, []) }
               | expr=splice_ty
                 { Syntax.TypeSplice (nullary (Syntax.loc expr), expr) }
               | id=Id_TVAR
@@ -298,22 +301,15 @@
        %inline
          binop: t=Tk_PLUS   | t=Tk_MINUS | t=Tk_STAR  | t=Tk_DIVIDE | t=Tk_PERCENT
               | t=Tk_DSTAR  | t=Tk_AMPER | t=Tk_PIPE  | t=Tk_LSHFT  | t=Tk_RSHFT
-              | t=Tk_ARSHFT | t=Tk_EQ    | t=Tk_LT    | t=Tk_GT     | t=Tk_LEQ
-              | t=Tk_GEQ    | t=Tk_CMP   | t=Tk_CARET
+              | t=Tk_EQ     | t=Tk_LT    | t=Tk_GT    | t=Tk_LEQ    | t=Tk_GEQ
+              | t=Tk_CMP    | t=Tk_CARET
                 { t }
 
        %inline
           unop: t=Tk_UPLUS | t=Tk_UMINUS | t=Tk_UTILDE
                 { t }
 
-   method_name: t=Kw_TRUE  | t=Kw_FALSE | t=Kw_NIL    | t=Kw_SELF   | t=Kw_AND
-              | t=Kw_OR    | t=Kw_NOT   | t=Kw_LET    | t=Kw_MUT    | t=Kw_DYNAMIC
-              | t=Kw_IF    | t=Kw_THEN  | t=Kw_ELSE   | t=Kw_END    | t=Kw_PACKAGE
-              | t=Kw_CLASS | t=Kw_MIXIN | t=Kw_IFACE  | t=Kw_DEF    | t=Kw_PUBLIC
-              | t=Kw_DO    | t=Kw_WHILE | t=Kw_UNTIL  | t=Kw_AS     | t=Kw_RETURN
-              | t=Kw_ELSIF | t=Kw_MATCH | t=Kw_META
-              | t=Kw_INVOKEPRIMITIVE
-              | t=Id_LOCAL | t=unop     | t=binop
+   method_name: t=Id_METHOD | t=Id_ASSIGN | t=unop | t=binop
                 { t }
 
        %inline
@@ -372,7 +368,7 @@
               | kw=Kw_ELSE stmts=compstmt nnd=Kw_END
                 { Some (Syntax.Begin (collection (fst kw) (fst nnd),
                                       stmts)) }
-              | kw=Kw_END
+              | Kw_END
                 { None }
 
     type_param: id=Id_TVAR
@@ -439,10 +435,10 @@
               | id=Id_CONST
                 { let (loc, name) = id in Syntax.Const (nullary loc, name) }
 
-              | recv=expr op=Tk_DOT id=method_name
+              | recv=expr op=Tk_DOT id=Id_METHOD
                 { let (name_loc, name) = id in
-                    Syntax.Send (send_attr recv op name_loc,
-                                 recv, name, []) }
+                  Syntax.Send (send_attr recv op name_loc,
+                               recv, name, []) }
 
               | recv=expr lb=Tk_LBRACK args=args rb=Tk_RBRACK
                 { Syntax.Send (send_call recv lb rb,
@@ -455,25 +451,25 @@
 
      expr_noid: lhs=expr op=Kw_AND rhs=expr
                 { let (op_loc, _) = op in
-                    Syntax.And (op_binary lhs op_loc rhs, lhs, rhs) }
+                  Syntax.And (op_binary lhs op_loc rhs, lhs, rhs) }
 
               | lhs=expr op=Kw_OR  rhs=expr
                 { let (op_loc, _) = op in
-                    Syntax.Or (op_binary lhs op_loc rhs, lhs, rhs) }
+                  Syntax.Or (op_binary lhs op_loc rhs, lhs, rhs) }
 
               | op=Kw_NOT arg=expr
                 { let (op_loc, _) = op in
-                    Syntax.Not (op_unary op_loc arg, arg) }
+                  Syntax.Not (op_unary op_loc arg, arg) }
 
-              | recv=expr op=Tk_DOT id=method_name lp=Tk_LPAREN args=args rp=Tk_RPAREN
+              | recv=expr op=Tk_DOT id=Id_METHOD lp=Tk_LPAREN args=args rp=Tk_RPAREN
                 { let (name_loc, name) = id in
-                    Syntax.Send (send_method recv op name_loc lp rp,
-                                 recv, name, args) }
+                  Syntax.Send (send_method recv op name_loc lp rp,
+                               recv, name, args) }
 
-              | recv=expr op=Tk_DOT id=method_name
+              | recv=expr op=Tk_DOT id=Id_METHOD
                 { let (name_loc, name) = id in
-                    Syntax.Send (send_attr recv op name_loc,
-                                 recv, name, []) }
+                  Syntax.Send (send_attr recv op name_loc,
+                               recv, name, []) }
 
               | recv=expr lb=Tk_LBRACK args=args rb=Tk_RBRACK
                 { Syntax.Send (send_call recv lb rb,
@@ -481,31 +477,34 @@
 
               | lhs=expr op=binop rhs=expr
                 { let (name_loc, name) = op in
-                    Syntax.Send (send_binary lhs name_loc rhs,
-                                 lhs, name, arg rhs) }
+                  Syntax.Send (send_binary lhs name_loc rhs,
+                               lhs, name, arg rhs) }
 
               | op=Tk_PLUS  recv=expr %prec Tk_UPLUS
               | op=Tk_MINUS recv=expr %prec Tk_UMINUS
               | op=Tk_TILDE recv=expr
                 { let (name_loc, name) = op in
-                    Syntax.Send (send_unary name_loc recv,
-                                 recv, name ^ u"@", []) }
+                  Syntax.Send (send_unary name_loc recv,
+                               recv, name ^ u"@", []) }
 
-              | kw=Kw_INVOKEPRIMITIVE id=method_name
+              | kw=Kw_INVOKEPRIMITIVE id=Id_LOCAL
                     lp=Tk_LPAREN args=separated_list(Tk_COMMA, expr) rp=Tk_RPAREN
                 { let (kw_loc,_) = kw in
                   let (_,id) = id in
-                    Syntax.InvokePrimitive (nullary (Loc.join kw_loc rp),
-                                            id, args) }
+                  Syntax.InvokePrimitive (nullary (Loc.join kw_loc rp),
+                                          id, args) }
 
               | kw=Kw_TYPE ty=ty
                 { let (kw_loc, _) = kw in
-                    Syntax.Type (unary kw_loc (Syntax.ty_loc ty), ty) }
+                  Syntax.Type (unary kw_loc (Syntax.ty_loc ty), ty) }
+
+              | ty=ty_constr
+                { Syntax.Type ((Syntax.ty_loc ty, { Syntax.operator = Loc.empty }), ty) }
 
               | lam_args=f_lam_args ty=option(ty_decl) block=block
                 { let lp, args, rp = lam_args in
-                    Syntax.Lambda (lambda lp rp block,
-                                   args, ty, block) }
+                  Syntax.Lambda (lambda lp rp block,
+                                 args, ty, block) }
 
               | prim=primary_noid
                 { prim }

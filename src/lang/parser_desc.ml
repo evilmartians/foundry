@@ -43,7 +43,6 @@ let name_of_token = function
   | Tk_LBRACK _ -> "Tk_LBRACK"
   | Id_TVAR _ -> "Id_TVAR"
   | Kw_TRUE _ -> "Kw_TRUE"
-  | Tk_ARSHFT _ -> "Tk_ARSHFT"
   | Id_CONST _ -> "Id_CONST"
   | Tk_STAR _ -> "Tk_STAR"
   | Tk_COLON _ -> "Tk_COLON"
@@ -89,6 +88,8 @@ let name_of_token = function
   | Kw_UNTIL _ -> "Kw_UNTIL"
   | Kw_UNLESS _ -> "Kw_UNLESS"
   | Kw_ASSERT _ -> "Kw_ASSERT"
+  | Id_METHOD _ -> "Id_METHOD"
+  | Id_ASSIGN _ -> "Id_ASSIGN"
 
 let loc_of_token token =
   match token with
@@ -138,7 +139,6 @@ let loc_of_token token =
   | Tk_CMP (loc, _) -> loc
   | Tk_CARET (loc, _) -> loc
   | Tk_ASGN (loc) -> loc
-  | Tk_ARSHFT (loc, _) -> loc
   | Tk_ARROW (loc) -> loc
   | Tk_AND_ASGN (loc) -> loc
   | Tk_AMPER (loc, _) -> loc
@@ -175,8 +175,10 @@ let loc_of_token token =
   | Kw_AS (loc, _) -> loc
   | Kw_AND (loc, _) -> loc
   | Id_TVAR (loc, _) -> loc
+  | Id_METHOD (loc, _) -> loc
   | Id_LOCAL (loc, _) -> loc
   | Id_LABEL (loc, _) -> loc
   | Id_IVAR (loc, _) -> loc
   | Id_CONST (loc, _) -> loc
+  | Id_ASSIGN (loc, _) -> loc
   | EOF (loc) -> loc

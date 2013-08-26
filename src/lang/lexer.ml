@@ -74,9 +74,9 @@ let regexp ident       = id_alpha id_alnum*
 let regexp local       = id_lower id_alnum*
 let regexp const       = id_upper id_alnum*
 
-let regexp operator    = ['+' '-' '*' '/' '%' '&' '|' '~'] |
-                         "<<" | ">>" | ">>>"
-let regexp method_name = local | operator | '<' | '>' | "<=" | ">=" | "==" | "<=>"
+let regexp operator    = ['+' '-' '*' '/' '%' '&' '|' '~'] | "<<" | ">>"
+let regexp method_name = local ['=' '!' '?']? | operator |
+                         '<' | '>' | "<=" | ">=" | "==" | "<=>"
 
 let rec lex_code state = lexer
 | w_space       -> lex_code state lexbuf
@@ -109,7 +109,8 @@ let rec lex_code state = lexer
 | '['      -> expr_begin state true;  Tk_LBRACK  (locate state lexbuf)
 | ']'      -> expr_begin state false; Tk_RBRACK  (locate state lexbuf)
 | '='      -> expr_begin state true;  Tk_ASGN    (locate state lexbuf)
-| '.'      -> expr_begin state true;  Tk_DOT     (locate state lexbuf)
+| '.'      -> goto state lex_dot;
+              expr_begin state false; Tk_DOT     (locate state lexbuf)
 | ':'      -> expr_begin state true;  Tk_COLON   (locate state lexbuf)
 | "::"     -> expr_begin state true;  Tk_DCOLON  (locate state lexbuf)
 | ';'      -> expr_begin state true;  Tk_SEMI    (locate state lexbuf)
@@ -134,7 +135,6 @@ let rec lex_code state = lexer
 | '~'      -> expr_begin state true;  Tk_TILDE   (locate state lexbuf, lexeme lexbuf)
 | "<<"     -> expr_begin state true;  Tk_LSHFT   (locate state lexbuf, lexeme lexbuf)
 | ">>"     -> expr_begin state true;  Tk_RSHFT   (locate state lexbuf, lexeme lexbuf)
-| ">>>"    -> expr_begin state true;  Tk_ARSHFT  (locate state lexbuf, lexeme lexbuf)
 | "=="     -> expr_begin state true;  Tk_EQ      (locate state lexbuf, lexeme lexbuf)
 | "<="     -> expr_begin state true;  Tk_LEQ     (locate state lexbuf, lexeme lexbuf)
 | '<'      -> expr_begin state true;  Tk_LT      (locate state lexbuf, lexeme lexbuf)
@@ -171,7 +171,8 @@ let rec lex_code state = lexer
 | "class"  -> expr_begin state true;  Kw_CLASS   (locate state lexbuf, lexeme lexbuf)
 | "mixin"  -> expr_begin state true;  Kw_MIXIN   (locate state lexbuf, lexeme lexbuf)
 | "iface"  -> expr_begin state true;  Kw_IFACE   (locate state lexbuf, lexeme lexbuf)
-| "def"    -> expr_begin state true;  Kw_DEF     (locate state lexbuf, lexeme lexbuf)
+| "def"    -> goto state lex_def;
+              expr_begin state false; Kw_DEF     (locate state lexbuf, lexeme lexbuf)
 | "return" -> expr_begin state false; Kw_RETURN  (locate state lexbuf, lexeme lexbuf)
 | "assert" -> expr_begin state false; Kw_ASSERT  (locate state lexbuf, lexeme lexbuf)
 
@@ -220,6 +221,25 @@ let rec lex_code state = lexer
 | _               -> unexpected state lexbuf
 | eof             -> eof state lexbuf
 
+and lex_dot state = lexer
+| w_space         -> lex_dot state lexbuf
+| local ['?''!']? -> goto state lex_code;
+                     Id_METHOD (locate state lexbuf, lexeme lexbuf)
+| local '='       -> goto state lex_code;
+                     Id_ASSIGN (locate state lexbuf, lexeme lexbuf)
+
+| _               -> Ulexing.rollback lexbuf; goto state lex_code;
+                     lex_code state lexbuf
+| eof             -> eof state lexbuf
+
+and lex_def state = lexer
+| w_space         -> lex_def state lexbuf
+| "self"          -> goto state lex_code;
+                     Kw_SELF (locate state lexbuf, lexeme lexbuf)
+| _               -> Ulexing.rollback lexbuf; goto state lex_dot;
+                     lex_dot state lexbuf
+| eof             -> eof state lexbuf
+
 and lex_number state digits = lexer
 | 'i'             -> Vl_INT  (locate state lexbuf, digits)
 | 'u' digits      -> Vl_UINT (locate state lexbuf,
@@ -230,6 +250,7 @@ and lex_number state digits = lexer
 | id_alpha        -> raise (Unexpected (locate state lexbuf, (lexeme lexbuf).[0]))
 | _               -> Ulexing.rollback lexbuf;
                      lex_code state lexbuf
+| eof             -> eof state lexbuf
 
 and lex_string state = lexer
 | '\''            -> goto state lex_code;

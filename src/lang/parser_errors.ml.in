@@ -10,7 +10,7 @@ let message = function
 | "def" -> function
   | _ -> "`def' keyword can define instance variables and methods (not %s)."
 
-| "1i +"  | "1i -"   | "1i *"  | "1i /" | "1i %" | "1i &"  | "1i |"  | "1i <<"
-| "1i >>" | "1i >>>" | "1i ==" | "1i <" | "1i >" | "1i <=" | "1i >=" | "1i <=>"
+| "1i +"  | "1i -"  | "1i *"  | "1i /" | "1i %" | "1i &"  | "1i |"  | "1i <<"
+| "1i >>" | "1i ==" | "1i <" | "1i >" | "1i <=" | "1i >=" | "1i <=>"
 | "~" | "-" | "+" -> function
   | _ -> "Operator should be followed by an expression (not %s)."
