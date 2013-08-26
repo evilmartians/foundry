@@ -277,19 +277,16 @@ let rec string_of_ssa_name state value =
     | { opcode = Function func } -> "@" ^ (escape_as_ident value.id)
     | _ -> "%" ^ (escape_as_ident value.id)
   in
-  let term opcode operands =
-    opcode ^ " " ^ (String.concat ", " operands)
+  let prefix () =
+    if value.ty <> Rt.NilTy then
+      "%" ^ (escape_as_ident value.id) ^ " = " ^ (string_of_ty state value.ty) ^ " "
+    else ""
   in
   let instr opcode operands =
-    "%" ^ (escape_as_ident value.id) ^ " = " ^
-      (string_of_ty state value.ty) ^ " " ^ (term opcode operands)
+    (prefix ()) ^ opcode ^ " " ^ (String.concat ", " operands)
   in
-  let call_like_instr callee operands =
-    let prefix =
-      if value.ty <> Rt.NilTy then
-        "%" ^ (escape_as_ident value.id) ^ " = " ^ (string_of_ty state value.ty) ^ " "
-      else ""
-    in prefix ^ callee ^ " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
+  let call_instr callee operands =
+    (prefix ()) ^ callee ^ " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
   in
   match value.opcode with
   | Const value ->
@@ -330,11 +327,11 @@ let rec string_of_ssa_name state value =
   | InvalidInstr ->
     instr "$invalid" []
   | JumpInstr name ->
-    term "jump" [print name]
+    instr "jump" [print name]
   | JumpIfInstr (cond, if_true, if_false) ->
-    term "jump_if" [print cond; print if_true; print if_false]
+    instr "jump_if" [print cond; print if_true; print if_false]
   | ReturnInstr name ->
-    term "return" [print name]
+    instr "return" [print name]
   | PhiInstr operands ->
     instr "phi" (List.map (fun (block, value) ->
                   "[ " ^ (print block) ^ " => " ^ (print value) ^ " ]") operands)
@@ -343,19 +340,19 @@ let rec string_of_ssa_name state value =
   | LVarLoadInstr (env, var) ->
     instr "lvar_load" [print env; escape_as_literal var]
   | LVarStoreInstr (env, var, value) ->
-    term "lvar_store" [print env; escape_as_literal var; print value]
+    instr "lvar_store" [print env; escape_as_literal var; print value]
   | IVarLoadInstr (obj, var) ->
     instr "ivar_load" [print obj; escape_as_literal var]
   | IVarStoreInstr (obj, var, value) ->
-    term "ivar_store" [print obj; escape_as_literal var; print value]
+    instr "ivar_store" [print obj; escape_as_literal var; print value]
   | CallInstr (func, operands) ->
-    call_like_instr ("call " ^ (print func)) operands
+    call_instr ("call " ^ (print func)) operands
   | ClosureInstr (func, env) ->
     instr "closure" [print func; print env]
   | ResolveInstr (obj, meth) ->
     instr "resolve" [print obj; print meth]
   | PrimitiveInstr (name, operands) ->
-    call_like_instr ("primitive " ^ (escape_as_literal name)) operands
+    call_instr ("primitive " ^ (escape_as_literal name)) operands
 
 let string_of_roots state roots =
   List.iter (fun klass -> ignore (string_of_klass state klass)) [

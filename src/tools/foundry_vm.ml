@@ -68,7 +68,7 @@ let _ =
                        ])) in
     Ssa.append_instr call entry;
 
-    let return   = Ssa.create_instr (Rt.UnsignedTy 32)
+    let return   = Ssa.create_instr (Rt.NilTy)
                       (Ssa.ReturnInstr (
                           Ssa.const (Rt.Unsigned (32, (big_int_of_int 0))))) in
     Ssa.append_instr return entry;

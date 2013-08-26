@@ -23,7 +23,7 @@ let gen_debug llmod =
 let types = Rt.Valuetbl.create 10
 
 let rec lltype_of_ty ?(ptr=true) ty =
-  let memoize name generate =
+  let memoize ~ptr name generate =
     let llty =
       try
         Rt.Valuetbl.find types ty
@@ -54,7 +54,8 @@ let rec lltype_of_ty ?(ptr=true) ty =
   | Rt.EnvironmentTy env_ty
   -> Llvm.pointer_type (Llvm.i8_type ctx)
   | Rt.Class (klass, specz)
-  -> (memoize (klass.Rt.k_name :> string) (fun () ->
+  -> (let ptr = ptr && (not klass.Rt.k_is_value) in
+      memoize ~ptr (klass.Rt.k_name :> string) (fun () ->
         let slots = Assoc.map_list (fun name _ ->
                         lltype_of_ty (Typing.slot_ty (klass, specz) name))
                       klass.Rt.k_ivars
@@ -484,40 +485,78 @@ let rec gen_func llmod heap funcn =
           | _ -> assert false)
 
       (* Instance variables. *)
-      | Ssa.IVarLoadInstr (obj, var)
-      | Ssa.IVarStoreInstr (obj, var, _)
-      -> (let klass =
-            match obj.Ssa.ty with
-            | Rt.Class (klass, _) -> klass
-            | _ -> assert false
+      | Ssa.IVarLoadInstr  ({ Ssa.ty = Rt.Class(klass, _) } as obj, var)
+      | Ssa.IVarStoreInstr ({ Ssa.ty = Rt.Class(klass, _) } as obj, var, _)
+        when not klass.Rt.k_is_value
+      -> (* Build a getelementptr instruction for the field. *)
+         (let rec lookup klass indices =
+            try
+              let index = Assoc.index klass.Rt.k_ivars var in
+              match klass.Rt.k_ancestor with
+              | Some _ -> (index + 1) :: indices
+              | None   -> index :: indices
+            with Not_found ->
+              match klass.Rt.k_ancestor with
+              | Some ancestor -> lookup ancestor (0 :: indices)
+              | None -> assert false
           in
-          if klass.Rt.k_is_value then
-            assert false
-          else
-            (* Build a getelementptr instruction for the field. *)
-            let rec lookup klass indices =
-              try
-                let index = Assoc.index klass.Rt.k_ivars var in
+          let lli32ty = Llvm.i32_type ctx in
+          let indices = List.rev (lookup klass [0]) in
+          let indices = List.map (Llvm.const_int lli32ty) indices in
+          let llgep   = Llvm.build_in_bounds_gep (map obj) (Array.of_list indices)
+                            ((var :> string) ^ ".p") builder in
+          (* Actually load or store the slot value. *)
+          match instr.Ssa.opcode with
+          | Ssa.IVarLoadInstr (_, _)
+          -> Llvm.build_load llgep id builder
+          | Ssa.IVarStoreInstr (_, _, value)
+          -> Llvm.build_store (map value) llgep builder
+          | _ -> assert false)
+
+      | Ssa.IVarLoadInstr  ({ Ssa.ty = Rt.Class(klass, _) } as obj, var)
+        when klass.Rt.k_is_value
+      -> (* Build an extractvalue chain for the field. *)
+         (let rec load klass llagg =
+            try
+              let index = Assoc.index klass.Rt.k_ivars var in
+              let index =
                 match klass.Rt.k_ancestor with
-                | Some _ -> (index + 1) :: indices
-                | None   -> index :: indices
-              with Not_found ->
+                | Some _ -> index + 1
+                | None   -> index
+              in
+              Llvm.build_extractvalue llagg index "" builder
+            with Not_found ->
+              match klass.Rt.k_ancestor with
+              | Some ancestor
+              -> (let llagg = Llvm.build_extractvalue llagg 0 "" builder in
+                  load ancestor llagg)
+              | None
+              -> assert false
+          in
+          load klass (map obj))
+
+      | Ssa.IVarStoreInstr ({ Ssa.ty = Rt.Class(klass, _) } as obj, var, value)
+        when klass.Rt.k_is_value
+      -> (* Build an insertvalue chain for the field. *)
+         (let rec store klass llagg llval =
+            try
+              let index = Assoc.index klass.Rt.k_ivars var in
+              let index =
                 match klass.Rt.k_ancestor with
-                | Some ancestor -> lookup ancestor (0 :: indices)
-                | None -> assert false
-            in
-            let lli32ty = Llvm.i32_type ctx in
-            let indices = List.rev (lookup klass [0]) in
-            let indices = List.map (Llvm.const_int lli32ty) indices in
-            let llgep   = Llvm.build_in_bounds_gep (map obj) (Array.of_list indices)
-                              ((var :> string) ^ ".p") builder in
-            (* Actually load or store the slot value. *)
-            match instr.Ssa.opcode with
-            | Ssa.IVarLoadInstr (_, _)
-            -> Llvm.build_load llgep id builder
-            | Ssa.IVarStoreInstr (_, _, value)
-            -> Llvm.build_store (map value) llgep builder
-            | _ -> assert false)
+                | Some _ -> index + 1
+                | None   -> index
+              in
+              Llvm.build_insertvalue llagg llval index "" builder
+            with Not_found ->
+              match klass.Rt.k_ancestor with
+              | Some ancestor
+              -> (let llinner = Llvm.build_extractvalue llagg 0 "" builder in
+                  let llinner = store ancestor llinner llval in
+                  Llvm.build_insertvalue llagg llinner 0 "" builder)
+              | None
+              -> assert false
+          in
+          store klass (map obj) (map value))
 
       (* Functions and closures. *)
       | Ssa.CallInstr (funcn, operands)

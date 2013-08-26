@@ -6,8 +6,9 @@
 let name = ['A'-'Z' 'a'-'z' '0'-'9' '_' ':' '.']+
 
 rule lex = parse
-| [' ' '\t' '\n'] { lex lexbuf }
-| ';' [^'\n']*    { lex lexbuf }
+| '\n'         { Lexing.new_line lexbuf; lex lexbuf }
+| [' ' '\t']   { lex lexbuf }
+| ';' [^'\n']* { lex lexbuf }
 
 | '%' (name as n)            { Name_Local  (Unicode.adopt_utf8s n) }
 | '%' '"' ([^'"']+ as n) '"' { Name_Local  (Unicode.adopt_utf8s n) }

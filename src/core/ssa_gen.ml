@@ -2,7 +2,14 @@ open Unicode.Std
 open Big_int
 open ExtList
 
+type ssa_conv_kind =
+| ConvObject
+| ConvInitializer
+| ConvValue
+| ConvValueInitializer
+
 type ssa_conv_state = {
+          kind      : ssa_conv_kind;
           funcn     : Ssa.name;
           frame     : Ssa.name;
           frame_ty  : Rt.local_env_ty;
@@ -32,17 +39,18 @@ let append ?(ty=Rt.NilTy) ~opcode blockn =
   Ssa.append_instr instr blockn;
   instr
 
+let load ~state entry name =
+  append entry ~ty:(lvar_type state.frame_ty name)
+               ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
+
+let store ~state entry name value =
+  ignore (append entry
+            ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
+  value
+
 let rec ssa_of_expr ~entry ~state ~expr =
-  let load entry name =
-    entry, append entry
-              ~ty:(lvar_type state.frame_ty name)
-              ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
-  in
-  let store entry name value =
-    ignore (append entry
-              ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
-    entry, value
-  in
+  let load  = load  ~state in
+  let store = store ~state in
   match expr with
   (* Constants. *)
   | Syntax.Nil (_)
@@ -66,22 +74,30 @@ let rec ssa_of_expr ~entry ~state ~expr =
   -> entry, Ssa.const (Rt.cenv_lookup state.const_env name)
   (* Variable access and assignment. *)
   | Syntax.Self (_)
-  -> load entry "self"
+  -> entry, load entry "self"
   | Syntax.Var (_, name)
-  -> load entry name
+  -> entry, load entry name
   | Syntax.IVar (_, name)
-  -> (let entry, self = load entry "self" in
+  -> (let self = load entry "self" in
       entry, append entry ~ty:(tvar ())
                           ~opcode:(Ssa.IVarLoadInstr (self, name)))
   | Syntax.Assign (_, Syntax.Var (_, name), expr)
   -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
-      store entry name value)
+      entry, store entry name value)
   | Syntax.Assign (_, Syntax.IVar (_, name), expr)
-  -> (let entry, self  = load entry "self" in
+  -> (let self = load entry "self" in
       let entry, value = ssa_of_expr ~entry ~state ~expr in
-      entry, append entry ~opcode:(Ssa.IVarStoreInstr (self, name, value)))
+      match state.kind with
+      | ConvObject | ConvInitializer
+      -> entry, append entry ~opcode:(Ssa.IVarStoreInstr (self, name, value))
+      | ConvValueInitializer
+      -> (let new_self = append entry ~ty:(self.Ssa.ty)
+                                      ~opcode:(Ssa.IVarStoreInstr (self, name, value)) in
+          entry, store entry "self" new_self)
+      | ConvValue
+      -> failwith "ivar assignment in value non-initializer")
   | Syntax.OpAssign (_, Syntax.Var (_, name), selector, expr)
-  -> (let entry, value = load entry name in
+  -> (let value = load entry name in
       let callee =
         append entry ~ty:(tvar ())
                      ~opcode:(Ssa.ResolveInstr (value,
@@ -97,7 +113,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
         append entry ~ty:(tvar ())
                      ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
       in
-      store entry name value')
+      entry, store entry name value')
   | Syntax.Let (_, pattern, _ty, expr)
   -> ssa_of_pattern ~entry ~state ~pattern ~expr
   (* Method calls. *)
@@ -295,7 +311,7 @@ and ssa_of_formal_args ~entry ~state ~formal_args =
         Table.set state.frame_ty.Rt.e_ty_bindings name {
           Rt.b_ty_location = Location.empty;
           Rt.b_ty_kind     = kind;
-          Rt.b_ty    = ty;
+          Rt.b_ty          = ty;
         };
         ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
         entry
@@ -306,7 +322,12 @@ and ssa_of_formal_args ~entry ~state ~formal_args =
             append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("tup_index",
                                       [state.args; int 0])) in
           state.arg_idx <- 1;
-          assign Syntax.LVarImmutable "self" arg)
+          let lvar_kind =
+            match state.kind with
+            | ConvValueInitializer -> Syntax.LVarMutable
+            | _ -> Syntax.LVarImmutable
+          in
+          assign lvar_kind "self" arg)
       | Syntax.FormalArg (_, (kind, name))
       -> (let arg_idx =
             if state.arg_idx >= 0 then begin
@@ -363,7 +384,8 @@ and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
     in
 
     (* Perform SSA conversion. *)
-    let lam_state = { funcn; frame; frame_ty;
+    let lam_state = { kind = state.kind;
+                      funcn; frame; frame_ty;
                       type_env  = Table.copy state.type_env;
                       const_env = state.const_env;
                       args; arg_idx = 0; kwargs } in
@@ -379,7 +401,8 @@ and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
   | _
   -> assert false
 
-let name_of_lambda ?(id="") lambda =
+let name_of_lambda klass selector lambda =
+  let id = klass.Rt.k_name ^ ":" ^ selector in
   (* Create the function with the signature corresponding to that
      of lambda. Usually it would be (\x, \y) -> \z. *)
   let funcn =
@@ -411,13 +434,29 @@ let name_of_lambda ?(id="") lambda =
                     (Rt.Environment lambda.Rt.l_local_env)))
     in
 
+    (* Set special conversion parameters for this function. *)
+    let kind =
+      match klass.Rt.k_is_value, (selector : string :> latin1s) with
+      | false, "initialize" -> ConvInitializer
+      | false, _            -> ConvObject
+      | true,  "initialize" -> ConvValueInitializer
+      | true,  _            -> ConvValue
+    in
+
     (* Perform SSA conversion. *)
-    let state = { funcn; frame; frame_ty;
+    let state = { kind; funcn; frame; frame_ty;
                   type_env  = lambda.Rt.l_type_env;
                   const_env = lambda.Rt.l_const_env;
                   args; arg_idx = 0; kwargs } in
     let entry = ssa_of_formal_args ~entry ~state ~formal_args:lambda.Rt.l_args in
     let entry, value = ssa_of_seq ~entry ~state ~exprs:lambda.Rt.l_body in
-    ignore (append entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr value));
+
+    begin match kind with
+    | ConvValueInitializer
+    -> (let self = load ~state entry "self" in
+        ignore (append entry ~opcode:(Ssa.ReturnInstr self)))
+    | _
+    -> ignore (append entry ~opcode:(Ssa.ReturnInstr value))
+    end;
 
     funcn

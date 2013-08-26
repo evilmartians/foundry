@@ -1,7 +1,13 @@
 let load_ir lexbuf =
   let lex () = IrLexer.next lexbuf in
   let parse  = MenhirLib.Convert.Simplified.traditional2revised IrParser.toplevel in
-  parse lex
+  try
+    parse lex
+  with IrParser.StateError _ ->
+    let pos = Lexing.lexeme_start_p lexbuf in
+    prerr_endline ("Invalid input near " ^ (string_of_int pos.Lexing.pos_lnum) ^ ":" ^
+                   (string_of_int pos.Lexing.pos_bol));
+    exit 1
 
 let dump_ir omit_roots roots capsule =
   IrPrinter.string_of ~omit_roots roots capsule

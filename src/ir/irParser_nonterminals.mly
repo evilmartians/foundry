@@ -530,58 +530,43 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | /* nothing */
                 { u"" }
 
-      instr_ty: ty=ty
-                { (fun (venv, block, fenv) -> ty venv) }
-
-         instr: id=opt_local_eq x=value_instr
+         instr: id=opt_local_eq ty=ty? x=instr_body
                 { (fun ((venv, block, fenv) as env) ->
-                    let instr = create_instr ~id Rt.NilTy InvalidInstr in
+                    let ty    = Option.map_default (fun ty -> ty venv) Rt.NilTy ty in
+                    let instr = create_instr ~id ty InvalidInstr in
                     append_instr instr block;
+
                     if Table.exists fenv id then
                       failwith (u"Duplicate name %" ^ id);
-                    if id <> u"" then
-                      Table.set fenv instr.id instr;
-                    (fun () ->
-                      let ty, opcode = x env in
-                      set_ty     instr ty;
-                      set_opcode instr opcode)) }
-              | x=term_instr
-                { (fun ((venv, blockn, fenv) as env) ->
-                    let instr = create_instr Rt.NilTy InvalidInstr in
-                    append_instr instr blockn;
-                    (fun () ->
-                      set_ty     instr Rt.NilTy;
-                      set_opcode instr (x env))) }
+                    if id <> u"" then begin
+                      if ty = Rt.NilTy then
+                        failwith (u"Trying to assign id to a name of nil type");
+                      Table.set fenv instr.id instr
+                    end;
 
-   value_instr: ty=instr_ty Phi operands=phi_ops
-                { (fun env -> ty env, PhiInstr (operands env)) }
-              | ty=instr_ty Frame parent=local_env_op
-                { (fun env -> ty env, FrameInstr (parent env)) }
-              | ty=instr_ty Lvar_load
-                    lenv=local_env_op Comma name=Lit_String
-                { (fun env -> ty env, LVarLoadInstr (lenv env, name)) }
-              | Lvar_store
-                    lenv=local_env_op Comma name=Lit_String Comma value=operand
-                { (fun env -> Rt.NilTy, LVarStoreInstr (lenv env, name, value env)) }
-              | ty=instr_ty Ivar_load obj=operand Comma name=Lit_String
-                { (fun env -> ty env, IVarLoadInstr (obj env, name)) }
+                    (fun () -> set_opcode instr (x env))) }
+
+    instr_body: Phi operands=phi_ops
+                { (fun env -> PhiInstr (operands env)) }
+              | Frame parent=local_env_op
+                { (fun env -> FrameInstr (parent env)) }
+              | Lvar_load lenv=local_env_op Comma name=Lit_String
+                { (fun env -> LVarLoadInstr (lenv env, name)) }
+              | Lvar_store lenv=local_env_op Comma name=Lit_String Comma value=operand
+                { (fun env -> LVarStoreInstr (lenv env, name, value env)) }
+              | Ivar_load obj=operand Comma name=Lit_String
+                { (fun env -> IVarLoadInstr (obj env, name)) }
               | Ivar_store obj=operand Comma name=Lit_String Comma value=operand
-                { (fun env -> Rt.NilTy, IVarStoreInstr (obj env, name, value env)) }
-              | ty=instr_ty? Primitive name=Lit_String args=args(operand)
-                { (fun env ->
-                    Option.map_default (fun ty -> ty env) Rt.NilTy ty,
-                    (PrimitiveInstr (name, args env))) }
-              | ty=instr_ty? Call func=func_op args=args(operand)
-                { (fun env ->
-                    Option.map_default (fun ty -> ty env) Rt.NilTy ty,
-                    (CallInstr (func env, args env))) }
-              | ty=instr_ty Closure func=func_op Comma lenv=local_env_op
-                { (fun env -> ty env, ClosureInstr (func env, lenv env) )}
-              | ty=instr_ty Resolve obj=operand Comma meth=operand
-                { (fun env ->
-                    ty env, ResolveInstr (obj env, meth env)) }
-
-    term_instr: Jump target=operand
+                { (fun env -> IVarStoreInstr (obj env, name, value env)) }
+              | Primitive name=Lit_String args=args(operand)
+                { (fun env -> PrimitiveInstr (name, args env)) }
+              | Call func=func_op args=args(operand)
+                { (fun env -> CallInstr (func env, args env)) }
+              | Closure func=func_op Comma lenv=local_env_op
+                { (fun env -> ClosureInstr (func env, lenv env)) }
+              | Resolve obj=operand Comma meth=operand
+                { (fun env -> ResolveInstr (obj env, meth env)) }
+              | Jump target=operand
                 { (fun env -> JumpInstr (target env)) }
               | Jump_if cond=operand Comma if_true=operand Comma if_false=operand
                 { (fun env -> JumpIfInstr (cond env, if_true env, if_false env)) }
