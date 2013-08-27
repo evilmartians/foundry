@@ -104,10 +104,12 @@ let run_on_function passmgr capsule funcn =
               | _, _
               -> Bottom)
             Top values)
+
       (* Handle branches. Schedule the target; if possible, reduce
          conditional branches to unconditional. *)
       | JumpInstr target
       -> schedule_block target; Top
+
       | JumpIfInstr (cond, if_true, if_false)
       -> (match lookup cond with
           | Top
@@ -119,6 +121,7 @@ let run_on_function passmgr capsule funcn =
           -> (let target = if k = Rt.Truth then if_true else if_false in
               set_opcode instr (JumpInstr target);
               schedule_block target)); Top
+
       (* Handle primitives. Fold non-side-effectful primitives, possibly
          with primitive-specific knowledge. *)
       | PrimitiveInstr (name, operands)
@@ -134,6 +137,21 @@ let run_on_function passmgr capsule funcn =
                 match lookup_operands operands with
                 | Some values -> Const (Primitive.invoke name values)
                 | None -> Bottom))
+
+      (* Handle specialization. *)
+      | SpecializeInstr ({ opcode = Ssa.Const (Rt.Class (klass, specz)) },
+                         specz')
+      -> (try
+            let specz' =
+              Assoc.map specz' ~f:(fun key value ->
+                match lookup value with
+                | Const k -> k
+                | _ -> raise Exit)
+            in
+            Const (Rt.Class (klass, Assoc.merge specz specz'))
+          with Exit ->
+            Bottom)
+
       (* All unknown instructions are treated as varying by default; this
          is always safe. *)
       | _

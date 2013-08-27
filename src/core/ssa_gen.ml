@@ -51,6 +51,15 @@ let store ~state entry name value =
 let rec ssa_of_expr ~entry ~state ~expr =
   let load  = load  ~state in
   let store = store ~state in
+  let send receiver selector args kwargs =
+    let callee =
+      append entry ~ty:(tvar ())
+                   ~opcode:(Ssa.ResolveInstr (receiver,
+                      (Ssa.const (Rt.Symbol selector))))
+    in
+    append entry ~ty:(tvar ())
+                 ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
+  in
   match expr with
   (* Constants. *)
   | Syntax.Nil (_)
@@ -67,13 +76,22 @@ let rec ssa_of_expr ~entry ~state ~expr =
   -> entry, Ssa.const (Rt.Unsigned (width, value))
   | Syntax.Signed (_, width, value)
   -> entry, Ssa.const (Rt.Signed (width, value))
+
   (* Code block. *)
   | Syntax.Begin (_, exprs)
   -> (let entry, names = ssa_of_exprs ~entry ~state ~exprs in
       entry, List.hd names)
+
   (* Constants. *)
   | Syntax.Const (_, name)
   -> entry, Ssa.const (Rt.cenv_lookup state.const_env name)
+
+  (* Types. *)
+  | Syntax.TVar (_, name)
+  -> entry, Ssa.const (Rt.Tvar (Rt.tenv_resolve state.type_env name))
+  | Syntax.Type (_, expr)
+  -> ssa_of_type ~entry ~state ~expr
+
   (* Variable access and assignment. *)
   | Syntax.Self (_)
   -> entry, load entry "self"
@@ -83,9 +101,11 @@ let rec ssa_of_expr ~entry ~state ~expr =
   -> (let self = load entry "self" in
       entry, append entry ~ty:(tvar ())
                           ~opcode:(Ssa.IVarLoadInstr (self, name)))
+
   | Syntax.Assign (_, Syntax.Var (_, name), expr)
   -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
       entry, store entry name value)
+
   | Syntax.Assign (_, Syntax.IVar (_, name), expr)
   -> (let self = load entry "self" in
       let entry, value = ssa_of_expr ~entry ~state ~expr in
@@ -98,6 +118,18 @@ let rec ssa_of_expr ~entry ~state ~expr =
           entry, store entry "self" new_self)
       | ConvValue
       -> failwith "ivar assignment in value non-initializer")
+
+  | Syntax.Assign (_, Syntax.Send (loc, receiver, selector, operands), value)
+  -> (let entry, receiver = ssa_of_expr ~entry ~state ~expr:receiver in
+      let entry, value    = ssa_of_expr ~entry ~state ~expr:value    in
+      let args =
+        append entry ~ty:(tvar ())
+                     ~opcode:(Ssa.PrimitiveInstr ("tup_make", [receiver; value]))
+      in
+      let kwargs = Ssa.const (Rt.Record (Assoc.empty)) in
+      ignore (send receiver (selector ^ "=") args kwargs);
+      entry, value)
+
   | Syntax.OpAssign (_, Syntax.Var (_, name), selector, expr)
   -> (let value = load entry name in
       let callee =
@@ -116,22 +148,16 @@ let rec ssa_of_expr ~entry ~state ~expr =
                      ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
       in
       entry, store entry name value')
+
   | Syntax.Let (_, pattern, _ty, expr)
   -> ssa_of_pattern ~entry ~state ~pattern ~expr
+
   (* Method calls. *)
   | Syntax.Send (_, receiver, selector, actual_args)
-  -> (let entry, receiver = ssa_of_expr ~entry ~state ~expr:receiver in
-      let callee =
-        append entry ~ty:(tvar ())
-                     ~opcode:(Ssa.ResolveInstr (receiver,
-                        (Ssa.const (Rt.Symbol selector))))
-      in
-      let entry, args, kwargs =
-        ssa_of_actual_args ~entry ~state ~receiver ~actual_args
-      in
-      entry, append entry
-                ~ty:(tvar ())
-                ~opcode:(Ssa.CallInstr (callee, [args; kwargs])))
+  -> (let entry, receiver     = ssa_of_expr ~entry ~state ~expr:receiver in
+      let entry, args, kwargs = ssa_of_actual_args ~entry ~state ~receiver ~actual_args in
+      entry, send receiver selector args kwargs)
+
   (* Control flow. *)
   | Syntax.If (_, cond, true_exprs, false_expr)
   -> (let head, cond = ssa_of_expr ~entry ~state ~expr:cond in
@@ -175,6 +201,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
       in
       ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, if_true, if_false)));
       tail, Ssa.const Rt.Nil)
+
   | Syntax.Or (_, lhs, rhs)
   | Syntax.And (_, lhs, rhs)
   -> (let head, lhs_value = ssa_of_expr ~entry ~state ~expr:lhs in
@@ -192,6 +219,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
       tail, append tail ~ty:(tvar ())
                 ~opcode:(Ssa.PhiInstr [head, lhs_value;
                                        body, rhs_value]))
+
   (* Miscellanea. *)
   | Syntax.Lambda (_, formal_args, ty, expr) (* TODO lam_ty *)
   -> ssa_of_lambda_expr ~entry ~state ~formal_args ~expr
@@ -200,6 +228,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
       entry, append entry
               ~ty:(tvar ())
               ~opcode:(Ssa.PrimitiveInstr (name, List.rev operands)))
+
   | _
   -> failwith ("ssa_of_expr: " ^
         (Unicode.assert_utf8s
@@ -220,6 +249,32 @@ and ssa_of_seq ~entry ~state ~exprs =
   -> entry, Ssa.const Rt.Nil
   | expr :: _
   -> entry, expr
+
+and ssa_of_type ~entry ~state ~expr =
+  match expr with
+  | Syntax.TypeConstr (_, name, args)
+  -> (let ty = Rt.cenv_lookup state.const_env name in
+      let klass, specz = Typing.unfold_equiv ty in
+      let specz = Assoc.map specz ~f:(fun _ -> Ssa.const) in
+      let rec combine entry params specz args =
+        match args with
+        | Syntax.TypeArg (_, ty) :: args
+        -> (let (name, _), params = Assoc.pluck params in
+            let entry, ty = ssa_of_type ~entry ~state ~expr:ty in
+            let specz = Assoc.add specz name ty in
+            combine entry params specz args)
+        | Syntax.TypeKwArg (_, name, ty) :: args
+        -> (let entry, ty = ssa_of_type ~entry ~state ~expr:ty in
+            let specz = Assoc.add specz name ty in
+            combine entry params specz args)
+        | []
+        -> specz
+      in
+    let specz = combine entry klass.Rt.k_parameters specz args in
+    entry, append entry ~ty:(tvar ())
+                        ~opcode:(Ssa.SpecializeInstr (Ssa.const ty, specz)))
+  | Syntax.TypeSplice (_, expr)
+  -> ssa_of_expr ~entry ~state ~expr
 
 and ssa_of_pattern ~entry ~state ~pattern ~expr =
   match pattern with
@@ -253,6 +308,10 @@ and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
         -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
             args := append entry ~ty:(tvar ())
                   ~opcode:(Ssa.PrimitiveInstr ("tup_concat", [!args; value]));
+            entry)
+        | Syntax.ActualKwSplice (_, expr)
+        -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
+            kwargs := value;
             entry))
       entry actual_args
   in

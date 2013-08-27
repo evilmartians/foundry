@@ -265,7 +265,7 @@
                 { Syntax.TypeArg (nullary (Syntax.ty_loc ty), ty) }
               | id=Id_LABEL ty=ty
                 { let (id_loc, id) = id in
-                    Syntax.TypeArgKw (unary id_loc (Syntax.ty_loc ty), id, ty) }
+                    Syntax.TypeKwArg (unary id_loc (Syntax.ty_loc ty), id, ty) }
 
      splice_ty: id=Id_LOCAL
                 { let (id_loc, id) = id in

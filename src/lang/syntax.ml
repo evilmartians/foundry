@@ -77,7 +77,7 @@ and formal_args = formal_arg list
 and pair_ty     = operator * string * ty
 and arg_ty      =
 | TypeArg         of nullary    * ty
-| TypeArgKw       of operator   * string * ty
+| TypeKwArg       of operator   * string * ty
 and ty          =
 | TypeConstr      of operator   * string * arg_ty list
 | TypeTuple       of collection * ty list

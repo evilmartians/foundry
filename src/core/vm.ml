@@ -132,7 +132,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
         List.fold_left (fun (args, kwargs) arg ->
           match arg with
           | Syntax.TypeArg(_,ty)     -> ((as_type ty) :: args), kwargs
-          | Syntax.TypeArgKw(_,n,ty) -> args, (n, as_type ty) :: kwargs)
+          | Syntax.TypeKwArg(_,n,ty) -> args, (n, as_type ty) :: kwargs)
         ([], []) args
       in LambdaTy {
         l_ty_args   = TupleTy  (List.rev args);
@@ -152,14 +152,14 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
                 match arg with
                 | Syntax.TypeArg(_, value)
                 -> (eval_type env value) :: args, kwargs
-                | Syntax.TypeArgKw(_, name, value)
+                | Syntax.TypeKwArg(_, name, value)
                 -> args, (name, eval_type env value) :: kwargs)
               ([], []) args
             in
             let f_args, kw_f_args =
               List.split_nth (List.length args) (Assoc.keys klass.k_parameters)
             in
-            let new_specz = List.combine f_args args in
+            let new_specz = List.combine f_args (List.rev args) in
             let new_specz = List.fold_left (fun acc (kw, ty) ->
                 if List.mem_assoc kw new_specz then
                   exc_fail ("Type parameter `" ^ kw ^ "' is passed more than once") [loc]

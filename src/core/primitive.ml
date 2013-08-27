@@ -58,8 +58,8 @@ let prim = Table.create [
   (* name       side-eff?  impl *)
   (*-- debug ------------------------------------------- *)
   "debug",      (true,     debug);
-  "external",   (true,     (fun _ -> assert false));
-  "externalva", (true,     (fun _ -> assert false));
+  "external",   (true,     fun _ -> assert false);
+  "externalva", (true,     fun _ -> assert false);
   (*-- machine int and big int ------------------------- *)
   "int_add",    (false,    int_binop add_big_int);
   "int_sub",    (false,    int_binop sub_big_int);
@@ -87,14 +87,19 @@ let prim = Table.create [
   (* -- tuples ----------------------------------------- *)
   "tup_make",   (false,    fun xs -> Rt.Tuple xs);
   "tup_extend", (false,    tup_extend);
-  "tup_concat", (false,    (fun _ -> assert false));
-  "tup_length", (false,    (fun _ -> assert false));
-  "tup_index",  (false,    (fun _ -> assert false));
-  "tup_slice",  (false,    (fun _ -> assert false));
+  "tup_concat", (false,    fun _ -> assert false);
+  "tup_length", (false,    fun _ -> assert false);
+  "tup_index",  (false,    fun _ -> assert false);
+  "tup_slice",  (false,    fun _ -> assert false);
   (* -- closures --------------------------------------- *)
-  "lam_call",   (true,     (fun _ -> assert false));
+  "lam_call",   (true,     fun _ -> assert false);
   (* -- objects ---------------------------------------- *)
-  "obj_alloc",  (false,    (fun _ -> assert false));
+  "obj_alloc",  (false,    fun _ -> assert false);
+  (* -- hardware access -------------------------------- *)
+  "mem_load",   (false,    fun _ -> assert false);
+  "mem_store",  (true,     fun _ -> assert false);
+  "mem_loadv",  (true,     fun _ -> assert false);
+  "mem_storev", (true,     fun _ -> assert false);
 ]
 
 let exists = Table.exists prim

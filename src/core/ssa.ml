@@ -57,6 +57,7 @@ sig
   | CallInstr         of (*func*) name    * (*operands*) name list
   | ClosureInstr      of (*func*) name    * (*environment*) name
   | ResolveInstr      of (*object*)  name * (*method*)   name
+  | SpecializeInstr   of (*type*) name    * name Assoc.sorted_t
   | PrimitiveInstr    of (*name*) string  * (*operands*) name list
 end = NameType
 
@@ -320,6 +321,8 @@ let instr_operands instr =
   -> [func; env]
   | ResolveInstr (obj, meth)
   -> [obj; meth]
+  | SpecializeInstr (cls, specz)
+  -> cls :: Assoc.values specz
   | PrimitiveInstr (name, operands)
   -> operands
 
@@ -477,6 +480,8 @@ let map_instr_operands instr operands =
   -> ClosureInstr (func, env)
   | ResolveInstr (_, _), [obj; meth]
   -> ResolveInstr (obj, meth)
+  | SpecializeInstr (_, specz), cls :: specz'
+  -> SpecializeInstr (cls, Assoc.update specz specz')
   | PrimitiveInstr (name, _), _
   -> PrimitiveInstr (name, operands)
   | _

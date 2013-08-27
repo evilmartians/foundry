@@ -7,6 +7,12 @@ exception Conflict of ty * ty
 let fold_equiv ty =
   let roots = !roots in
   match ty with
+  | Class (klass, _) when klass == roots.kNil
+  -> Rt.NilTy
+  | Class (klass, _) when klass == roots.kBoolean
+  -> Rt.BooleanTy
+  | Class (klass, _) when klass == roots.kInteger
+  -> Rt.IntegerTy
   | Class (klass, specz) when klass == roots.kUnsigned
   -> (match Assoc.find_option specz "width" with
       | Some (Integer width) -> UnsignedTy (int_of_big_int width)
@@ -18,6 +24,19 @@ let fold_equiv ty =
   | _
   -> ty
 
+let unfold_equiv ty =
+  match ty with
+  | Class (k, sp)
+  -> k, sp
+  | UnsignedTy (width)
+  | SignedTy (width)
+  -> (let width = big_int_of_int width in
+      klass_of_type ty, Assoc.sorted ["width", Rt.Integer (width)])
+  | _ -> raise (Invalid_argument ("Typing.unfold_equiv" :> latin1s))
+
+let equiv ~f ty =
+  fold_equiv (f (unfold_equiv ty))
+
 let rec unify' env a b =
   (* Substitute already instantiated type variables. *)
   let rec subst_tvar ty =
@@ -28,8 +47,7 @@ let rec unify' env a b =
     | _
     -> ty
   in
-  let a, b = subst_tvar a, subst_tvar b in
-  let a, b = fold_equiv a, fold_equiv b in
+  let a, b = subst_tvar a,   subst_tvar b in
   (* Instantiate type variables. *)
   match a, b with
   | _, _ when equal a b
@@ -50,12 +68,12 @@ let rec unify' env a b =
   | TupleTy(xsa), TupleTy(xsb)
   -> List.fold_left2 unify' env xsa xsb
   | RecordTy(xsa), RecordTy(xsb)
-  -> Assoc.fold2 ~f:(fun _ -> unify') env xsa xsb
+  -> fst (Assoc.merge_fold ~f:(fun k env v1 v2 -> unify' env v1 v2, v1) env xsa xsb)
   | EnvironmentTy(xa), EnvironmentTy(xb)
   -> unify_env' env xa xb
   | Class(ka, spa), Class(kb, spb)
     when ka == kb
-  -> Assoc.fold2 ~f:(fun _ -> unify') env spa spb
+  -> fst (Assoc.merge_fold ~f:(fun k env v1 v2 -> unify' env v1 v2, v1) env spa spb)
   | FunctionTy(args_ty, ret_ty), FunctionTy(args_ty', ret_ty')
   | ClosureTy(args_ty, ret_ty),  ClosureTy(args_ty', ret_ty')
   -> (try
@@ -63,6 +81,14 @@ let rec unify' env a b =
         unify' env ret_ty ret_ty'
       with Invalid_argument _ ->
         raise (Conflict (a, b)))
+
+  (* TODO: refactor this? *)
+  | (Class(_) as a),      (UnsignedTy(_) as b)
+  | (UnsignedTy(_) as b), (Class(_) as a)
+  | (Class(_) as a),      (SignedTy(_) as b)
+  | (SignedTy(_) as b),   (Class(_) as a)
+  -> unify' env a (Class (unfold_equiv b))
+
   | a, b
   -> raise (Conflict (a, b))
 
@@ -112,7 +138,7 @@ let rec subst env value =
   | EnvironmentTy x
   -> EnvironmentTy (subst_local_env env x)
   | Class (klass, specz)
-  -> Class (klass, Assoc.map (fun _ -> subst env) specz)
+  -> fold_equiv (Class (klass, Assoc.map (fun _ -> subst env) specz))
   | Package _
   -> value
   | FunctionTy (args, ret)

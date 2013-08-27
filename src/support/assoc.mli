@@ -20,6 +20,8 @@ val index       : ('a, 'b) t -> string -> int
 val mem         : ('a, 'b) t -> string -> bool
 
 val keys        : ('a, 'b) t -> string list
+val values      : ('a, 'b) t -> 'a list
+val pluck       : ('a, 'b) t -> (string * 'a) * ('a, 'b) t
 
 val equal       : eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
 val map         : f:(string -> 'a -> 'c) -> ('a, 'b) t -> ('c, 'b) t
@@ -31,5 +33,8 @@ val filter      : f:(string -> 'a -> bool) -> ('a, 'b) t -> ('a, 'b) t
 val prepend     : ('a, 'b) t -> string -> 'a -> ('a, sequental) t
 val append      : ('a, 'b) t -> string -> 'a -> ('a, sequental) t
 val add         : ('a, sorted) t -> string -> 'a -> ('a, sorted) t
+val merge_fold  : f:(string -> 'b -> 'a -> 'a -> ('b * 'a)) -> 'b ->
+                      ('a, sorted) t -> ('a, sorted) t -> 'b * ('a, sorted) t
 val merge       : ('a, sorted) t -> ('a, sorted) t -> ('a, sorted) t
+val update      : ('a, sorted) t -> 'a list -> ('a, sorted) t
 val remove      : ('a, 'b) t -> string -> ('a, 'b) t

@@ -55,7 +55,7 @@ class Signed
   end
 end
 
-def putchar(chr) : (\a, Unsigned(32i)) -> Unsigned(32i)
+def putchar(chr) : (\a, Unsigned(32)) -> Unsigned(32)
   invokeprimitive external(:putchar, chr)
 end
 

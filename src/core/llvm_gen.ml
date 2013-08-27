@@ -368,7 +368,7 @@ let rec gen_func llmod heap funcn =
         Llvm.build_call llfunc (Array.of_list (llenv :: (List.map map operands))) id builder)
 
     (* Object operations. *)
-    | "obj_alloc", [ cls ]
+    | "obj_alloc", [cls]
     -> (* For reference types, allocate an object in system heap (for now).
           For value types, create an object filled with undef. *)
        (match instr.Ssa.ty with
@@ -387,6 +387,47 @@ let rec gen_func llmod heap funcn =
               Llvm.build_bitcast llobj llty id builder)
         | _
         -> assert false)
+
+    (* Memory manipulation. *)
+    | ("mem_load" | "mem_loadv"),
+                    [ { Ssa.opcode = Ssa.Const (Rt.Integer align) };
+                      { Ssa.ty     = Rt.UnsignedTy (ptr_width)    } as addr ]
+    -> (let width     =
+          match instr.Ssa.ty with
+          | Rt.UnsignedTy (width) -> width
+          | _ -> assert false
+        in
+        let align     = int_of_big_int align in
+        let llret_ty  = Llvm.integer_type ctx width in
+        let lladdr    =
+          Llvm.build_inttoptr (map addr) (Llvm.pointer_type llret_ty) "" builder
+        in
+        let llargs    = [| lladdr              |] in
+        let llargs_ty = [| Llvm.type_of lladdr |] in
+        let name      = "foundry." ^ prim ^ ".a" ^ (string_of_int align) ^
+                        ".i" ^ (string_of_int width)
+        in
+        let llfunc    = gen_llfunc llmod name llargs_ty llret_ty in
+        Llvm.build_call llfunc llargs "" builder)
+
+    | ( "mem_store" | "mem_storev" ),
+                    [ { Ssa.opcode = Ssa.Const (Rt.Integer align) };
+                      { Ssa.ty     = Rt.UnsignedTy (ptr_width)    } as addr;
+                      { Ssa.ty     = Rt.UnsignedTy (width)        } as value ]
+    -> (let align     = int_of_big_int align in
+        let llval     = map value in
+        let llval_ty  = Llvm.type_of llval in
+        let lladdr    =
+          Llvm.build_inttoptr (map addr) (Llvm.pointer_type llval_ty) "" builder
+        in
+        let llargs    = [| lladdr;              llval    |] in
+        let llargs_ty = [| Llvm.type_of lladdr; llval_ty |] in
+        let name      = "foundry." ^ prim ^ ".a" ^ (string_of_int align) ^
+                        ".i" ^ (string_of_int width)
+        in
+        let llfunc    = gen_llfunc llmod name llargs_ty (Llvm.void_type ctx) in
+        Llvm.build_call llfunc llargs "" builder;
+        llconst_of_value Rt.Nil)
 
     (* Calling C functions. *)
     | "external", { Ssa.opcode = Ssa.Const (Rt.Symbol ext_func) } :: args

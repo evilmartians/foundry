@@ -71,7 +71,7 @@ and const_env = package list
 and lambda    = {
           l_hash          : int;
           l_location      : Location.t;
-          l_ty            : lambda_ty;
+  mutable l_ty            : lambda_ty;
   mutable l_local_env     : local_env;
   mutable l_type_env      : type_env;
   mutable l_const_env     : const_env;

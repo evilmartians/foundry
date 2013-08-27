@@ -83,6 +83,11 @@
       pToplevel     = get_package (u"p.toplevel");
     }
 
+  let dummy_lambda_ty =
+    { l_ty_args   = Rt.NilTy;
+      l_ty_kwargs = Rt.NilTy;
+      l_ty_result = Rt.NilTy; }
+
   let dummy_local_env =
     { e_hash     = Hash_seed.make ();
       e_parent   = None;
@@ -101,37 +106,43 @@
 %start <Rt.roots * Ssa.capsule> toplevel
 
 %%
-    %public table(X): LBrace
-                        xs=separated_list(Comma,
-                              separated_pair(Lit_String, Equal, X))
-                      RBrace
-                      {
-                        (fun env ->
-                          let xs = List.map (fun (name, x) -> name, x env) xs
-                          in Table.create xs)
-                      }
+      %public table(X): LBrace
+                          xs=separated_list(Comma,
+                                separated_pair(Lit_String, Equal, X))
+                        RBrace
+                        {
+                          (fun env ->
+                            let xs = List.map (fun (name, x) -> name, x env) xs
+                            in Table.create xs)
+                        }
 
-%public assoc_seq(X): LBrace
-                        xs=separated_list(Comma,
-                              separated_pair(Lit_String, Equal, X))
-                      RBrace
-                      { (fun env -> Assoc.sequental (List.map (fun (name, x) -> name, x env) xs)) }
+  %public assoc_seq(X): LBrace
+                          xs=separated_list(Comma,
+                                separated_pair(Lit_String, Equal, X))
+                        RBrace
+                        { (fun env -> Assoc.sequental (List.map (fun (name, x) -> name, x env) xs)) }
 
-%public assoc_ord(X): xs=assoc_seq(X)
-                      { (fun env -> Assoc.sort (xs env)) }
+  %public assoc_ord(X): xs=assoc_seq(X)
+                        { (fun env -> Assoc.sort (xs env)) }
 
-      %public seq(X): LBrack
-                        xs=separated_list(Comma, X)
-                      RBrack
-                      { (fun env -> List.map (fun x -> x env) xs) }
+        %public seq(X): LBrack
+                          xs=separated_list(Comma, X)
+                        RBrack
+                        { (fun env -> List.map (fun x -> x env) xs) }
 
-     %public args(X): LParen
-                        xs=separated_list(Comma, X)
-                      RParen
-                      { (fun env -> List.map (fun x -> x env) xs) }
+       %public args(X): LParen
+                          xs=separated_list(Comma, X)
+                        RParen
+                        { (fun env -> List.map (fun x -> x env) xs) }
 
-%public prefix(X, Y): X y=Y
-                      { y }
+  %public prefix(X, Y): X y=Y
+                        { y }
+
+ %public assoc_op(X,Y): LBrack x=X FatArrow y=Y RBrack
+                        { x, y }
+
+%public assoc_ops(X,Y): xs=separated_nonempty_list(Comma, assoc_op(X, Y))
+                        { xs }
 
       location: LParen lft=Lit_Integer rgt=Lit_Integer RParen
                 { Location.empty }
@@ -419,7 +430,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     let lambda = {
                       l_hash      = Hash_seed.make ();
                       l_location  = loc;
-                      l_ty        = ty env;
+                      l_ty        = dummy_lambda_ty;
                       l_local_env = dummy_local_env;
                       l_type_env  = Rt.tenv_create ();
                       l_const_env = Rt.cenv_create ();
@@ -428,6 +439,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     } in
                     Table.set env bind_as (NamedLambda lambda);
                     (fun () ->
+                      lambda.l_ty        <- ty env;
                       lambda.l_local_env <- local_env env;
                       Option.may (fun x -> lambda.l_type_env  <- (x env)) type_env;
                       Option.may (fun x -> lambda.l_const_env <- (x env)) const_env))
@@ -506,13 +518,15 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | x=value
                 { (fun (venv, block, fenv) -> const (x venv)) }
 
-        phi_op: LBrack name=Name_Local FatArrow operand=operand RBrack
-                { name, operand }
-
-       phi_ops: xs=separated_nonempty_list(Comma, phi_op)
+       phi_ops: xs=assoc_ops(Name_Local, operand)
                 { (fun ((venv, block, fenv) as env) ->
                     List.map (fun (id, value) ->
                       Table.get_exn fenv id, value env) xs) }
+
+      spec_ops: xs=assoc_ops(Lit_String, operand)
+                { (fun env ->
+                    Assoc.sorted (List.map (fun (param, value) ->
+                                    param, value env) xs)) }
 
   local_env_op: x=local
                 { x }
@@ -564,6 +578,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> CallInstr (func env, args env)) }
               | Closure func=func_op Comma lenv=local_env_op
                 { (fun env -> ClosureInstr (func env, lenv env)) }
+              | Specialize cls=operand Comma operands=spec_ops
+                { (fun env -> SpecializeInstr (cls env, operands env)) }
               | Resolve obj=operand Comma meth=operand
                 { (fun env -> ResolveInstr (obj env, meth env)) }
               | Jump target=operand

@@ -351,6 +351,10 @@ let rec string_of_ssa_name state value =
     instr "closure" [print func; print env]
   | ResolveInstr (obj, meth) ->
     instr "resolve" [print obj; print meth]
+  | SpecializeInstr (cls, operands) ->
+    instr "specialize" ((print cls) :: (Assoc.map_list
+          (fun param value ->
+            "[ " ^ (escape_as_literal param) ^ " => " ^ (print value) ^ " ]") operands))
   | PrimitiveInstr (name, operands) ->
     call_instr ("primitive " ^ (escape_as_literal name)) operands
 

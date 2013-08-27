@@ -15,11 +15,11 @@ class Unsigned
 end
 
 class Vector1D < Value
-  def @x : Unsigned(32i)
+  def @x : Unsigned(32)
 end
 
 class Vector2D < Vector1D
-  def @y : Unsigned(32i)
+  def @y : Unsigned(32)
 
   def self.new(*args)
     let instance = invokeprimitive obj_alloc(self)

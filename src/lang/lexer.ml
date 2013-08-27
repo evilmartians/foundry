@@ -241,7 +241,6 @@ and lex_def state = lexer
 | eof             -> eof state lexbuf
 
 and lex_number state digits = lexer
-| 'i'             -> Vl_INT  (locate state lexbuf, digits)
 | 'u' digits      -> Vl_UINT (locate state lexbuf,
                               int_of_string (sub_lexeme lexbuf 1 (-1)), digits)
 | 's' digits      -> Vl_SINT (locate state lexbuf,
@@ -249,7 +248,8 @@ and lex_number state digits = lexer
 
 | id_alpha        -> raise (Unexpected (locate state lexbuf, (lexeme lexbuf).[0]))
 | _               -> Ulexing.rollback lexbuf;
-                     lex_code state lexbuf
+                     Vl_INT  (locate state lexbuf, digits)
+
 | eof             -> eof state lexbuf
 
 and lex_string state = lexer

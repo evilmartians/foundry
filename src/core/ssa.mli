@@ -54,6 +54,7 @@ and opcode =
 | CallInstr         of (*func*) name    * (*operands*) name list
 | ClosureInstr      of (*func*) name    * (*environment*) name
 | ResolveInstr      of (*object*)  name * (*method*)   name
+| SpecializeInstr   of (*type*) name    * name Assoc.sorted_t
 | PrimitiveInstr    of (*name*) string  * (*operands*) name list
 
 (* Nametbl is safe to use in presence of key mutation. *)

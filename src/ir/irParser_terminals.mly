@@ -74,6 +74,7 @@
 %token Ivar_store
 %token Resolve
 %token Call
+%token Specialize
 %token Primitive
 
 %token Map

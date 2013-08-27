@@ -104,6 +104,7 @@ rule lex = parse
 | "resolve"       { Resolve }
 | "call"          { Call }
 | "closure"       { Closure }
+| "specialize"    { Specialize }
 | "primitive"     { Primitive }
 
 | "map"           { Map }

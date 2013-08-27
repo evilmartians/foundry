@@ -1,0 +1,7 @@
+*.o
+*.s
+*.ll
+*.bc
+*.fir
+*.elf
+*.bin

@@ -60,7 +60,7 @@ and check_ty cx ty =
   | TypeFunction(_, args, ty)
   -> (let check_arg arg =
         match arg with
-        | TypeArg(_, ty) | TypeArgKw(_, _, ty)
+        | TypeArg(_, ty) | TypeKwArg(_, _, ty)
         -> check_ty cx ty
       in (check_arg @: args) @ check_ty cx ty)
   | TypeConstr((loc, _), name, args)
@@ -73,7 +73,7 @@ and check_ty cx ty =
       else
         let check_arg arg =
           match arg with
-          | TypeArg(_, ty) | TypeArgKw(_, _, ty)
+          | TypeArg(_, ty) | TypeKwArg(_, _, ty)
           -> check_ty cx ty
         in check_arg @: args)
   | TypeSplice(_,expr)

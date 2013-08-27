@@ -28,7 +28,7 @@ class Object
 end
 
 class Vector1D
-  def @x : Unsigned(32i)
+  def @x : Unsigned(32)
 
   def initialize(x)
     @x = x
@@ -44,7 +44,7 @@ class Vector1D
 end
 
 class Vector2D < Vector1D
-  def @y : Unsigned(32i)
+  def @y : Unsigned(32)
 
   def initialize(x, y)
     @x = x
