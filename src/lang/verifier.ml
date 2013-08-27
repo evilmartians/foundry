@@ -95,7 +95,7 @@ and check_assign cx lhs rhs =
       -> ["Local variable `" ^ name ^ "' is not declared." ^
           " (Try `let " ^ name ^ "' instead?)", [loc]])
   | IVar _ | Send _
-  -> []
+  -> check_expr cx lhs
   | _ -> assert false
 
 and check_lambda cx f_args ty exprs =
