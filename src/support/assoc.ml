@@ -42,6 +42,9 @@ let index assoc key =
 let mem assoc key =
   List.mem_assoc key assoc
 
+let iter ~f assoc =
+  List.iter (fun (k, v) -> f k v) assoc
+
 let equal ~eq a b =
   try
     List.fold_left2 (fun acc (ka, va) (kb, vb) ->
@@ -129,6 +132,18 @@ let update assoc values =
     -> raise (Invalid_argument ("Assoc.update" :> latin1s))
   in
   update_pair assoc values []
+
+let replace assoc key value =
+  let rec replace_pair assoc rest =
+    match assoc with
+    | (key', _) :: assoc when key = key'
+    -> (key, value) :: assoc
+    | pair :: assoc
+    -> replace_pair assoc (pair :: rest)
+    | []
+    -> raise Not_found
+  in
+  replace_pair assoc []
 
 let remove assoc key =
   List.remove_assoc key assoc

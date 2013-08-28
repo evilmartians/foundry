@@ -19,6 +19,7 @@ val find_option : ('a, 'b) t -> string -> 'a option
 val index       : ('a, 'b) t -> string -> int
 val mem         : ('a, 'b) t -> string -> bool
 
+val iter        : f:(string -> 'a -> unit) -> ('a, 'b) t -> unit
 val keys        : ('a, 'b) t -> string list
 val values      : ('a, 'b) t -> 'a list
 val pluck       : ('a, 'b) t -> (string * 'a) * ('a, 'b) t
@@ -37,4 +38,5 @@ val merge_fold  : f:(string -> 'b -> 'a -> 'a -> ('b * 'a)) -> 'b ->
                       ('a, sorted) t -> ('a, sorted) t -> 'b * ('a, sorted) t
 val merge       : ('a, sorted) t -> ('a, sorted) t -> ('a, sorted) t
 val update      : ('a, sorted) t -> 'a list -> ('a, sorted) t
+val replace     : ('a, 'b) t -> string -> 'a -> ('a, 'b) t
 val remove      : ('a, 'b) t -> string -> ('a, 'b) t
