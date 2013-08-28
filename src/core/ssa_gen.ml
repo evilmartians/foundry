@@ -172,6 +172,22 @@ let rec ssa_of_expr ~entry ~state ~expr =
       let value'       = send entry value selector args kwargs in
       entry, store entry name value')
 
+  | Syntax.OpAssign (_, Syntax.Send (_, receiver, selector, operands), operator, expr)
+  ->  (* Fetch the base expression. *)
+     (let entry, receiver = ssa_of_expr ~entry ~state ~expr:receiver in
+      (* Fetch the old value. *)
+      let args,  kwargs   = send_args entry [receiver] in
+      let value           = send entry receiver selector args kwargs in
+      (* Fetch the argument. *)
+      let entry, arg      = ssa_of_expr ~entry ~state ~expr in
+      (* Perform the operation. *)
+      let args,  kwargs   = send_args entry [value; arg] in
+      let value'          = send entry value operator args kwargs in
+      (* Write back the new value. *)
+      let args,  kwargs   = send_args entry [receiver; value'] in
+      ignore (send entry receiver (selector ^ "=") args kwargs);
+      entry, value')
+
   | Syntax.Let (_, pattern, _ty, expr)
   -> ssa_of_pattern ~entry ~state ~pattern ~expr
 
