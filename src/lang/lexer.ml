@@ -1,5 +1,6 @@
 open Unicode.Std
 open Big_int
+open Big_int_conv
 open Parser_tokens
 
 (* State management *)
@@ -65,10 +66,16 @@ let regexp w_newline   = '\n' | "\r\n"
 let regexp w_any       = w_space | w_newline
 
 let regexp digits      = ['0'-'9']+
+let regexp hexdigits   = ['0'-'9' 'a'-'f' 'A'-'F']+
+let regexp bindigits   = ['0' '1']+
 let regexp id_lower    = ['a'-'z' '_']
 let regexp id_upper    = ['A'-'Z']
 let regexp id_alpha    = id_lower | id_upper
 let regexp id_alnum    = id_alpha | digits
+
+let regexp number      = ( digits    '_'? )+
+let regexp hexnumber   = ( hexdigits '_'? )+
+let regexp binnumber   = ( bindigits '_'? )+
 
 let regexp ident       = id_alpha id_alnum*
 let regexp local       = id_lower id_alnum*
@@ -180,7 +187,13 @@ let rec lex_code state = lexer
               expr_begin state true;  Kw_INVOKEPRIMITIVE (locate state lexbuf, lexeme lexbuf)
 
 (* Values *)
-| digits          -> expr_begin state false;
+| "0x" hexnumber  -> expr_begin state false;
+                     lex_number state (big_int_of_hex_string (sub_lexeme lexbuf 2 (-2))) lexbuf
+
+| "0b" binnumber  -> expr_begin state false;
+                     lex_number state (big_int_of_binary_string (sub_lexeme lexbuf 2 (-2))) lexbuf
+
+| number          -> expr_begin state false;
                      lex_number state (big_int_of_string (lexeme lexbuf)) lexbuf
 
 | ':' method_name -> expr_begin state false;
