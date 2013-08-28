@@ -1,0 +1,4 @@
+<support>: include
+
+<**/*.ml*>: package(oUnit), syntax(camlp4o), package(sexplib.syntax), use_utf8str_safe
+<test_foundry.native>: package(oUnit), package(sexplib), package(extlib)
