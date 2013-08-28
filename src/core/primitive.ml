@@ -81,8 +81,10 @@ let prim = Table.create [
   "int_sgt",    (false,    int_cmpop gt_big_int);
   (* -- tuples ----------------------------------------- *)
   "tup_length", (false,    fun _ -> assert false);
-  "tup_index",  (false,    fun _ -> assert false);
+  "tup_lookup", (false,    fun _ -> assert false);
   "tup_slice",  (false,    fun _ -> assert false);
+  (* -- tuples ----------------------------------------- *)
+  "rec_lookup", (false,    fun _ -> assert false);
   (* -- closures --------------------------------------- *)
   "lam_call",   (true,     fun _ -> assert false);
   (* -- objects ---------------------------------------- *)

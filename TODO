@@ -1,9 +1,8 @@
 features:
- * value types
- * replace tvars in operands
  * inliner
  * better errors
  * store location map in fir
+ * insert_instr
 
 bugs:
  * allocate fresh tvars on copy_func

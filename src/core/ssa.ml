@@ -532,12 +532,10 @@ let replace_instr instr instr' =
   | { opcode = Function _   }
   | { opcode = BasicBlock _ }
   | { opcode = Const _      }
-  -> erase_instr instr;
-  | { n_parent = ParentBasicBlock block }
-  -> prepend_instr ~before:instr instr' block;
-     erase_instr instr
+  -> erase_instr instr
   | _
-  -> assert false
+  -> prepend_instr ~before:instr instr' (instr_parent instr);
+     erase_instr instr
 
 let copy_func ?(suffix="") funcn =
   let func    = func_of_name funcn in

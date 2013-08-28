@@ -259,7 +259,7 @@ let rec gen_func llmod heap funcn =
   let fixups  = ref [] in
 
   (* Map FSSA name to LLVM name, and memoize the mapping. *)
-  let map name =
+  let lookup name =
     try
       Ssa.Nametbl.find names name
     with Not_found ->
@@ -288,44 +288,49 @@ let rec gen_func llmod heap funcn =
     (* Debug primitives. *)
     | "debug", [operand]
     -> (match Llvm.lookup_function "__fy_debug" llmod with
-        | Some lldebug -> Llvm.build_call lldebug [| map operand |] "" builder
+        | Some lldebug -> Llvm.build_call lldebug [| lookup operand |] "" builder
         | None -> assert false)
 
     (* Integer operations. *)
-    | "int_add",  [lhs; rhs] -> Llvm.build_add  (map lhs) (map rhs) id builder
-    | "int_sub",  [lhs; rhs] -> Llvm.build_sub  (map lhs) (map rhs) id builder
-    | "int_mul",  [lhs; rhs] -> Llvm.build_mul  (map lhs) (map rhs) id builder
-    | "int_udiv", [lhs; rhs] -> Llvm.build_udiv (map lhs) (map rhs) id builder
-    | "int_sdiv", [lhs; rhs] -> Llvm.build_sdiv (map lhs) (map rhs) id builder
-    | "int_and",  [lhs; rhs] -> Llvm.build_and  (map lhs) (map rhs) id builder
-    | "int_or",   [lhs; rhs] -> Llvm.build_or   (map lhs) (map rhs) id builder
-    | "int_xor",  [lhs; rhs] -> Llvm.build_xor  (map lhs) (map rhs) id builder
-    | "int_shl",  [lhs; rhs] -> Llvm.build_shl  (map lhs) (map rhs) id builder
-    | "int_lshr", [lhs; rhs] -> Llvm.build_lshr (map lhs) (map rhs) id builder
-    | "int_ashr", [lhs; rhs] -> Llvm.build_ashr (map lhs) (map rhs) id builder
-    | "int_eq",   [lhs; rhs] -> Llvm.build_icmp Icmp.Eq  (map lhs) (map rhs) id builder
-    | "int_neq",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ne  (map lhs) (map rhs) id builder
-    | "int_ule",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ule (map lhs) (map rhs) id builder
-    | "int_ult",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ult (map lhs) (map rhs) id builder
-    | "int_uge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Uge (map lhs) (map rhs) id builder
-    | "int_ugt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ugt (map lhs) (map rhs) id builder
-    | "int_sle",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sle (map lhs) (map rhs) id builder
-    | "int_slt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Slt (map lhs) (map rhs) id builder
-    | "int_sge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sge (map lhs) (map rhs) id builder
-    | "int_sgt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sgt (map lhs) (map rhs) id builder
+    | "int_add",  [lhs; rhs] -> Llvm.build_add  (lookup lhs) (lookup rhs) id builder
+    | "int_sub",  [lhs; rhs] -> Llvm.build_sub  (lookup lhs) (lookup rhs) id builder
+    | "int_mul",  [lhs; rhs] -> Llvm.build_mul  (lookup lhs) (lookup rhs) id builder
+    | "int_udiv", [lhs; rhs] -> Llvm.build_udiv (lookup lhs) (lookup rhs) id builder
+    | "int_sdiv", [lhs; rhs] -> Llvm.build_sdiv (lookup lhs) (lookup rhs) id builder
+    | "int_and",  [lhs; rhs] -> Llvm.build_and  (lookup lhs) (lookup rhs) id builder
+    | "int_or",   [lhs; rhs] -> Llvm.build_or   (lookup lhs) (lookup rhs) id builder
+    | "int_xor",  [lhs; rhs] -> Llvm.build_xor  (lookup lhs) (lookup rhs) id builder
+    | "int_shl",  [lhs; rhs] -> Llvm.build_shl  (lookup lhs) (lookup rhs) id builder
+    | "int_lshr", [lhs; rhs] -> Llvm.build_lshr (lookup lhs) (lookup rhs) id builder
+    | "int_ashr", [lhs; rhs] -> Llvm.build_ashr (lookup lhs) (lookup rhs) id builder
+    | "int_eq",   [lhs; rhs] -> Llvm.build_icmp Icmp.Eq  (lookup lhs) (lookup rhs) id builder
+    | "int_neq",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ne  (lookup lhs) (lookup rhs) id builder
+    | "int_ule",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ule (lookup lhs) (lookup rhs) id builder
+    | "int_ult",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ult (lookup lhs) (lookup rhs) id builder
+    | "int_uge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Uge (lookup lhs) (lookup rhs) id builder
+    | "int_ugt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ugt (lookup lhs) (lookup rhs) id builder
+    | "int_sle",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sle (lookup lhs) (lookup rhs) id builder
+    | "int_slt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Slt (lookup lhs) (lookup rhs) id builder
+    | "int_sge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sge (lookup lhs) (lookup rhs) id builder
+    | "int_sgt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sgt (lookup lhs) (lookup rhs) id builder
 
     (* Tuple operations. *)
+    | "tup_lookup", [tup; { Ssa.opcode = Ssa.Const (Rt.Integer idx) }]
+    -> Llvm.build_extractvalue (lookup tup) (int_of_big_int idx) "" builder
+
     | "tup_slice",  [tup; { Ssa.opcode = Ssa.Const (Rt.Integer lft) };
                           { Ssa.opcode = Ssa.Const (Rt.Integer rgt) }]
     -> (let lft    = int_of_big_int lft
         and rgt    = int_of_big_int rgt
-        and lltup  = map tup in
+        and lltup  = lookup tup in
         let lltys  = Llvm.struct_element_types (Llvm.type_of lltup) in
         let llty'  = Llvm.struct_type ctx (Array.sub lltys lft (rgt - lft)) in
         llblit builder lltup lft (Llvm.undef llty') 0 (rgt - lft))
 
-    | "tup_index",  [tup; { Ssa.opcode = Ssa.Const (Rt.Integer idx) }]
-    -> Llvm.build_extractvalue (map tup) (int_of_big_int idx) "" builder
+    (* Record operations. *)
+    | "rec_lookup", [ { Ssa.ty     = Rt.RecordTy fields } as re;
+                      { Ssa.opcode = Ssa.Const (Rt.Symbol field) } ]
+    -> Llvm.build_extractvalue (lookup re) (Assoc.index fields field) "" builder
 
     (* Closure operations. *)
     | "lam_call", closure :: operands
@@ -335,11 +340,11 @@ let rec gen_func llmod heap funcn =
           generalized type for all environments.
 
           See also Ssa.CallInstr branch. *)
-       (let llclosure = map closure in
+       (let llclosure = lookup closure in
         let llfunc    = Llvm.build_extractvalue llclosure 0 "" builder in
         let llenv     = Llvm.build_extractvalue llclosure 1 "" builder in
         let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
-        Llvm.build_call llfunc (Array.of_list (llenv :: (List.map map operands))) id builder)
+        Llvm.build_call llfunc (Array.of_list (llenv :: (List.map lookup operands))) id builder)
 
     (* Object operations. *)
     | "obj_alloc", [cls]
@@ -374,7 +379,7 @@ let rec gen_func llmod heap funcn =
         let align     = int_of_big_int align in
         let llret_ty  = Llvm.integer_type ctx width in
         let lladdr    =
-          Llvm.build_inttoptr (map addr) (Llvm.pointer_type llret_ty) "" builder
+          Llvm.build_inttoptr (lookup addr) (Llvm.pointer_type llret_ty) "" builder
         in
         let llargs    = [| lladdr              |] in
         let llargs_ty = [| Llvm.type_of lladdr |] in
@@ -389,10 +394,10 @@ let rec gen_func llmod heap funcn =
                       { Ssa.ty     = Rt.UnsignedTy (ptr_width)    } as addr;
                       { Ssa.ty     = Rt.UnsignedTy (width)        } as value ]
     -> (let align     = int_of_big_int align in
-        let llval     = map value in
+        let llval     = lookup value in
         let llval_ty  = Llvm.type_of llval in
         let lladdr    =
-          Llvm.build_inttoptr (map addr) (Llvm.pointer_type llval_ty) "" builder
+          Llvm.build_inttoptr (lookup addr) (Llvm.pointer_type llval_ty) "" builder
         in
         let llargs    = [| lladdr;              llval    |] in
         let llargs_ty = [| Llvm.type_of lladdr; llval_ty |] in
@@ -405,7 +410,7 @@ let rec gen_func llmod heap funcn =
 
     (* Calling C functions. *)
     | "external", { Ssa.opcode = Ssa.Const (Rt.Symbol ext_func) } :: args
-    -> (let llargs    = List.map map args in
+    -> (let llargs    = List.map lookup args in
         let llargs_ty = Array.of_list (List.map Llvm.type_of llargs) in
         let llret_ty  = lltype_of_ty instr.Ssa.ty in
         let llfunc    = gen_llfunc llmod (ext_func :> string) llargs_ty llret_ty in
@@ -414,7 +419,7 @@ let rec gen_func llmod heap funcn =
     | "externalva", { Ssa.opcode = Ssa.Const (Rt.Symbol ext_func) } ::
                     { Ssa.opcode = Ssa.Const (Rt.Integer arg_cnt) } :: args
     -> (let arg_cnt   = int_of_big_int arg_cnt in
-        let llargs, llrest = List.split_nth arg_cnt (List.map map args) in
+        let llargs, llrest = List.split_nth arg_cnt (List.map lookup args) in
         let llargs_ty = Array.of_list (List.map Llvm.type_of llargs) in
         let llret_ty  = lltype_of_ty instr.Ssa.ty in
         let llfunc    = gen_llfunc_va llmod (ext_func :> string) llargs_ty llret_ty in
@@ -430,7 +435,7 @@ let rec gen_func llmod heap funcn =
     let id = (instr.Ssa.id :> string) in
     let llvalue =
       match instr.Ssa.opcode with
-      (* Constants are handled within `map'. *)
+      (* Constants are handled within `lookup'. *)
       | Ssa.Const _ | Ssa.Function _
       -> assert false
 
@@ -438,12 +443,12 @@ let rec gen_func llmod heap funcn =
       | Ssa.JumpInstr blockn
       -> Llvm.build_br (Llvm.block_of_value (Ssa.Nametbl.find names blockn)) builder
       | Ssa.JumpIfInstr (condn, truen, falsen)
-      -> Llvm.build_cond_br (map condn)
-              (Llvm.block_of_value (map truen))
-              (Llvm.block_of_value (map falsen))
+      -> Llvm.build_cond_br (lookup condn)
+              (Llvm.block_of_value (lookup truen))
+              (Llvm.block_of_value (lookup falsen))
             builder
       | Ssa.ReturnInstr valuen
-      -> Llvm.build_ret (map valuen) builder
+      -> Llvm.build_ret (lookup valuen) builder
 
       (* Phis. *)
       | Ssa.PhiInstr operands
@@ -462,7 +467,7 @@ let rec gen_func llmod heap funcn =
           (* Build an LLVM phi with existing values. Attempting to pass []
              to build_phi results in segfault :( *)
           let incoming = List.map (fun (block, op) ->
-                            map op, Llvm.block_of_value (map block)) pred in
+                            lookup op, Llvm.block_of_value (lookup block)) pred in
           let llphi    = Llvm.build_phi incoming id builder in
           (* Add all not yet existing values into the fixup list. *)
           List.iter (fun (block, op) -> fixups := (llphi, block, op) :: !fixups) succ;
@@ -477,7 +482,7 @@ let rec gen_func llmod heap funcn =
              because an environment in FSSA is always chained to another one. *)
           let llparentptr = Llvm.build_struct_gep llenv 0 "" builder in
           let llnextty    = Llvm.pointer_type (Option.get env_map.e_parent).e_lltype in
-          let llnext      = Llvm.build_bitcast (map nextn) llnextty "" builder in
+          let llnext      = Llvm.build_bitcast (lookup nextn) llnextty "" builder in
           ignore (Llvm.build_store llnext llparentptr builder);
           (* Return the newly built environment. *)
           llenv)
@@ -486,7 +491,7 @@ let rec gen_func llmod heap funcn =
       | Ssa.LVarStoreInstr (envn, var, _)
       -> (let env_map = env_map_of_ty envn.Ssa.ty in
           (* Get a pointer to the variable in the environment. *)
-          let rec lookup env_map llenv =
+          let rec lookup_lvar env_map llenv =
             try
               (* Try to lookup on the current level. This possibly
                  raises Not_found. *)
@@ -502,20 +507,20 @@ let rec gen_func llmod heap funcn =
                 let llenvptr = Llvm.build_struct_gep llenv 0 "" builder in
                 let llenv    = Llvm.build_load llenvptr "" builder in
                 (* Recursively look up at the upper level. *)
-                lookup env_map llenv
+                lookup_lvar env_map llenv
               | None -> assert false
           in
           let llenvty = Llvm.pointer_type env_map.e_lltype in
           (* Environments are always represented as i8*: their true type is
              hidden. Sort of an existential type for LLVM IR. *)
-          let llenv   = Llvm.build_bitcast (map envn) llenvty "" builder in
-          let llvar   = lookup env_map llenv in
+          let llenv   = Llvm.build_bitcast (lookup envn) llenvty "" builder in
+          let llvar   = lookup_lvar env_map llenv in
           (* Actually load or store the variable value. *)
           match instr.Ssa.opcode with
           | Ssa.LVarLoadInstr (_, _)
           -> Llvm.build_load llvar id builder
           | Ssa.LVarStoreInstr (_, _, value)
-          -> Llvm.build_store (map value) llvar builder
+          -> Llvm.build_store (lookup value) llvar builder
           | _ -> assert false)
 
       (* Instance variables. *)
@@ -523,7 +528,7 @@ let rec gen_func llmod heap funcn =
       | Ssa.IVarStoreInstr ({ Ssa.ty = Rt.Class(klass, _) } as obj, var, _)
         when not klass.Rt.k_is_value
       -> (* Build a getelementptr instruction for the field. *)
-         (let rec lookup klass indices =
+         (let rec lookup_ivar klass indices =
             try
               let index = Assoc.index klass.Rt.k_ivars var in
               match klass.Rt.k_ancestor with
@@ -531,20 +536,20 @@ let rec gen_func llmod heap funcn =
               | None   -> index :: indices
             with Not_found ->
               match klass.Rt.k_ancestor with
-              | Some ancestor -> lookup ancestor (0 :: indices)
+              | Some ancestor -> lookup_ivar ancestor (0 :: indices)
               | None -> assert false
           in
           let lli32ty = Llvm.i32_type ctx in
-          let indices = List.rev (lookup klass [0]) in
+          let indices = List.rev (lookup_ivar klass [0]) in
           let indices = List.map (Llvm.const_int lli32ty) indices in
-          let llgep   = Llvm.build_in_bounds_gep (map obj) (Array.of_list indices)
+          let llgep   = Llvm.build_in_bounds_gep (lookup obj) (Array.of_list indices)
                             ((var :> string) ^ ".p") builder in
           (* Actually load or store the slot value. *)
           match instr.Ssa.opcode with
           | Ssa.IVarLoadInstr (_, _)
           -> Llvm.build_load llgep id builder
           | Ssa.IVarStoreInstr (_, _, value)
-          -> Llvm.build_store (map value) llgep builder
+          -> Llvm.build_store (lookup value) llgep builder
           | _ -> assert false)
 
       | Ssa.IVarLoadInstr  ({ Ssa.ty = Rt.Class(klass, _) } as obj, var)
@@ -567,7 +572,7 @@ let rec gen_func llmod heap funcn =
               | None
               -> assert false
           in
-          load klass (map obj))
+          load klass (lookup obj))
 
       | Ssa.IVarStoreInstr ({ Ssa.ty = Rt.Class(klass, _) } as obj, var, value)
         when klass.Rt.k_is_value
@@ -590,7 +595,7 @@ let rec gen_func llmod heap funcn =
               | None
               -> assert false
           in
-          store klass (map obj) (map value))
+          store klass (lookup obj) (lookup value))
 
       (* Functions and closures. *)
       | Ssa.CallInstr (funcn, operands)
@@ -598,11 +603,11 @@ let rec gen_func llmod heap funcn =
             as the result type of the function it calls, so if that's nil, make
             it unnamed: otherwise LLVM will reject the module. *)
          (let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
-          Llvm.build_call (map funcn) (Array.of_list (List.map map operands)) id builder)
+          Llvm.build_call (lookup funcn) (Array.of_list (List.map lookup operands)) id builder)
 
       | Ssa.ClosureInstr (callee, env)
       -> (* See also lam_call primitive. *)
-         (let llfunc, llenv = map callee, map env in
+         (let llfunc, llenv = lookup callee, lookup env in
           let llenv = Llvm.build_bitcast llenv (Llvm.pointer_type (Llvm.i8_type ctx)) "" builder in
           let llclosurety = Llvm.struct_type ctx [|
                               Llvm.type_of llfunc;
@@ -613,19 +618,20 @@ let rec gen_func llmod heap funcn =
           let llclosure = Llvm.build_insertvalue llclosure llenv  1 "" builder in
           llclosure)
 
+      (* Tuples. *)
       | Ssa.TupleExtendInstr (tup, xs)
-      -> (let lltup  = map tup in
-          let llxs   = List.map map xs in
+      -> (let lltup  = lookup tup in
+          let llxs   = List.map lookup xs in
           let lltys  = Llvm.struct_element_types (Llvm.type_of lltup) in
           let llty'  = Llvm.struct_type ctx (Array.append lltys
                           (Array.of_list (List.map Llvm.type_of llxs))) in
           let lltup' = llblit builder lltup 0 (Llvm.undef llty') 0 (Array.length lltys) in
           snd (List.fold_left (fun (idx, lltup) x ->
-              idx + 1, Llvm.build_insertvalue lltup (map x) idx "" builder)
+              idx + 1, Llvm.build_insertvalue lltup (lookup x) idx "" builder)
             (Array.length lltys, lltup') xs))
 
       | Ssa.TupleConcatInstr (lft, rgt)
-      -> (let lllft, llrgt = map lft, map rgt in
+      -> (let lllft, llrgt = lookup lft, lookup rgt in
           let lllfttys = Llvm.struct_element_types (Llvm.type_of lllft) in
           let llrgttys = Llvm.struct_element_types (Llvm.type_of llrgt) in
           let lltys  = Array.append lllfttys llrgttys in
@@ -634,6 +640,9 @@ let rec gen_func llmod heap funcn =
           let rgtidx = Array.length lllfttys in
           llblit builder llrgt 0 lltup rgtidx (Array.length llrgttys))
 
+      (* Records. *)
+      (*| Ssa.RecordConcatInstr (lft, rgt)
+      -> (let lllft, llrgt = lookup lft, lookup rgt in)*)
 
       (* Primitives. *)
       | Ssa.PrimitiveInstr (prim, operands)
@@ -675,7 +684,7 @@ let rec gen_func llmod heap funcn =
   (* Fixup phi instructions. *)
   List.iter (fun (llphi, pred, name) ->
       let llblock = Llvm.block_of_value (Ssa.Nametbl.find names pred) in
-      let llvalue = map name in
+      let llvalue = lookup name in
       Llvm.add_incoming (llvalue, llblock) llphi)
     !fixups;
 

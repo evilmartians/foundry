@@ -67,7 +67,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
                  ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
   in
   match expr with
-  (* Constants. *)
+  (* Literals. *)
   | Syntax.Nil (_)
   -> entry, Ssa.const (Rt.Nil)
   | Syntax.Truth (_)
@@ -82,6 +82,39 @@ let rec ssa_of_expr ~entry ~state ~expr =
   -> entry, Ssa.const (Rt.Unsigned (width, value))
   | Syntax.Signed (_, width, value)
   -> entry, Ssa.const (Rt.Signed (width, value))
+
+  | Syntax.Tuple (_, elems)
+  -> (let entry, interp =
+        List.fold_left (fun (entry, interp) elem ->
+            match elem with
+            | Syntax.TupleElem (_, expr)
+            -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
+                entry, Ssa_interp.append interp (Ssa_interp.Elem value))
+            | Syntax.TupleSplice (_, expr)
+            -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
+                entry, Ssa_interp.append interp (Ssa_interp.Splice value)))
+          (entry, Ssa_interp.empty) elems
+      in
+      entry, Ssa_interp.tup_apply interp entry)
+
+  | Syntax.Record (_, elems)
+  -> (let entry, interp =
+        List.fold_left (fun (entry, interp) elem ->
+            match elem with
+            | Syntax.RecordElem (_, name, expr)
+            -> (let name = Ssa.const (Rt.Symbol name) in
+                let entry, value = ssa_of_expr ~entry ~state ~expr in
+                entry, Ssa_interp.append interp (Ssa_interp.Elem (name, value)))
+            | Syntax.RecordPair (_, name_expr, value_expr)
+            -> (let entry, name  = ssa_of_expr ~entry ~state ~expr:name_expr  in
+                let entry, value = ssa_of_expr ~entry ~state ~expr:value_expr in
+                entry, Ssa_interp.append interp (Ssa_interp.Elem (name, value)))
+            | Syntax.RecordSplice (_, expr)
+            -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
+                entry, Ssa_interp.append interp (Ssa_interp.Splice value)))
+          (entry, Ssa_interp.empty) elems
+      in
+      entry, Ssa_interp.rec_apply interp entry)
 
   (* Code block. *)
   | Syntax.Begin (_, exprs)
@@ -368,7 +401,7 @@ and ssa_of_formal_args ~entry ~state ~formal_args =
       match formal_arg with
       | Syntax.FormalSelf (_)
       -> (let arg =
-            append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("tup_index",
+            append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("tup_lookup",
                                       [state.args; int 0])) in
           state.arg_idx <- 1;
           let lvar_kind =
@@ -390,7 +423,7 @@ and ssa_of_formal_args ~entry ~state ~formal_args =
             end
           in
           let arg =
-            append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("tup_index",
+            append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("tup_lookup",
                                       [state.args; arg_idx])) in
           assign kind name arg)
       | Syntax.FormalRest (_, (kind, name))

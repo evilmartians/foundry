@@ -95,6 +95,15 @@ let run_on_function passmgr capsule funcn =
     -> (let ty = Rt.TupleTy (xs @ ys) in
         unify instr.ty ty)
 
+    (* Records. *)
+    (* TODO | RecordExtendInstr ({ ty = Rt.RecordTy xs }, operands)
+    -> (let operand_tys = List.map (fun x -> x.ty) operands in
+        let ty = Rt.RecordTy (xs @ operand_tys) in
+        unify instr.ty ty) *)
+    | RecordConcatInstr ({ ty = Rt.RecordTy xs }, { ty = Rt.RecordTy ys })
+    -> (let ty = Rt.RecordTy (Assoc.merge xs ys) in
+        unify instr.ty ty)
+
     (* Primitives obey simple, primitive-specific typing rules. *)
     | PrimitiveInstr (prim, operands)
     -> (let unify_int_op int_op_ty =
@@ -140,7 +149,7 @@ let run_on_function passmgr capsule funcn =
 
         (* Tuple and record primitives have type-level semantics not
            expressible with type variables. *)
-        | "tup_index"
+        | "tup_lookup"
         -> (match operands with
             | [ { ty     = Rt.TupleTy xs };
                 { opcode = Const (Rt.Integer idx) } ]
@@ -182,8 +191,8 @@ let run_on_function passmgr capsule funcn =
                 | Rt.Class ({ Rt.k_objectclass = None }, _)
                 -> (* Someone is trying to allocate a value, or a Class instance. *)
                    (failwith "obj_alloc: objectclass=None")
-                | Rt.Class ({ Rt.k_objectclass = Some klass }, specz)
-                -> unify instr.ty (Rt.Class (klass, specz))
+                | Rt.Class ({ Rt.k_objectclass = Some klass }, specz')
+                -> unify instr.ty (Rt.Class (klass, specz'))
                 | _
                 -> ())
             | _

@@ -550,7 +550,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
          instr: id=opt_local_eq ty=ty? x=instr_body
                 { (fun ((venv, block, fenv) as env) ->
                     let ty    = Option.map_default (fun ty -> ty venv) Rt.NilTy ty in
-                    let instr = create_instr ~id ty InvalidInstr in
+                    (* :( should fix this vvv *)
+                    let iid    = if ty = Rt.NilTy then u"__unused" else id in
+                    let instr = create_instr ~id:iid ty InvalidInstr in
                     append_instr instr block;
 
                     if Table.exists fenv id then

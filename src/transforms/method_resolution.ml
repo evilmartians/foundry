@@ -15,6 +15,19 @@ let run_on_function passmgr capsule caller =
        (match recvn, seln with
         | { ty = Rt.Tvar _ }, _
         -> ()
+
+        (* Special-case records for a while. *)
+        | { ty = Rt.RecordTy xs }, { opcode = Ssa.Const (Rt.Symbol selector) }
+        -> (iter_uses instr ~f:(fun call_instr ->
+              match call_instr.opcode with
+              | CallInstr (_, _)
+              -> (let getter = create_instr (Assoc.find xs selector)
+                                            (PrimitiveInstr ("rec_lookup", [recvn; seln])) in
+                  replace_instr call_instr getter)
+              | _
+              -> assert false);
+            erase_instr instr)
+
         | { ty }, { opcode = Const (Rt.Symbol selector) }
         -> (let rec lookup klass selector =
               try

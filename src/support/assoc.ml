@@ -113,7 +113,7 @@ let merge_fold ~f acc lft rgt =
     -> acc, lft_rest
   in
   let acc, assoc = merge_pair acc lft rgt [] in
-  acc, List.rev assoc
+  acc, assoc
 
 let merge lft rgt =
   snd (merge_fold () lft rgt ~f:(fun _ _ vl vr -> (), vr))
