@@ -641,8 +641,24 @@ let rec gen_func llmod heap funcn =
           llblit builder llrgt 0 lltup rgtidx (Array.length llrgttys))
 
       (* Records. *)
-      (*| Ssa.RecordConcatInstr (lft, rgt)
-      -> (let lllft, llrgt = lookup lft, lookup rgt in)*)
+      | Ssa.RecordConcatInstr (({ Ssa.ty = Rt.RecordTy lftxs } as lft),
+                               ({ Ssa.ty = Rt.RecordTy rgtxs } as rgt))
+      -> (let xs =
+            match instr.Ssa.ty with
+            | Rt.RecordTy xs -> xs
+            | _ -> assert false
+          in
+          let lllft, llrgt = lookup lft, lookup rgt in
+          let llty = lltype_of_ty instr.Ssa.ty in
+          let llre = Llvm.undef llty in
+          Assoc.fold llre xs ~f:(fun name llre _ ->
+            let llval =
+              if Assoc.mem rgtxs name then
+                Llvm.build_extractvalue llrgt (Assoc.index rgtxs name) "" builder
+              else
+                Llvm.build_extractvalue lllft (Assoc.index lftxs name) "" builder
+            in
+            Llvm.build_insertvalue llre llval (Assoc.index xs name) "" builder))
 
       (* Primitives. *)
       | Ssa.PrimitiveInstr (prim, operands)
