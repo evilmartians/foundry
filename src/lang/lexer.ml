@@ -247,6 +247,10 @@ and lex_dot state = lexer
 
 and lex_def state = lexer
 | w_space         -> lex_def state lexbuf
+| "[]"            -> goto state lex_code;
+                     Id_METHOD (locate state lexbuf, lexeme lexbuf)
+| "[]="           -> goto state lex_code;
+                     Id_METHOD (locate state lexbuf, lexeme lexbuf)
 | "self"          -> goto state lex_code;
                      Kw_SELF (locate state lexbuf, lexeme lexbuf)
 | _               -> Ulexing.rollback lexbuf; goto state lex_dot;
