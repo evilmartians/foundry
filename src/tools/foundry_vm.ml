@@ -35,6 +35,11 @@ let _ =
         -> (List.iter Diagnostic.print diags;
             exit 1)
       with
+      | Lexer.Unexpected (loc, chr)
+      -> (let diag = Diagnostic.Fatal, Unicode.Std.(
+                     u"Unexpected character " ^ (Char.escaped chr) ^
+                     u" (" ^ (String.make 1 chr) ^ u")"), [loc] in
+          Diagnostic.print diag)
       | Parser.StateError (token, state)
       -> (let diag = Diagnostic.Error,
                      Unicode.assert_utf8s (Parser_errors.message state token),
