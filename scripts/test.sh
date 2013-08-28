@@ -7,6 +7,7 @@ if [ -n "$COVERAGE" ]; then
 fi
 
 echo "Testing foundry..."
+OCAMLRUNPARAM=Rb ./test_foundry.native; echo
 ./vendor/lit/lit.py -v -s --no-progress-bar test/
 
 if [ -n "$COVERAGE" ]; then

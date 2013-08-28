@@ -26,8 +26,9 @@ fi
 
 export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
 ocamlbuild -j 8 -use-ocamlfind \
-  file_check.native    \
-  foundry_vm.native    \
-  foundry_xfrm.native  \
-  foundry_gen.native   \
+  unittest/test_foundry.native  \
+  src/tools/file_check.native    \
+  src/tools/foundry_vm.native    \
+  src/tools/foundry_xfrm.native  \
+  src/tools/foundry_gen.native   \
   $FOUNDRY_JS

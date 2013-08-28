@@ -5,4 +5,5 @@ true: debug, use_menhir
 <**/*>: -include, -traverse
 
 <src>: include
+<unittest>: traverse
 <vendor>: traverse
