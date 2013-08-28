@@ -9,7 +9,7 @@ before_install:
   - sudo dpkg -i llvm/*_amd64.deb
   - export OPAMYES=1 OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
   - opam init
-  - opam install sexplib extlib ulex batteries
+  - opam install sexplib extlib ulex ounit batteries
   - 'if [ -n "$JS_OF_OCAML" ]; then opam install js_of_ocaml; fi'
   - 'if [ -n "$COVERAGE" ]; then opam install bisect; fi'
   - eval `opam config -env`
