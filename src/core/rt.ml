@@ -154,7 +154,7 @@ type roots = {
 
 (* Empty regular class -- e.g. for "class Foo". *)
 
-let empty_class kClass ?ancestor ?(parameters=[]) name =
+let empty_class kClass ?ancestor ?(parameters=Assoc.empty) name =
   let rec klass =
     { k_hash        = Hash_seed.make ();
       k_name        = name;
@@ -162,7 +162,7 @@ let empty_class kClass ?ancestor ?(parameters=[]) name =
       k_metaclass   = metaklass;
       k_objectclass = None;
       k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
-      k_parameters  = Assoc.sequental parameters;
+      k_parameters  = parameters;
       k_ivars       = Assoc.empty;
       k_methods     = Assoc.empty;
       k_prepended   = [];
@@ -174,7 +174,7 @@ let empty_class kClass ?ancestor ?(parameters=[]) name =
       k_metaclass   = kClass;
       k_objectclass = Some klass;
       k_is_value    = false;
-      k_parameters  = Assoc.sequental parameters;
+      k_parameters  = parameters;
       k_ivars       = Assoc.empty;
       k_methods     = Assoc.empty;
       k_prepended   = [];
@@ -258,11 +258,11 @@ let create_roots () =
     kSymbol       = new_class ~ancestor:kValue "Symbol";
 
     kUnsigned     = new_class ~ancestor:kValue
-                              ~parameters:["width", tvar ()]
+                              ~parameters:(Assoc.sequental ["width", tvar ()])
                               "Unsigned";
 
     kSigned       = new_class ~ancestor:kValue
-                              ~parameters:["width", tvar ()]
+                              ~parameters:(Assoc.sequental ["width", tvar ()])
                               "Signed";
 
     kTuple        = new_class ~ancestor:kValue "Tuple";

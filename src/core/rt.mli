@@ -190,7 +190,7 @@ val new_tvar        : unit -> tvar
 val new_static_tvar : unit -> tvar
 
 val new_class       : ?ancestor:klass ->
-                          ?parameters:(string * tvar) list ->
+                          ?parameters:tvar Assoc.sequental_t ->
                           string -> klass
 val new_package     : string -> package
 

@@ -308,7 +308,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       in
       (* Check if we should extend existing class, or create a new one
          and bind it. *)
-      let klass =
+      let cls =
         match cenv_peek !cenv name with
         (* There's an existing one, and it is compatible *)
         | Some(Class (klass, _) as value)
@@ -347,23 +347,30 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
         (* No class present, create one and inherit specializations from
            its ancestor. *)
         | None
-        -> (let eval_param arg =
-              match arg with
-              | Syntax.FormalTypeArg (_, name)
-              -> name, tenv_resolve tenv name
-              | Syntax.FormalTypeKwArg (_, kw, name)
-              -> kw,   tenv_resolve tenv name
+        -> (let eval_param params arg =
+              let name, tvar =
+                match arg with
+                | Syntax.FormalTypeArg (_, name)
+                -> name, (tenv_resolve tenv name)
+                | Syntax.FormalTypeKwArg (_, kw, name)
+                -> kw,   (tenv_resolve tenv name)
+              in
+              if Assoc.mem params name then
+                Assoc.replace params name tvar
+              else
+                Assoc.append  params name tvar
             in
-            let parameters = List.map eval_param params in
             let specz      = Option.default Assoc.empty specz in
             let ancestor   = Option.default !roots.kObject ancestor in
+            let parameters = List.fold_left eval_param ancestor.k_parameters params in
             let value      = Class (new_class ~ancestor ~parameters name, specz) in
-            cenv_bind !cenv name value; value)
+            cenv_bind !cenv name value;
+            value)
       in
       (* Evaluate class body in a context where self is bound to the class *)
       let lenv = lenv_create (Some lenv) in
-        lenv_bind lenv "self" ~value:klass ~kind:Syntax.LVarImmutable ~loc;
-          eval (lenv, tenv, cenv) body)
+      lenv_bind lenv "self" ~value:cls ~kind:Syntax.LVarImmutable ~loc;
+      eval (lenv, tenv, cenv) body)
 
   | Syntax.DefMethod((loc,_),name,args,ty_expr,body)
   -> (let definee  =
