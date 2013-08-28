@@ -197,6 +197,11 @@ let run_on_function passmgr capsule funcn =
                 -> ())
             | _
             -> ())
+
+        (* Memory access primitives. *)
+        | "mem_store" | "mem_storev"
+        -> unify instr.ty Rt.NilTy
+
         | _
         -> ())
     | _
