@@ -393,7 +393,7 @@ let insert_instr ?pivot f_some f_none instr blockn =
               if curn == pivotn then
                 f_some new_instrs curn
               else curn :: new_instrs)
-            [] block.instructions)
+            [] (List.rev block.instructions))
     | None
     -> block.instructions <- f_none block.instructions
   end;
