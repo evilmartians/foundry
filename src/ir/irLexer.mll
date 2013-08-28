@@ -105,6 +105,10 @@ rule lex = parse
 | "call"          { Call }
 | "closure"       { Closure }
 | "specialize"    { Specialize }
+| "tuple_extend"  { Tuple_extend }
+| "tuple_concat"  { Tuple_concat }
+| "record_extend" { Record_extend }
+| "record_concat" { Record_concat }
 | "primitive"     { Primitive }
 
 | "map"           { Map }

@@ -20,8 +20,8 @@ do_a:
 do_b:
   jump %print
 print:
-  %fun  = function () -> nil phi [%do_a => @a], [%do_b => @b]
-  %next = boolean phi [%do_a => true], [%do_b => false]
+  %fun  = function () -> nil phi [ %do_a => @a, %do_b => @b ]
+  %next = boolean phi [ %do_a => true, %do_b => false ]
   call %fun ()
   jump_if %next, %do_b, %exit
 exit:

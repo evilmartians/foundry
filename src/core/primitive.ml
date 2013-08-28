@@ -2,6 +2,8 @@ open Unicode.Std
 open Big_int
 open Rt
 
+exception Undefined_primitive of string
+
 (* Debug primitive implementations. *)
 
 let debug args =
@@ -47,13 +49,6 @@ let int_divmod args =
         Tuple [Integer(quo); Integer(rem)])
   | _ -> assert false
 
-(* Tuple primitive implementations. *)
-
-let tup_extend args =
-  match args with
-  | [Tuple(xs); x] -> Tuple(xs @ [x])
-  | _ -> assert false
-
 let prim = Table.create [
   (* name       side-eff?  impl *)
   (*-- debug ------------------------------------------- *)
@@ -85,9 +80,6 @@ let prim = Table.create [
   "int_ugt",    (false,    int_cmpop gt_big_int);
   "int_sgt",    (false,    int_cmpop gt_big_int);
   (* -- tuples ----------------------------------------- *)
-  "tup_make",   (false,    fun xs -> Rt.Tuple xs);
-  "tup_extend", (false,    tup_extend);
-  "tup_concat", (false,    fun _ -> assert false);
   "tup_length", (false,    fun _ -> assert false);
   "tup_index",  (false,    fun _ -> assert false);
   "tup_slice",  (false,    fun _ -> assert false);
@@ -102,12 +94,16 @@ let prim = Table.create [
   "mem_storev", (true,     fun _ -> assert false);
 ]
 
+let find name =
+  try
+    Table.get_exn prim name
+  with Not_found ->
+    raise (Undefined_primitive name)
+
 let exists = Table.exists prim
 
 let has_side_effects name =
-  let side_eff, _ = Table.get_exn prim name in
-  side_eff
+  fst (find name)
 
 let invoke name args =
-  let _, impl = Table.get_exn prim name in
-  impl args
+  (snd (find name)) args

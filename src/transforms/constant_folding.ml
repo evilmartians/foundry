@@ -6,6 +6,8 @@ let name = "Constant Folding"
 
 (* See http://www.cs.rice.edu/~keith/512/2011/Lectures/L19-SCCP-1up.pdf *)
 
+exception Varying
+
 type sccp_value =
 | Top
 | Const  of Rt.value
@@ -50,18 +52,12 @@ let run_on_function passmgr capsule funcn =
         with Not_found -> Top)
   in
 
-  (* If all of operands are known to be constants, returns Some values,
-     otherwise None. *)
-  let lookup_operands operands =
-    let values = List.map lookup operands in
-    try
-      Some (List.map (fun operand ->
-          match operand with
-          | Const k -> k
-          | _ -> raise Exit)
-        values)
-    with Exit ->
-      None
+  (* Either returns a constant value (values), or raises Varying, which
+     marks the current instruction as Bottom. *)
+  let get name =
+    match lookup name with
+    | Const k -> k
+    | _ -> raise Varying
   in
 
   (* Arguments are "known to be varying", that is bottom. *)
@@ -83,8 +79,11 @@ let run_on_function passmgr capsule funcn =
     in
 
     (* Symbolically evaluate instr. *)
-    let evaluate instr =
+    let evaluate' instr =
       match instr.opcode with
+      | Ssa.Const k
+      -> Const k
+
       (* Handle phis.
           * If all values in phi are TOP, the phi is TOP.
           * If all values in phi are the same constant, the phi is
@@ -122,6 +121,27 @@ let run_on_function passmgr capsule funcn =
               set_opcode instr (JumpInstr target);
               schedule_block target)); Top
 
+      (* Tuple instructions. *)
+      | TupleExtendInstr (tup, elems)
+      -> (let tup =
+            match get tup with
+            | Rt.Tuple xs -> xs
+            | _ -> assert false
+          and elems = List.map get elems in
+          Const (Rt.Tuple (tup @ elems)))
+      | TupleConcatInstr (tup, tup')
+      -> (match get tup, get tup' with
+          | Rt.Tuple xs, Rt.Tuple ys
+          -> Const (Rt.Tuple (xs @ ys))
+          | _
+          -> assert false)
+
+      (* Handle specialization. *)
+      | SpecializeInstr (cls, specz')
+      -> (let specz' = Assoc.map specz' ~f:(fun _ -> get) in
+          Const (Typing.equiv (get cls) ~f:(fun (klass, specz) ->
+            Rt.Class (klass, Assoc.merge specz specz'))))
+
       (* Handle primitives. Fold non-side-effectful primitives, possibly
          with primitive-specific knowledge. *)
       | PrimitiveInstr (name, operands)
@@ -134,28 +154,17 @@ let run_on_function passmgr capsule funcn =
           -> (if Primitive.has_side_effects name then
                 Bottom
               else
-                match lookup_operands operands with
-                | Some values -> Const (Primitive.invoke name values)
-                | None -> Bottom))
-
-      (* Handle specialization. *)
-      | SpecializeInstr ({ opcode = Ssa.Const (Rt.Class (klass, specz)) },
-                         specz')
-      -> (try
-            let specz' =
-              Assoc.map specz' ~f:(fun key value ->
-                match lookup value with
-                | Const k -> k
-                | _ -> raise Exit)
-            in
-            Const (Rt.Class (klass, Assoc.merge specz specz'))
-          with Exit ->
-            Bottom)
+                Const (Primitive.invoke name (List.map get operands))))
 
       (* All unknown instructions are treated as varying by default; this
          is always safe. *)
       | _
       -> Bottom
+    in
+
+    let evaluate instr =
+      try  evaluate' instr
+      with Varying -> Bottom
     in
 
     (* Evaluate all instructions in basic blocks of cfg_worklist. *)

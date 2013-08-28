@@ -74,6 +74,10 @@
 %token Ivar_store
 %token Resolve
 %token Call
+%token Tuple_extend
+%token Tuple_concat
+%token Record_extend
+%token Record_concat
 %token Specialize
 %token Primitive
 

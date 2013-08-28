@@ -138,12 +138,6 @@
   %public prefix(X, Y): X y=Y
                         { y }
 
- %public assoc_op(X,Y): LBrack x=X FatArrow y=Y RBrack
-                        { x, y }
-
-%public assoc_ops(X,Y): xs=separated_nonempty_list(Comma, assoc_op(X, Y))
-                        { xs }
-
       location: LParen lft=Lit_Integer rgt=Lit_Integer RParen
                 { Location.empty }
 
@@ -518,12 +512,21 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | x=value
                 { (fun (venv, block, fenv) -> const (x venv)) }
 
-       phi_ops: xs=assoc_ops(Name_Local, operand)
+ %public f_assoc(X,Y): x=X FatArrow y=Y
+                        { x, y }
+
+%public f_assocs(X,Y): LBrack xs=separated_nonempty_list(Comma, f_assoc(X, Y)) RBrack
+                        { xs }
+
+     assoc_ops: xs=f_assocs(operand, operand)
+                { (fun env -> List.map (fun (x, y) -> x env, y env) xs) }
+
+       phi_ops: xs=f_assocs(Name_Local, operand)
                 { (fun ((venv, block, fenv) as env) ->
                     List.map (fun (id, value) ->
                       Table.get_exn fenv id, value env) xs) }
 
-      spec_ops: xs=assoc_ops(Lit_String, operand)
+      spec_ops: xs=f_assocs(Lit_String, operand)
                 { (fun env ->
                     Assoc.sorted (List.map (fun (param, value) ->
                                     param, value env) xs)) }
@@ -580,6 +583,14 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> ClosureInstr (func env, lenv env)) }
               | Specialize cls=operand Comma operands=spec_ops
                 { (fun env -> SpecializeInstr (cls env, operands env)) }
+              | Tuple_extend  tup=operand Comma operands=seq(operand)
+                { (fun env -> TupleExtendInstr (tup env, operands env)) }
+              | Tuple_concat  tup=operand Comma other=operand
+                { (fun env -> TupleConcatInstr (tup env, other env)) }
+              | Record_extend re=operand Comma operands=assoc_ops
+                { (fun env -> RecordExtendInstr (re env, operands env)) }
+              | Record_concat re=operand Comma other=operand
+                { (fun env -> RecordConcatInstr (re env, other env)) }
               | Resolve obj=operand Comma meth=operand
                 { (fun env -> ResolveInstr (obj env, meth env)) }
               | Jump target=operand

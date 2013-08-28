@@ -11,7 +11,7 @@
 entry:
   jump %loop
 loop:
-  %i = unsigned(32) phi [ %entry => unsigned(32) 1 ], [ %loop => %i.next ]
+  %i = unsigned(32) phi [ %entry => unsigned(32) 1, %loop => %i.next ]
   primitive "debug" (%i)
   %i.next = unsigned(32) primitive "int_add" (%i, unsigned(32) 1)
   %exit_p = boolean primitive "int_uge" (%i, unsigned(32) 5)

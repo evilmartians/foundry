@@ -315,32 +315,6 @@ let rec gen_func llmod heap funcn =
     | "int_sgt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sgt (map lhs) (map rhs) id builder
 
     (* Tuple operations. *)
-    | "tup_make", _
-    -> (let xs_ty = List.map (fun x -> x.Ssa.ty) operands in
-        let llty  = Llvm.struct_type ctx (Array.of_list
-                        (List.map lltype_of_ty xs_ty)) in
-        snd (List.fold_left (fun (idx, lltup) x ->
-            idx + 1, Llvm.build_insertvalue lltup (map x) idx "" builder)
-          (0, Llvm.undef llty) operands))
-
-    | "tup_extend", [tup; x]
-    -> (let lltup, llx = map tup, map x in
-        let lltys  = Llvm.struct_element_types (Llvm.type_of lltup) in
-        let llty'  = Llvm.struct_type ctx (Array.append lltys
-                            (Array.of_list [ Llvm.type_of llx ])) in
-        let lltup' = llblit builder lltup 0 (Llvm.undef llty') 0 (Array.length lltys) in
-        Llvm.build_insertvalue lltup' llx (Array.length lltys) "" builder)
-
-    | "tup_concat", [lft; rgt]
-    -> (let lllft, llrgt = map lft, map rgt in
-        let lllfttys = Llvm.struct_element_types (Llvm.type_of lllft) in
-        let llrgttys = Llvm.struct_element_types (Llvm.type_of llrgt) in
-        let lltys  = Array.append lllfttys llrgttys in
-        let llty'  = Llvm.struct_type ctx lltys in
-        let lltup  = llblit builder lllft 0 (Llvm.undef llty') 0 (Array.length lllfttys) in
-        let rgtidx = Array.length lllfttys in
-        llblit builder llrgt 0 lltup rgtidx (Array.length llrgttys))
-
     | "tup_slice",  [tup; { Ssa.opcode = Ssa.Const (Rt.Integer lft) };
                           { Ssa.opcode = Ssa.Const (Rt.Integer rgt) }]
     -> (let lft    = int_of_big_int lft
@@ -426,7 +400,7 @@ let rec gen_func llmod heap funcn =
                         ".i" ^ (string_of_int width)
         in
         let llfunc    = gen_llfunc llmod name llargs_ty (Llvm.void_type ctx) in
-        Llvm.build_call llfunc llargs "" builder;
+        ignore (Llvm.build_call llfunc llargs "" builder);
         llconst_of_value Rt.Nil)
 
     (* Calling C functions. *)
@@ -638,6 +612,28 @@ let rec gen_func llmod heap funcn =
           let llclosure = Llvm.build_insertvalue llclosure llfunc 0 "" builder in
           let llclosure = Llvm.build_insertvalue llclosure llenv  1 "" builder in
           llclosure)
+
+      | Ssa.TupleExtendInstr (tup, xs)
+      -> (let lltup  = map tup in
+          let llxs   = List.map map xs in
+          let lltys  = Llvm.struct_element_types (Llvm.type_of lltup) in
+          let llty'  = Llvm.struct_type ctx (Array.append lltys
+                          (Array.of_list (List.map Llvm.type_of llxs))) in
+          let lltup' = llblit builder lltup 0 (Llvm.undef llty') 0 (Array.length lltys) in
+          snd (List.fold_left (fun (idx, lltup) x ->
+              idx + 1, Llvm.build_insertvalue lltup (map x) idx "" builder)
+            (Array.length lltys, lltup') xs))
+
+      | Ssa.TupleConcatInstr (lft, rgt)
+      -> (let lllft, llrgt = map lft, map rgt in
+          let lllfttys = Llvm.struct_element_types (Llvm.type_of lllft) in
+          let llrgttys = Llvm.struct_element_types (Llvm.type_of llrgt) in
+          let lltys  = Array.append lllfttys llrgttys in
+          let llty'  = Llvm.struct_type ctx lltys in
+          let lltup  = llblit builder lllft 0 (Llvm.undef llty') 0 (Array.length lllfttys) in
+          let rgtidx = Array.length lllfttys in
+          llblit builder llrgt 0 lltup rgtidx (Array.length llrgttys))
+
 
       (* Primitives. *)
       | Ssa.PrimitiveInstr (prim, operands)

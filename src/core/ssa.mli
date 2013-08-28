@@ -55,6 +55,10 @@ and opcode =
 | ClosureInstr      of (*func*) name    * (*environment*) name
 | ResolveInstr      of (*object*)  name * (*method*)   name
 | SpecializeInstr   of (*type*) name    * name Assoc.sorted_t
+| TupleExtendInstr  of (*tuple*) name   * (*elems*) name list
+| TupleConcatInstr  of (*tuple*) name   * (*tuple*) name
+| RecordExtendInstr of (*record*) name  * (*elems*) (name * name) list
+| RecordConcatInstr of (*record*) name  * (*record*) name
 | PrimitiveInstr    of (*name*) string  * (*operands*) name list
 
 (* Nametbl is safe to use in presence of key mutation. *)

@@ -37,9 +37,7 @@ let run_on_function passmgr capsule caller =
               | Some callee -> callee
               | None
               -> (let lambda  = imethod.Rt.im_body in
-                  let callee  = Ssa_gen.name_of_lambda klass selector lambda in
-                  add_func   capsule callee;
-                  add_lambda capsule imethod.Rt.im_body callee;
+                  let callee  = Ssa_gen.name_of_lambda klass selector lambda capsule in
                   Pass_manager.mark passmgr callee;
                   callee)
             in

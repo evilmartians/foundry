@@ -67,21 +67,34 @@ let run_on_function passmgr capsule funcn =
             unify callee.ty sig_ty)
         | _
         -> ())
+
     (* Local variable access. *)
     | LVarLoadInstr (frame, name)
     -> unify instr.ty (local_var_ty frame name)
     | LVarStoreInstr (frame, name, value)
     -> unify value.ty (local_var_ty frame name)
+
     (* Instance variable access. *)
     | IVarLoadInstr ({ ty = Rt.Class cls }, name)
     -> unify instr.ty (Typing.slot_ty cls name)
     | IVarStoreInstr ({ ty = Rt.Class cls }, name, value)
     -> unify value.ty (Typing.slot_ty cls name)
+
     (* Phi. *)
     | PhiInstr incoming
     -> (let tys = List.map (fun (_,value) -> value.ty) incoming in
         let env = Typing.unify_list (instr.ty :: tys) in
         specialize env)
+
+    (* Tuples. *)
+    | TupleExtendInstr ({ ty = Rt.TupleTy xs }, operands)
+    -> (let operand_tys = List.map (fun x -> x.ty) operands in
+        let ty = Rt.TupleTy (xs @ operand_tys) in
+        unify instr.ty ty)
+    | TupleConcatInstr ({ ty = Rt.TupleTy xs }, { ty = Rt.TupleTy ys })
+    -> (let ty = Rt.TupleTy (xs @ ys) in
+        unify instr.ty ty)
+
     (* Primitives obey simple, primitive-specific typing rules. *)
     | PrimitiveInstr (prim, operands)
     -> (let unify_int_op int_op_ty =
@@ -127,23 +140,6 @@ let run_on_function passmgr capsule funcn =
 
         (* Tuple and record primitives have type-level semantics not
            expressible with type variables. *)
-        | "tup_make"
-        -> (let ty  = Rt.TupleTy (List.map (fun x -> x.ty) operands) in
-            unify instr.ty ty)
-        | "tup_extend"
-        -> (match operands with
-            | [ { ty = Rt.TupleTy xs }; { ty = x } ]
-            -> (let ty = Rt.TupleTy (xs @ [x]) in
-                unify instr.ty ty)
-            | _
-            -> ())
-        | "tup_concat"
-        -> (match operands with
-            | [ { ty = Rt.TupleTy xs }; { ty = Rt.TupleTy ys } ]
-            -> (let ty = Rt.TupleTy (xs @ ys) in
-                unify instr.ty ty)
-            | _
-            -> ())
         | "tup_index"
         -> (match operands with
             | [ { ty     = Rt.TupleTy xs };

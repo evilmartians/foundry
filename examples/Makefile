@@ -23,7 +23,7 @@ stdlib := $(addprefix ../lib/,$(stdlib))
 	llc$(llvm) -filetype=asm $^ -o $@
 
 clean:
-	rm -f *.fir *.bc *.s *.o *.elf
+	rm -f *.fir *.bc *.s *.o *.bin *.elf
 
 # (h)ost rules
 

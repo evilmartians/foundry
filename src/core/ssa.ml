@@ -58,6 +58,10 @@ sig
   | ClosureInstr      of (*func*) name    * (*environment*) name
   | ResolveInstr      of (*object*)  name * (*method*)   name
   | SpecializeInstr   of (*type*) name    * name Assoc.sorted_t
+  | TupleExtendInstr  of (*tuple*) name   * (*elems*) name list
+  | TupleConcatInstr  of (*tuple*) name   * (*tuple*) name
+  | RecordExtendInstr of (*record*) name  * (*elems*) (name * name) list
+  | RecordConcatInstr of (*record*) name  * (*record*) name
   | PrimitiveInstr    of (*name*) string  * (*operands*) name list
 end = NameType
 
@@ -323,6 +327,14 @@ let instr_operands instr =
   -> [obj; meth]
   | SpecializeInstr (cls, specz)
   -> cls :: Assoc.values specz
+  | TupleExtendInstr (tup, elems)
+  -> tup :: elems
+  | TupleConcatInstr (tup, tup')
+  -> [tup; tup']
+  | RecordExtendInstr (re, elems)
+  -> re :: List.concat (List.map (fun (x, y) -> [x; y]) elems)
+  | RecordConcatInstr (re, re')
+  -> [re; re']
   | PrimitiveInstr (name, operands)
   -> operands
 
@@ -482,6 +494,20 @@ let map_instr_operands instr operands =
   -> ResolveInstr (obj, meth)
   | SpecializeInstr (_, specz), cls :: specz'
   -> SpecializeInstr (cls, Assoc.update specz specz')
+  | TupleExtendInstr (_, _), tup :: elems
+  -> TupleExtendInstr (tup, elems)
+  | TupleConcatInstr (_, _), [tup; tup']
+  -> TupleConcatInstr (tup, tup')
+  | RecordExtendInstr (_, _), re :: elems
+  -> (let rec pack elems =
+        match elems with
+        | k :: v :: rest -> (k, v) :: pack rest
+        | [] -> []
+        | _ -> assert false
+      in
+      RecordExtendInstr (re, pack elems))
+  | RecordConcatInstr (_, _), [re; re']
+  -> RecordConcatInstr (re, re')
   | PrimitiveInstr (name, _), _
   -> PrimitiveInstr (name, operands)
   | _

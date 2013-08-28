@@ -9,6 +9,7 @@ type ssa_conv_kind =
 | ConvValueInitializer
 
 type ssa_conv_state = {
+          capsule   : Ssa.capsule;
           kind      : ssa_conv_kind;
           funcn     : Ssa.name;
           frame     : Ssa.name;
@@ -51,6 +52,11 @@ let store ~state entry name value =
 let rec ssa_of_expr ~entry ~state ~expr =
   let load  = load  ~state in
   let store = store ~state in
+  let send_args args =
+    append entry ~ty:(tvar ())
+                 ~opcode:(Ssa.TupleExtendInstr (Ssa.const (Rt.Tuple []), args)),
+    Ssa.const (Rt.Record Assoc.empty)
+  in
   let send receiver selector args kwargs =
     let callee =
       append entry ~ty:(tvar ())
@@ -122,31 +128,15 @@ let rec ssa_of_expr ~entry ~state ~expr =
   | Syntax.Assign (_, Syntax.Send (loc, receiver, selector, operands), value)
   -> (let entry, receiver = ssa_of_expr ~entry ~state ~expr:receiver in
       let entry, value    = ssa_of_expr ~entry ~state ~expr:value    in
-      let args =
-        append entry ~ty:(tvar ())
-                     ~opcode:(Ssa.PrimitiveInstr ("tup_make", [receiver; value]))
-      in
-      let kwargs = Ssa.const (Rt.Record (Assoc.empty)) in
+      let args,  kwargs   = send_args [receiver; value] in
       ignore (send receiver (selector ^ "=") args kwargs);
       entry, value)
 
   | Syntax.OpAssign (_, Syntax.Var (_, name), selector, expr)
-  -> (let value = load entry name in
-      let callee =
-        append entry ~ty:(tvar ())
-                     ~opcode:(Ssa.ResolveInstr (value,
-                        (Ssa.const (Rt.Symbol selector))))
-      in
-      let entry, arg = ssa_of_expr ~entry ~state ~expr in
-      let args, kwargs =
-        append entry ~ty:(tvar ())
-                     ~opcode:(Ssa.PrimitiveInstr ("tup_make", [value; arg])),
-        Ssa.const (Rt.Record Assoc.empty)
-      in
-      let value' =
-        append entry ~ty:(tvar ())
-                     ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
-      in
+  -> (let entry, arg   = ssa_of_expr ~entry ~state ~expr in
+      let value        = load entry name in
+      let args, kwargs = send_args [value; arg] in
+      let value'       = send value selector args kwargs in
       entry, store entry name value')
 
   | Syntax.Let (_, pattern, _ty, expr)
@@ -290,32 +280,30 @@ and ssa_of_pattern ~entry ~state ~pattern ~expr =
       entry, expr)
 
 and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
-  let args =
-    ref (append entry ~ty:(tvar ())
-          ~opcode:(Ssa.PrimitiveInstr ("tup_make", [receiver])))
-  and kwargs =
-    ref (Ssa.const (Rt.Record Assoc.empty))
-  in
-  let entry =
-    List.fold_left (fun entry actual_arg ->
+  let args = Ssa_interp.append Ssa_interp.empty (Ssa_interp.Elem receiver) in
+  let entry, args, kwargs =
+    List.fold_left (fun (entry, args, kwargs) actual_arg ->
         match actual_arg with
         | Syntax.ActualArg (_, expr)
         -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
-            args := append entry ~ty:(tvar ())
-                  ~opcode:(Ssa.PrimitiveInstr ("tup_extend", [!args; value]));
-            entry)
+            entry, Ssa_interp.append args (Ssa_interp.Elem value), kwargs)
         | Syntax.ActualSplice (_, expr)
         -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
-            args := append entry ~ty:(tvar ())
-                  ~opcode:(Ssa.PrimitiveInstr ("tup_concat", [!args; value]));
-            entry)
+            entry, Ssa_interp.append args (Ssa_interp.Splice value), kwargs)
+        | Syntax.ActualKwArg (_, name, expr)
+        -> (let name = Ssa.const (Rt.Symbol name) in
+            let entry, value = ssa_of_expr ~entry ~state ~expr in
+            entry, args, Ssa_interp.append kwargs (Ssa_interp.Elem (name, value)))
+        | Syntax.ActualKwPair (_, name_expr, value_expr)
+        -> (let entry, name  = ssa_of_expr ~entry ~state ~expr:name_expr  in
+            let entry, value = ssa_of_expr ~entry ~state ~expr:value_expr in
+            entry, args, Ssa_interp.append kwargs (Ssa_interp.Elem (name, value)))
         | Syntax.ActualKwSplice (_, expr)
         -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
-            kwargs := value;
-            entry))
-      entry actual_args
+            entry, args, Ssa_interp.append kwargs (Ssa_interp.Splice value)))
+      (entry, args, Ssa_interp.empty) actual_args
   in
-  entry, !args, !kwargs
+  entry, (Ssa_interp.tup_apply args entry), (Ssa_interp.rec_apply kwargs entry)
 
 and ssa_of_formal_args ~entry ~state ~formal_args =
   (* Internally args and kwargs are treated disjointly. Split syntactic
@@ -424,12 +412,17 @@ and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
        tvar (); tvar ()] (tvar ())
   in
   let func = Ssa.func_of_name funcn in
+
+  (* Register the created artifact. *)
+  Ssa.add_func state.capsule funcn;
+
   (* Extract arguments as SSA names. *)
   let env, args, kwargs =
     match func.Ssa.arguments with
     | [env; args; kwargs] -> env, args, kwargs
     | _ -> assert false
   in
+
   (* Create entry block. *)
   let lam_entry = Ssa.create_block ~id:"entry" funcn in
     (* Define a stack frame. Its type will be mutated while the function
@@ -445,10 +438,9 @@ and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
     in
 
     (* Perform SSA conversion. *)
-    let lam_state = { kind = state.kind;
+    let lam_state = { state with
                       funcn; frame; frame_ty;
                       type_env  = Table.copy state.type_env;
-                      const_env = state.const_env;
                       args; arg_idx = 0; kwargs } in
     let lam_entry = ssa_of_formal_args ~entry:lam_entry ~state:lam_state ~formal_args in
     let lam_entry, lam_value = ssa_of_seq ~entry:lam_entry ~state:lam_state ~exprs:[expr] in
@@ -462,8 +454,9 @@ and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
   | _
   -> assert false
 
-let name_of_lambda klass selector lambda =
+let name_of_lambda klass selector lambda capsule =
   let id = klass.Rt.k_name ^ ":" ^ selector in
+
   (* Create the function with the signature corresponding to that
      of lambda. Usually it would be (\x, \y) -> \z. *)
   let funcn =
@@ -474,12 +467,18 @@ let name_of_lambda klass selector lambda =
       ty.Rt.l_ty_result
   in
   let func = Ssa.func_of_name funcn in
+
+  (* Register the created artifacts. *)
+  Ssa.add_func   capsule funcn;
+  Ssa.add_lambda capsule lambda funcn;
+
   (* Extract arguments as SSA names. *)
   let args, kwargs =
     match func.Ssa.arguments with
     | [args; kwargs] -> args, kwargs
     | _ -> assert false
   in
+
   (* Create entry block. *)
   let entry = Ssa.create_block ~id:"entry" funcn in
     (* Define a stack frame. Its type will be mutated while the function
@@ -505,7 +504,7 @@ let name_of_lambda klass selector lambda =
     in
 
     (* Perform SSA conversion. *)
-    let state = { kind; funcn; frame; frame_ty;
+    let state = { capsule; kind; funcn; frame; frame_ty;
                   type_env  = lambda.Rt.l_type_env;
                   const_env = lambda.Rt.l_const_env;
                   args; arg_idx = 0; kwargs } in

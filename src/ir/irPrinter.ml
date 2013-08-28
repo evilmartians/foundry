@@ -285,6 +285,9 @@ let rec string_of_ssa_name state value =
   let instr opcode operands =
     (prefix ()) ^ opcode ^ " " ^ (String.concat ", " operands)
   in
+  let group_instr opcode subj operands =
+    (prefix ()) ^ opcode ^ " " ^ subj ^ ", [" ^ (String.concat ", " operands) ^ "]"
+  in
   let call_instr callee operands =
     (prefix ()) ^ callee ^ " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
   in
@@ -333,8 +336,8 @@ let rec string_of_ssa_name state value =
   | ReturnInstr name ->
     instr "return" [print name]
   | PhiInstr operands ->
-    instr "phi" (List.map (fun (block, value) ->
-                  "[ " ^ (print block) ^ " => " ^ (print value) ^ " ]") operands)
+    (prefix ()) ^ "phi [" ^ (String.concat ", " (List.map (fun (block, value) ->
+                  (print block) ^ " => " ^ (print value)) operands)) ^ "]"
   | FrameInstr (parent) ->
     instr "frame" [print parent]
   | LVarLoadInstr (env, var) ->
@@ -352,9 +355,17 @@ let rec string_of_ssa_name state value =
   | ResolveInstr (obj, meth) ->
     instr "resolve" [print obj; print meth]
   | SpecializeInstr (cls, operands) ->
-    instr "specialize" ((print cls) :: (Assoc.map_list
-          (fun param value ->
-            "[ " ^ (escape_as_literal param) ^ " => " ^ (print value) ^ " ]") operands))
+    group_instr "specialize" (print cls) (Assoc.map_list
+          (fun param value -> (escape_as_literal param) ^ " => " ^ (print value)) operands)
+  | TupleExtendInstr (tup, elems) ->
+    group_instr "tuple_extend" (print tup) (List.map print elems)
+  | TupleConcatInstr (tup, tup') ->
+    instr "tuple_concat" [print tup; print tup']
+  | RecordExtendInstr (re, elems) ->
+    group_instr "record_extend" (print re) (List.map
+          (fun (key, value) -> (print key) ^ " => " ^ (print value)) elems)
+  | RecordConcatInstr (re, re') ->
+    instr "record_concat" [print re; print re']
   | PrimitiveInstr (name, operands) ->
     call_instr ("primitive " ^ (escape_as_literal name)) operands
 
