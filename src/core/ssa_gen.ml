@@ -52,12 +52,12 @@ let store ~state entry name value =
 let rec ssa_of_expr ~entry ~state ~expr =
   let load  = load  ~state in
   let store = store ~state in
-  let send_args args =
+  let send_args entry args =
     append entry ~ty:(tvar ())
                  ~opcode:(Ssa.TupleExtendInstr (Ssa.const (Rt.Tuple []), args)),
     Ssa.const (Rt.Record Assoc.empty)
   in
-  let send receiver selector args kwargs =
+  let send entry receiver selector args kwargs =
     let callee =
       append entry ~ty:(tvar ())
                    ~opcode:(Ssa.ResolveInstr (receiver,
@@ -158,18 +158,18 @@ let rec ssa_of_expr ~entry ~state ~expr =
       | ConvValue
       -> failwith "ivar assignment in value non-initializer")
 
-  | Syntax.Assign (_, Syntax.Send (loc, receiver, selector, operands), value)
+  | Syntax.Assign (_, Syntax.Send (_, receiver, selector, operands), value)
   -> (let entry, receiver = ssa_of_expr ~entry ~state ~expr:receiver in
       let entry, value    = ssa_of_expr ~entry ~state ~expr:value    in
-      let args,  kwargs   = send_args [receiver; value] in
-      ignore (send receiver (selector ^ "=") args kwargs);
+      let args,  kwargs   = send_args entry [receiver; value] in
+      ignore (send entry receiver (selector ^ "=") args kwargs);
       entry, value)
 
   | Syntax.OpAssign (_, Syntax.Var (_, name), selector, expr)
   -> (let entry, arg   = ssa_of_expr ~entry ~state ~expr in
       let value        = load entry name in
-      let args, kwargs = send_args [value; arg] in
-      let value'       = send value selector args kwargs in
+      let args, kwargs = send_args entry [value; arg] in
+      let value'       = send entry value selector args kwargs in
       entry, store entry name value')
 
   | Syntax.Let (_, pattern, _ty, expr)
@@ -179,7 +179,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
   | Syntax.Send (_, receiver, selector, actual_args)
   -> (let entry, receiver     = ssa_of_expr ~entry ~state ~expr:receiver in
       let entry, args, kwargs = ssa_of_actual_args ~entry ~state ~receiver ~actual_args in
-      entry, send receiver selector args kwargs)
+      entry, send entry receiver selector args kwargs)
 
   (* Control flow. *)
   | Syntax.If (_, cond, true_exprs, false_expr)
