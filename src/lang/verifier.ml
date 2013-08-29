@@ -82,21 +82,25 @@ and check_ty cx ty =
 and check_assign cx lhs rhs =
   match lhs with
   | Var((loc,_),name)
-  -> (match lookup cx.env name with
-      | Some binding
-      -> (match binding.kind with
-          | Syntax.LVarMutable ->
-            []
-          | Syntax.LVarImmutable ->
-            ["Local variable `" ^ name ^ "' is not mutable. " ^
-             "(Try `let mut " ^ name ^ "' instead?)",
-             [loc; binding.location]])
-      | None
-      -> ["Local variable `" ^ name ^ "' is not declared." ^
-          " (Try `let " ^ name ^ "' instead?)", [loc]])
-  | IVar _ | Send _
-  -> check_expr cx lhs
-  | _ -> assert false
+  -> (let ds =
+        match lookup cx.env name with
+        | Some binding
+        -> (match binding.kind with
+            | Syntax.LVarMutable ->
+              []
+            | Syntax.LVarImmutable ->
+              ["Local variable `" ^ name ^ "' is not mutable. " ^
+               "(Try `let mut " ^ name ^ "' instead?)",
+               [loc; binding.location]])
+        | None
+        -> ["Local variable `" ^ name ^ "' is not declared." ^
+            " (Try `let " ^ name ^ "' instead?)", [loc]]
+      in
+      ds @ (check_expr cx rhs))
+  | IVar _ | Send _ | Const _
+  -> check_expr cx @: [lhs; rhs]
+  | _
+  -> assert false
 
 and check_lambda cx f_args ty exprs =
   let cx = {
