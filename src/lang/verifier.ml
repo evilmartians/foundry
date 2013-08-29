@@ -283,6 +283,8 @@ and check_expr cx expr =
   | DefMethod(_, _, f_args, ty, exprs)
   | DefSelfMethod(_, _, f_args, ty, exprs)
   -> check_lambda cx f_args ty exprs
+  | Update(_, exprs)
+  -> check_expr cx @: exprs
   | InvokePrimitive((loc, _), name, exprs)
   -> (if Primitive.exists name then
         check_expr cx @: exprs

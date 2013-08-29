@@ -29,6 +29,9 @@ type ssa_conv_state = {
           args      : Ssa.name;
           kwargs    : Ssa.name;
   mutable arg_idx   : int;
+
+  (* Functional update state. *)
+  mutable update    : Ssa.name option;
 }
 
 let tvar () =
@@ -174,15 +177,29 @@ let rec ssa_of_expr ~entry ~state ~expr =
       entry, store entry name value)
 
   | Syntax.Assign (_, Syntax.IVar (_, name), expr)
+    when state.update <> None
+  -> (match state.update with
+      | Some self
+      -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
+          let new_self = append entry ~ty:(self.Ssa.ty)
+                                      ~opcode:(Ssa.IVarStoreInstr (self, name, value)) in
+          state.update <- Some new_self;
+          entry, value)
+      | _
+      -> assert false)
+
+  | Syntax.Assign (_, Syntax.IVar (_, name), expr)
   -> (let self = load entry "self" in
       let entry, value = ssa_of_expr ~entry ~state ~expr in
       match state.kind with
       | ConvObject | ConvInitializer
-      -> entry, append entry ~opcode:(Ssa.IVarStoreInstr (self, name, value))
+      -> (ignore (append entry ~opcode:(Ssa.IVarStoreInstr (self, name, value)));
+          entry, value)
       | ConvValueInitializer
       -> (let new_self = append entry ~ty:(self.Ssa.ty)
                                       ~opcode:(Ssa.IVarStoreInstr (self, name, value)) in
-          entry, store entry "self" new_self)
+          ignore (store entry "self" new_self);
+          entry, value)
       | ConvValue
       -> failwith "ivar assignment in value non-initializer")
 
@@ -290,6 +307,22 @@ let rec ssa_of_expr ~entry ~state ~expr =
   (* Miscellanea. *)
   | Syntax.Lambda (_, formal_args, ty, expr) (* TODO lam_ty *)
   -> ssa_of_lambda_expr ~entry ~state ~formal_args ~expr
+
+  | Syntax.Update (_, exprs)
+  ->  (* Initiate functional update mode by switching the function
+         of @var assignment syntax. *)
+     (assert (state.update = None);
+      state.update <- Some (load entry "self");
+      (* Translate the body with modified @vars. *)
+      let entry, _ = ssa_of_exprs ~entry ~state ~exprs in
+      (* Extract the update result and restore @var mode. *)
+      match state.update with
+      | Some value
+      -> (state.update <- None;
+          entry, value)
+      | _
+      -> assert false)
+
   | Syntax.InvokePrimitive (_, name, operands)
   -> (let entry, operands = ssa_of_exprs ~entry ~state ~exprs:operands in
       entry, append entry

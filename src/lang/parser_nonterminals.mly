@@ -427,6 +427,9 @@
                 { Syntax.DefIVar (nullary (fst id),
                                   (snd id), kind, ty) }
 
+              | kw=Kw_SELF Tk_LCURLY stmts=compstmt Tk_RCURLY
+                { Syntax.Update (nullary (fst kw), stmts) }
+
               | expr=expr_noid
                 { expr }
 
