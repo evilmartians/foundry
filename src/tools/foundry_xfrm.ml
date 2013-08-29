@@ -72,10 +72,6 @@ let _ =
           Pass_manager.add_function_pass !passmgr (module Cfg_simplification)),
         " CFG Simplification";
 
-      "-simplify-frames", Arg.Unit (fun () ->
-          Pass_manager.add_function_pass !passmgr (module Frame_simplification)),
-        " Frame Simplification";
-
       "-infer", Arg.Unit (fun () ->
           Pass_manager.add_function_pass !passmgr (module Local_inference)),
         " Local Type Inference";
