@@ -16,6 +16,9 @@ stdlib := $(addprefix ../lib/,$(stdlib))
 %.opt.fir: %.fir
 	../foundry_xfrm.native $^ -std-xfrms -o $@
 
+%.ll: %.bc
+	llvm-dis$(llvm) $^ -o $@
+
 %.o: %.opt.bc
 	llc$(llvm) -filetype=obj $^ -o $@
 
@@ -23,7 +26,7 @@ stdlib := $(addprefix ../lib/,$(stdlib))
 	llc$(llvm) -filetype=asm $^ -o $@
 
 clean:
-	rm -f *.fir *.bc *.s *.o *.bin *.elf
+	rm -f *.fir *.bc *.ll *.s *.o *.bin *.elf
 
 # (h)ost rules
 
