@@ -135,7 +135,7 @@ module EnvTytbl : Hashtbl.S with type key = local_env_ty
 (* Types and values *)
 
 val type_of_value       : value -> ty
-val type_of_environment : local_env -> local_env_ty
+val type_of_environment : ?imm:bool -> local_env -> local_env_ty
 
 val klass_of_type   : ?dispatch:bool -> ty -> klass
 val klass_of_value  : ?dispatch:bool -> ?meta:bool -> value -> klass

@@ -411,15 +411,21 @@ let rec type_of_value value =
                    (Unicode.assert_utf8s
                     (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
 
-and type_of_environment env =
-  { e_ty_parent   = Option.map type_of_environment env.e_parent;
+and type_of_environment ?(imm=true) env =
+  let bindings =
+    if not imm then
+      Table.filter env.e_bindings ~f:(fun _ b ->
+        b.b_kind = Syntax.LVarMutable)
+    else
+      env.e_bindings
+  in
+  { e_ty_parent   = Option.map (type_of_environment ~imm) env.e_parent;
     e_ty_bindings =
       Table.map (fun b -> {
         b_ty_location = b.b_location;
         b_ty_kind     = b.b_kind;
         b_ty          = type_of_value b.b_value;
-      }) env.e_bindings;
-  }
+      }) bindings; }
 
 let rec equal_local_env_ty a b =
   let equal_bindings_ty a b =

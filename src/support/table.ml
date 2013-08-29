@@ -79,6 +79,13 @@ let fold2 ~f acc left right =
   with Not_found ->
     raise (Invalid_argument ("Table.fold2" :> latin1s))
 
+let filter ~f table =
+  newtable (Hashtbl.length table)
+    (fun result ->
+      Hashtbl.iter (fun key value ->
+        if f key value then
+          Hashtbl.add result key value) table)
+
 let join left right =
   newtable (max (Hashtbl.length left) (Hashtbl.length right))
     (fun table ->

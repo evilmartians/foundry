@@ -10,12 +10,22 @@ type ssa_conv_kind =
 
 type ssa_conv_state = {
           capsule   : Ssa.capsule;
-          kind      : ssa_conv_kind;
+
           funcn     : Ssa.name;
+          kind      : ssa_conv_kind;
+
+  (* Local environment state. Immutable upvalues known
+     at conversion time are hoisted out of the environments
+     and are treated exactly same as literals. *)
           frame     : Ssa.name;
           frame_ty  : Rt.local_env_ty;
+          depth     : int;
+          local_env : Rt.local_env;
+
   mutable const_env : Rt.const_env;
           type_env  : Rt.type_env;
+
+  (* Argument parser state. *)
           args      : Ssa.name;
           kwargs    : Ssa.name;
   mutable arg_idx   : int;
@@ -24,48 +34,66 @@ type ssa_conv_state = {
 let tvar () =
   Rt.Tvar (Rt.new_tvar ())
 
-let lvar_type ty name =
-  let rec lookup env =
-    match Table.get env.Rt.e_ty_bindings name with
-    | Some binding -> binding.Rt.b_ty
-    | None
-    -> (match env.Rt.e_ty_parent with
-        | Some parent_ty -> lookup parent_ty
-        | None -> assert false)
-  in
-  lookup ty
-
 let append ?(ty=Rt.NilTy) ~opcode blockn =
   let instr = Ssa.create_instr ty opcode in
   Ssa.append_instr instr blockn;
   instr
 
 let load ~state entry name =
-  append entry ~ty:(lvar_type state.frame_ty name)
-               ~opcode:(Ssa.LVarLoadInstr (state.frame, name))
+  let append_load ty =
+    let instr = append entry ~ty ~opcode:(Ssa.LVarLoadInstr (state.frame, name)) in
+    Ssa.set_id instr ("lvar." ^ name);
+    instr
+  in
+  let rec lookup_sta env =
+    match Table.get env.Rt.e_bindings name with
+    | Some ({ Rt.b_kind = Syntax.LVarImmutable } as binding)
+    -> Ssa.const binding.Rt.b_value
+    | Some binding
+    -> append_load (Rt.type_of_value binding.Rt.b_value)
+    | None
+    -> (match env.Rt.e_parent with
+        | Some parent -> lookup_sta parent
+        | None        -> assert false)
+  in
+  let rec lookup_dyn env_ty depth =
+    if depth > 0 then
+      match Table.get env_ty.Rt.e_ty_bindings name with
+      | Some binding
+      -> append_load binding.Rt.b_ty
+      | None
+      -> (match env_ty.Rt.e_ty_parent with
+          | Some parent_ty -> lookup_dyn parent_ty (depth - 1)
+          | None           -> assert false)
+    else
+      lookup_sta state.local_env
+  in
+  lookup_dyn state.frame_ty state.depth
 
 let store ~state entry name value =
   ignore (append entry
-            ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
+               ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
   value
 
+let send_args ~state entry args =
+  append entry ~ty:(tvar ())
+               ~opcode:(Ssa.TupleExtendInstr (Ssa.const (Rt.Tuple []), args)),
+  Ssa.const (Rt.Record Assoc.empty)
+
+let send ~state entry receiver selector args kwargs =
+  let callee =
+    append entry ~ty:(tvar ())
+                 ~opcode:(Ssa.ResolveInstr (receiver,
+                    (Ssa.const (Rt.Symbol selector))))
+  in
+  append entry ~ty:(tvar ())
+               ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
+
 let rec ssa_of_expr ~entry ~state ~expr =
-  let load  = load  ~state in
-  let store = store ~state in
-  let send_args entry args =
-    append entry ~ty:(tvar ())
-                 ~opcode:(Ssa.TupleExtendInstr (Ssa.const (Rt.Tuple []), args)),
-    Ssa.const (Rt.Record Assoc.empty)
-  in
-  let send entry receiver selector args kwargs =
-    let callee =
-      append entry ~ty:(tvar ())
-                   ~opcode:(Ssa.ResolveInstr (receiver,
-                      (Ssa.const (Rt.Symbol selector))))
-    in
-    append entry ~ty:(tvar ())
-                 ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
-  in
+  let load      = load  ~state in
+  let store     = store ~state in
+  let send_args = send_args ~state in
+  let send      = send  ~state in
   match expr with
   (* Literals. *)
   | Syntax.Nil (_)
@@ -489,10 +517,11 @@ and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
     (* Perform SSA conversion. *)
     let lam_state = { state with
                       funcn; frame; frame_ty;
-                      type_env  = Table.copy state.type_env;
+                      type_env = Table.copy state.type_env;
+                      depth    = state.depth + 1;
                       args; arg_idx = 0; kwargs } in
     let lam_entry = ssa_of_formal_args ~entry:lam_entry ~state:lam_state ~formal_args in
-    let lam_entry, lam_value = ssa_of_seq ~entry:lam_entry ~state:lam_state ~exprs:[expr] in
+    let lam_entry, lam_value = ssa_of_expr ~entry:lam_entry ~state:lam_state ~expr in
     ignore (append lam_entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr lam_value));
 
   (* Refer to the closure in the parent function. *)
@@ -533,14 +562,14 @@ let name_of_lambda klass selector lambda capsule =
     (* Define a stack frame. Its type will be mutated while the function
        is converted. *)
     let frame_ty = {
-      Rt.e_ty_parent   = Some (Rt.type_of_environment lambda.Rt.l_local_env);
+      Rt.e_ty_parent   = Some (Rt.type_of_environment ~imm:false lambda.Rt.l_local_env);
       Rt.e_ty_bindings = Table.create [];
     }
     in
     let frame =
       append entry ~ty:(Rt.EnvironmentTy frame_ty)
-          ~opcode:(Ssa.FrameInstr (Ssa.const
-                    (Rt.Environment lambda.Rt.l_local_env)))
+                   ~opcode:(Ssa.FrameInstr (Ssa.const
+                             (Rt.Environment lambda.Rt.l_local_env)))
     in
 
     (* Set special conversion parameters for this function. *)
@@ -554,9 +583,12 @@ let name_of_lambda klass selector lambda capsule =
 
     (* Perform SSA conversion. *)
     let state = { capsule; kind; funcn; frame; frame_ty;
+                  depth     = 1;
+                  local_env = lambda.Rt.l_local_env;
                   type_env  = lambda.Rt.l_type_env;
                   const_env = lambda.Rt.l_const_env;
-                  args; arg_idx = 0; kwargs } in
+                  args; arg_idx = 0; kwargs;
+                  update    = None; } in
     let entry = ssa_of_formal_args ~entry ~state ~formal_args:lambda.Rt.l_args in
     let entry, value = ssa_of_seq ~entry ~state ~exprs:lambda.Rt.l_body in
 

@@ -62,8 +62,8 @@ let rec lltype_of_ty ?(ptr=true) ty =
         in
         let slots =
           match klass.Rt.k_ancestor with
-          | None -> slots
           | Some ancestor -> (lltype_of_ty ~ptr:false (Rt.Class (ancestor, specz))) :: slots
+          | None -> slots
         in
         false, slots))
   | Rt.FunctionTy (args_ty, ret_ty)
@@ -98,7 +98,7 @@ let rec env_map_of_local_env_ty ty =
     let parent_map = Option.map env_map_of_local_env_ty ty.Rt.e_ty_parent in
     (* Serialize the environment. Rt.local_env_ty uses a hash table, which
        is inherently unordered, and LLVM requires an ordered collection. *)
-    let content    = Table.map_list ty.Rt.e_ty_bindings ~f:(fun name binding ->
+    let content = Table.map_list ty.Rt.e_ty_bindings ~f:(fun name binding ->
                           name, lltype_of_ty binding.Rt.b_ty)
     in
     let names   = List.map fst content in
@@ -177,7 +177,8 @@ let rec llconst_of_value llmod heap value =
   -> Llvm.const_struct ctx (Array.of_list
       (Assoc.map_list xs ~f:(fun _ -> llconst_of_value llmod heap)))
   | Rt.Environment env
-  -> (let env_map = env_map_of_ty (Rt.type_of_value value) in
+  -> (let env_ty  = Rt.type_of_environment ~imm:false env in
+      let env_map = env_map_of_local_env_ty env_ty in
       memoize env_map.e_lltype (fun _ ->
         (* Convert the environment to an LLVM record in a way which is
            compatible with the map env_map_of_ty returns. *)
