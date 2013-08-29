@@ -20,7 +20,8 @@ let int_binop op =
   (fun args ->
     match args with
     | [Unsigned(wl,lhs); Unsigned(wr,rhs)] when wl = wr
-    -> Unsigned(wl, mod_big_int (op lhs rhs) (big_int_of_int wl))
+    -> (let prec = shift_left_big_int unit_big_int wl in
+        Unsigned(wl, mod_big_int (op lhs rhs) prec))
     | [Integer(lhs); Integer(rhs)]
     -> Integer(op lhs rhs)
     | _ -> assert false)
