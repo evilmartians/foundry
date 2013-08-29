@@ -21,6 +21,8 @@ type value =
 | SignedTy      of (*width*) int
 | Symbol        of string
 | SymbolTy
+| String        of string
+| StringTy
 (* Product types *)
 | Tuple         of value list
 | TupleTy       of ty    list
@@ -168,6 +170,7 @@ type roots = {
   kBoolean          : klass;
   kInteger          : klass;
   kSymbol           : klass;
+  kString           : klass;
   kUnsigned         : klass;
   kSigned           : klass;
   kTuple            : klass;

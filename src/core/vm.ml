@@ -24,13 +24,15 @@ let concat_tuple lhs rhs =
   match lhs, rhs with
   | Tuple(l), Tuple(r)
   -> Tuple(l @ r)
-  | _ -> assert false
+  | _
+  -> assert false
 
 let concat_record lhs rhs =
   match lhs, rhs with
   | Record(lft), Record(rgt)
   -> Record(Assoc.merge lft rgt)
-  | _ -> assert false
+  | _
+  -> assert false
 
 let define_method obj name body loc =
   match obj with
@@ -82,6 +84,21 @@ and eval_record env elem =
   -> (match (eval_expr env k) with
      | Symbol(s) -> Record (Assoc.sorted [s, (eval_expr env v)])
      | o -> exc_type "Symbol" o [Syntax.loc k])
+
+and eval_string env elem =
+  match elem with
+  | Syntax.QuoteString(_, str)
+  -> str
+  | Syntax.QuoteSplice((loc, _), expr)
+  -> (let value = eval_expr env expr in
+      match value with
+      | String str
+      -> str
+      | _
+      -> (let value = eval_send value "to_s" ~loc in
+          match value with
+          | String str -> str
+          | _ -> exc_type "string" value [loc]))
 
 and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
   match lhs with
@@ -265,13 +282,21 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Unsigned(_,w,x) -> Unsigned(w,x)
   | Syntax.Signed(_,w,x)   -> Signed(w,x)
 
-  | Syntax.Tuple(_, xs)
+  | Syntax.Tuple(_, elems)
   -> List.fold_left concat_tuple
-        (Tuple []) (List.map (eval_tuple env) xs)
+        (Tuple []) (List.map (eval_tuple env) elems)
 
-  | Syntax.Record(_, xs)
+  | Syntax.Record(_, elems)
   -> List.fold_left concat_record
-        (Record Assoc.empty) (List.map (eval_record env) xs)
+        (Record Assoc.empty) (List.map (eval_record env) elems)
+
+  | Syntax.Quote(_, quote_as, elems)
+  -> (let value =
+        List.fold_left (^) "" (List.map (eval_string env) elems)
+      in
+      match quote_as with
+      | Syntax.QuoteAsString -> String value
+      | Syntax.QuoteAsSymbol -> Symbol value)
 
   | Syntax.Type(_, ty_expr)
   -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
@@ -483,7 +508,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
                (Unicode.assert_utf8s
                 (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));
 
-and eval_send recv selector ~args ~kwargs ~loc =
+and eval_send ?(args=[]) ?(kwargs=Assoc.empty) recv selector ~loc =
   let rec lookup klass =
     let method_table = klass.k_methods in
     try
@@ -549,6 +574,7 @@ and eval_lambda body args kwargs =
     -> (let value =
           match Assoc.find_option kwargs name with
           | Some v -> v
+          | None -> assert false
         in
         bind lvar ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
 
@@ -569,6 +595,9 @@ and eval_lambda body args kwargs =
     -> (if kwseen <> (Assoc.keys kwargs) then
           assert false
         else ())
+
+    | _, _
+    -> assert false
   in
   bind_args body.l_args args [];
   eval env body.l_body

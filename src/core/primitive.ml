@@ -51,6 +51,13 @@ let int_divmod args =
   | _
   -> assert false
 
+(* Symbol primitive implementations. *)
+
+let sym_to_str args =
+  match args with
+  | [Symbol str] -> String str
+  | _ -> assert false
+
 (* Object primitive implementations. *)
 
 let obj_alloc args =
@@ -113,8 +120,10 @@ let prim = Table.create [
   "tup_length", (false,    fun _ -> assert false);
   "tup_lookup", (false,    fun _ -> assert false);
   "tup_slice",  (false,    fun _ -> assert false);
-  (* -- tuples ----------------------------------------- *)
+  (* -- records ---------------------------------------- *)
   "rec_lookup", (false,    fun _ -> assert false);
+  (* -- symbols ---------------------------------------- *)
+  "sym_to_str", (false,    sym_to_str);
   (* -- closures --------------------------------------- *)
   "lam_call",   (true,     fun _ -> assert false);
   (* -- objects ---------------------------------------- *)

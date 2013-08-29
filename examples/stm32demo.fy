@@ -2,14 +2,42 @@
   #   LANGUAGE STANDARD LIBRARY   #
   #################################
 
+class Class
+  def define_method(name, body)
+    invokeprimitive cls_defm (self, name, body)
+  end
+end
+
 class Value
   def self.new(*args, **kwargs)
     let instance = invokeprimitive obj_alloc(self)
     instance.initialize(*args, **kwargs)
   end
+
+  def ==(other)
+    invokeprimitive obj_equal(self, other)
+  end
+
+  def !=(other)
+    not self == other
+  end
+end
+
+class Symbol
+  def to_s
+    invokeprimitive sym_to_str(self)
+  end
 end
 
 class Unsigned
+  def ==(other)
+    invokeprimitive int_eq(self, other)
+  end
+
+  def !=(other)
+    invokeprimitive int_ne(self, other)
+  end
+
   def <(other)
     invokeprimitive int_ult(self, other)
   end
@@ -20,6 +48,10 @@ class Unsigned
 
   def -(other)
     invokeprimitive int_sub(self, other)
+  end
+
+  def -@
+    0u32 - self
   end
 
   def ~@
@@ -53,28 +85,53 @@ end
   #   EMBEDDED STANDARD LIBRARY   #
   #################################
 
-class Register(\alignment, \width) < Value
-  def @address : Unsigned(\width)
+class Register(\width) < Value
+  def @value : Unsigned(\width)
 
-  def initialize(address)
-    @address = address
+  def initialize(value)
+    @value = value
   end
 
   def value
-    self.reg_read
+    @value
   end
 
-  def value=(new_value)
-    self.reg_write(new_value)
+  def self.flag(name, kind, offset)
+    let mask = 1u32 << offset
+
+    if kind == :r or kind == :rw
+      self.define_method(name, (self) do
+        @value & mask != 0u32
+      end)
+    end
+
+    if kind == :w or kind == :rw
+      self.define_method(:"set_#{name}", (value, field) do
+        value & ~mask | (if field then mask else 0u32 end)
+      end)
+    end
+  end
+end
+
+class Unit < Value
+  def @base : Unsigned(32)
+
+  def initialize(base)
+    @base = base
   end
 
-  # Internal functions to access the actual hardware register.
-  def reg_read() : (Register(\alignment, \width)) -> Unsigned(\width)
-    invokeprimitive mem_loadv(\alignment,  @address)
-  end
+  def self.register(name, cls, kind, offset, align: 4)
+    if kind == :r or kind == :rw
+      self.define_method(name, (self) do
+        cls.new(invokeprimitive mem_loadv(align, @base + offset))
+      end)
+    end
 
-  def reg_write(value) : (Register(\alignment, \width), Unsigned(\width)) -> Nil
-    invokeprimitive mem_storev(\alignment, @address, value)
+    if kind == :w or kind == :rw
+      self.define_method(:"#{name}=", (self, reg) do
+        invokeprimitive mem_storev(align, @base + offset, reg.value)
+      end)
+    end
   end
 end
 
@@ -82,7 +139,21 @@ end
   #   STM32F1 STANDARD LIBRARY   #
   ################################
 
-# ...
+class APB2ENR < Register(32)
+  self.flag(:iopcen, :rw, 4u32)
+
+  def |(other)
+    let mut value = @value
+    value = self.set_iopcen(value, other.iopcen)
+    self { @value = value }
+  end
+end
+
+class RCCUnit < Unit
+  self.register(:APB2ENR, APB2ENR, :rw, 0x18_u32, align: 4)
+end
+
+RCC = RCCUnit.new(0x4002_1000_u32)
 
   ##########################
   #   USER-AUTHORED CODE   #
@@ -95,23 +166,6 @@ end
 # GPIOC->ODR = BIT(8);
 #  store 0x40011000 + 0x0C, 0x100, 4
 
-def delay(reg, val)
-  let mut i = 0u32
-  while i < 100000u32
-    reg.value = val
-    i += 1u32
-  end
-end
-
 def main
-  let apb2enr   = Register(4, 32).new(1073877016u32)
-  apb2enr.value = 16u32
-  let crh       = Register(4, 32).new(1073811460u32)
-  crh.value     = 1145324561u32
-  let odr       = Register(4, 32).new(1073811468u32)
-
-  while true
-    self.delay(odr, 256u32)
-    self.delay(odr, 0u32)
-  end
+  RCC.APB2ENR |= { iopcen: true }
 end

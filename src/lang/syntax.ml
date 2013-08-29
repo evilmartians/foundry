@@ -5,19 +5,19 @@ open Big_int
 (* Enumerations *)
 
 type quote =
-  | Qu_STRING
-  | Qu_SYMBOL
+| QuoteAsString
+| QuoteAsSymbol
 with sexp
 
 type lvar_kind =
-  | LVarImmutable
-  | LVarMutable
+| LVarImmutable
+| LVarMutable
 with sexp
 
 type ivar_kind =
-  | IVarImmutable
-  | IVarMutable
-  | IVarMetaMutable
+| IVarImmutable
+| IVarMutable
+| IVarMetaMutable
 with sexp
 
 (* Location records *)

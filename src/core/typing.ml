@@ -13,6 +13,10 @@ let fold_equiv ty =
   -> Rt.BooleanTy
   | Class (klass, _) when klass == roots.kInteger
   -> Rt.IntegerTy
+  | Class (klass, _) when klass == roots.kSymbol
+  -> Rt.SymbolTy
+  | Class (klass, _) when klass == roots.kString
+  -> Rt.StringTy
   | Class (klass, specz) when klass == roots.kUnsigned
   -> (match Assoc.find_option specz "width" with
       | Some (Integer width) -> UnsignedTy (int_of_big_int width)
@@ -120,7 +124,7 @@ let rec subst env value =
   | TvarTy | NilTy | BooleanTy | IntegerTy
   | UnsignedTy _ | SignedTy _ | SymbolTy
   | Nil | Truth | Lies | Integer _
-  | Unsigned _ | Signed _ | Symbol _
+  | Unsigned _ | Signed _ | Symbol _ | String _
   -> value
   | Tvar tvar
   -> (try  subst env (List.assoc tvar env)

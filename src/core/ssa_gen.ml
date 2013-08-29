@@ -370,11 +370,13 @@ and ssa_of_type ~entry ~state ~expr =
         | []
         -> specz
       in
-    let specz = combine entry klass.Rt.k_parameters specz args in
-    entry, append entry ~ty:(tvar ())
-                        ~opcode:(Ssa.SpecializeInstr (Ssa.const ty, specz)))
+      let specz = combine entry klass.Rt.k_parameters specz args in
+      entry, append entry ~ty:(tvar ())
+                          ~opcode:(Ssa.SpecializeInstr (Ssa.const ty, specz)))
   | Syntax.TypeSplice (_, expr)
   -> ssa_of_expr ~entry ~state ~expr
+  | _
+  -> assert false
 
 and ssa_of_pattern ~entry ~state ~pattern ~expr =
   match pattern with
@@ -388,6 +390,8 @@ and ssa_of_pattern ~entry ~state ~pattern ~expr =
       let entry, expr = ssa_of_expr ~entry ~state ~expr in
       ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, name, expr)));
       entry, expr)
+  | _
+  -> assert false
 
 and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
   let args = Ssa_interp.append Ssa_interp.empty (Ssa_interp.Elem receiver) in
@@ -511,7 +515,9 @@ and ssa_of_formal_args ~entry ~state ~formal_args =
           assign kind name args)
       | Syntax.FormalKwRest (_, (kind, name))
       -> (* TODO stub *)
-          assign kind name state.kwargs)
+          assign kind name state.kwargs
+      | _
+      -> assert false)
     entry formal_args
 
 and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =

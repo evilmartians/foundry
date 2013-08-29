@@ -202,19 +202,19 @@ let rec lex_code state = lexer
 
 | '\''            -> expr_begin state false;
                      goto state lex_string;
-                     Vl_BEGIN  (locate state lexbuf, Syntax.Qu_STRING)
+                     Vl_BEGIN  (locate state lexbuf, Syntax.QuoteAsString)
 
 | '"'             -> expr_begin state false;
                      goto state lex_string_interp;
-                     Vl_BEGIN  (locate state lexbuf, Syntax.Qu_STRING)
+                     Vl_BEGIN  (locate state lexbuf, Syntax.QuoteAsString)
 
 | ":'"            -> expr_begin state false;
                      goto state lex_string;
-                     Vl_BEGIN  (locate state lexbuf, Syntax.Qu_SYMBOL)
+                     Vl_BEGIN  (locate state lexbuf, Syntax.QuoteAsSymbol)
 
 | ":\""           -> expr_begin state false;
                      goto state lex_string_interp;
-                     Vl_BEGIN  (locate state lexbuf, Syntax.Qu_SYMBOL)
+                     Vl_BEGIN  (locate state lexbuf, Syntax.QuoteAsSymbol)
 
 (* Identifiers *)
 | ident ':'       -> expr_begin state true;

@@ -41,6 +41,7 @@ rule lex = parse
 | "unsigned"      { Unsigned }
 | "signed"        { Signed }
 | "symbol"        { Symbol }
+| "string"        { String }
 | "environment"   { Environment }
 | "lambda"        { Lambda }
 | "closure"       { Closure }

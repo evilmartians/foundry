@@ -22,6 +22,8 @@ type value =
 | SignedTy      of (*width*) int
 | Symbol        of string
 | SymbolTy
+| String        of string
+| StringTy
 (* Product types *)
 | Tuple         of value list
 | TupleTy       of ty    list
@@ -141,6 +143,7 @@ type roots = {
   kBoolean          : klass;
   kInteger          : klass;
   kSymbol           : klass;
+  kString           : klass;
   kUnsigned         : klass;
   kSigned           : klass;
   kTuple            : klass;
@@ -256,6 +259,7 @@ let create_roots () =
     kBoolean      = new_class ~ancestor:kValue "Boolean";
     kInteger      = new_class ~ancestor:kValue "Integer";
     kSymbol       = new_class ~ancestor:kValue "Symbol";
+    kString       = new_class ~ancestor:kObject "String";
 
     kUnsigned     = new_class ~ancestor:kValue
                               ~parameters:(Assoc.sequental ["width", tvar ()])
@@ -293,6 +297,7 @@ let create_roots () =
       "Boolean",      roots.kBoolean;
       "Integer",      roots.kInteger;
       "Symbol",       roots.kSymbol;
+      "String",       roots.kString;
 
       "Signed",       roots.kSigned;
       "Unsigned",     roots.kUnsigned;
@@ -339,6 +344,7 @@ let klass_of_type ?(dispatch=false) ty =
   | TvarTy        -> !roots.kTypeVariable
   | IntegerTy     -> !roots.kInteger
   | SymbolTy      -> !roots.kSymbol
+  | StringTy      -> !roots.kString
   | UnsignedTy(_) -> !roots.kUnsigned
   | SignedTy(_)   -> !roots.kSigned
   | TupleTy(_)    -> !roots.kTuple
@@ -361,6 +367,7 @@ let klass_of_value ?(dispatch=false) ?(meta=true) value =
   | Tvar(_)       -> if meta then !roots.kTypeVariable else raise Not_found
   | Integer(_)    -> !roots.kInteger
   | Symbol(_)     -> !roots.kSymbol
+  | String(_)     -> !roots.kString
   | Unsigned(_)   -> !roots.kUnsigned
   | Signed(_)     -> !roots.kSigned
   | Tuple(_)      -> !roots.kTuple
@@ -390,6 +397,7 @@ let rec type_of_value value =
   | Tvar(_)         -> TvarTy
   | Integer(_)      -> IntegerTy
   | Symbol(_)       -> SymbolTy
+  | String(_)       -> StringTy
   | Unsigned(w,_)   -> UnsignedTy(w)
   | Signed(w,_)     -> SignedTy(w)
   | Tuple(xs)       -> TupleTy (List.map type_of_value xs)
@@ -474,6 +482,7 @@ and equal a b =
   | Integer(a),         Integer(b)
   -> a = b
   | Symbol(a),          Symbol(b)
+  | String(a),          String(b)
   -> a = b
   | UnsignedTy(a),      UnsignedTy(b)
   | SignedTy(a),        SignedTy(b)
@@ -536,10 +545,11 @@ let rec hash value =
   match value with
   (* Immutable values and types. *)
   | TvarTy | Nil | NilTy | Truth | Lies
-  | BooleanTy | IntegerTy | SymbolTy | BasicBlockTy
+  | BooleanTy | IntegerTy | SymbolTy | StringTy
+  | BasicBlockTy
   (* Immutable values and types with immutable parameters. *)
-  | Tvar _ | Integer _ | Symbol _ | UnsignedTy _ | SignedTy _
-  | Unsigned _ | Signed _
+  | Tvar _ | Integer _ | Symbol _ | String _
+  | UnsignedTy _ | SignedTy _ | Unsigned _ | Signed _
   -> Hashtbl.hash value
 
   (* Immutable values and types with possibly mutable parameters. *)
@@ -606,6 +616,8 @@ let rec inspect_literal_or value f =
   | IntegerTy     -> "Integer"
   | Symbol(s)     -> ":" ^ s
   | SymbolTy      -> "Symbol"
+  | String(s)     -> "\"" ^ s ^ "\""
+  | StringTy      -> "String"
   | Unsigned(w,v) -> (string_of_big_int v) ^ "u" ^ (string_of_int w)
   | UnsignedTy(w) -> "Unsigned(" ^ (string_of_int w) ^ ")"
   | Signed(w,v)   -> (string_of_big_int v) ^ "s" ^ (string_of_int w)

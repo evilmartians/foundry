@@ -66,6 +66,7 @@ let run_on_function passmgr capsule funcn =
         let sig_ty  = Rt.FunctionTy (args_ty, instr.ty) in
         let callee' = specialize callee sig_ty in
         set_opcode instr (CallInstr (callee', args)))
+
     (* Do the same for closures. *)
     | { opcode = ClosureInstr ({ opcode = Function _ } as callee, frame);
         ty     = Rt.ClosureTy (args_ty, ret_ty); }

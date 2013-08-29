@@ -88,6 +88,7 @@ let rec string_of_value state value =
   | Lies              -> "false"
   | Integer(n)        -> "int " ^ (string_of_big_int n)
   | Symbol(s)         -> "symbol " ^ (escape_as_literal s)
+  | String(s)         -> "string " ^ (escape_as_literal s)
   | Unsigned(w,v)     -> "unsigned(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
   | Signed(w,v)       -> "signed(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
   | Tuple(xs)         -> "[" ^ (string_of_seq xs (string_of_value state)) ^ "]"
@@ -101,7 +102,7 @@ let rec string_of_value state value =
   | Package(p)        -> "package " ^ (string_of_package state p)
   | Instance(c,iv)    -> "instance " ^ (string_of_instance state c iv)
 
-  | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy | UnsignedTy _
+  | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy | StringTy | UnsignedTy _
   | SignedTy _ | TupleTy _ | RecordTy _ | LambdaTy _ | EnvironmentTy _ | FunctionTy _
   | ClosureTy _ | BasicBlockTy
   -> "type " ^ (string_of_ty state value)
@@ -114,6 +115,7 @@ and string_of_ty state ty =
   | BooleanTy         -> "boolean"
   | IntegerTy         -> "int"
   | SymbolTy          -> "symbol"
+  | StringTy          -> "string"
   | UnsignedTy(w)     -> "unsigned(" ^ (string_of_int w) ^ ")"
   | SignedTy(w)       -> "signed(" ^ (string_of_int w) ^ ")"
   | TupleTy(xs)       -> "[" ^ (string_of_seq xs (string_of_ty state)) ^ "]"

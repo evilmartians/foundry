@@ -37,6 +37,8 @@
         (u"c.meta:Signed",        NamedClass roots.kSigned.k_metaclass);
         (u"c.Symbol",             NamedClass roots.kSymbol);
         (u"c.meta:Symbol",        NamedClass roots.kSymbol.k_metaclass);
+        (u"c.String",             NamedClass roots.kString);
+        (u"c.meta:String",        NamedClass roots.kString.k_metaclass);
         (u"c.Tuple",              NamedClass roots.kTuple);
         (u"c.meta:Tuple",         NamedClass roots.kTuple.k_metaclass);
         (u"c.Record",             NamedClass roots.kRecord);
@@ -74,6 +76,7 @@
       kUnsigned     = get_class (u"c.Unsigned");
       kSigned       = get_class (u"c.Signed");
       kSymbol       = get_class (u"c.Symbol");
+      kString       = get_class (u"c.String");
       kTuple        = get_class (u"c.Tuple");
       kRecord       = get_class (u"c.Record");
       kLambda       = get_class (u"c.Lambda");
@@ -223,6 +226,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> SignedTy (int_of_big_int w)) }
               | Symbol
                 { (fun env -> SymbolTy) }
+              | String
+                { (fun env -> StringTy) }
               | xs=seq(ty)
                 { (fun env -> TupleTy (xs env)) }
               | xs=assoc_ord(ty)
@@ -268,6 +273,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> Signed (int_of_big_int w, x)) }
               | Symbol x=Lit_String
                 { (fun env -> Symbol x) }
+              | String x=Lit_String
+                { (fun env -> String x) }
               | xs=seq(value)
                 { (fun env -> Tuple (xs env)) }
               | xs=assoc_ord(value)
