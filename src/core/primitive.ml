@@ -65,6 +65,20 @@ let obj_equal args =
   | [a; b] -> if equal a b then Rt.Truth else Rt.Lies
   | _ -> assert false
 
+(* Class primitive implementations. *)
+
+let cls_defm args =
+  match args with
+  | [Rt.Class (klass, _); Rt.Symbol name; Rt.Lambda body]
+  -> (let meth = {
+        im_hash    = Hash_seed.make ();
+        im_body    = body;
+        im_dynamic = false; } in
+      klass.k_methods <- Assoc.append klass.k_methods name meth;
+      Rt.Nil)
+  | _
+  -> assert false
+
 let prim = Table.create [
   (* name       side-eff?  impl *)
   (*-- debug ------------------------------------------- *)
@@ -106,6 +120,10 @@ let prim = Table.create [
   (* -- objects ---------------------------------------- *)
   "obj_alloc",  (false,    obj_alloc);
   "obj_equal",  (false,    obj_equal);
+  (* -- classes ---------------------------------------- *)
+  "cls_alloc",  (false,    fun _ -> assert false);
+  "cls_defm",   (true,     cls_defm);
+  "cls_defv",   (false,    fun _ -> assert false);
   (* -- hardware access -------------------------------- *)
   "mem_load",   (false,    fun _ -> assert false);
   "mem_store",  (true,     fun _ -> assert false);

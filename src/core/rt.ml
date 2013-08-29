@@ -170,7 +170,7 @@ let empty_class kClass ?ancestor ?(parameters=Assoc.empty) name =
   and metaklass =
     { k_hash        = Hash_seed.make ();
       k_name        = "meta:" ^ name;
-      k_ancestor    = Option.map (fun k -> k.k_metaclass) ancestor;
+      k_ancestor    = Some (Option.map_default (fun k -> k.k_metaclass) kClass ancestor);
       k_metaclass   = kClass;
       k_objectclass = Some klass;
       k_is_value    = false;
