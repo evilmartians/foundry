@@ -3,6 +3,12 @@ open Unicode.Std
 open ExtList
 open Rt
 
+let rec klass_ivars klass =
+  let ivars = Assoc.keys klass.k_ivars in
+  match klass.k_ancestor with
+  | Some ancestor -> ivars @ klass_ivars ancestor
+  | None -> ivars
+
 (* Eval helper routines *)
 
 type env = local_env * type_env * const_env ref
@@ -98,14 +104,31 @@ and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
 
 and eval_assign (lenv, tenv, cenv) lhs value =
   match lhs with
-  | Syntax.Var((loc,_),name)
-  -> lenv_mutate lenv name ~value:value
-  | Syntax.Const((loc,_),name)
+  | Syntax.Var((loc,_), name)
+  -> lenv_mutate lenv name ~value
+  | Syntax.Const((loc,_), name)
   -> (try
         cenv_bind !cenv name value
-      with CEnvAlreadyBound(value) ->
+      with CEnvAlreadyBound value ->
         exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value) ^ ".") [loc])
-  | _ -> assert false
+  | Syntax.IVar((loc,_), name)
+  -> (let self  = lenv_lookup lenv "self" in
+      let klass = Rt.klass_of_value self  in
+      if not (List.mem name (klass_ivars klass)) then
+        exc_fail ("Class " ^ klass.k_name ^ " does not define an instance variable @" ^
+                  name) [loc];
+      match self with
+      | Instance(cls, slots)
+      -> (if klass.k_is_value then
+            let slots' = Table.copy slots in
+            Table.set slots name value;
+            lenv_mutate lenv "self" (Instance (cls, slots'))
+          else
+            Table.set slots name value)
+      | _
+      -> assert false)
+  | _
+  -> assert false
 
 and eval_type ((lenv, tenv, cenv) as env) expr =
   let as_type expr =
@@ -429,7 +452,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   -> (let args = List.map (eval_expr env) args in
         Primitive.invoke name args)
 
-  | Syntax.Send((_, { Syntax.selector = loc }),recv,name,args)
+  | Syntax.Send((_, { Syntax.selector = loc }), recv, name, args)
   -> (let recv = eval_expr env recv in
       let args, kwargs = eval_args env args in
       eval_send recv name ~args ~kwargs ~loc)
@@ -439,14 +462,35 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
                (Unicode.assert_utf8s
                 (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));
 
-and eval_send recv name ~args ~kwargs ~loc =
-  let method_table = (klass_of_value ~dispatch:true recv).k_methods in
+and eval_send recv selector ~args ~kwargs ~loc =
+  let rec lookup klass =
+    let method_table = klass.k_methods in
     try
-      let meth = Assoc.find method_table name in
-      eval_lambda meth.im_body (recv :: args) kwargs
+      Assoc.find method_table selector
     with Not_found ->
-      exc_fail ("Undefined instance method " ^ (inspect_type (type_of_value recv)) ^
-                "#" ^ name ^ " for " ^ (inspect_value recv) ^ ".") [loc]
+      match klass.k_ancestor with
+      | Some ancestor
+      -> lookup ancestor
+      | None
+      -> (let klass = klass_of_value ~dispatch:true recv in
+          exc_fail ("Undefined instance method " ^ klass.k_name ^
+                    "#" ^ selector ^ " for " ^ (inspect_value recv) ^ ".") [loc])
+  in
+  let klass  = klass_of_value ~dispatch:true recv in
+  let result = eval_lambda (lookup klass).im_body (recv :: args) kwargs in
+  if selector = "initialize" then begin
+    match recv with
+    | Instance((klass, _), slots)
+    -> (let slot_ivars    = List.sort (Table.keys slots)
+        and defined_ivars = klass_ivars klass in
+        let diff_ivars    = List.fold_left List.remove defined_ivars slot_ivars in
+        let diff_ivars    = String.concat ", " (List.map (fun iv -> "@" ^ iv) diff_ivars) in
+        if slot_ivars <> defined_ivars then
+          exc_fail ("Initializer did not initialize slots: " ^ diff_ivars) [loc];
+        recv)
+    | _
+    -> assert false
+  end else result
 
 and eval_lambda body args kwargs =
   let lenv = lenv_create (Some body.l_local_env) in
@@ -461,7 +505,14 @@ and eval_lambda body args kwargs =
   and bind_args f_args args kwseen =
     match f_args, args with
     | Syntax.FormalSelf((loc,_)) :: f_rest, value :: rest
-    -> bind (Syntax.LVarImmutable, "self") ~loc ~value ~f_rest ~rest ~kwseen
+    -> (let kind =
+          match value with
+          | Instance ((klass, _), _) when klass.k_is_value
+          -> Syntax.LVarMutable
+          | _
+          -> Syntax.LVarImmutable
+        in
+        bind (kind, "self") ~loc ~value ~f_rest ~rest ~kwseen)
 
     | Syntax.FormalArg((loc,_),lvar) :: f_rest, value :: rest
     | Syntax.FormalOptArg((loc,_),lvar,_) :: f_rest, value :: rest
