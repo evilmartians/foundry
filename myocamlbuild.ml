@@ -24,6 +24,8 @@ dispatch begin function
 
     flag ["ocaml"; "compile"; "bin_annot"] (A"-bin-annot");
 
+    flag ["ocaml"; "compile"] (S[A"-w"; A"@5@10"]);
+
     if do_cov then
       tag_any ["package(bisect)"]
     else
