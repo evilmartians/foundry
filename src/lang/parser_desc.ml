@@ -14,7 +14,7 @@ let name_of_token = function
   | Tk_PERCENT _ -> "Tk_PERCENT"
   | Tk_UTILDE _ -> "Tk_UTILDE"
   | Tk_DIVIDE _ -> "Tk_DIVIDE"
-  | Tk_LEQ _ -> "Tk_LEQ"
+  | Tk_LE _ -> "Tk_LE"
   | Tk_AMPER _ -> "Tk_AMPER"
   | Tk_LCURLY _ -> "Tk_LCURLY"
   | Tk_LPAREN _ -> "Tk_LPAREN"
@@ -34,7 +34,7 @@ let name_of_token = function
   | Kw_ELSIF _ -> "Kw_ELSIF"
   | Tk_ASGN _ -> "Tk_ASGN"
   | Kw_FALSE _ -> "Kw_FALSE"
-  | Tk_GEQ _ -> "Tk_GEQ"
+  | Tk_GE _ -> "Tk_GE"
   | Tk_DOT _ -> "Tk_DOT"
   | Vl_INT _ -> "Vl_INT"
   | Tk_DSTAR _ -> "Tk_DSTAR"
@@ -90,6 +90,7 @@ let name_of_token = function
   | Kw_ASSERT _ -> "Kw_ASSERT"
   | Id_METHOD _ -> "Id_METHOD"
   | Id_ASSIGN _ -> "Id_ASSIGN"
+  | Tk_NE _ -> "Tk_NE"
 
 let loc_of_token token =
   match token with
@@ -119,15 +120,16 @@ let loc_of_token token =
   | Tk_OR_ASGN (loc) -> loc
   | Tk_OP_ASGN (loc, _) -> loc
   | Tk_NEWLINE (loc) -> loc
+  | Tk_NE (loc, _) -> loc
   | Tk_MINUS (loc, _) -> loc
   | Tk_LT (loc, _) -> loc
   | Tk_LSHFT (loc, _) -> loc
   | Tk_LPAREN (loc) -> loc
-  | Tk_LEQ (loc, _) -> loc
+  | Tk_LE (loc, _) -> loc
   | Tk_LCURLY (loc) -> loc
   | Tk_LBRACK (loc) -> loc
   | Tk_GT (loc, _) -> loc
-  | Tk_GEQ (loc, _) -> loc
+  | Tk_GE (loc, _) -> loc
   | Tk_EQ (loc, _) -> loc
   | Tk_DSTAR (loc, _) -> loc
   | Tk_DSEMI (loc) -> loc

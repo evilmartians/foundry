@@ -85,7 +85,7 @@ let prim = Table.create [
   "int_exp",    (false,    int_binop power_big_int_positive_big_int);
   "int_cmp",    (false,    int_binop (fun lhs rhs -> big_int_of_int (compare_big_int lhs rhs)));
   "int_eq",     (false,    int_cmpop eq_big_int);
-  "int_neq",    (false,    int_cmpop (fun lhs rhs -> not (eq_big_int lhs rhs)));
+  "int_ne",     (false,    int_cmpop (fun lhs rhs -> not (eq_big_int lhs rhs)));
   "int_ule",    (false,    int_cmpop le_big_int);
   "int_sle",    (false,    int_cmpop le_big_int);
   "int_ult",    (false,    int_cmpop lt_big_int);

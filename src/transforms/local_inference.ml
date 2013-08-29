@@ -142,7 +142,7 @@ let run_on_function passmgr capsule funcn =
         | "int_or"   | "int_xor"  | "int_shl" | "int_lshr"
         | "int_ashr" | "int_exp"
         -> unify_int_op int_binop_ty
-        | "int_eq"   | "int_neq"  | "int_ule" | "int_sle"
+        | "int_eq"   | "int_ne"   | "int_ule" | "int_sle"
         | "int_ult"  | "int_slt"  | "int_uge" | "int_sge"
         | "int_ugt"  | "int_sgt"
         -> unify_int_op int_cmpop_ty

@@ -602,7 +602,7 @@ let rec inspect_literal_or value f =
   | BooleanTy     -> "Boolean"
   | Nil           -> "nil"
   | NilTy         -> "Nil"
-  | Integer(n)    -> (string_of_big_int n) ^ "i"
+  | Integer(n)    -> (string_of_big_int n)
   | IntegerTy     -> "Integer"
   | Symbol(s)     -> ":" ^ s
   | SymbolTy      -> "Symbol"

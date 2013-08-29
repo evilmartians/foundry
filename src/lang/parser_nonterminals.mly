@@ -88,10 +88,11 @@
     [Syntax.ActualArg (nullary (Syntax.loc expr), expr)]
 %}
 
+/* lowest */
 %left     Kw_OR
 %left     Kw_AND
 %right    Kw_NOT
-%nonassoc Tk_EQ Tk_LT Tk_LEQ Tk_GT Tk_GEQ Tk_CMP
+%nonassoc Tk_EQ Tk_NE Tk_LT Tk_LEQ Tk_GT Tk_GEQ Tk_CMP
 %left     Tk_PLUS Tk_MINUS
 %left     Tk_STAR Tk_DIVIDE Tk_PERCENT
 %left     Tk_DSTAR
@@ -99,6 +100,7 @@
 %left     Tk_AMPER Tk_PIPE Tk_CARET
 %right    Tk_TILDE Tk_UPLUS Tk_UMINUS
 %nonassoc Tk_LBRACK Tk_DOT
+/* highest */
 
 %start <Syntax.expr list> toplevel
 
@@ -299,10 +301,10 @@
                 { ty }
 
        %inline
-         binop: t=Tk_PLUS   | t=Tk_MINUS | t=Tk_STAR  | t=Tk_DIVIDE | t=Tk_PERCENT
-              | t=Tk_DSTAR  | t=Tk_AMPER | t=Tk_PIPE  | t=Tk_LSHFT  | t=Tk_RSHFT
-              | t=Tk_EQ     | t=Tk_LT    | t=Tk_GT    | t=Tk_LEQ    | t=Tk_GEQ
-              | t=Tk_CMP    | t=Tk_CARET
+         binop: t=Tk_PLUS  | t=Tk_MINUS | t=Tk_STAR  | t=Tk_DIVIDE | t=Tk_PERCENT
+              | t=Tk_DSTAR | t=Tk_AMPER | t=Tk_PIPE  | t=Tk_LSHFT  | t=Tk_RSHFT
+              | t=Tk_EQ    | t=Tk_NE    | t=Tk_LT    | t=Tk_GT     | t=Tk_LE
+              | t=Tk_GE    | t=Tk_CMP   | t=Tk_CARET
                 { t }
 
        %inline

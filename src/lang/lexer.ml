@@ -82,8 +82,8 @@ let regexp local       = id_lower id_alnum*
 let regexp const       = id_upper id_alnum*
 
 let regexp operator    = ['+' '-' '*' '/' '%' '&' '|' '~'] | "<<" | ">>"
-let regexp method_name = local ['=' '!' '?']? | operator |
-                         '<' | '>' | "<=" | ">=" | "==" | "<=>"
+let regexp method_name = ident ['=' '!' '?']? | operator |
+                         '<' | '>' | "<=" | ">=" | "==" | "!=" | "<=>"
 
 let rec lex_code state = lexer
 | w_space       -> lex_code state lexbuf
@@ -143,10 +143,11 @@ let rec lex_code state = lexer
 | "<<"     -> expr_begin state true;  Tk_LSHFT   (locate state lexbuf, lexeme lexbuf)
 | ">>"     -> expr_begin state true;  Tk_RSHFT   (locate state lexbuf, lexeme lexbuf)
 | "=="     -> expr_begin state true;  Tk_EQ      (locate state lexbuf, lexeme lexbuf)
-| "<="     -> expr_begin state true;  Tk_LEQ     (locate state lexbuf, lexeme lexbuf)
+| "!="     -> expr_begin state true;  Tk_NE      (locate state lexbuf, lexeme lexbuf)
+| "<="     -> expr_begin state true;  Tk_LE      (locate state lexbuf, lexeme lexbuf)
 | '<'      -> expr_begin state true;  Tk_LT      (locate state lexbuf, lexeme lexbuf)
+| ">="     -> expr_begin state true;  Tk_GE      (locate state lexbuf, lexeme lexbuf)
 | '>'      -> expr_begin state true;  Tk_GT      (locate state lexbuf, lexeme lexbuf)
-| ">="     -> expr_begin state true;  Tk_GEQ     (locate state lexbuf, lexeme lexbuf)
 | "<=>"    -> expr_begin state true;  Tk_CMP     (locate state lexbuf, lexeme lexbuf)
 
 (* Keywords *)

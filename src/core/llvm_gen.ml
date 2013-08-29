@@ -320,7 +320,7 @@ let rec gen_func llmod heap funcn =
     | "int_lshr", [lhs; rhs] -> Llvm.build_lshr (lookup lhs) (lookup rhs) id builder
     | "int_ashr", [lhs; rhs] -> Llvm.build_ashr (lookup lhs) (lookup rhs) id builder
     | "int_eq",   [lhs; rhs] -> Llvm.build_icmp Icmp.Eq  (lookup lhs) (lookup rhs) id builder
-    | "int_neq",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ne  (lookup lhs) (lookup rhs) id builder
+    | "int_ne",   [lhs; rhs] -> Llvm.build_icmp Icmp.Ne  (lookup lhs) (lookup rhs) id builder
     | "int_ule",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ule (lookup lhs) (lookup rhs) id builder
     | "int_ult",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ult (lookup lhs) (lookup rhs) id builder
     | "int_uge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Uge (lookup lhs) (lookup rhs) id builder
