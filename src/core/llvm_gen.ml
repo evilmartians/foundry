@@ -301,8 +301,10 @@ let rec gen_func llmod heap funcn =
     match prim, operands with
     (* Debug primitives. *)
     | "debug", [operand]
-    -> (match Llvm.lookup_function "__fy_debug" llmod with
-        | Some lldebug -> Llvm.build_call lldebug [| lookup operand |] "" builder
+    -> (let operand = lookup operand in
+        let operand = Llvm.build_intcast operand (Llvm.i32_type ctx) "" builder in
+        match Llvm.lookup_function "__fy_debug" llmod with
+        | Some lldebug -> Llvm.build_call lldebug [| operand |] "" builder
         | None -> assert false)
 
     (* Integer operations. *)
