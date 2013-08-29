@@ -47,6 +47,21 @@ let int_divmod args =
   | [Integer(lhs); Integer(rhs)]
   -> (let quo, rem = quomod_big_int lhs rhs in
         Tuple [Integer(quo); Integer(rem)])
+  | _
+  -> assert false
+
+(* Object primitive implementations. *)
+
+let obj_alloc args =
+  match args with
+  | [Class(klass, specz)]
+  -> Instance((klass, specz), Table.create [])
+  | _
+  -> assert false
+
+let obj_equal args =
+  match args with
+  | [a; b] -> if equal a b then Rt.Truth else Rt.Lies
   | _ -> assert false
 
 let prim = Table.create [
@@ -88,7 +103,8 @@ let prim = Table.create [
   (* -- closures --------------------------------------- *)
   "lam_call",   (true,     fun _ -> assert false);
   (* -- objects ---------------------------------------- *)
-  "obj_alloc",  (false,    fun _ -> assert false);
+  "obj_alloc",  (false,    obj_alloc);
+  "obj_equal",  (false,    obj_equal);
   (* -- hardware access -------------------------------- *)
   "mem_load",   (false,    fun _ -> assert false);
   "mem_store",  (true,     fun _ -> assert false);

@@ -265,8 +265,8 @@ and string_of_package state package =
 and string_of_instance state (klass, sp) ivars =
   bind state (Instance ((klass, sp), ivars)) "" (fun () ->
     "instance " ^ (string_of_klass state klass) ^
-      "{" ^ (string_of_assoc_inline sp (string_of_value state)) ^ "} {\n" ^
-      (string_of_table "  " ivars (string_of_value state)) ^
+      "{" ^ (string_of_assoc_inline sp (string_of_value state)) ^ "} {" ^
+      (string_of_table "" ivars (string_of_value state)) ^
     "}\n")
 
 let rec string_of_ssa_name state value =

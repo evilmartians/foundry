@@ -612,6 +612,8 @@ let rec inspect_literal_or value f =
   | SignedTy(w)   -> "Signed(" ^ (string_of_int w) ^ ")"
   | Class(k,sp)   -> k.k_name ^ "(" ^ (String.concat ", " (Assoc.map_list
                           (fun k v -> k ^ ": " ^ (inspect_type v)) sp)) ^ ")"
+  | Instance(c,s) -> "#<" ^ (inspect_type (Class c)) ^ (String.concat "" (Table.map_list
+                          (fun k v -> " @" ^ k ^ "=" ^ (inspect_value v)) s) ^ ">")
   | _             -> f value
 
 and inspect_value value =

@@ -141,6 +141,8 @@ let rec subst env value =
   -> fold_equiv (Class (klass, Assoc.map (fun _ -> subst env) specz))
   | Package _
   -> value
+  | Instance (cls, slots)
+  -> Instance (cls, Table.map (subst env) slots)
   | FunctionTy (args, ret)
   -> FunctionTy (List.map (subst env) args, subst env ret)
   | ClosureTy (args, ret)

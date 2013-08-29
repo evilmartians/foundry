@@ -209,6 +209,19 @@ let rec llconst_of_value llmod heap value =
       memoize llty (fun value ->
         Llvm.set_value_name ("class." ^ (klass.Rt.k_name :> string)) value;
         Llvm.const_named_struct llty [||]))
+  | Rt.Instance ((klass, specz), slots)
+  -> (let rec gen_inst klass =
+        let elems = Assoc.map_list klass.Rt.k_ivars ~f:(fun name _ ->
+                      llconst_of_value llmod heap (Table.get_exn slots name)) in
+        let elems =
+          match klass.Rt.k_ancestor with
+          | Some ancestor -> (gen_inst ancestor) :: elems
+          | None -> elems
+        in
+        let elems = Array.of_list elems in
+        Llvm.const_named_struct (lltype_of_ty ~ptr:false (Rt.Class (klass, specz))) elems
+      in
+      gen_inst klass)
   | _
   -> failwith ("llconst_of_value: " ^ ((Rt.inspect_value value) :> string))
 
