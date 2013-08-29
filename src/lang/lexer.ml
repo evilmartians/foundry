@@ -191,10 +191,10 @@ let rec lex_code state = lexer
                      lex_number state (big_int_of_hex_string (sub_lexeme lexbuf 2 (-2))) lexbuf
 
 | "0b" binnumber  -> expr_begin state false;
-                     lex_number state (big_int_of_binary_string (sub_lexeme lexbuf 2 (-2))) lexbuf
+                     lex_number state (big_int_of_bin_string (sub_lexeme lexbuf 2 (-2))) lexbuf
 
 | number          -> expr_begin state false;
-                     lex_number state (big_int_of_string (lexeme lexbuf)) lexbuf
+                     lex_number state (big_int_of_dec_string (lexeme lexbuf)) lexbuf
 
 | ':' method_name -> expr_begin state false;
                      Vl_SYMBOL (locate state lexbuf, sub_lexeme lexbuf 1 (-1))
