@@ -490,7 +490,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 }
 
    basic_block: id=Name_Label instrs=nonempty_list(instr)
-                { (fun ((venv, func, fenv) as env) ->
+                { (fun (venv, func, fenv) ->
                     let basic_block = create_block ~id func in
                       Table.set fenv id basic_block;
                       List.map (fun instr -> instr (venv, basic_block, fenv))

@@ -122,6 +122,10 @@ let run_on_function passmgr capsule funcn =
               schedule_block target)); Top
 
       (* Tuple instructions. *)
+      | TupleConcatInstr ({ opcode = Ssa.Const (Rt.Tuple []) }, tup)
+      | TupleConcatInstr (tup, { opcode = Ssa.Const (Rt.Tuple []) })
+      -> lookup tup
+
       | TupleExtendInstr (tup, elems)
       -> (let tup =
             match get tup with
@@ -129,17 +133,20 @@ let run_on_function passmgr capsule funcn =
             | _ -> assert false
           and elems = List.map get elems in
           Const (Rt.Tuple (tup @ elems)))
+
       | TupleConcatInstr (tup, tup')
       -> (match get tup, get tup' with
           | Rt.Tuple xs, Rt.Tuple ys
           -> Const (Rt.Tuple (xs @ ys))
           | _
           -> assert false)
-      | TupleConcatInstr ({ opcode = Ssa.Const (Rt.Tuple []) }, tup)
-      | TupleConcatInstr (tup, { opcode = Ssa.Const (Rt.Tuple []) })
-      -> lookup tup
 
       (* Record instructions. *)
+      | RecordConcatInstr ({ opcode = Ssa.Const (Rt.Record xs) }, re)
+      | RecordConcatInstr (re, { opcode = Ssa.Const (Rt.Record xs) })
+      -> (if Assoc.is_empty xs then lookup re
+          else Bottom)
+
       | RecordExtendInstr (tup, elems)
       -> (let tup =
             match get tup with
@@ -154,16 +161,13 @@ let run_on_function passmgr capsule funcn =
           in
           let elems = Assoc.sorted elems in
           Const (Rt.Record (Assoc.merge tup elems)))
+
       | RecordConcatInstr (tup, tup')
       -> (match get tup, get tup' with
           | Rt.Record xs, Rt.Record ys
           -> Const (Rt.Record (Assoc.merge xs ys))
           | _
           -> assert false)
-      | RecordConcatInstr ({ opcode = Ssa.Const (Rt.Record xs) }, re)
-      | RecordConcatInstr (re, { opcode = Ssa.Const (Rt.Record xs) })
-      -> (if Assoc.is_empty xs then lookup re
-          else Bottom)
 
       (* Handle specialization. *)
       | SpecializeInstr (cls, specz')
