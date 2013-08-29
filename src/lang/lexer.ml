@@ -237,9 +237,9 @@ let rec lex_code state = lexer
 
 and lex_dot state = lexer
 | w_space         -> lex_dot state lexbuf
-| local ['?''!']? -> goto state lex_code;
+| ident ['?''!']? -> goto state lex_code;
                      Id_METHOD (locate state lexbuf, lexeme lexbuf)
-| local '='       -> goto state lex_code;
+| ident '='       -> goto state lex_code;
                      Id_ASSIGN (locate state lexbuf, lexeme lexbuf)
 
 | _               -> Ulexing.rollback lexbuf; goto state lex_code;
