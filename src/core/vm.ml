@@ -457,6 +457,27 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       let args, kwargs = eval_args env args in
       eval_send recv name ~args ~kwargs ~loc)
 
+  | Syntax.If(_, cond_expr, if_true, if_false)
+  -> (let cond = eval_expr env cond_expr in
+      match cond with
+      | Rt.Truth -> eval env if_true
+      | Rt.Lies  -> Option.map_default (eval_expr env) Rt.Nil if_false
+      | _ -> exc_type "boolean value" cond [Syntax.loc cond_expr])
+
+  | Syntax.Or (_, lhs_expr, rhs_expr)
+  -> (let lhs = eval_expr env lhs_expr in
+      match lhs with
+      | Rt.Truth -> lhs
+      | Rt.Lies  -> eval_expr env rhs_expr
+      | _ -> exc_type "boolean value" lhs [Syntax.loc lhs_expr])
+
+  | Syntax.And (_, lhs_expr, rhs_expr)
+  -> (let lhs = eval_expr env lhs_expr in
+      match lhs with
+      | Rt.Truth -> eval_expr env rhs_expr
+      | Rt.Lies  -> lhs
+      | _ -> exc_type "boolean value" lhs [Syntax.loc lhs_expr])
+
   | _
   -> failwith ("cannot eval " ^
                (Unicode.assert_utf8s
