@@ -307,6 +307,11 @@ let rec gen_func llmod heap funcn =
         | Some lldebug -> Llvm.build_call lldebug [| operand |] "" builder
         | None -> assert false)
 
+    (* Boolean operations. *)
+    | "bool_neg", [value]
+    -> (let i1 = Llvm.i1_type ctx in
+        Llvm.build_select (lookup value) (Llvm.const_int i1 0) (Llvm.const_int i1 1) "" builder)
+
     (* Integer operations. *)
     | "int_add",  [lhs; rhs] -> Llvm.build_add  (lookup lhs) (lookup rhs) id builder
     | "int_sub",  [lhs; rhs] -> Llvm.build_sub  (lookup lhs) (lookup rhs) id builder

@@ -322,30 +322,33 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       with CEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
 
+  | Syntax.Begin(_, exprs)
+  -> eval env exprs
+
   | Syntax.Assign(_, lhs, rhs)
   -> (let value = eval_expr env rhs in
-        eval_assign env lhs value;
-        value)
+      eval_assign env lhs value;
+      value)
 
   | Syntax.OpAssign((loc, _), lhs, meth, rhs)
   -> (let value  = eval_expr env lhs in
       let arg    = eval_expr env rhs in
       let result = eval_send value meth ~args:[arg] ~kwargs:Assoc.empty ~loc in
-        eval_assign env lhs result;
-        result)
+      eval_assign env lhs result;
+      result)
 
   | Syntax.Lambda(_, args, ty_expr, body)
   -> (let tenv, ty = eval_closure_ty env ty_expr in
-        Lambda {
-          l_hash      = Hash_seed.make ();
-          l_location  = Syntax.loc expr;
-          l_ty        = ty;
-          l_local_env = lenv;
-          l_type_env  = tenv;
-          l_const_env = !cenv;
-          l_args      = args;
-          l_body      = [body]
-        })
+      Lambda {
+        l_hash      = Hash_seed.make ();
+        l_location  = Syntax.loc expr;
+        l_ty        = ty;
+        l_local_env = lenv;
+        l_type_env  = tenv;
+        l_const_env = !cenv;
+        l_args      = args;
+        l_body      = [body]
+      })
 
   | Syntax.Class((loc,_), name, params, ancestor, body)
   -> (let ancestor, specz =

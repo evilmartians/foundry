@@ -304,6 +304,11 @@ let rec ssa_of_expr ~entry ~state ~expr =
                 ~opcode:(Ssa.PhiInstr [head, lhs_value;
                                        body, rhs_value]))
 
+  | Syntax.Not (_, expr)
+  -> (let entry, value = ssa_of_expr ~entry ~state ~expr in
+      entry, append entry ~ty:Rt.BooleanTy
+                          ~opcode:(Ssa.PrimitiveInstr ("bool_neg", [value])))
+
   (* Miscellanea. *)
   | Syntax.Lambda (_, formal_args, ty, expr) (* TODO lam_ty *)
   -> ssa_of_lambda_expr ~entry ~state ~formal_args ~expr
