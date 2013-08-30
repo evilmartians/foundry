@@ -100,7 +100,7 @@ let rec string_of_value state value =
   | Mixin(k,sp)       -> "mixin " ^ (string_of_mixin state k) ^
                            "{" ^(string_of_assoc_inline sp (string_of_value state))  ^ "}"
   | Package(p)        -> "package " ^ (string_of_package state p)
-  | Instance(c,iv)    -> "instance " ^ (string_of_instance state c iv)
+  | Instance(i)       -> "instance " ^ (string_of_instance state i)
 
   | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy | StringTy | UnsignedTy _
   | SignedTy _ | TupleTy _ | RecordTy _ | LambdaTy _ | EnvironmentTy _ | FunctionTy _
@@ -264,11 +264,12 @@ and string_of_package state package =
       )) ^
     "}\n")
 
-and string_of_instance state (klass, sp) ivars =
-  bind state (Instance ((klass, sp), ivars)) "" (fun () ->
+and string_of_instance state inst =
+  bind state (Instance inst) "" (fun () ->
+    let klass, specz = inst.i_class in
     "instance " ^ (string_of_klass state klass) ^
-      "{" ^ (string_of_assoc_inline sp (string_of_value state)) ^ "} {" ^
-      (string_of_table "" ivars (string_of_value state)) ^
+      "{" ^ (string_of_assoc_inline specz (string_of_value state)) ^ "} {" ^
+      (string_of_table "" inst.i_slots (string_of_value state)) ^
     "}\n")
 
 let rec string_of_ssa_name state value =

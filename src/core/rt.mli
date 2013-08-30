@@ -38,7 +38,7 @@ type value =
 (* User-defined types *)
 | Class         of klass specialized
 | Mixin         of mixin specialized
-| Instance      of klass specialized * slots
+| Instance      of instance
 (* SSA types *)
 | FunctionTy    of ty list * ty
 | ClosureTy     of ty list * ty
@@ -109,6 +109,11 @@ and mixin = {
           m_name          : string;
           m_metaclass     : klass;
   mutable m_methods       : imethod Assoc.sequental_t;
+}
+and instance = {
+          i_hash          : int;
+          i_class         : klass specialized;
+          i_slots         : value Table.t;
 }
 and imethod = {
           im_hash         : int;

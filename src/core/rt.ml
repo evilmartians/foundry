@@ -39,7 +39,7 @@ type value =
 (* User-defined types *)
 | Class         of klass specialized
 | Mixin         of mixin specialized
-| Instance      of klass specialized * slots
+| Instance      of instance
 (* SSA types *)
 | FunctionTy    of ty list * ty
 | ClosureTy     of ty list * ty
@@ -109,6 +109,11 @@ and mixin = {
           m_name          : string;
           m_metaclass     : klass;
   mutable m_methods       : imethod Assoc.sequental_t;
+}
+and instance = {
+          i_hash          : int;
+          i_class         : klass specialized;
+          i_slots         : value Table.t;
 }
 and imethod = {
           im_hash         : int;
@@ -375,7 +380,7 @@ let klass_of_value ?(dispatch=false) ?(meta=true) value =
 
   | Lambda(_)     -> !roots.kLambda
 
-  | Instance((k,_),_) -> k
+  | Instance(i)   -> fst i.i_class
   | Class(k,_)    -> if dispatch then k.k_metaclass else !roots.kClass
   | Package(p)    -> if dispatch then p.p_metaclass else !roots.kPackage
   | Mixin(m,_)    -> if dispatch then m.m_metaclass else !roots.kMixin
@@ -408,7 +413,7 @@ let rec type_of_value value =
 
   | Package(p)      -> Class (p.p_metaclass, Assoc.empty)
   | Class(k,sp)     -> Class (k.k_metaclass, sp)
-  | Instance(k,_)   -> Class k
+  | Instance(i)     -> Class i.i_class
 
   | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
   | TupleTy(_) | RecordTy(_) | LambdaTy(_)
@@ -515,7 +520,7 @@ and equal a b =
   -> a == b
   | Package(a),         Package(b)
   -> a == b
-  | Instance(_,a),      Instance(_,b)
+  | Instance(a),        Instance(b)
   -> a == b
   | Class(a, sa),       Class(b, sb)
   -> a == b && Assoc.equal ~eq:equal sa sb
@@ -571,8 +576,8 @@ let rec hash value =
   -> x.l_hash
   | Package(x)
   -> x.p_hash
-  | Instance((k, sp), _)
-  -> Hashtbl.hash [k.k_hash; hash_assoc sp]
+  | Instance(i)
+  -> i.i_hash
   | Class(x, sp)
   -> Hashtbl.hash [x.k_hash; hash_assoc sp]
   | Mixin(x, sp)
@@ -624,8 +629,8 @@ let rec inspect_literal_or value f =
   | SignedTy(w)   -> "Signed(" ^ (string_of_int w) ^ ")"
   | Class(k,sp)   -> k.k_name ^ "(" ^ (String.concat ", " (Assoc.map_list
                           (fun k v -> k ^ ": " ^ (inspect_type v)) sp)) ^ ")"
-  | Instance(c,s) -> "#<" ^ (inspect_type (Class c)) ^ (String.concat "" (Table.map_list
-                          (fun k v -> " @" ^ k ^ "=" ^ (inspect_value v)) s) ^ ">")
+  | Instance(i)   -> "#<" ^ (inspect_type (Class i.i_class)) ^ (String.concat "" (Table.map_list
+                          (fun k v -> " @" ^ k ^ "=" ^ (inspect_value v)) i.i_slots) ^ ">")
   | _             -> f value
 
 and inspect_value value =

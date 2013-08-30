@@ -11,7 +11,7 @@
   | NamedPackage   of package
   | NamedLambda    of lambda
   | NamedLocalEnv  of local_env
-  | NamedInstance  of (klass specialized * slots)
+  | NamedInstance  of instance
   | NamedFunction  of name
 
   let create_globals () =
@@ -186,7 +186,7 @@
       instance: x=global
                 { (fun env ->
                     match x env with
-                    | NamedInstance (k, sl) -> (k, sl)
+                    | NamedInstance i -> i
                     | _ -> assert false) }
 
           func: x=global
@@ -290,7 +290,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | Package x=package
                 { (fun env -> Package (x env)) }
               | Instance x=instance
-                { (fun env -> let (k, sl) = (x env) in Instance (k, sl)) }
+                { (fun env -> Instance (x env)) }
 
      ivar_kind: Immutable
                 { Syntax.IVarImmutable }
@@ -465,12 +465,14 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | bind_as=Name_Global Equal
                   Instance klass=klass sp=assoc_ord(value) slots=table(value)
                 { (fun env ->
-                    let i_klass = klass env in
-                    let i_sp    = sp env in
-                    let i_slots = Table.create [] in
-                      Table.set env bind_as (NamedInstance ((i_klass, i_sp), i_slots));
-                      (fun () ->
-                        Table.replace i_slots (slots env)))
+                    let inst = {
+                      i_hash  = Hash_seed.make ();
+                      i_class = klass env, sp env;
+                      i_slots = Table.create [];
+                    } in
+                    Table.set env bind_as (NamedInstance inst);
+                    (fun () ->
+                      Table.replace inst.i_slots (slots env)))
                 }
 
 

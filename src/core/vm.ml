@@ -135,13 +135,17 @@ and eval_assign (lenv, tenv, cenv) lhs value =
         exc_fail ("Class " ^ klass.k_name ^ " does not define an instance variable @" ^
                   name) [loc];
       match self with
-      | Instance(cls, slots)
-      -> (if klass.k_is_value then
-            let slots' = Table.copy slots in
-            Table.set slots name value;
-            lenv_mutate lenv "self" (Instance (cls, slots'))
+      | Instance(inst)
+      -> (if (fst inst.i_class).k_is_value then
+            let slots' = Table.copy inst.i_slots in
+            Table.set slots' name value;
+            lenv_mutate lenv "self" (Instance ({
+              i_hash  = Hash_seed.make ();
+              i_class = inst.i_class;
+              i_slots = slots';
+            }))
           else
-            Table.set slots name value)
+            Table.set inst.i_slots name value)
       | _
       -> assert false)
   | _
@@ -526,8 +530,9 @@ and eval_send ?(args=[]) ?(kwargs=Assoc.empty) recv selector ~loc =
   let result = eval_lambda (lookup klass).im_body (recv :: args) kwargs in
   if selector = "initialize" then begin
     match recv with
-    | Instance((klass, _), slots)
-    -> (let slot_ivars    = List.sort (Table.keys slots)
+    | Instance(inst)
+    -> (let klass, _      = inst.i_class in
+        let slot_ivars    = List.sort (Table.keys inst.i_slots)
         and defined_ivars = klass_ivars klass in
         let diff_ivars    = List.fold_left List.remove defined_ivars slot_ivars in
         let diff_ivars    = String.concat ", " (List.map (fun iv -> "@" ^ iv) diff_ivars) in
@@ -553,7 +558,7 @@ and eval_lambda body args kwargs =
     | Syntax.FormalSelf((loc,_)) :: f_rest, value :: rest
     -> (let kind =
           match value with
-          | Instance ((klass, _), _) when klass.k_is_value
+          | Instance ({ i_class = klass, _; }) when klass.k_is_value
           -> Syntax.LVarMutable
           | _
           -> Syntax.LVarImmutable

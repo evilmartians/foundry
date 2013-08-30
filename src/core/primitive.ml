@@ -62,8 +62,12 @@ let sym_to_str args =
 
 let obj_alloc args =
   match args with
-  | [Class(klass, specz)]
-  -> Instance((klass, specz), Table.create [])
+  | [Class (cls)]
+  -> (Instance({
+        i_hash  = Hash_seed.make ();
+        i_class = cls;
+        i_slots = Table.create []
+      }))
   | _
   -> assert false
 

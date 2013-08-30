@@ -209,7 +209,7 @@ let rec llconst_of_value llmod heap value =
       memoize llty (fun value ->
         Llvm.set_value_name ("class." ^ (klass.Rt.k_name :> string)) value;
         Llvm.const_named_struct llty [||]))
-  | Rt.Instance ((klass, specz), slots)
+  | Rt.Instance ({ Rt.i_class = klass, specz; Rt.i_slots = slots; })
   -> (let rec gen_inst klass =
         let elems = Assoc.map_list klass.Rt.k_ivars ~f:(fun name _ ->
                       llconst_of_value llmod heap (Table.get_exn slots name)) in
