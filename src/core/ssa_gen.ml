@@ -642,7 +642,7 @@ let name_of_lambda klass selector lambda capsule =
     let entry, value = ssa_of_seq ~entry ~state ~exprs:lambda.Rt.l_body in
 
     begin match kind with
-    | ConvValueInitializer
+    | ConvInitializer | ConvValueInitializer
     -> (let self = load ~state entry "self" in
         ignore (append entry ~opcode:(Ssa.ReturnInstr self)))
     | _

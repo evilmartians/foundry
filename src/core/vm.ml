@@ -547,23 +547,23 @@ and eval_send ?(args=[]) ?(kwargs=Assoc.empty) recv selector ~loc =
                     "#" ^ selector ^ " for " ^ (inspect_value recv) ^ ".") [loc])
   in
   let klass  = klass_of_value ~dispatch:true recv in
-  let result = eval_lambda (lookup klass).im_body (recv :: args) kwargs in
-  if selector = "initialize" then begin
-    match recv with
-    | Instance(inst)
-    -> (let klass, _      = inst.i_class in
-        let slot_ivars    = List.sort (Table.keys inst.i_slots)
+  let is_initializer = (selector = "initialize") in
+  let result = eval_lambda ~is_initializer (lookup klass).im_body (recv :: args) kwargs in
+  if is_initializer then begin
+    match result with
+    | Instance({ i_class = klass, specz; i_slots = slots; })
+    -> (let slot_ivars    = List.sort (Table.keys slots)
         and defined_ivars = klass_ivars klass in
         let diff_ivars    = List.fold_left List.remove defined_ivars slot_ivars in
         let diff_ivars    = String.concat ", " (List.map (fun iv -> "@" ^ iv) diff_ivars) in
         if slot_ivars <> defined_ivars then
           exc_fail ("Initializer did not initialize slots: " ^ diff_ivars) [loc];
-        recv)
+        result)
     | _
     -> assert false
   end else result
 
-and eval_lambda body args kwargs =
+and eval_lambda ?(is_initializer=false) body args kwargs =
   let lenv = lenv_create (Some body.l_local_env) in
   let tenv = tenv_fork   body.l_type_env  in
   let cenv = ref         body.l_const_env in
@@ -625,7 +625,11 @@ and eval_lambda body args kwargs =
     -> assert false
   in
   bind_args body.l_args args [];
-  eval env body.l_body
+  let result = eval env body.l_body in
+  if is_initializer then
+    lenv_lookup lenv "self"
+  else
+    result
 
 and eval env exprs =
   Option.default Nil
