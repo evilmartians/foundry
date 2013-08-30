@@ -82,8 +82,9 @@ let regexp local       = id_lower id_alnum*
 let regexp const       = id_upper id_alnum*
 
 let regexp operator    = ['+' '-' '*' '/' '%' '&' '|' '~'] | "<<" | ">>"
-let regexp method_name = ident ['=' '!' '?']? | operator |
-                         '<' | '>' | "<=" | ">=" | "==" | "!=" | "<=>"
+let regexp method_name = ident ['=' '!' '?']? | operator | "[]" | "[]=" |
+                         '<' | '>' | "<=" | ">=" | "==" | "!=" | "<=>" |
+                         ['-' '+' '~'] '@'
 
 let rec lex_code state = lexer
 | w_space       -> lex_code state lexbuf
@@ -236,7 +237,7 @@ let rec lex_code state = lexer
 | eof             -> eof state lexbuf
 
 and lex_dot state = lexer
-| w_space         -> lex_dot state lexbuf
+| w_any           -> lex_dot state lexbuf
 | ident ['?''!']? -> goto state lex_code;
                      Id_METHOD (locate state lexbuf, lexeme lexbuf)
 | ident '='       -> goto state lex_code;
@@ -247,15 +248,14 @@ and lex_dot state = lexer
 | eof             -> eof state lexbuf
 
 and lex_def state = lexer
-| w_space         -> lex_def state lexbuf
-| "[]"            -> goto state lex_code;
-                     Id_METHOD (locate state lexbuf, lexeme lexbuf)
-| "[]="           -> goto state lex_code;
-                     Id_METHOD (locate state lexbuf, lexeme lexbuf)
+| w_any           -> lex_def state lexbuf
 | "self"          -> goto state lex_code;
                      Kw_SELF (locate state lexbuf, lexeme lexbuf)
-| _               -> Ulexing.rollback lexbuf; goto state lex_dot;
-                     lex_dot state lexbuf
+| method_name     -> goto state lex_code;
+                     Id_METHOD (locate state lexbuf, lexeme lexbuf)
+| '@'  ident      -> goto state lex_code;
+                     Id_IVAR  (locate state lexbuf, sub_lexeme lexbuf 1 (-1))
+| _               -> unexpected state lexbuf
 | eof             -> eof state lexbuf
 
 and lex_number state digits = lexer
