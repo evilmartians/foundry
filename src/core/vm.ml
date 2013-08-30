@@ -480,7 +480,14 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
         iv_kind     = kind;
       } loc; Nil)
 
-  | Syntax.InvokePrimitive(_,name,args)
+  | Syntax.InvokePrimitive(_, name, args) when name = "lam_call"
+  -> (match List.map (eval_expr env) args with
+      | [Rt.Lambda lambda; Rt.Tuple args; Rt.Record kwargs]
+      -> eval_lambda lambda args kwargs
+      | _
+      -> assert false)
+
+  | Syntax.InvokePrimitive(_, name, args)
   -> (let args = List.map (eval_expr env) args in
         Primitive.invoke name args)
 
