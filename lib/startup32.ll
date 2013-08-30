@@ -39,7 +39,7 @@ clear_bss:
   br i1 %bss.done, label %call_main, label %clear_bss
 
 call_main:
-  tail call void @main()
+  call void @main()
   br label %loop
 
 loop:

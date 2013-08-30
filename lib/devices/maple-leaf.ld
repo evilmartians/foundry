@@ -1,0 +1,10 @@
+RAMSIZE = 0x5000;
+
+MEMORY
+{
+  vectors (RX) : ORIGIN = 0x08005000, LENGTH = 0x100
+  flash (RX)   : ORIGIN = 0x08005100, LENGTH = 0x20000 - 0x100 - 0x5000
+  ram (RWX)    : ORIGIN = 0x20000000, LENGTH = 0x5000
+}
+
+INCLUDE devices/common.ld

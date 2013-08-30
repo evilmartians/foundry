@@ -1,4 +1,4 @@
-device := stm32f100rb
+device := maple-leaf
 
 llvm   := -3.4
 cross  := arm-linux-gnueabi-
@@ -55,7 +55,7 @@ clean:
 		-o $@
 
 %.d.elf: %.d.o
-	$(cross)ld -L../lib -T$(device).ld $^ -o $@
+	$(cross)ld -L../lib -Tdevices/$(device).ld $^ -o $@
 
 %.d.bin: %.d.elf
 	$(cross)objcopy -Obinary $^ $@
