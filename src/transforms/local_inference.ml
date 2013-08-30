@@ -170,6 +170,15 @@ let run_on_function passmgr capsule funcn =
             | _
             -> ())
 
+        | "rec_lookup"
+        -> (match operands with
+            | [ { ty     = Rt.RecordTy xs };
+                { opcode = Const (Rt.Symbol sym) } ]
+            -> (let ty = Assoc.find xs sym in
+                unify instr.ty ty)
+            | _
+            -> ())
+
         (* Lambda invocations have semantics similar to function calls. *)
         | "lam_call"
         -> (match operands with
