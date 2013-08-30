@@ -216,10 +216,21 @@ let run_on_function passmgr capsule funcn =
     | _
     -> ());
 
+  (* If the function never returns, change its signature to return nil. *)
+  let does_return = ref false in
+  iter_instrs funcn ~f:(fun instr ->
+    match instr.opcode with
+    | ReturnInstr _ -> does_return := true
+    | _ -> ());
+
+  if not !does_return then begin
+    let args_ty, _ = func_ty funcn in
+    set_ty funcn (Rt.FunctionTy (args_ty, Rt.NilTy))
+  end;
+
   (* If function signature has changed, revisit all uses of this
      function. *)
   if not (Rt.equal funcn.ty ty_before_inference) then
-    (* Revisit all uses of this function. *)
     iter_uses funcn ~f:(fun user ->
       let funcn = block_parent (instr_parent user) in
       Pass_manager.mark ~reason:"signature changed" passmgr funcn);
