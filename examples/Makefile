@@ -50,7 +50,7 @@ clean:
 	llvm-link$(llvm) $^ | opt$(llvm) \
 		-internalize-public-api-list=_startup,__vectors__ \
 		-internalize \
-		-std-compile-opts \
+		-Os \
 		-globaldce \
 		-o $@
 
