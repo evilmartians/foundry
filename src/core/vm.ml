@@ -503,6 +503,16 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       | Rt.Lies  -> Option.map_default (eval_expr env) Rt.Nil if_false
       | _ -> exc_type "boolean value" cond [Syntax.loc cond_expr])
 
+  | Syntax.While(_, cond_expr, body)
+  -> (let rec loop () =
+        let cond = eval_expr env cond_expr in
+        match cond with
+        | Rt.Truth -> ignore (eval env body); loop ()
+        | Rt.Lies  -> Nil
+        | _ -> exc_type "boolean value" cond [Syntax.loc cond_expr]
+      in
+      loop ())
+
   | Syntax.Or (_, lhs_expr, rhs_expr)
   -> (let lhs = eval_expr env lhs_expr in
       match lhs with
