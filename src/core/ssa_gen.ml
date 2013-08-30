@@ -463,9 +463,8 @@ and ssa_of_formal_args ~entry ~state ~formal_args =
          their type. *)
       let ty = tvar () in
       (* Helper functions to assemble type-level calculations. *)
-      let int n =
-        (Ssa.const (Rt.Integer (big_int_of_int n)))
-      in
+      let int n = Ssa.const (Rt.Integer (big_int_of_int n))
+      and sym s = Ssa.const (Rt.Symbol s) in
       let right_idx idx =
         let args_len =
           append entry ~ty:(tvar ())
@@ -518,6 +517,12 @@ and ssa_of_formal_args ~entry ~state ~formal_args =
             append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("tup_slice",
                                       [state.args; int state.arg_idx; last_idx])) in
           assign kind name args)
+      | Syntax.FormalKwArg (_, (kind, name))
+      -> (let arg =
+            append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("rec_lookup",
+                                      [state.kwargs; sym name]))
+          in
+          assign kind name arg)
       | Syntax.FormalKwRest (_, (kind, name))
       -> (* TODO stub *)
           assign kind name state.kwargs
