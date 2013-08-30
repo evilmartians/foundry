@@ -428,6 +428,7 @@
                                   (snd id), kind, ty) }
 
               | kw=Kw_SELF Tk_LCURLY stmts=compstmt Tk_RCURLY
+              | kw=Kw_SELF Kw_DO     stmts=compstmt Kw_END
                 { Syntax.Update (nullary (fst kw), stmts) }
 
               | expr=expr_noid
