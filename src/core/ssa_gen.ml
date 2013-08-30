@@ -250,8 +250,9 @@ let rec ssa_of_expr ~entry ~state ~expr =
         ssa_of_seq ~entry:true_pred ~state ~exprs:true_exprs in
       let false_tup =
         Option.map (fun expr ->
-          let entry = Ssa.create_block state.funcn in
-          entry, ssa_of_expr ~entry ~state ~expr) false_expr
+            let false_entry = Ssa.create_block state.funcn in
+            false_entry, ssa_of_expr ~entry:false_entry ~state ~expr)
+          false_expr
       in
       let tail = Ssa.create_block state.funcn in
       let false_pred, false_entry, false_value =
@@ -259,11 +260,11 @@ let rec ssa_of_expr ~entry ~state ~expr =
         | Some (pred, (entry, value))
         -> pred, entry, value
         | None
-        -> head, tail, Ssa.const Rt.Nil
+        -> tail, head, Ssa.const Rt.Nil
       in
       ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, true_pred, false_pred)));
       ignore (append true_entry ~opcode:(Ssa.JumpInstr tail));
-      if false_entry != tail then
+      if false_entry != head then
         ignore (append false_entry ~opcode:(Ssa.JumpInstr tail));
       tail, append tail ~ty:(tvar ())
                 ~opcode:(Ssa.PhiInstr [true_entry,  true_value;
