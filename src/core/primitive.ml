@@ -51,6 +51,13 @@ let int_divmod args =
   | _
   -> assert false
 
+let int_to_str args =
+  match args with
+  | [Integer(value)] | [Signed(_, value)] | [Unsigned(_, value)]
+  -> String (string_of_big_int value)
+  | _
+  -> assert false
+
 (* Symbol primitive implementations. *)
 
 let sym_to_str args =
@@ -122,12 +129,15 @@ let prim = Table.create [
   "int_sge",    (false,    int_cmpop ge_big_int);
   "int_ugt",    (false,    int_cmpop gt_big_int);
   "int_sgt",    (false,    int_cmpop gt_big_int);
+  "int_to_str", (false,    int_to_str);
   (* -- tuples ----------------------------------------- *)
   "tup_length", (false,    fun _ -> assert false);
   "tup_lookup", (false,    fun _ -> assert false);
   "tup_slice",  (false,    fun _ -> assert false);
+  "tup_enum",   (true,     fun _ -> assert false);
   (* -- records ---------------------------------------- *)
   "rec_lookup", (false,    fun _ -> assert false);
+  "rec_enum",   (true,     fun _ -> assert false);
   (* -- symbols ---------------------------------------- *)
   "sym_to_str", (false,    sym_to_str);
   (* -- closures --------------------------------------- *)
@@ -135,6 +145,7 @@ let prim = Table.create [
   (* -- objects ---------------------------------------- *)
   "obj_alloc",  (false,    obj_alloc);
   "obj_equal",  (false,    obj_equal);
+  "obj_send",   (false,    fun _ -> assert false);
   (* -- classes ---------------------------------------- *)
   "cls_alloc",  (false,    fun _ -> assert false);
   "cls_defm",   (true,     cls_defm);
