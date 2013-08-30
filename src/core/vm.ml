@@ -617,7 +617,7 @@ and eval_lambda body args kwargs =
         bind lvar ~loc ~value ~f_rest ~rest ~kwseen)
 
     | [], []
-    -> (if kwseen <> (Assoc.keys kwargs) then
+    -> (if (List.sort kwseen) <> (Assoc.keys kwargs) then
           assert false
         else ())
 
