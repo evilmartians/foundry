@@ -6,6 +6,7 @@ let name = "Dead Code Elimination"
 let has_side_effects instr =
   match instr.opcode with
   | FrameInstr _ | LVarLoadInstr _ | ClosureInstr _
+  | PhiInstr _
   -> false
   | PrimitiveInstr (name, operands)
   -> Primitive.has_side_effects name
