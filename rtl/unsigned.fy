@@ -12,19 +12,19 @@ class Unsigned
   end
 
   def /(other)
-    invokeprimitive int_div(self, other)
+    invokeprimitive int_udiv(self, other)
   end
 
-  def %(other)
-    invokeprimitive int_mod(self, other)
-  end
+  # def %(other)
+  #   invokeprimitive int_mod(self, other)
+  # end
 
   def **(power)
     invokeprimitive int_exp(self, power)
   end
 
   def -@()
-    0 - self
+    0u32 - self
   end
 
   def &(other)
@@ -40,7 +40,7 @@ class Unsigned
   end
 
   def >>(bits)
-    invokeprimitive int_shr(self, bits)
+    invokeprimitive int_lshr(self, bits)
   end
 
   def <<(bits)
@@ -48,7 +48,7 @@ class Unsigned
   end
 
   def ~@()
-    -self - 1
+    -self - 1u32
   end
 
   def ==(other)
@@ -56,7 +56,7 @@ class Unsigned
   end
 
   def !=(other)
-    invokeprimitive int_eq(self, other)
+    invokeprimitive int_ne(self, other)
   end
 
   def >(other)
@@ -73,5 +73,13 @@ class Unsigned
 
   def <=(other)
     invokeprimitive int_ule(self, other)
+  end
+
+  def times(block)
+    let mut i = 0u32
+    while i < self
+      block.call(i)
+      i += 1u32
+    end
   end
 end

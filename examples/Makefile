@@ -3,14 +3,23 @@ device := maple-leaf
 llvm   := -3.4
 cross  := arm-linux-gnueabi-
 
-stdlib := startup32.ll cortex-m3.ll volatile.ll
-stdlib := $(addprefix ../lib/,$(stdlib))
+stdrtl := class.fy object.fy value.fy integer.fy unsigned.fy signed.fy \
+				  symbol.fy lambda.fy
+stdrtl := $(addprefix ../rtl/,$(stdrtl))
+
+devrtl := metal/register.fy metal/unit.fy \
+					stm32f1/rcc.fy stm32f1/gpio.fy stm32f1/stm32f1.fy \
+					maple_leaf/color_lcd_shield.fy maple_leaf/maple_leaf.fy
+devrtl := $(addprefix ../rtl/,$(devrtl))
+
+devlib := volatile.ll startup32.ll cortex-m3.ll
+devlib := $(addprefix ../lib/,$(devlib))
 
 .SUFFIXES:
 
 # Common rules for all targets
 
-%.fir: %.fy
+%.fir: $(stdrtl) $(devrtl) %.fy
 	../foundry_vm.native $^ -o $@
 
 %.opt.fir: %.fir
@@ -24,6 +33,9 @@ stdlib := $(addprefix ../lib/,$(stdlib))
 
 %.s: %.opt.bc
 	llc$(llvm) -filetype=asm $^ -o $@
+
+%.bin: %.elf
+	$(cross)objcopy -Obinary $^ $@
 
 clean:
 	rm -f *.fir *.bc *.ll *.s *.o *.bin *.elf
@@ -46,7 +58,7 @@ clean:
 %.d.bc: %.opt.fir
 	../foundry_gen.native -target thumbv7m $^ -o $@
 
-%.d.opt.bc: $(stdlib) %.d.bc
+%.d.opt.bc: $(devlib) %.d.bc
 	llvm-link$(llvm) $^ | opt$(llvm) \
 		-internalize-public-api-list=_startup,__vectors__ \
 		-internalize \
@@ -57,5 +69,3 @@ clean:
 %.d.elf: %.d.o
 	$(cross)ld -L../lib -Tdevices/$(device).ld $^ -o $@
 
-%.d.bin: %.d.elf
-	$(cross)objcopy -Obinary $^ $@
