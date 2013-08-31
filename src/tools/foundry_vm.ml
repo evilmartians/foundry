@@ -50,7 +50,7 @@ let _ =
       -> (let diag = Diagnostic.Error, exc.Rt.ex_message, exc.Rt.ex_locations in
           Diagnostic.print diag;
           exit 1))
-    !inputs;
+    (List.rev !inputs);
 
   let capsule = Ssa.create_capsule () in
     let funcn    = Ssa.create_func ~id:u"main" [] (Rt.UnsignedTy 32) in
