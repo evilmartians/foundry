@@ -81,7 +81,7 @@ let regexp ident       = id_alpha id_alnum*
 let regexp local       = id_lower id_alnum*
 let regexp const       = id_upper id_alnum*
 
-let regexp operator    = ['+' '-' '*' '/' '%' '&' '|' '~'] | "<<" | ">>"
+let regexp operator    = ['+' '-' '*' '/' '%' '&' '|' '^' '~'] | "**" | "<<" | ">>"
 let regexp method_name = ident ['=' '!' '?']? | operator | "[]" | "[]=" |
                          '<' | '>' | "<=" | ">=" | "==" | "!=" | "<=>" |
                          ['-' '+' '~'] '@'
