@@ -314,13 +314,13 @@ let rec ssa_of_expr ~entry ~state ~expr =
   | Syntax.Lambda (_, formal_args, ty, expr) (* TODO lam_ty *)
   -> ssa_of_lambda_expr ~entry ~state ~formal_args ~expr
 
-  | Syntax.Update (_, exprs)
+  | Syntax.Update (_, expr)
   ->  (* Initiate functional update mode by switching the function
          of @var assignment syntax. *)
      (assert (state.update = None);
       state.update <- Some (load entry "self");
       (* Translate the body with modified @vars. *)
-      let entry, _ = ssa_of_exprs ~entry ~state ~exprs in
+      let entry, _ = ssa_of_expr ~entry ~state ~expr in
       (* Extract the update result and restore @var mode. *)
       match state.update with
       | Some value

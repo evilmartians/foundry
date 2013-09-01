@@ -89,10 +89,10 @@
 %}
 
 /* lowest */
-%left     Kw_OR
-%left     Kw_AND
-%right    Kw_NOT
-%nonassoc Tk_EQ Tk_NE Tk_LT Tk_LEQ Tk_GT Tk_GEQ Tk_CMP
+%left     Tk_OR
+%left     Tk_AND
+%right    Tk_NOT
+%nonassoc Tk_EQ Tk_NE Tk_LT Tk_LE Tk_GT Tk_GE Tk_CMP
 %left     Tk_PLUS Tk_MINUS
 %left     Tk_STAR Tk_DIVIDE Tk_PERCENT
 %left     Tk_DSTAR
@@ -408,28 +408,27 @@
               | kw=Kw_CLASS id=Id_CONST params=type_params
                   anc=ancestor stmts=compstmt Kw_END
                 { let anc_loc, anc = Option.map fst anc, Option.map snd anc in
-                    Syntax.Class (nullary (fst id),
-                                  snd id, params, anc, stmts) }
+                  Syntax.Class (nullary (fst id),
+                                snd id, params, anc, stmts) }
 
               | kw=Kw_DEF id=method_name args=f_def_args
                   ty=option(ty_decl) term stmts=compstmt Kw_END
                 { let self = Syntax.FormalSelf (nullary Loc.empty) in
-                    Syntax.DefMethod (nullary (fst id),
-                                      (snd id), self :: args, ty, stmts) }
+                  Syntax.DefMethod (nullary (fst id),
+                                    (snd id), self :: args, ty, stmts) }
 
               | kw=Kw_DEF self=Kw_SELF dot=Tk_DOT id=method_name args=f_def_args
                   ty=option(ty_decl) term stmts=compstmt Kw_END
                 { let self = Syntax.FormalSelf (nullary Loc.empty) in
-                    Syntax.DefSelfMethod (nullary (fst id),
-                                          (snd id), self :: args, ty, stmts) }
+                  Syntax.DefSelfMethod (nullary (fst id),
+                                        (snd id), self :: args, ty, stmts) }
 
               | kw=Kw_DEF kind=ivar_kind id=Id_IVAR ty=ty_decl
                 { Syntax.DefIVar (nullary (fst id),
                                   (snd id), kind, ty) }
 
-              | kw=Kw_SELF Tk_LCURLY stmts=compstmt Tk_RCURLY
-              | kw=Kw_SELF Kw_DO     stmts=compstmt Kw_END
-                { Syntax.Update (nullary (fst kw), stmts) }
+              | kw=Kw_SELF block=block
+                { Syntax.Update (op_unary (fst kw) block, block) }
 
               | expr=expr_noid
                 { expr }
@@ -455,15 +454,15 @@
               | local=local
                 { local }
 
-     expr_noid: lhs=expr op=Kw_AND rhs=expr
+     expr_noid: lhs=expr op=Tk_AND rhs=expr
                 { let (op_loc, _) = op in
                   Syntax.And (op_binary lhs op_loc rhs, lhs, rhs) }
 
-              | lhs=expr op=Kw_OR  rhs=expr
+              | lhs=expr op=Tk_OR  rhs=expr
                 { let (op_loc, _) = op in
                   Syntax.Or (op_binary lhs op_loc rhs, lhs, rhs) }
 
-              | op=Kw_NOT arg=expr
+              | op=Tk_NOT arg=expr
                 { let (op_loc, _) = op in
                   Syntax.Not (op_unary op_loc arg, arg) }
 

@@ -2,7 +2,7 @@ open Parser_tokens
 
 let name_of_token = function
   | Tk_LT _ -> "Tk_LT"
-  | Kw_MATCH _ -> "Kw_MATCH"
+  | Kw_CASE _ -> "Kw_CASE"
   | Vl_END _ -> "Vl_END"
   | Kw_TYPE _ -> "Kw_TYPE"
   | Kw_IFACE _ -> "Kw_IFACE"
@@ -25,7 +25,7 @@ let name_of_token = function
   | Tk_AND_ASGN _ -> "Tk_AND_ASGN"
   | Tk_EQ _ -> "Tk_EQ"
   | Vl_QUOTE _ -> "Vl_QUOTE"
-  | Kw_NOT _ -> "Kw_NOT"
+  | Tk_NOT _ -> "Tk_NOT"
   | Tk_DSEMI _ -> "Tk_DSEMI"
   | EOF _ -> "EOF"
   | Tk_RSHFT _ -> "Tk_RSHFT"
@@ -60,6 +60,7 @@ let name_of_token = function
   | Tk_GT _ -> "Tk_GT"
   | Kw_ELSE _ -> "Kw_ELSE"
   | Kw_AND _ -> "Kw_AND"
+  | Tk_AND _ -> "Tk_AND"
   | Tk_PIPE _ -> "Tk_PIPE"
   | Vl_UNQUOTE _ -> "Vl_UNQUOTE"
   | Kw_MUT _ -> "Kw_MUT"
@@ -74,12 +75,13 @@ let name_of_token = function
   | Tk_COMMA _ -> "Tk_COMMA"
   | Tk_OP_ASGN _ -> "Tk_OP_ASGN"
   | Kw_WHILE _ -> "Kw_WHILE"
+  | Kw_WHEN _ -> "Kw_WHEN"
   | Tk_LSHFT _ -> "Tk_LSHFT"
   | Tk_CMP _ -> "Tk_CMP"
   | Kw_MIXIN _ -> "Kw_MIXIN"
   | Tk_UMINUS _ -> "Tk_UMINUS"
   | Tk_ROCKET _ -> "Tk_ROCKET"
-  | Kw_OR _ -> "Kw_OR"
+  | Tk_OR _ -> "Tk_OR"
   | Kw_INVOKEPRIMITIVE _ -> "Kw_INVOKEPRIMITIVE"
   | Tk_CARET _ -> "Tk_CARET"
   | Tk_NEWLINE _ -> "Tk_NEWLINE"
@@ -118,7 +120,9 @@ let loc_of_token token =
   | Tk_PIPE (loc, _) -> loc
   | Tk_PERCENT (loc, _) -> loc
   | Tk_OR_ASGN (loc) -> loc
+  | Tk_OR (loc, _) -> loc
   | Tk_OP_ASGN (loc, _) -> loc
+  | Tk_NOT (loc, _) -> loc
   | Tk_NEWLINE (loc) -> loc
   | Tk_NE (loc, _) -> loc
   | Tk_MINUS (loc, _) -> loc
@@ -143,8 +147,10 @@ let loc_of_token token =
   | Tk_ASGN (loc) -> loc
   | Tk_ARROW (loc) -> loc
   | Tk_AND_ASGN (loc) -> loc
+  | Tk_AND (loc, _) -> loc
   | Tk_AMPER (loc, _) -> loc
   | Kw_WHILE (loc, _) -> loc
+  | Kw_WHEN (loc, _) -> loc
   | Kw_UNTIL (loc, _) -> loc
   | Kw_UNLESS (loc, _) -> loc
   | Kw_TYPE (loc, _) -> loc
@@ -154,13 +160,11 @@ let loc_of_token token =
   | Kw_RETURN (loc, _) -> loc
   | Kw_PUBLIC (loc, _) -> loc
   | Kw_PACKAGE (loc, _) -> loc
-  | Kw_OR (loc, _) -> loc
-  | Kw_NOT (loc, _) -> loc
   | Kw_NIL (loc, _) -> loc
   | Kw_MUT (loc, _) -> loc
   | Kw_MIXIN (loc, _) -> loc
   | Kw_META (loc, _) -> loc
-  | Kw_MATCH (loc, _) -> loc
+  | Kw_CASE (loc, _) -> loc
   | Kw_LET (loc, _) -> loc
   | Kw_INVOKEPRIMITIVE (loc, _) -> loc
   | Kw_IFACE (loc, _) -> loc

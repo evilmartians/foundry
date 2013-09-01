@@ -143,7 +143,7 @@ and expr        =
 | DefMethod       of nullary    * string * formal_args * ty option * exprs
 | DefSelfMethod   of nullary    * string * formal_args * ty option * exprs
 | DefIVar         of nullary    * string * ivar_kind * ty
-| Update          of nullary    * exprs
+| Update          of operator   * expr
 | InvokePrimitive of nullary    * string * expr list
 and exprs       = expr list
 with sexp
@@ -156,9 +156,9 @@ let loc expr =
   | Const (loc,_) | Symbol(loc,_) | Class(loc,_,_,_,_)
   | DefMethod(loc,_,_,_,_) | DefSelfMethod(loc,_,_,_,_)
   | DefIVar(loc,_,_,_) | If(loc,_,_,_) | Unless(loc,_,_)
-  | While(loc,_,_) | Until(loc,_,_) | Update(loc,_)
+  | While(loc,_,_) | Until(loc,_,_)
   | InvokePrimitive(loc,_,_) -> fst loc
-  | And (loc,_,_) | Or (loc,_,_) | Not (loc,_)
+  | And (loc,_,_) | Or (loc,_,_) | Not (loc,_) | Update(loc,_)
   | Let(loc,_,_,_)  | Assign(loc,_,_) | OpAssign(loc,_,_,_)
   | OrAssign(loc,_,_) | AndAssign(loc,_,_) | Type(loc,_) -> fst loc
   | Send (loc,_,_,_) -> fst loc

@@ -76,7 +76,7 @@ end
 def mandelconverger(real, imag, iters, creal, cimag)
   let real_sq = (real * real) >> 8s32
   let imag_sq = (imag * imag) >> 8s32
-  if iters > 255s32 or real_sq + imag_sq > 1024s32 # 0x00000400
+  if iters > 255s32 || real_sq + imag_sq > 1024s32 # 0x00000400
     iters
   else
     self.mandelconverger(real_sq - imag_sq + creal,
