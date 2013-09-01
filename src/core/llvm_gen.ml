@@ -666,8 +666,32 @@ let rec gen_func llmod heap funcn =
           llblit builder llrgt 0 lltup rgtidx (Array.length llrgttys))
 
       (* Records. *)
-      | Ssa.RecordConcatInstr (({ Ssa.ty = Rt.RecordTy lftxs } as lft),
-                               ({ Ssa.ty = Rt.RecordTy rgtxs } as rgt))
+      | Ssa.RecordExtendInstr (({ Ssa.ty = Rt.RecordTy lfttys } as lft),
+                               operands)
+      -> (let operands =
+            Assoc.sorted (List.map (fun (key, value) ->
+                match key.Ssa.opcode with
+                | Ssa.Const (Rt.Symbol name) -> name, lookup value
+                | _ -> assert false)
+              operands)
+          and xs =
+            match instr.Ssa.ty with
+            | Rt.RecordTy xs -> xs
+            | _ -> assert false
+          and lllft = lookup lft
+          and llty  = lltype_of_ty instr.Ssa.ty in
+          let llre  = Llvm.undef llty in
+          Assoc.fold llre xs ~f:(fun name llre _ ->
+            let llval =
+              if Assoc.mem operands name then
+                Assoc.find operands name
+              else
+                Llvm.build_extractvalue lllft (Assoc.index lfttys name) "" builder
+            in
+            Llvm.build_insertvalue llre llval (Assoc.index xs name) "" builder))
+
+      | Ssa.RecordConcatInstr (({ Ssa.ty = Rt.RecordTy lfttys } as lft),
+                               ({ Ssa.ty = Rt.RecordTy rgttys } as rgt))
       -> (let xs =
             match instr.Ssa.ty with
             | Rt.RecordTy xs -> xs
@@ -678,10 +702,10 @@ let rec gen_func llmod heap funcn =
           let llre = Llvm.undef llty in
           Assoc.fold llre xs ~f:(fun name llre _ ->
             let llval =
-              if Assoc.mem rgtxs name then
-                Llvm.build_extractvalue llrgt (Assoc.index rgtxs name) "" builder
+              if Assoc.mem rgttys name then
+                Llvm.build_extractvalue llrgt (Assoc.index rgttys name) "" builder
               else
-                Llvm.build_extractvalue lllft (Assoc.index lftxs name) "" builder
+                Llvm.build_extractvalue lllft (Assoc.index lfttys name) "" builder
             in
             Llvm.build_insertvalue llre llval (Assoc.index xs name) "" builder))
 
