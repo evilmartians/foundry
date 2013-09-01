@@ -611,9 +611,9 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
               | Return value=operand
                 { (fun env -> ReturnInstr (value env) ) }
 
- overload_body: Map Function func=func FatArrow target=func
+ overload_body: Map Function func=func FatArrow ty=ty target=func
                 { (fun env capsule ->
-                     Ssa.add_overload capsule (func env) (target env)) }
+                     Ssa.add_overload capsule (func env) (ty env) (target env)) }
 
      impl_body: Map Lambda meth=lambda FatArrow target=func
                 { (fun env capsule ->

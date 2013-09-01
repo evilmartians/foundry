@@ -399,10 +399,11 @@ let string_of_capsule state capsule =
       state.image <- state.image ^ (string_of_ssa_name state funcn) ^ "\n")
     funcs;
 
-  iter_overloads capsule ~f:(fun funcn funcn' ->
+  iter_overloads capsule ~f:(fun funcn ty funcn' ->
     state.image <- state.image ^
       "map function @" ^ (escape_as_ident funcn.id) ^
-               " => @" ^ (escape_as_ident funcn'.id) ^ "\n");
+               " => " ^ (string_of_ty state ty) ^
+               " @" ^ (escape_as_ident funcn'.id) ^ "\n");
 
   iter_lambdas capsule ~f:(fun lambda funcn ->
     let lambda = string_of_lambda state lambda in

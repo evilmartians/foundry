@@ -686,7 +686,7 @@ let rec gen_func llmod heap funcn =
       -> gen_prim instr id (prim :> string) operands
 
       | _
-      -> assert false
+      -> (IrPrinter.print_name instr; assert false)
     in
     Ssa.Nametbl.add names instr llvalue
   in

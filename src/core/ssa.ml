@@ -24,12 +24,13 @@ sig
             lambda_cache : lambda_cache;
             c_symtab     : Symtab.t;
   }
-  and overloads    = name Nametbl.t
+  and overloads    = (Rt.ty * name) Nametbl.t
   and lambda_cache = name Lambdatbl.t
   and func = {
     mutable arguments    : name list;
     mutable basic_blocks : name list;
             f_symtab     : Symtab.t;
+    mutable f_original   : name option;
   }
   and basic_block = {
     mutable instructions : name list;
@@ -160,7 +161,7 @@ let remove_func capsule funcn =
   capsule.functions <- List.remove_if ((==) funcn) capsule.functions;
 
   (* Remove overloads where this function is either source or target. *)
-  Nametbl.iter (fun source target ->
+  Nametbl.iter (fun source (ty, target) ->
       if funcn == source || funcn == target then
         (* It's not possible to remove one particular name-value binding
            if there are some, so remove all of them and then re-add the
@@ -175,10 +176,8 @@ let remove_func capsule funcn =
         (* Don't add anything if we're removing the source. *)
         if funcn != source then
           (* Re-add all bindings except the target. *)
-          let lst = List.remove_if ((==) target) lst in
-          List.iter (fun target ->
-              Nametbl.add capsule.overloads source target)
-            lst)
+          let lst = List.remove_if (fun (_, target') -> target' == target) lst in
+          List.iter (Nametbl.add capsule.overloads source) lst)
     capsule.overloads;
 
   (* Remove lambda cache entries where this function is the target. *)
@@ -193,6 +192,7 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
     arguments    = [];
     basic_blocks = [];
     f_symtab     = symtab;
+    f_original   = None;
   } in
   let funcn = {
     id;
@@ -635,16 +635,16 @@ let specialize funcn env =
   !changed
 
 let iter_overloads ~f capsule =
-  Nametbl.iter f capsule.overloads
+  Nametbl.iter (fun funcn (ty, funcn') -> f funcn ty funcn') capsule.overloads
 
 let find_overload ~f capsule funcn =
   let overloads = Nametbl.find_all capsule.overloads funcn in
   (* Assign a specifity to all possible overloads. *)
   let overloads =
-    List.filter_map (fun overload ->
+    List.filter_map (fun (ty, overload) ->
         Option.map (fun specifity ->
             overload, specifity)
-          (f overload))
+          (f ty overload))
       overloads
   in
   (* Sort overloads by specifity; from high to low. *)
@@ -656,10 +656,11 @@ let find_overload ~f capsule funcn =
   | (overload, _) :: _ -> overload
   | [] -> raise Not_found
 
-let add_overload capsule funcn funcn' =
-  ignore (func_of_name funcn);
-  ignore (func_of_name funcn');
-  Nametbl.add capsule.overloads funcn funcn'
+let add_overload capsule funcn ty funcn' =
+  let _func = func_of_name funcn
+  and func' = func_of_name funcn' in
+  func'.f_original <- Some funcn;
+  Nametbl.add capsule.overloads funcn (ty, funcn')
 
 let iter_lambdas ~f capsule =
   Lambdatbl.iter f capsule.lambda_cache

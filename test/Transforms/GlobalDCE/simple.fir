@@ -24,4 +24,4 @@ entry:
   return nil
 }
 
-map function @"Unsigned:+.2" => @"Unsigned:+"
+map function @"Unsigned:+.2" => function([unsigned(32)], {}) -> tvar(3) @"Unsigned:+"

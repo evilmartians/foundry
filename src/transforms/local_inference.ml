@@ -96,10 +96,18 @@ let run_on_function passmgr capsule funcn =
         unify instr.ty ty)
 
     (* Records. *)
-    (* TODO | RecordExtendInstr ({ ty = Rt.RecordTy xs }, operands)
-    -> (let operand_tys = List.map (fun x -> x.ty) operands in
-        let ty = Rt.RecordTy (xs @ operand_tys) in
-        unify instr.ty ty) *)
+    | RecordExtendInstr ({ ty = Rt.RecordTy xs }, operands)
+    -> (try
+          let operands = Assoc.sorted (List.map (fun (key, value) ->
+              match key.opcode with
+              | Const (Rt.Symbol name) -> name, value.ty
+              | _ -> raise Exit)
+            operands)
+          in
+          let ty = Rt.RecordTy operands in
+          unify instr.ty ty
+        with Exit ->
+          ())
     | RecordConcatInstr ({ ty = Rt.RecordTy xs }, { ty = Rt.RecordTy ys })
     -> (let ty = Rt.RecordTy (Assoc.merge xs ys) in
         unify instr.ty ty)
@@ -245,10 +253,6 @@ let run_on_function passmgr capsule funcn =
      with type information from callee, and the latter (the check below)
      aims to let the specialization pass decide if it wants to duplucate
      the body.
-
-     This seems to cause infinite loops for some kinds of untypable code
-     (like two mutually recursive closures), so probably this should be
-     rewritten.
    *)
   iter_instrs funcn ~f:(fun instr ->
     match instr.opcode with
