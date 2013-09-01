@@ -18,7 +18,7 @@ def main
     let real_sq = ((real >> 8s64) * (real >> 8s64)) >> 16s64
     let imag_sq = ((imag >> 8s64) * (imag >> 8s64)) >> 16s64
     let len_sq  = ((real >> 8s64) * (imag >> 8s64)) >> 16s64
-    if iters > 200u8 or real_sq + imag_sq > 0x400000000s64
+    if iters > 200u8 || real_sq + imag_sq > 0x400000000s64
       iters
     else
       mandelconverger.call(real_sq - imag_sq + creal,
@@ -57,7 +57,7 @@ def main
     LCD.finish
 
     let mut pressed = false
-    while not pressed
+    while !pressed
       if LCD.left_pressed?
         cx -= 20s64 * dx
         pressed = true

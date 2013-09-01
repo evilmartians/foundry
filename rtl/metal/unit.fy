@@ -6,13 +6,13 @@ class Unit < Value
   end
 
   def self.register(name, kind, offset:, align:, impl:)
-    if kind == :r or kind == :rw
+    if kind == :r || kind == :rw
       self.define_method(name, (self) do
         impl.new(invokeprimitive mem_loadv(align, @base + offset))
       end)
     end
 
-    if kind == :w or kind == :rw
+    if kind == :w || kind == :rw
       self.define_method(:"#{name}=", (self, reg) do
         invokeprimitive mem_storev(align, @base + offset, reg.value)
       end)

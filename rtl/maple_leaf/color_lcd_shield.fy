@@ -131,22 +131,22 @@ class ColorLCDShield
   #
 
   def left_pressed?
-    not GPIOC.get(0_u32)
+    !GPIOC.get(0_u32)
   end
 
   def top_pressed?
-    not GPIOC.get(1_u32)
+    !GPIOC.get(1_u32)
   end
 
   def right_pressed?
-    not GPIOC.get(2_u32)
+    !GPIOC.get(2_u32)
   end
 
   def bottom_pressed?
-    not GPIOC.get(4_u32)
+    !GPIOC.get(4_u32)
   end
 
   def center_pressed?
-    not GPIOC.get(3_u32)
+    !GPIOC.get(3_u32)
   end
 end

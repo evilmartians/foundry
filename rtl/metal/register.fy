@@ -12,13 +12,13 @@ class Register(\width) < Value
   def self.flag(name, kind, offset:)
     let mask = 1u32 << offset
 
-    if kind == :r or kind == :rw
+    if kind == :r || kind == :rw
       self.define_method(name, (self) do
         @value & mask != 0u32
       end)
     end
 
-    if kind == :w or kind == :rw
+    if kind == :w || kind == :rw
       self.define_method(:"set_#{name}", (self, field_value) do
         if field_value
           self { @value = @value | mask }
@@ -30,7 +30,7 @@ class Register(\width) < Value
   end
 
   def self.flags(name, kind, offset:, spacing:)
-    if kind == :r or kind == :rw
+    if kind == :r || kind == :rw
       self.define_method(name, (self, n) do
         let mask = 1u32 << (offset + n * (1u32 + spacing))
 
@@ -38,7 +38,7 @@ class Register(\width) < Value
       end)
     end
 
-    if kind == :w or kind == :rw
+    if kind == :w || kind == :rw
       self.define_method(:"set_#{name}", (self, n, field_value) do
         let mask = 1u32 << (offset + n * (1u32 + spacing))
 
@@ -54,13 +54,13 @@ class Register(\width) < Value
   def self.field(name, kind, offset:, width:)
     let mask = (1u32 << width) - 1u32
 
-    if kind == :r or kind == :rw
+    if kind == :r || kind == :rw
       self.define_method(name, (self) do
         (@value >> offset) & mask
       end)
     end
 
-    if kind == :w or kind == :rw
+    if kind == :w || kind == :rw
       self.define_method(:"set_#{name}", (self, field_value) do
         self do
           @value = @value & ~(mask << offset) | ((field_value & mask) << offset)
@@ -72,7 +72,7 @@ class Register(\width) < Value
   def self.fields(name, kind, offset:, width:, spacing:)
     let mask = (1u32 << width) - 1u32
 
-    if kind == :r or kind == :rw
+    if kind == :r || kind == :rw
       self.define_method(name, (self, n) do
         let field_offset = offset + n * (width + spacing)
 
@@ -80,7 +80,7 @@ class Register(\width) < Value
       end)
     end
 
-    if kind == :w or kind == :rw
+    if kind == :w || kind == :rw
       self.define_method(:"set_#{name}", (self, n, field_value) do
         let field_offset = offset + n * (width + spacing)
 
