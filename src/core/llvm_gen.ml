@@ -201,13 +201,13 @@ let rec llconst_of_value llmod heap value =
   | Rt.Package pkg
   -> (let metaklass = Rt.Class (pkg.Rt.p_metaclass, Assoc.empty) in
       let llty = lltype_of_ty ~ptr:false metaklass in
-      memoize llty (fun value ->
-        Llvm.set_value_name ("package." ^ (pkg.Rt.p_name :> string)) value;
+      memoize llty (fun llvalue ->
+        Llvm.set_value_name ("package." ^ (pkg.Rt.p_name :> string)) llvalue;
         Llvm.const_named_struct llty [||]))
   | Rt.Class (klass, specz)
   -> (let llty = lltype_of_ty ~ptr:false (Rt.type_of_value value) in
-      memoize llty (fun value ->
-        Llvm.set_value_name ("class." ^ (klass.Rt.k_name :> string)) value;
+      memoize llty (fun llvalue ->
+        Llvm.set_value_name ("class." ^ (klass.Rt.k_name :> string)) llvalue;
         Llvm.const_named_struct llty [||]))
   | Rt.Instance ({ Rt.i_class = klass, specz; Rt.i_slots = slots; })
   -> (let rec gen_inst klass =
@@ -221,7 +221,11 @@ let rec llconst_of_value llmod heap value =
         let elems = Array.of_list elems in
         Llvm.const_named_struct (lltype_of_ty ~ptr:false (Rt.Class (klass, specz))) elems
       in
-      gen_inst klass)
+      if klass.Rt.k_is_value then
+        gen_inst klass
+      else
+        let ty = lltype_of_ty ~ptr:false (Rt.Class (klass, specz)) in
+        memoize ty (fun _ -> gen_inst klass))
   | _
   -> failwith ("llconst_of_value: " ^ ((Rt.inspect_value value) :> string))
 
@@ -686,7 +690,8 @@ let rec gen_func llmod heap funcn =
       -> gen_prim instr id (prim :> string) operands
 
       | _
-      -> (IrPrinter.print_name instr; assert false)
+      -> (IrPrinter.print_name instr;
+          failwith "Cannot lower instruction")
     in
     Ssa.Nametbl.add names instr llvalue
   in
