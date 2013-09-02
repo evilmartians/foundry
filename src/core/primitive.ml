@@ -8,10 +8,7 @@ exception Undefined_primitive of string
 
 let debug args =
   match args with
-  | [arg] ->
-    print_endline (Unicode.assert_utf8s
-      (Sexplib.Sexp.to_string_hum (sexp_of_value arg)));
-    Rt.Nil
+  | [arg] -> assert false
   | _ -> assert false
 
 (* Integer primitive implementations. *)

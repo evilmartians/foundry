@@ -93,6 +93,7 @@ let rec string_of_value state value =
   | Signed(w,v)       -> "signed(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
   | Tuple(xs)         -> "[" ^ (string_of_seq xs (string_of_value state)) ^ "]"
   | Record(xs)        -> "{" ^ (string_of_assoc_inline xs (string_of_value state)) ^ "}"
+  | Array(ty,xs)      -> "array " ^ (string_of_array state xs)
   | Environment(e)    ->  string_of_local_env state e
   | Lambda(l)         -> "lambda " ^ (string_of_lambda state l)
   | Class(k,sp)       -> "class " ^ (string_of_klass state k) ^
@@ -103,8 +104,8 @@ let rec string_of_value state value =
   | Instance(i)       -> "instance " ^ (string_of_instance state i)
 
   | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy | StringTy | UnsignedTy _
-  | SignedTy _ | TupleTy _ | RecordTy _ | LambdaTy _ | EnvironmentTy _ | FunctionTy _
-  | ClosureTy _ | BasicBlockTy
+  | SignedTy _  | TupleTy _ | RecordTy _  | ArrayTy _ | LambdaTy _ | EnvironmentTy _
+  | FunctionTy _ | ClosureTy _ | BasicBlockTy
   -> "type " ^ (string_of_ty state value)
 
 and string_of_ty state ty =
@@ -130,6 +131,9 @@ and string_of_ty state ty =
   | Class(k,sp)       -> "class " ^ (string_of_klass state k) ^
                            "{" ^(string_of_assoc_inline sp (string_of_value state))  ^ "}"
   | _                 -> assert false (* interpolation *)
+
+and string_of_array state array =
+  assert false
 
 and string_of_klass state klass =
   bind state (Class (klass, Assoc.empty)) ("c." ^ klass.k_name) (fun () ->

@@ -1,9 +1,8 @@
 features:
+ * integer coercion
  * != -> !(==)
  * (() do end) -> do || end
  * x = 1 -> let mut x = 1
- * arrays
- * integer coercion
  * inliner
  * better errors
  * store location map in fir

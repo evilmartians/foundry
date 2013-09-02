@@ -23,11 +23,13 @@ type value =
 | SymbolTy
 | String        of string
 | StringTy
-(* Product types *)
+(* Complex types *)
 | Tuple         of value list
 | TupleTy       of ty    list
 | Record        of value Assoc.sorted_t
 | RecordTy      of ty    Assoc.sorted_t
+| Array         of ty * value DynArray.t
+| ArrayTy       of ty
 (* Function type *)
 | Environment   of local_env
 | EnvironmentTy of local_env_ty
@@ -130,10 +132,8 @@ and exc = {
           ex_message      : string;
           ex_locations    : Location.t list;
 }
-with sexp_of
 
 exception Exc of exc
-with sexp
 
 (* These tables are safe to use in presence of key mutation. *)
 module Valuetbl : Hashtbl.S with type key = value

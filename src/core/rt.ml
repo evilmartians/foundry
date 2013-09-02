@@ -24,11 +24,13 @@ type value =
 | SymbolTy
 | String        of string
 | StringTy
-(* Product types *)
+(* Complex types *)
 | Tuple         of value list
 | TupleTy       of ty    list
 | Record        of value Assoc.sorted_t
 | RecordTy      of ty    Assoc.sorted_t
+| Array         of ty * value DynArray.t
+| ArrayTy       of ty
 (* Function type *)
 | Environment   of local_env
 | EnvironmentTy of local_env_ty
@@ -130,10 +132,8 @@ and exc = {
           ex_message      : string;
           ex_locations    : Location.t list;
 }
-with sexp_of
 
 exception Exc of exc
-with sexp
 
 (* Class tooling & default virtual image *)
 
@@ -360,9 +360,8 @@ let klass_of_type ?(dispatch=false) ty =
 
   | Class(k,_)    -> k
 
-  | _ -> failwith ("klass_of_type " ^
-                   (Unicode.assert_utf8s
-                    (Sexplib.Sexp.to_string_hum (sexp_of_value ty))))
+  | _
+  -> assert false
 
 let klass_of_value ?(dispatch=false) ?(meta=true) value =
   match value with
@@ -390,9 +389,8 @@ let klass_of_value ?(dispatch=false) ?(meta=true) value =
   | UnsignedTy _
   -> klass_of_type ~dispatch value
 
-  | _ -> failwith ("klass_of_value " ^
-                   (Unicode.assert_utf8s
-                    (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
+  | _
+  -> assert false
 
 let rec type_of_value value =
   match value with
@@ -420,9 +418,8 @@ let rec type_of_value value =
   | SignedTy(_) | UnsignedTy(_)
   -> Class (klass_of_type value, Assoc.empty)
 
-  | _ -> failwith ("type_of_value " ^
-                   (Unicode.assert_utf8s
-                    (Sexplib.Sexp.to_string_hum (sexp_of_value value))))
+  | _
+  -> assert false
 
 and type_of_environment ?(imm=true) env =
   let bindings =
@@ -562,6 +559,8 @@ let rec hash value =
   -> hash_list x
   | Record(x) | RecordTy(x)
   -> hash_assoc x
+  | ArrayTy(x)
+  -> hash x
   | EnvironmentTy(x)
   -> hash_local_env_ty x
   | LambdaTy(x)
@@ -570,6 +569,8 @@ let rec hash value =
   -> hash_list (xr :: xa)
 
   (* Mutable values and types. *)
+  | Array(ty, xs)
+  -> Hashtbl.hash (ArrayTy ty)
   | Environment(x)
   -> x.e_hash
   | Lambda(x)
@@ -606,8 +607,7 @@ module EnvTytbl = Hashtbl.Make(EnvTyIdentity)
 (* Inspecting types and values *)
 
 let string_of_value value =
-  (Unicode.assert_utf8s
-    (Sexplib.Sexp.to_string_hum (sexp_of_value value)))
+  assert false
 
 let rec inspect_literal_or value f =
   match value with
