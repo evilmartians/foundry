@@ -11,8 +11,8 @@ def main
 
   let mut cx = -0x24ccccccc_s64
   let mut cy = -0x14ccccccc_s64
-  let mut dx =  0x11ebbbbb_s64
-  let mut dy =  0x11ebbbbb_s64
+  let mut dx =   0x08ebbbbb_s64
+  let mut dy =   0x08ebbbbb_s64
 
   let mandelconverger = (real, imag, iters, creal, cimag) do
     let real_sq = ((real >> 8s64) * (real >> 8s64)) >> 16s64
