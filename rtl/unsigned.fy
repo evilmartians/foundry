@@ -47,8 +47,8 @@ class Unsigned
     invokeprimitive int_shl(self, bits)
   end
 
-  def ~@()
-    -self - 1u32
+  def ~@
+    -self - 1
   end
 
   def ==(other)
@@ -79,7 +79,7 @@ class Unsigned
     let mut i = 0u32
     while i < self
       block.call(i)
-      i += 1u32
+      i += 1
     end
   end
 end

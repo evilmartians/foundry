@@ -48,7 +48,7 @@ class Signed
   end
 
   def ~@()
-    -self - 1s64
+    -self - 1
   end
 
   def ==(other)

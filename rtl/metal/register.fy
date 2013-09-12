@@ -10,11 +10,11 @@ class Register(\width) < Value
   end
 
   def self.flag(name, kind, offset:)
-    let mask = 1u32 << offset
+    let mask = 1 << offset
 
     if kind == :r || kind == :rw
       self.define_method(name, (self) do
-        @value & mask != 0u32
+        @value & mask != 0
       end)
     end
 
@@ -32,15 +32,15 @@ class Register(\width) < Value
   def self.flags(name, kind, offset:, spacing:)
     if kind == :r || kind == :rw
       self.define_method(name, (self, n) do
-        let mask = 1u32 << (offset + n * (1u32 + spacing))
+        let mask = 1 << (offset + n * (1 + spacing))
 
-        @value & mask != 0u32
+        @value & mask != 0
       end)
     end
 
     if kind == :w || kind == :rw
       self.define_method(:"set_#{name}", (self, n, field_value) do
-        let mask = 1u32 << (offset + n * (1u32 + spacing))
+        let mask = 1 << (offset + n * (1 + spacing))
 
         if field_value
           self { @value = @value | mask }
@@ -52,7 +52,7 @@ class Register(\width) < Value
   end
 
   def self.field(name, kind, offset:, width:)
-    let mask = (1u32 << width) - 1u32
+    let mask = (1 << width) - 1
 
     if kind == :r || kind == :rw
       self.define_method(name, (self) do
@@ -70,7 +70,7 @@ class Register(\width) < Value
   end
 
   def self.fields(name, kind, offset:, width:, spacing:)
-    let mask = (1u32 << width) - 1u32
+    let mask = (1 << width) - 1
 
     if kind == :r || kind == :rw
       self.define_method(name, (self, n) do
