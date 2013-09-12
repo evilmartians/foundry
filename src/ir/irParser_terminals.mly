@@ -31,6 +31,7 @@
 %token Unsigned
 %token Symbol
 %token String
+%token Option
 %token Environment
 %token Lambda
 %token Closure

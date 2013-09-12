@@ -25,6 +25,8 @@ type value =
 | String        of string
 | StringTy
 (* Complex types *)
+| Option        of value option
+| OptionTy      of ty
 | Tuple         of value list
 | TupleTy       of ty    list
 | Record        of value Assoc.sorted_t
@@ -151,6 +153,7 @@ type roots = {
   kString           : klass;
   kUnsigned         : klass;
   kSigned           : klass;
+  kOption           : klass;
   kTuple            : klass;
   kRecord           : klass;
   kLambda           : klass;
@@ -274,6 +277,7 @@ let create_roots () =
                               ~parameters:(Assoc.sequental ["width", tvar ()])
                               "Signed";
 
+    kOption       = new_class ~ancestor:kValue "Option";
     kTuple        = new_class ~ancestor:kValue "Tuple";
     kRecord       = new_class ~ancestor:kValue "Record";
     kLambda       = new_class ~ancestor:kValue "Lambda";
@@ -561,6 +565,10 @@ let rec hash value =
   -> hash_assoc x
   | ArrayTy(x)
   -> hash x
+  | Option value
+  -> Option.map_default hash 0 value
+  | OptionTy ty
+  -> hash ty
   | EnvironmentTy(x)
   -> hash_local_env_ty x
   | LambdaTy(x)

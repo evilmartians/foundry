@@ -24,6 +24,8 @@ type value =
 | String        of string
 | StringTy
 (* Complex types *)
+| Option        of value option
+| OptionTy      of ty
 | Tuple         of value list
 | TupleTy       of ty    list
 | Record        of value Assoc.sorted_t
@@ -178,6 +180,7 @@ type roots = {
   kString           : klass;
   kUnsigned         : klass;
   kSigned           : klass;
+  kOption           : klass;
   kTuple            : klass;
   kRecord           : klass;
   kLambda           : klass;
