@@ -55,25 +55,8 @@ let run_on_function passmgr capsule funcn =
         (* Call instruction does not necessarily point directly to
            the function; it can be a function pointer. *)
         | Rt.FunctionTy (args_ty', _)
-        -> (* First, coerce call arguments (if applicable). *)
-           (let args =
-              List.map2 (fun arg arg_ty' ->
-                  match arg.opcode, arg_ty' with
-                  | PrimitiveInstr (prim_name, [{ opcode = Const (Rt.Integer value) }]),
-                    Rt.UnsignedTy(width)
-                    when prim_name = "int_coerce"
-                  -> (let coerced = mod_big_int value (shift_left_big_int unit_big_int width) in
-                      if coerced <> value then
-                        failwith "too narrow"
-                      else
-                        const (Rt.Unsigned (width, coerced)))
-                  | _
-                  -> arg)
-                args args_ty'
-            in
-            set_opcode instr (CallInstr (callee, args));
-            (* Then, unify call site signature with callee signature. *)
-            let args_ty = List.map (fun x -> x.ty) args in
+        -> (* Unify call site signature with callee signature. *)
+           (let args_ty = List.map (fun x -> x.ty) args in
             let sig_ty  = Rt.FunctionTy (args_ty, instr.ty) in
             unify callee.ty sig_ty)
         | _

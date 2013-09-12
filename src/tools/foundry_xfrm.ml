@@ -39,6 +39,7 @@ let _ =
             Pass_manager.add_function_pass dep_passmgr (module Constant_folding);
             Pass_manager.add_function_pass dep_passmgr (module Cfg_simplification);
             Pass_manager.add_function_pass dep_passmgr (module Local_inference);
+            Pass_manager.add_function_pass dep_passmgr (module Coercion);
             Pass_manager.add_function_pass dep_passmgr (module Method_resolution);
             Pass_manager.add_function_pass dep_passmgr (module Specialization);
             Pass_manager.add_function_pass dep_passmgr (module Local_inference);
@@ -89,6 +90,10 @@ let _ =
       "-resolve", Arg.Unit (fun () ->
           Pass_manager.add_function_pass !passmgr (module Method_resolution)),
         " Method Resolution";
+
+      "-coerce", Arg.Unit (fun () ->
+          Pass_manager.add_function_pass !passmgr (module Coercion)),
+        " Literal Coercion";
     ]) (fun arg ->
       inputs := arg :: !inputs)
     ("Usage: " ^ Sys.argv.(0) ^ " [options] <input-file>...");

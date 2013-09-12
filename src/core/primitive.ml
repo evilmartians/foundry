@@ -126,6 +126,7 @@ let prim = Table.create [
   "int_sge",    (false,    int_cmpop ge_big_int);
   "int_ugt",    (false,    int_cmpop gt_big_int);
   "int_sgt",    (false,    int_cmpop gt_big_int);
+  "int_coerce", (false,    fun _ -> assert false);
   "int_to_str", (false,    int_to_str);
   (* -- tuples ----------------------------------------- *)
   "tup_length", (false,    fun _ -> assert false);

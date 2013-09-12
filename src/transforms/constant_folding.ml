@@ -183,6 +183,8 @@ let run_on_function passmgr capsule funcn =
           -> (match tup.ty with
               | Rt.TupleTy(xs) -> Const (Rt.Integer (big_int_of_int (List.length xs)))
               | _ -> Bottom)
+          | "int_coerce", _
+          -> Bottom
           | _
           -> (if Primitive.has_side_effects name then
                 Bottom
