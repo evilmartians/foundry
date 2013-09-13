@@ -579,73 +579,51 @@ and eval_lambda ?(is_initializer=false) body args kwargs =
   let tenv = tenv_fork   body.l_type_env  in
   let cenv = ref         body.l_const_env in
   let env  = (lenv, tenv, cenv) in
-(*
-  let rec bind (kind, name) ~loc ~value ~f_rest ~rest ~kwseen =
-    lenv_bind lenv name ~loc ~kind ~value;
-    bind_args f_rest rest kwseen
 
-  and bind_args arg_names arg_tys args kwseen =
-    match arg_names, arg_tys with
-    | [], []
+  let rec bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen =
+    (* TODO check ty *)
+    let kind =
+      match (arg.la_name :> latin1s), value with
+      | "self", Instance ({ i_class = klass, _; }) when klass.k_is_value
+      -> Syntax.LVarMutable
+      | _
+      -> arg.la_kind
+    in
+    lenv_bind lenv arg.la_name ~loc:arg.la_location ~kind ~value;
+    bind_args args arg_tys rest kwseen
+
+  and bind_args args arg_tys rest kwseen =
+    match args, arg_tys, rest with
+    | [], [], []
     -> (if (List.sort kwseen) <> (Assoc.keys kwargs) then
           assert false
         else ())
 
-    | arg_name :: arg_names, arg_ty :: arg_tys
-    -> (match arg_ty, args with
-        | LambdaArg ty
-        -> (let kind =
-              match (arg_name :> latin1s), value with
-              | "self", Instance ({ i_class = klass, _; }) when klass.k_is_value
-              -> Syntax.LVarMutable
-              | _
-              -> Syntax.LVarImmutable (* TODO *)
-            in
-            bind (kind, arg_name)
+    | arg :: args, LambdaArg ty    :: arg_tys, value :: rest
+    | arg :: args, LambdaOptArg ty :: arg_tys, value :: rest
+    -> bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen
 
-    | Syntax.FormalSelf((loc,_)) :: f_rest, value :: rest
-    -> (let kind =
-        in
-        bind (kind, "self") ~loc ~value ~f_rest ~rest ~kwseen)
+    | arg :: args, LambdaRest ty :: arg_tys, rest
+    -> bind ~arg ~ty ~value:(Tuple rest) ~args ~arg_tys ~rest:[] ~kwseen
 
-    | Syntax.FormalArg((loc,_),lvar) :: f_rest, value :: rest
-    | Syntax.FormalOptArg((loc,_),lvar,_) :: f_rest, value :: rest
-    -> bind lvar ~loc ~value ~f_rest ~rest ~kwseen
-
-    | Syntax.FormalOptArg((loc,_),lvar,expr) :: f_rest, []
-    -> bind lvar ~loc ~value:(eval_expr env expr) ~f_rest ~rest:[] ~kwseen
-
-    | Syntax.FormalRest((loc,_),lvar) :: f_rest, rest
-    -> bind lvar ~loc ~value:(Tuple rest) ~f_rest ~rest:[] ~kwseen
-
-    | Syntax.FormalKwArg((loc,_),((_,name) as lvar)) :: f_rest, rest
+    | arg :: args, LambdaKwArg (kw, ty) :: arg_tys, rest
     -> (let value =
-          match Assoc.find_option kwargs name with
+          match Assoc.find_option kwargs kw with
           | Some v -> v
           | None -> assert false
         in
-        bind lvar ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
+        bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen:(kw :: kwseen))
 
-    | Syntax.FormalKwOptArg((loc,_),((_,name) as lvar),expr) :: f_rest, rest
-    -> (let value =
-          match Assoc.find_option kwargs name with
-          | Some v -> v
-          | None   -> eval_expr env expr
-        in
-        bind lvar ~loc ~value ~f_rest ~rest ~kwseen:(name :: kwseen))
-
-    | Syntax.FormalKwRest((loc,_),((name,_) as lvar)) :: f_rest, rest
+    | arg :: args, LambdaKwRest ty :: arg_tys, rest
     -> (let value  = Record (Assoc.filter kwargs ~f:(fun kw _ -> List.mem kw kwseen)) in
         let kwseen = Assoc.keys kwargs in
-        bind lvar ~loc ~value ~f_rest ~rest ~kwseen)
+        bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen)
 
-    | [], []
-    ->
-
-    | _, _
+    | _
     -> assert false
   in
-  bind_args body.l_arg_names (fst body.l_ty) args []; *)
+  bind_args body.l_args (fst body.l_ty) args [];
+
   let result = eval env body.l_body in
   if is_initializer then
     lenv_lookup lenv "self"
