@@ -211,7 +211,12 @@ let run_on_function passmgr capsule funcn =
 
         (* Memory access primitives. *)
         | "mem_store" | "mem_storev"
-        -> unify instr.ty Rt.NilTy
+        -> (match operands with
+            | { ty = addr_ty } :: _
+            -> (unify addr_ty  (Rt.UnsignedTy 32); (* TODO non-64bit-clean *)
+                unify instr.ty Rt.NilTy)
+            | _
+            -> assert false)
 
         | _
         -> ())
