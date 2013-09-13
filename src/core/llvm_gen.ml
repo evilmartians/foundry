@@ -66,19 +66,20 @@ let rec lltype_of_ty ?(ptr=true) ty =
           | None -> slots
         in
         false, slots))
-  | Rt.FunctionTy (args_ty, ret_ty)
+  | Rt.FunctionTy (arg_tys, ret_ty)
   -> (Llvm.function_type
         (lltype_of_ty ret_ty)
-        (Array.of_list (List.map lltype_of_ty args_ty)))
-  | Rt.ClosureTy (args_ty, ret_ty)
-  -> (* { f(i8*, ...)*, i8* } *)
-     (Llvm.struct_type ctx [|
+        (Array.of_list (List.map lltype_of_ty arg_tys)))
+  | Rt.LambdaTy (arg_ty_elems, ret_ty)
+  -> (let arg_tys = Rt.tys_of_lambda_ty_elems arg_ty_elems in
+      (* { f(i8*, ...)*, i8* } *)
+      Llvm.struct_type ctx [|
         Llvm.pointer_type (* f(i8*, ...)* *)
           (Llvm.function_type (* f(i8*, ...) *)
             (lltype_of_ty ret_ty)
             (Array.of_list
               ((Llvm.pointer_type (Llvm.i8_type ctx)) (* i8* *) ::
-               (List.map lltype_of_ty args_ty))));    (* ... *)
+               (List.map lltype_of_ty arg_tys))));    (* ... *)
         Llvm.pointer_type (Llvm.i8_type ctx) (* i8* *)
       |])
   | _
@@ -357,20 +358,6 @@ let rec gen_func llmod heap funcn =
                       { Ssa.opcode = Ssa.Const (Rt.Symbol field) } ]
     -> Llvm.build_extractvalue (lookup re) (Assoc.index fields field) "" builder
 
-    (* Closure operations. *)
-    | "lam_call", closure :: operands
-    -> (* Construct a call instruction with environment substitution. The
-          closure is a value type: forall f. { f*, i8* }, where f is the type
-          of closure without prepended environment argument, and i8* is the
-          generalized type for all environments.
-
-          See also Ssa.CallInstr branch. *)
-       (let llclosure = lookup closure in
-        let llfunc    = Llvm.build_extractvalue llclosure 0 "" builder in
-        let llenv     = Llvm.build_extractvalue llclosure 1 "" builder in
-        let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
-        Llvm.build_call llfunc (Array.of_list (llenv :: (List.map lookup operands))) id builder)
-
     (* Object operations. *)
     | "obj_alloc", [cls]
     -> (* For reference types, allocate an object in system heap (for now).
@@ -623,16 +610,29 @@ let rec gen_func llmod heap funcn =
           store klass (lookup obj) (lookup value))
 
       (* Functions and closures. *)
-      | Ssa.CallInstr (funcn, operands)
-      -> (* Construct a call instruction. The instruction has the same type
-            as the result type of the function it calls, so if that's nil, make
-            it unnamed: otherwise LLVM will reject the module. *)
-         (let id = if instr.Ssa.ty = Rt.NilTy then "" else id in
-          Llvm.build_call (lookup funcn) (Array.of_list (List.map lookup operands)) id builder)
+      | Ssa.CallInstr ({ Ssa.ty } as callee, operands)
+      -> (match ty with
+          | Rt.FunctionTy (_, ret_ty)
+          -> (* Construct a call instruction. The instruction has the same type
+                as the result type of the function it calls, so if that's nil, make
+                it unnamed: otherwise LLVM will reject the module. *)
+             (let id = if ret_ty = Rt.NilTy then "" else id in
+              Llvm.build_call (lookup callee) (Array.of_list (List.map lookup operands)) id builder)
+          | Rt.LambdaTy (_, ret_ty)
+          -> (* Construct a call instruction with environment substitution. The
+                closure is a value type: forall f. { f*, i8* }, where f is the type
+                of closure without prepended environment argument, and i8* is the
+                generalized type for all environments. *)
+             (let llclosure = lookup callee in
+              let llfunc    = Llvm.build_extractvalue llclosure 0 "" builder in
+              let llenv     = Llvm.build_extractvalue llclosure 1 "" builder in
+              let id        = if ret_ty = Rt.NilTy then "" else id in
+              Llvm.build_call llfunc (Array.of_list (llenv :: (List.map lookup operands))) id builder)
+          | _
+          -> assert false)
 
       | Ssa.ClosureInstr (callee, env)
-      -> (* See also lam_call primitive. *)
-         (let llfunc, llenv = lookup callee, lookup env in
+      -> (let llfunc, llenv = lookup callee, lookup env in
           let llenv = Llvm.build_bitcast llenv (Llvm.pointer_type (Llvm.i8_type ctx)) "" builder in
           let llclosurety = Llvm.struct_type ctx [|
                               Llvm.type_of llfunc;

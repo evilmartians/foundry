@@ -7,6 +7,7 @@ features:
  * better errors
  * store location map in fir
  * insert_instr
+ * Rt.tvar / Rt.tvar_ty
 
 bugs:
  * allocate fresh tvars on copy_func

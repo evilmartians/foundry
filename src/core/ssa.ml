@@ -57,7 +57,6 @@ sig
   | IVarStoreInstr    of (*object*) name  * (*name*) string * (*value*) name
   | CallInstr         of (*func*) name    * (*operands*) name list
   | ClosureInstr      of (*func*) name    * (*environment*) name
-  | ResolveInstr      of (*object*)  name * (*method*)   name
   | SpecializeInstr   of (*type*) name    * name Assoc.sorted_t
   | TupleExtendInstr  of (*tuple*) name   * (*elems*) name list
   | TupleConcatInstr  of (*tuple*) name   * (*tuple*) name
@@ -323,8 +322,6 @@ let instr_operands instr =
   -> callee :: operands
   | ClosureInstr (func, env)
   -> [func; env]
-  | ResolveInstr (obj, meth)
-  -> [obj; meth]
   | SpecializeInstr (cls, specz)
   -> cls :: Assoc.values specz
   | TupleExtendInstr (tup, elems)
@@ -490,8 +487,6 @@ let map_instr_operands instr operands =
   -> CallInstr (callee, operands)
   | ClosureInstr (_, _), [func; env]
   -> ClosureInstr (func, env)
-  | ResolveInstr (_, _), [obj; meth]
-  -> ResolveInstr (obj, meth)
   | SpecializeInstr (_, specz), cls :: specz'
   -> SpecializeInstr (cls, Assoc.update specz specz')
   | TupleExtendInstr (_, _), tup :: elems

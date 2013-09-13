@@ -51,11 +51,13 @@ let rec unify' env a b =
     | _
     -> ty
   in
-  let a, b = subst_tvar a,   subst_tvar b in
+  let a, b = subst_tvar a, subst_tvar b in
+
   (* Instantiate type variables. *)
   match a, b with
   | _, _ when equal a b
   -> env
+
   | Tvar tvar, ty
   | ty, Tvar tvar
   -> (try
@@ -65,21 +67,33 @@ let rec unify' env a b =
         env
       with Not_found ->
         (tvar, ty) :: env)
+
   | UnsignedTy(wa), UnsignedTy(wb)
   | SignedTy(wa),   SignedTy(wb)
     when wa = wb
   -> env
+
   | TupleTy(xsa), TupleTy(xsb)
   -> List.fold_left2 unify' env xsa xsb
+
   | RecordTy(xsa), RecordTy(xsb)
   -> fst (Assoc.merge_fold ~f:(fun k env v1 v2 -> unify' env v1 v2, v1) env xsa xsb)
+
   | EnvironmentTy(xa), EnvironmentTy(xb)
   -> unify_env' env xa xb
+
   | Class(ka, spa), Class(kb, spb)
     when ka == kb
   -> fst (Assoc.merge_fold ~f:(fun k env v1 v2 -> unify' env v1 v2, v1) env spa spb)
+
+  | LambdaTy(args_ty, ret_ty),   LambdaTy(args_ty', ret_ty')
+  -> (try
+        let env = List.fold_left2 unify_lambda_ty_elem' env args_ty args_ty' in
+        unify' env ret_ty ret_ty'
+      with Invalid_argument _ ->
+        raise (Conflict (a, b)))
+
   | FunctionTy(args_ty, ret_ty), FunctionTy(args_ty', ret_ty')
-  | ClosureTy(args_ty, ret_ty),  ClosureTy(args_ty', ret_ty')
   -> (try
         let env = List.fold_left2 unify' env args_ty args_ty' in
         unify' env ret_ty ret_ty'
@@ -108,6 +122,20 @@ and unify_env' env a b =
       unify' env a.b_ty b.b_ty) env
     a.e_ty_bindings b.e_ty_bindings
 
+and unify_lambda_ty_elem' env a b =
+  match a, b with
+  | LambdaArg a,      LambdaArg b
+  | LambdaOptArg a,   LambdaOptArg b
+  | LambdaRest a,     LambdaRest b
+  | LambdaKwRest a,   LambdaKwRest b
+  -> unify' env a b
+  | LambdaKwArg (ka,a),    LambdaKwArg (kb,b)
+  | LambdaKwOptArg (ka,a), LambdaKwOptArg (kb,b)
+    when ka = kb
+  -> unify' env a b
+  | _
+  -> invalid_arg "unify_lambda_ty_elem'"
+
 let unify = unify' []
 
 let unify_list lst =
@@ -119,7 +147,7 @@ let unify_list lst =
   | fst :: rest
   -> List.fold_left (fun env ty -> unify' env fst ty) [] rest
 
-let rec subst env value =
+let rec derive f value =
   match value with
   | TvarTy | NilTy | BooleanTy | IntegerTy
   | UnsignedTy _ | SignedTy _ | SymbolTy
@@ -127,40 +155,65 @@ let rec subst env value =
   | Unsigned _ | Signed _ | Symbol _ | String _
   -> value
   | Tvar tvar
-  -> (try  subst env (List.assoc tvar env)
-      with Not_found -> value)
+  -> f tvar
   | TupleTy xs
-  -> TupleTy (List.map (subst env) xs)
+  -> TupleTy (List.map (derive f) xs)
   | Tuple xs
-  -> Tuple (List.map (subst env) xs)
+  -> Tuple (List.map (derive f) xs)
   | RecordTy xs
-  -> RecordTy (Assoc.map (fun _ -> subst env) xs)
+  -> RecordTy (Assoc.map (fun _ -> derive f) xs)
   | Record xs
-  -> Record (Assoc.map (fun _ -> subst env) xs)
+  -> Record (Assoc.map (fun _ -> derive f) xs)
   | Environment _
   -> value
   | EnvironmentTy x
-  -> EnvironmentTy (subst_local_env env x)
+  -> EnvironmentTy (derive_local_env_ty f x)
   | Class (klass, specz)
-  -> fold_equiv (Class (klass, Assoc.map (fun _ -> subst env) specz))
+  -> fold_equiv (Class (klass, Assoc.map (fun _ -> derive f) specz))
   | Package _
   -> value
   | Instance _
   -> value
+  | LambdaTy (args, ret)
+  -> (let derive_arg arg =
+        match arg with
+        | LambdaArg       ty      -> LambdaArg (derive f ty)
+        | LambdaOptArg    ty      -> LambdaOptArg (derive f ty)
+        | LambdaRest      ty      -> LambdaRest (derive f ty)
+        | LambdaKwArg    (kw, ty) -> LambdaKwArg (kw, derive f ty)
+        | LambdaKwOptArg (kw, ty) -> LambdaKwOptArg (kw, derive f ty)
+        | LambdaKwRest    ty      -> LambdaKwRest (derive f ty)
+      in
+      LambdaTy (List.map derive_arg args, derive f ret))
   | FunctionTy (args, ret)
-  -> FunctionTy (List.map (subst env) args, subst env ret)
-  | ClosureTy (args, ret)
-  -> ClosureTy (List.map (subst env) args, subst env ret)
+  -> FunctionTy (List.map (derive f) args, derive f ret)
   | _
-  -> failwith ("Typing.subst: " ^ (inspect_type value))
+  -> failwith ("Typing.derive: " ^ (inspect_type value))
 
-and subst_local_env env ty =
-  { e_ty_parent   = Option.map (subst_local_env env) ty.e_ty_parent;
+and derive_local_env_ty f ty =
+  { e_ty_parent   = Option.map (derive_local_env_ty f) ty.e_ty_parent;
     e_ty_bindings = Table.map (fun binding ->
       { b_ty_location = binding.b_ty_location;
         b_ty_kind     = binding.b_ty_kind;
-        b_ty          = subst env binding.b_ty;
+        b_ty          = derive f binding.b_ty;
       }) ty.e_ty_bindings }
+
+let rec subst env value =
+  derive (fun tvar ->
+      try  subst env (List.assoc tvar env)
+      with Not_found -> Rt.Tvar tvar)
+    value
+
+let instantiate value =
+  let tvar_map = ref [] in
+  derive (fun tvar ->
+      try
+        List.assoc tvar !tvar_map
+      with Not_found ->
+        let new_tvar = Rt.Tvar (Rt.new_tvar ()) in
+        tvar_map := (tvar, new_tvar) :: !tvar_map;
+        new_tvar)
+    value
 
 let print_env env =
   List.iter (fun (tvar, ty) ->

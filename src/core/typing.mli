@@ -12,6 +12,8 @@ val fold_equiv    : ty -> ty
 val unfold_equiv  : ty -> (klass specialized)
 val equiv         : f:(klass specialized -> ty) -> ty -> ty
 
+val instantiate   : ty -> ty
+
 val slot_ty       : klass specialized -> string -> ty
 
 val print_env     : (tvar * ty) list -> unit

@@ -1,4 +1,4 @@
-; RUN: %foundry_xfrm %s -no-roots -resolve -specialize -gdce -infer >%t
+; RUN: %foundry_xfrm %s -no-roots -resolve -infer -specialize -infer -gdce >%t
 ; RUN: %foundry_gen %t | lli | %file_check %s
 ; CHECK: [DEBUG: 0x00000003]
 
@@ -17,8 +17,7 @@
 
 @main = function () -> unsigned(32) {
 entry:
-  %add = tvar(4) resolve unsigned(32) 1, symbol "+"
-  %x   = tvar(5) call %add ([unsigned(32) 1, unsigned(32) 2], {})
+  %x = tvar(5) primitive "obj_send" (unsigned(32) 1, symbol "+", [unsigned(32) 1, unsigned(32) 2], {})
   primitive "debug" (%x)
   return unsigned(32) 0
 }

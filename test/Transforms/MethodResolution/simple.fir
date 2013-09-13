@@ -7,24 +7,18 @@
   }
 }
 
-; CHECK: @"Integer:+" = function ([int, int] %args, {} %kwargs) -> int {
+; CHECK: @"Integer:+" = function (int %self, int %other) -> int {
 @"Integer:+" = lambda (0 0) {
   local_env empty
-  type lambda ([int, int], {}) -> int
+  type lambda (int, int) -> int
   code (self, other) { invokeprimitive int_add (self, other) };;
 }
 
 @main = function () -> nil {
 entry:
-; CHECK-NOT: resolve
-  %add = function ([int, int], {}) -> int resolve int 1, symbol "+"
-; CHECK: %x = int call @"Integer:+"
-  %x   = int call %add ([int 1, int 2], {})
-
-; CHECK-NOT: resolve
-  %add.s = function ([int, int], {}) -> int resolve int 5, symbol "+"
-; CHECK: %x.s = int call @"Integer:+"
-  %x.s   = int call %add.s ([int 5, int 10], {})
+; CHECK-NOT: primitive "obj_send"
+; CHECK:     int call @"Integer:+"
+  %x = int primitive "obj_send" (int 1, symbol "+", [int 1, int 2], {})
 
   return nil
 }

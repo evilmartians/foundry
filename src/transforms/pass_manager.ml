@@ -78,7 +78,7 @@ let run' passmgr capsule =
   -> ((* Set a sigint signal to allow premature termination. *)
       let terminate  = ref false in
       let old_sigint = Sys.signal Sys.sigint
-            (Sys.Signal_handle (fun _ -> terminate := true)) in
+            (Sys.Signal_handle (fun _ -> failwith "f";terminate := true)) in
 
       (* Initially, put all functions in the worklist. *)
       Ssa.iter_funcs capsule ~f:(Worklist.put passmgr'.worklist);

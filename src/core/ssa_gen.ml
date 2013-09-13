@@ -25,11 +25,6 @@ type ssa_conv_state = {
   mutable const_env : Rt.const_env;
           type_env  : Rt.type_env;
 
-  (* Argument parser state. *)
-          args      : Ssa.name;
-          kwargs    : Ssa.name;
-  mutable arg_idx   : int;
-
   (* Functional update state. *)
   mutable update    : Ssa.name option;
 }
@@ -48,10 +43,19 @@ let load ~state entry name =
     Ssa.set_id instr ("lvar." ^ name);
     instr
   in
+  let append_const value =
+    match value with
+    | Rt.Integer _
+    -> (let value = Ssa.const value in
+        append entry ~ty:(tvar ())
+                     ~opcode:(Ssa.PrimitiveInstr ("int_coerce", [value])))
+    | _
+    -> Ssa.const value
+  in
   let rec lookup_sta env =
     match Table.get env.Rt.e_bindings name with
     | Some ({ Rt.b_kind = Syntax.LVarImmutable } as binding)
-    -> Ssa.const binding.Rt.b_value
+    -> append_const binding.Rt.b_value
     | Some binding
     -> append_load (Rt.type_of_value binding.Rt.b_value)
     | None
@@ -84,13 +88,12 @@ let send_args ~state entry args =
   Ssa.const (Rt.Record Assoc.empty)
 
 let send ~state entry receiver selector args kwargs =
-  let callee =
-    append entry ~ty:(tvar ())
-                 ~opcode:(Ssa.ResolveInstr (receiver,
-                    (Ssa.const (Rt.Symbol selector))))
-  in
   append entry ~ty:(tvar ())
-               ~opcode:(Ssa.CallInstr (callee, [args; kwargs]))
+               ~opcode:(Ssa.PrimitiveInstr ("obj_send", [
+                          receiver;
+                          Ssa.const (Rt.Symbol selector);
+                          args; kwargs
+                        ]))
 
 let rec ssa_of_expr ~entry ~state ~expr =
   let load      = load  ~state in
@@ -108,7 +111,9 @@ let rec ssa_of_expr ~entry ~state ~expr =
   | Syntax.Symbol (_, value)
   -> entry, Ssa.const (Rt.Symbol value)
   | Syntax.Integer (_, value)
-  -> entry, Ssa.const (Rt.Integer value)
+  -> (let value = Ssa.const (Rt.Integer value) in
+      entry, append entry ~ty:(tvar ())
+                          ~opcode:(Ssa.PrimitiveInstr ("int_coerce", [value])))
   | Syntax.Unsigned (_, width, value)
   -> entry, Ssa.const (Rt.Unsigned (width, value))
   | Syntax.Signed (_, width, value)
@@ -269,6 +274,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
       tail, append tail ~ty:(tvar ())
                 ~opcode:(Ssa.PhiInstr [true_entry,  true_value;
                                        false_entry, false_value]))
+
   | Syntax.While (_, cond, exprs)
   | Syntax.Until (_, cond, exprs)
   -> (let head = Ssa.create_block state.funcn in
@@ -391,7 +397,7 @@ and ssa_of_pattern ~entry ~state ~pattern ~expr =
       Table.set state.frame_ty.Rt.e_ty_bindings name {
         Rt.b_ty_location = Location.empty;
         Rt.b_ty_kind     = kind;
-        Rt.b_ty    = ty;
+        Rt.b_ty          = ty;
       };
       let entry, expr = ssa_of_expr ~entry ~state ~expr in
       ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, name, expr)));
@@ -425,130 +431,33 @@ and ssa_of_actual_args ~entry ~state ~receiver ~actual_args =
   in
   entry, (Ssa_interp.tup_apply args entry), (Ssa_interp.rec_apply kwargs entry)
 
-and ssa_of_formal_args ~entry ~state ~formal_args =
-  (* Internally args and kwargs are treated disjointly. Split syntactic
-     args to better match this representation. *)
-  let args, kwargs =
-    List.partition (fun arg ->
-        match arg with
-        | Syntax.FormalSelf _
-        | Syntax.FormalArg _
-        | Syntax.FormalOptArg _
-        | Syntax.FormalRest _
-        -> true
-        | Syntax.FormalKwArg _
-        | Syntax.FormalKwOptArg _
-        | Syntax.FormalKwRest _
-        -> false)
-      formal_args
-  in
-  (* Find out how args to skip from the end for *rest. *)
-  let rest_index =
-    try
-      fst (List.findi (fun _ arg ->
-              match arg with
-              | Syntax.FormalRest _ -> true
-              | _ -> false)
-            args)
-    with Not_found ->
-      (* The value of rest_index is never used if there is no
-         FormalRest in the args. 0 works. *)
-      0
-  in
-  let post_count = (List.length args) - rest_index - 1
-  in
-  (* Make sure the order of evaluation matches lexical order of
-     arguments. *)
-  List.fold_left (fun entry formal_arg ->
-      (* All bindings initially have a fresh type variable as
-         their type. *)
-      let ty = tvar () in
-      (* Helper functions to assemble type-level calculations. *)
-      let int n = Ssa.const (Rt.Integer (big_int_of_int n))
-      and sym s = Ssa.const (Rt.Symbol s) in
-      let right_idx idx =
-        let args_len =
-          append entry ~ty:(tvar ())
-                       ~opcode:(Ssa.PrimitiveInstr ("tup_length",
-                                    [state.args])) in
-        append entry ~ty:(tvar ())
-                     ~opcode:(Ssa.PrimitiveInstr ("int_sub",
-                                  [args_len; idx]))
-      in
-      let assign kind name value =
-        Table.set state.frame_ty.Rt.e_ty_bindings name {
-          Rt.b_ty_location = Location.empty;
-          Rt.b_ty_kind     = kind;
-          Rt.b_ty          = ty;
-        };
-        ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
-        entry
-      in
-      match formal_arg with
-      | Syntax.FormalSelf (_)
-      -> (let arg =
-            append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("tup_lookup",
-                                      [state.args; int 0])) in
-          state.arg_idx <- 1;
-          let lvar_kind =
-            match state.kind with
-            | ConvValueInitializer -> Syntax.LVarMutable
-            | _ -> Syntax.LVarImmutable
-          in
-          assign lvar_kind "self" arg)
-      | Syntax.FormalArg (_, (kind, name))
-      -> (let arg_idx =
-            if state.arg_idx >= 0 then begin
-              let idx_name = int state.arg_idx in
-              state.arg_idx <- state.arg_idx + 1;
-              idx_name
-            end else begin
-              let idx_name = right_idx (int (-state.arg_idx)) in
-              state.arg_idx <- state.arg_idx - 1;
-              idx_name
-            end
-          in
-          let arg =
-            append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("tup_lookup",
-                                      [state.args; arg_idx])) in
-          assign kind name arg)
-      | Syntax.FormalRest (_, (kind, name))
-      -> (let last_idx = right_idx (int post_count) in
-          let args =
-            append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("tup_slice",
-                                      [state.args; int state.arg_idx; last_idx])) in
-          assign kind name args)
-      | Syntax.FormalKwArg (_, (kind, name))
-      -> (let arg =
-            append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("rec_lookup",
-                                      [state.kwargs; sym name]))
-          in
-          assign kind name arg)
-      | Syntax.FormalKwRest (_, (kind, name))
-      -> (* TODO stub *)
-          assign kind name state.kwargs
-      | _
-      -> assert false)
-    entry formal_args
+and ssa_of_formal_args ~entry ~state ~args ~arg_names =
+  List.iter2 (fun arg arg_name ->
+      Table.set state.frame_ty.Rt.e_ty_bindings arg.Rt.la_name {
+        Rt.b_ty_location = arg.Rt.la_location;
+        Rt.b_ty_kind     = arg.Rt.la_kind;
+        Rt.b_ty          = tvar ();
+      };
+      ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, arg.Rt.la_name, arg_name))))
+    args arg_names
 
 and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
-  let funcn =
-    Ssa.create_func
-      ~arg_ids:["env"; "args"; "kwargs"]
-      [Rt.EnvironmentTy state.frame_ty;
-       tvar (); tvar ()] (tvar ())
+  let args = Rt.lambda_args_of_formal_args formal_args in
+  let arg_ids, arg_tys, ret_ty =
+    List.map (fun arg -> arg.Rt.la_name) args,
+    List.map (fun _ -> tvar ()) args,
+    tvar ()
   in
-  let func = Ssa.func_of_name funcn in
+  let funcn = Ssa.create_func ~arg_ids:("env" :: arg_ids)
+                (Rt.EnvironmentTy state.frame_ty :: arg_tys) ret_ty in
+  let func  = Ssa.func_of_name funcn in
 
   (* Register the created artifact. *)
   Ssa.add_func state.capsule funcn;
 
   (* Extract arguments as SSA names. *)
-  let env, args, kwargs =
-    match func.Ssa.arguments with
-    | [env; args; kwargs] -> env, args, kwargs
-    | _ -> assert false
-  in
+  let env       = List.hd func.Ssa.arguments
+  and arg_names = List.tl func.Ssa.arguments in
 
   (* Create entry block. *)
   let lam_entry = Ssa.create_block ~id:"entry" funcn in
@@ -560,52 +469,60 @@ and ssa_of_lambda_expr ~entry ~state ~formal_args ~expr =
     }
     in
     let frame =
-      append lam_entry ~ty:(Rt.EnvironmentTy frame_ty)
-                   ~opcode:(Ssa.FrameInstr env)
+      append lam_entry ~ty:(Rt.EnvironmentTy frame_ty) ~opcode:(Ssa.FrameInstr env)
     in
 
     (* Perform SSA conversion. *)
     let lam_state = { state with
                       funcn; frame; frame_ty;
                       type_env = Table.copy state.type_env;
-                      depth    = state.depth + 1;
-                      args; arg_idx = 0; kwargs } in
-    let lam_entry = ssa_of_formal_args ~entry:lam_entry ~state:lam_state ~formal_args in
+                      depth    = state.depth + 1 } in
+
+    ignore (ssa_of_formal_args ~entry:lam_entry ~state:lam_state ~args ~arg_names);
     let lam_entry, lam_value = ssa_of_expr ~entry:lam_entry ~state:lam_state ~expr in
     ignore (append lam_entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr lam_value));
 
   (* Refer to the closure in the parent function. *)
-  match Ssa.func_ty funcn with
-  | [_; args_ty; kwargs_ty], ret_ty
-  -> (entry, append entry ~ty:(Rt.ClosureTy ([args_ty; kwargs_ty], ret_ty))
-                          ~opcode:(Ssa.ClosureInstr (funcn, state.frame)))
-  | _
-  -> assert false
+  let arg_ty_elems =
+    List.map2 (fun formal_arg ty ->
+        match formal_arg with
+        | Syntax.FormalSelf _   -> Rt.LambdaArg ty
+        | Syntax.FormalArg _    -> Rt.LambdaArg ty
+        | Syntax.FormalOptArg _ -> Rt.LambdaOptArg ty
+        | Syntax.FormalRest _   -> Rt.LambdaRest ty
+        | Syntax.FormalKwArg (_, (_, kw))       -> Rt.LambdaKwArg (kw, ty)
+        | Syntax.FormalKwOptArg (_, (_, kw), _) -> Rt.LambdaKwOptArg (kw, ty)
+        | Syntax.FormalKwRest _ -> Rt.LambdaKwRest ty)
+      formal_args arg_tys
+  in
+  entry, append entry ~ty:(Rt.LambdaTy (arg_ty_elems, ret_ty))
+                      ~opcode:(Ssa.ClosureInstr (funcn, state.frame))
 
 let name_of_lambda klass selector lambda capsule =
   let id = klass.Rt.k_name ^ ":" ^ selector in
 
-  (* Create the function with the signature corresponding to that
-     of lambda. Usually it would be (\x, \y) -> \z. *)
-  let funcn =
-    let ty = lambda.Rt.l_ty in
-    Ssa.create_func ~id
-      ~arg_ids:["args"; "kwargs"]
-      [ty.Rt.l_ty_args; ty.Rt.l_ty_kwargs]
-      ty.Rt.l_ty_result
+  (* Create the function with the signature corresponding to that of lambda.*)
+  let arg_ids, arg_tys, ret_ty =
+    let args =
+      List.map2 (fun l_arg ty_elem ->
+          let id = l_arg.Rt.la_name in
+          match ty_elem with
+          | Rt.LambdaArg ty       | Rt.LambdaOptArg ty       | Rt.LambdaRest ty
+          | Rt.LambdaKwArg (_,ty) | Rt.LambdaKwOptArg (_,ty) | Rt.LambdaKwRest ty
+          -> id, ty)
+        lambda.Rt.l_args (fst lambda.Rt.l_ty)
+    in
+    List.map fst args, List.map snd args, snd lambda.Rt.l_ty
   in
-  let func = Ssa.func_of_name funcn in
+  let funcn = Ssa.create_func ~id ~arg_ids arg_tys ret_ty in
+  let func  = Ssa.func_of_name funcn in
 
   (* Register the created artifacts. *)
   Ssa.add_func   capsule funcn;
   Ssa.add_lambda capsule lambda funcn;
 
   (* Extract arguments as SSA names. *)
-  let args, kwargs =
-    match func.Ssa.arguments with
-    | [args; kwargs] -> args, kwargs
-    | _ -> assert false
-  in
+  let arg_names = func.Ssa.arguments in
 
   (* Create entry block. *)
   let entry = Ssa.create_block ~id:"entry" funcn in
@@ -637,9 +554,9 @@ let name_of_lambda klass selector lambda capsule =
                   local_env = lambda.Rt.l_local_env;
                   type_env  = lambda.Rt.l_type_env;
                   const_env = lambda.Rt.l_const_env;
-                  args; arg_idx = 0; kwargs;
                   update    = None; } in
-    let entry = ssa_of_formal_args ~entry ~state ~formal_args:lambda.Rt.l_args in
+
+    ignore (ssa_of_formal_args ~entry ~state ~args:lambda.Rt.l_args ~arg_names);
     let entry, value = ssa_of_seq ~entry ~state ~exprs:lambda.Rt.l_body in
 
     begin match kind with

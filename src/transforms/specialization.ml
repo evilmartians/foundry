@@ -54,7 +54,7 @@ let run_on_function passmgr capsule funcn =
     (* If the call site signature and callee types do not match,
        unify them and replace the callee with a specialized
        function. *)
-    let specialize callee sig_ty =
+    let specialize' callee sig_ty =
       if Rt.equal sig_ty callee.ty then
         callee
       else
@@ -68,6 +68,14 @@ let run_on_function passmgr capsule funcn =
         end;
         callee'
     in
+    let specialize callee sig_ty =
+      try
+        specialize' callee sig_ty
+      with Typing.Conflict (a, b) ->
+        IrPrinter.print_name instr;
+        Rt.print_type a; Rt.print_type b;
+        raise (Typing.Conflict (a, b))
+    in
     match instr with
     (* Find all call instructions and consider specializing
        them if the callee is constant. *)
@@ -79,8 +87,9 @@ let run_on_function passmgr capsule funcn =
 
     (* Do the same for closures. *)
     | { opcode = ClosureInstr ({ opcode = Function _ } as callee, frame);
-        ty     = Rt.ClosureTy (args_ty, ret_ty); }
-    -> (let sig_ty  = Rt.FunctionTy (frame.ty :: args_ty, ret_ty) in
+        ty     = Rt.LambdaTy (arg_ty_elems, ret_ty); }
+    -> (let arg_tys = Rt.tys_of_lambda_ty_elems arg_ty_elems in
+        let sig_ty  = Rt.FunctionTy (frame.ty :: arg_tys, ret_ty) in
         let callee' = specialize callee sig_ty in
         set_opcode instr (ClosureInstr (callee', frame)))
     | _

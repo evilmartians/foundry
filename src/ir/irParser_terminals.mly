@@ -5,7 +5,6 @@
 %token <Unicode.utf8s>      Lit_String
 %token <Fy_big_int.big_int> Lit_Integer
 
-%token <Syntax.formal_args> Syntax_Args
 %token <Syntax.exprs>       Syntax_Exprs
 %token <Syntax.expr>        Syntax_Lambda
 
@@ -19,6 +18,9 @@
 %token Equal
 %token Arrow
 %token FatArrow
+%token Question
+%token Star
+%token StarStar
 
 %token Type
 %token Tvar
@@ -51,6 +53,7 @@
 %token Local_env
 %token Type_env
 %token Const_env
+%token Args
 
 %token Metaclass
 %token Objectclass
@@ -74,7 +77,6 @@
 %token Lvar_store
 %token Ivar_load
 %token Ivar_store
-%token Resolve
 %token Call
 %token Tuple_extend
 %token Tuple_concat

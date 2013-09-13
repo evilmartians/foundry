@@ -54,7 +54,6 @@ and opcode =
 | IVarStoreInstr    of (*object*) name  * (*name*) string * (*value*) name
 | CallInstr         of (*func*) name    * (*operands*) name list
 | ClosureInstr      of (*func*) name    * (*environment*) name
-| ResolveInstr      of (*object*)  name * (*method*)   name
 | SpecializeInstr   of (*type*) name    * name Assoc.sorted_t
 | TupleExtendInstr  of (*tuple*) name   * (*elems*) name list
 | TupleConcatInstr  of (*tuple*) name   * (*tuple*) name

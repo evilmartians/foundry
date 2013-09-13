@@ -1,4 +1,4 @@
-; RUN: %foundry_xfrm %s -no-roots -resolve -specialize -gdce | %file_check %s
+; RUN: %foundry_xfrm %s -no-roots -resolve -infer -specialize -gdce | %file_check %s
 ; CHECK-NOT: map lambda
 
 @c.Unsigned = class "Unsigned" {
@@ -16,8 +16,7 @@
 
 @main = function () -> unsigned(32) {
 entry:
-  %add = tvar(4) resolve unsigned(32) 1, symbol "+"
-  %x   = tvar(5) call %add ([unsigned(32) 1, unsigned(32) 2], {})
+  %x = tvar(5) primitive "obj_send" (unsigned(32) 1, symbol "+", [unsigned(32) 1, unsigned(32) 2], {})
   primitive "debug" (%x)
   return unsigned(32) 0
 }

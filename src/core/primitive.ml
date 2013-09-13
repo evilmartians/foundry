@@ -1,5 +1,6 @@
 open Unicode.Std
 open Big_int
+open ExtList
 open Rt
 
 exception Undefined_primitive of string
@@ -52,6 +53,28 @@ let int_to_str args =
   match args with
   | [Integer(value)] | [Signed(_, value)] | [Unsigned(_, value)]
   -> String (string_of_big_int value)
+  | _
+  -> assert false
+
+(* Tuple primitive implementations. *)
+
+let tup_length args =
+  match args with
+  | [Tuple(xs)] -> Integer (big_int_of_int (List.length xs))
+  | _ -> assert false
+
+let tup_lookup args =
+  match args with
+  | [Tuple(xs); Integer(n)] -> List.nth xs (int_of_big_int n)
+  | _ -> assert false
+
+let tup_slice args =
+  match args with
+  | [Tuple(xs); Integer(lft); Integer(rgt)]
+  -> (let lft, rgt = int_of_big_int lft, int_of_big_int rgt in
+      let _, lft_slice = List.split_nth lft xs in
+      let rgt_slice, _ = List.split_nth (rgt - lft) lft_slice in
+      Tuple rgt_slice)
   | _
   -> assert false
 
@@ -129,9 +152,9 @@ let prim = Table.create [
   "int_coerce", (false,    fun _ -> assert false);
   "int_to_str", (false,    int_to_str);
   (* -- tuples ----------------------------------------- *)
-  "tup_length", (false,    fun _ -> assert false);
-  "tup_lookup", (false,    fun _ -> assert false);
-  "tup_slice",  (false,    fun _ -> assert false);
+  "tup_length", (false,    tup_length);
+  "tup_lookup", (false,    tup_lookup);
+  "tup_slice",  (false,    tup_slice);
   "tup_enum",   (true,     fun _ -> assert false);
   (* -- records ---------------------------------------- *)
   "rec_lookup", (false,    fun _ -> assert false);
@@ -143,11 +166,11 @@ let prim = Table.create [
   (* -- objects ---------------------------------------- *)
   "obj_alloc",  (false,    obj_alloc);
   "obj_equal",  (false,    obj_equal);
-  "obj_send",   (false,    fun _ -> assert false);
+  "obj_send",   (true,     fun _ -> assert false);
   (* -- classes ---------------------------------------- *)
   "cls_alloc",  (false,    fun _ -> assert false);
   "cls_defm",   (true,     cls_defm);
-  "cls_defv",   (false,    fun _ -> assert false);
+  "cls_defv",   (true,     fun _ -> assert false);
   (* -- hardware access -------------------------------- *)
   "mem_load",   (false,    fun _ -> assert false);
   "mem_store",  (true,     fun _ -> assert false);

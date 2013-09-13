@@ -15,10 +15,12 @@ type env = local_env * type_env * const_env ref
 
 let env_create () =
   let lenv = lenv_create None
-  in lenv_bind lenv "self" ~value:(Package !roots.pToplevel)
-                           ~kind:Syntax.LVarImmutable
-                           ~loc:Location.empty;
-  lenv, tenv_create (), ref (cenv_create ())
+  and tenv = tenv_create ()
+  and cenv = cenv_extend cenv_empty !roots.pToplevel in
+  lenv_bind lenv "self" ~value:(Package !roots.pToplevel)
+                        ~kind:Syntax.LVarImmutable
+                        ~loc:Location.empty;
+  lenv, tenv, ref cenv
 
 let concat_tuple lhs rhs =
   match lhs, rhs with
@@ -172,17 +174,12 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
   | Syntax.TypeRecord(_,xs)
   -> RecordTy (Assoc.sorted (List.map (fun (_,k,v) -> k, as_type v) xs))
   | Syntax.TypeFunction(_, args, ret)
-  -> (let args, kwargs =
-        List.fold_left (fun (args, kwargs) arg ->
-          match arg with
-          | Syntax.TypeArg(_,ty)     -> ((as_type ty) :: args), kwargs
-          | Syntax.TypeKwArg(_,n,ty) -> args, (n, as_type ty) :: kwargs)
-        ([], []) args
-      in LambdaTy {
-        l_ty_args   = TupleTy  (List.rev args);
-        l_ty_kwargs = RecordTy (Assoc.sorted kwargs);
-        l_ty_result = as_type ret;
-      })
+  -> (let lambda_ty_elem_of_arg_ty arg_ty =
+        match arg_ty with
+        | Syntax.TypeArg(_,ty)      -> LambdaArg   (as_type ty)
+        | Syntax.TypeKwArg(_,kw,ty) -> LambdaKwArg (kw, as_type ty)
+      in
+      LambdaTy (List.map lambda_ty_elem_of_arg_ty args, as_type ret))
   | Syntax.TypeConstr((loc, _), name, args)
   -> (try
         match cenv_lookup !cenv name with
@@ -222,22 +219,36 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
   | Syntax.TypeSplice(_,expr)
   -> eval_expr env expr
 
-and eval_closure_ty (lenv, tenv, cenv) expr =
-  match expr with
+and eval_closure_ty (lenv, tenv, cenv) formal_args ty_expr =
+  let lambda_args = Rt.lambda_args_of_formal_args formal_args in
+  match ty_expr with
   | Some ty_expr
   -> (let tenv = tenv_fork tenv in
-        let ty = eval_type (lenv, tenv, cenv) ty_expr in
-          match ty with
-          | LambdaTy(ty)
-          -> tenv, ty
-          | _
-          -> exc_type "closure type" ty [Syntax.ty_loc ty_expr])
+      let ty   = eval_type (lenv, tenv, cenv) ty_expr in
+        match ty with
+        | LambdaTy(ty)
+        -> tenv, ty, lambda_args
+        | _
+        -> exc_type "closure type" ty [Syntax.ty_loc ty_expr])
   | None
-  -> (tenv, {
-        l_ty_args   = Tvar (new_tvar ());
-        l_ty_kwargs = Tvar (new_tvar ());
-        l_ty_result = Tvar (new_tvar ());
-      })
+  -> (let lambda_elem_ty_of_formal_arg arg =
+        match arg with
+        | Syntax.FormalSelf _
+        | Syntax.FormalArg _
+        -> LambdaArg (Tvar (new_tvar ()))
+        | Syntax.FormalOptArg _
+        -> LambdaOptArg (Tvar (new_tvar ()))
+        | Syntax.FormalRest _
+        -> LambdaRest (Tvar (new_tvar ()))
+        | Syntax.FormalKwArg (_, (_, kw))
+        -> LambdaKwArg (kw, Tvar (new_tvar ()))
+        | Syntax.FormalKwOptArg (_, (_, kw), _)
+        -> LambdaKwOptArg (kw, Tvar (new_tvar ()))
+        | Syntax.FormalKwRest _
+        -> LambdaKwRest (Tvar (new_tvar ()))
+      in
+      let ty = List.map lambda_elem_ty_of_formal_arg formal_args, Tvar (new_tvar ()) in
+      tenv, ty, lambda_args)
 
 and eval_args env lst =
   let rec eval_args args =
@@ -338,7 +349,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       result)
 
   | Syntax.Lambda(_, args, ty_expr, body)
-  -> (let tenv, ty = eval_closure_ty env ty_expr in
+  -> (let tenv, ty, args = eval_closure_ty env args ty_expr in
       Lambda {
         l_hash      = Hash_seed.make ();
         l_location  = Syntax.loc expr;
@@ -435,41 +446,41 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
         | other
         -> other
       in
-      let tenv, ty = eval_closure_ty env ty_expr in
-        define_method definee name {
-          im_hash     = Hash_seed.make ();
-          im_dynamic  = false;
-          im_body     = {
-            l_hash      = Hash_seed.make ();
-            l_location  = loc;
-            l_ty        = ty;
-            l_local_env = lenv;
-            l_type_env  = tenv;
-            l_const_env = !cenv;
-            l_args      = args;
-            l_body      = body;
-          }
-        } loc;
+      let tenv, ty, args = eval_closure_ty env args ty_expr in
+      define_method definee name {
+        im_hash     = Hash_seed.make ();
+        im_dynamic  = false;
+        im_body     = {
+          l_hash      = Hash_seed.make ();
+          l_location  = loc;
+          l_ty        = ty;
+          l_local_env = lenv;
+          l_type_env  = tenv;
+          l_const_env = !cenv;
+          l_args      = args;
+          l_body      = body;
+        }
+      } loc;
       Nil)
 
   | Syntax.DefSelfMethod((loc,_),name,args,ty_expr,body)
-  -> (let tenv, ty = eval_closure_ty env ty_expr in
+  -> (let tenv, ty, args = eval_closure_ty env args ty_expr in
       let definee  = Class (klass_of_value ~dispatch:true (lenv_lookup lenv "self"),
                             Assoc.empty) in
-        define_method definee name {
-          im_hash     = Hash_seed.make ();
-          im_dynamic  = false;
-          im_body     = {
-            l_hash    = Hash_seed.make ();
-            l_location  = loc;
-            l_ty        = ty;
-            l_local_env = lenv;
-            l_type_env  = tenv;
-            l_const_env = !cenv;
-            l_args      = args;
-            l_body      = body;
-          }
-        } loc;
+      define_method definee name {
+        im_hash     = Hash_seed.make ();
+        im_dynamic  = false;
+        im_body     = {
+          l_hash    = Hash_seed.make ();
+          l_location  = loc;
+          l_ty        = ty;
+          l_local_env = lenv;
+          l_type_env  = tenv;
+          l_const_env = !cenv;
+          l_args      = args;
+          l_body      = body;
+        }
+      } loc;
       Nil)
 
   | Syntax.DefIVar((loc,_),name,kind,ty_expr)
@@ -568,20 +579,32 @@ and eval_lambda ?(is_initializer=false) body args kwargs =
   let tenv = tenv_fork   body.l_type_env  in
   let cenv = ref         body.l_const_env in
   let env  = (lenv, tenv, cenv) in
-
+(*
   let rec bind (kind, name) ~loc ~value ~f_rest ~rest ~kwseen =
     lenv_bind lenv name ~loc ~kind ~value;
     bind_args f_rest rest kwseen
 
-  and bind_args f_args args kwseen =
-    match f_args, args with
+  and bind_args arg_names arg_tys args kwseen =
+    match arg_names, arg_tys with
+    | [], []
+    -> (if (List.sort kwseen) <> (Assoc.keys kwargs) then
+          assert false
+        else ())
+
+    | arg_name :: arg_names, arg_ty :: arg_tys
+    -> (match arg_ty, args with
+        | LambdaArg ty
+        -> (let kind =
+              match (arg_name :> latin1s), value with
+              | "self", Instance ({ i_class = klass, _; }) when klass.k_is_value
+              -> Syntax.LVarMutable
+              | _
+              -> Syntax.LVarImmutable (* TODO *)
+            in
+            bind (kind, arg_name)
+
     | Syntax.FormalSelf((loc,_)) :: f_rest, value :: rest
     -> (let kind =
-          match value with
-          | Instance ({ i_class = klass, _; }) when klass.k_is_value
-          -> Syntax.LVarMutable
-          | _
-          -> Syntax.LVarImmutable
         in
         bind (kind, "self") ~loc ~value ~f_rest ~rest ~kwseen)
 
@@ -617,14 +640,12 @@ and eval_lambda ?(is_initializer=false) body args kwargs =
         bind lvar ~loc ~value ~f_rest ~rest ~kwseen)
 
     | [], []
-    -> (if (List.sort kwseen) <> (Assoc.keys kwargs) then
-          assert false
-        else ())
+    ->
 
     | _, _
     -> assert false
   in
-  bind_args body.l_args args [];
+  bind_args body.l_arg_names (fst body.l_ty) args []; *)
   let result = eval env body.l_body in
   if is_initializer then
     lenv_lookup lenv "self"

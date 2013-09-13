@@ -50,6 +50,7 @@ let run_on_function passmgr capsule funcn =
     -> (let _, return_ty = func_ty funcn in
         if not (Rt.equal value.ty return_ty) then
           unify return_ty value.ty)
+
     | CallInstr (callee, args)
     -> (match callee.ty with
         (* Call instruction does not necessarily point directly to
@@ -61,10 +62,12 @@ let run_on_function passmgr capsule funcn =
             unify callee.ty sig_ty)
         | _
         -> ())
+
     | ClosureInstr (callee, frame)
     -> (match callee.ty, instr.ty with
-        | Rt.FunctionTy _, Rt.ClosureTy (args_ty, ret_ty)
-        -> (let sig_ty = Rt.FunctionTy (frame.ty :: args_ty, ret_ty) in
+        | Rt.FunctionTy _, Rt.LambdaTy (arg_ty_elems, ret_ty)
+        -> (let arg_tys = Rt.tys_of_lambda_ty_elems arg_ty_elems in
+            let sig_ty = Rt.FunctionTy (frame.ty :: arg_tys, ret_ty) in
             unify callee.ty sig_ty)
         | _
         -> ())
@@ -142,7 +145,7 @@ let run_on_function passmgr capsule funcn =
         match (prim :> latin1s) with
         (* Debug primitive is polymorphic; it accepts any amount of
            values of any kind. *)
-        | "debug" | "putchar"
+        | "debug"
         -> unify instr.ty Rt.NilTy
 
         (* Operands to integer primitives must have the
@@ -185,16 +188,6 @@ let run_on_function passmgr capsule funcn =
                 { opcode = Const (Rt.Symbol sym) } ]
             -> (let ty = Assoc.find xs sym in
                 unify instr.ty ty)
-            | _
-            -> ())
-
-        (* Lambda invocations have semantics similar to function calls. *)
-        | "lam_call"
-        -> (match operands with
-            | callee :: args
-            -> (let args_ty = List.map (fun x -> x.ty) args in
-                let sig_ty  = Rt.ClosureTy (args_ty, instr.ty) in
-                unify callee.ty sig_ty)
             | _
             -> ())
 
@@ -270,8 +263,9 @@ let run_on_function passmgr capsule funcn =
         -> ())
     | ClosureInstr (callee, frame)
     -> (match callee.opcode, instr.ty with
-        | Function _, Rt.ClosureTy (args_ty, ret_ty)
-        -> (let sig_ty  = Rt.FunctionTy (frame.ty :: args_ty, ret_ty) in
+        | Function _, Rt.LambdaTy (arg_ty_elems, ret_ty)
+        -> (let arg_tys = Rt.tys_of_lambda_ty_elems arg_ty_elems in
+            let sig_ty  = Rt.FunctionTy (frame.ty :: arg_tys, ret_ty) in
             let env     = Typing.unify callee.ty sig_ty in
             let sig_ty' = Typing.subst env callee.ty in
             if not (Rt.equal sig_ty' callee.ty) then

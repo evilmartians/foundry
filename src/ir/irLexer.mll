@@ -30,6 +30,9 @@ rule lex = parse
 | '='  { Equal }
 | "->" { Arrow }
 | "=>" { FatArrow }
+| '?'  { Question }
+| '*'  { Star }
+| "**" { StarStar }
 
 | "type"          { Type }
 | "tvar"          { Tvar }
@@ -62,6 +65,7 @@ rule lex = parse
 | "local_env"     { Local_env }
 | "type_env"      { Type_env }
 | "const_env"     { Const_env }
+| "args"          { Args }
 
 | "metaclass"     { Metaclass }
 | "objectclass"   { Objectclass }
@@ -73,8 +77,6 @@ rule lex = parse
 | "appended"      { Appended }
 | "constants"     { Constants }
 
-| "args"
-  { Syntax_Args (Syntax.formal_args_of_sexp (Sexplib.Sexp.scan_sexp lexbuf))  }
 | "body"
   { Syntax_Exprs (Syntax.exprs_of_sexp (Sexplib.Sexp.scan_sexp lexbuf)) }
 
@@ -103,7 +105,6 @@ rule lex = parse
 | "lvar_store"    { Lvar_store }
 | "ivar_load"     { Ivar_load }
 | "ivar_store"    { Ivar_store }
-| "resolve"       { Resolve }
 | "call"          { Call }
 | "closure"       { Closure }
 | "specialize"    { Specialize }

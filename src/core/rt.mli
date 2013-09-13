@@ -45,7 +45,6 @@ type value =
 | Instance      of instance
 (* SSA types *)
 | FunctionTy    of ty list * ty
-| ClosureTy     of ty list * ty
 | BasicBlockTy
 and ty = value
 and 'a specialized = 'a * ty Assoc.sorted_t
@@ -81,14 +80,23 @@ and lambda    = {
   mutable l_local_env     : local_env;
   mutable l_type_env      : type_env;
   mutable l_const_env     : const_env;
-          l_args          : Syntax.formal_args;
+          l_args          : lambda_args;
           l_body          : Syntax.exprs;
 }
-and lambda_ty = {
-          l_ty_args       : ty;
-          l_ty_kwargs     : ty;
-          l_ty_result     : ty;
+and lambda_ty_elem =
+| LambdaArg       of ty
+| LambdaOptArg    of ty
+| LambdaRest      of ty
+| LambdaKwArg     of string * ty
+| LambdaKwOptArg  of string * ty
+| LambdaKwRest    of ty
+and lambda_ty = lambda_ty_elem list * ty
+and lambda_arg = {
+          la_location     : Location.t;
+          la_kind         : Syntax.lvar_kind;
+          la_name         : string;
 }
+and lambda_args = lambda_arg list
 and package = {
           p_hash          : int;
           p_name          : string;
@@ -148,6 +156,11 @@ val type_of_environment : ?imm:bool -> local_env -> local_env_ty
 
 val klass_of_type   : ?dispatch:bool -> ty -> klass
 val klass_of_value  : ?dispatch:bool -> ?meta:bool -> value -> klass
+
+val lambda_args_of_formal_args
+                    : Syntax.formal_args -> lambda_args
+val tys_of_lambda_ty_elems
+                    : lambda_ty_elem list -> ty list
 
 (* Correctly handles cyclic structures. *)
 val equal           : value -> value -> bool
@@ -230,7 +243,7 @@ val tenv_resolve    : type_env -> string -> tvar
 exception CEnvUnbound
 exception CEnvAlreadyBound of value
 
-val cenv_create     : unit -> const_env
+val cenv_empty      : const_env
 val cenv_extend     : const_env -> package -> const_env
 val cenv_bind       : const_env -> string -> value -> unit
 val cenv_peek       : const_env -> string -> value option

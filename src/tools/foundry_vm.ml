@@ -59,19 +59,15 @@ let _ =
     let entry    = Ssa.create_block ~id:u"entry" funcn in
     let toplevel = Ssa.const (Rt.Package (!Rt.roots).Rt.pToplevel) in
 
-    let resolve  = Ssa.create_instr (Rt.Tvar (Rt.new_tvar ()))
-                      (Ssa.ResolveInstr (toplevel,
-                          Ssa.const (Rt.Symbol u"main"))) in
-    Ssa.append_instr resolve entry;
-
-    let call     = Ssa.create_instr (Rt.Tvar (Rt.new_tvar ()))
-                      (Ssa.CallInstr (resolve, [
+    let send     = Ssa.create_instr (Rt.Tvar (Rt.new_tvar ()))
+                      (Ssa.PrimitiveInstr (u"obj_send", [
+                        toplevel; Ssa.const (Rt.Symbol u"main");
                           Ssa.const (Rt.Tuple ([
                               Rt.Package (!Rt.roots).Rt.pToplevel ]));
                           Ssa.const (Rt.Record (
                               Assoc.empty))
-                       ])) in
-    Ssa.append_instr call entry;
+                      ])) in
+    Ssa.append_instr send entry;
 
     let return   = Ssa.create_instr (Rt.NilTy)
                       (Ssa.ReturnInstr (

@@ -46,7 +46,6 @@ type value =
 | Instance      of instance
 (* SSA types *)
 | FunctionTy    of ty list * ty
-| ClosureTy     of ty list * ty
 | BasicBlockTy
 and ty = value
 and 'a specialized = 'a * value Assoc.sorted_t
@@ -81,14 +80,23 @@ and lambda    = {
   mutable l_local_env     : local_env;
   mutable l_type_env      : type_env;
   mutable l_const_env     : const_env;
-          l_args          : Syntax.formal_args;
+          l_args          : lambda_args;
           l_body          : Syntax.exprs;
 }
-and lambda_ty = {
-          l_ty_args       : ty;
-          l_ty_kwargs     : ty;
-          l_ty_result     : ty;
+and lambda_ty_elem =
+| LambdaArg       of ty
+| LambdaOptArg    of ty
+| LambdaRest      of ty
+| LambdaKwArg     of string * ty
+| LambdaKwOptArg  of string * ty
+| LambdaKwRest    of ty
+and lambda_ty = lambda_ty_elem list * ty
+and lambda_arg = {
+          la_location     : Location.t;
+          la_kind         : Syntax.lvar_kind;
+          la_name         : string;
 }
+and lambda_args = lambda_arg list
 and package = {
           p_hash          : int;
           p_name          : string;
@@ -360,7 +368,6 @@ let klass_of_type ?(dispatch=false) ty =
   | RecordTy(_)   -> !roots.kRecord
 
   | LambdaTy(_)   -> !roots.kLambda
-  | ClosureTy(_)  -> !roots.kLambda
 
   | Class(k,_)    -> k
 
@@ -441,17 +448,42 @@ and type_of_environment ?(imm=true) env =
         b_ty          = type_of_value b.b_value;
       }) bindings; }
 
-let rec equal_local_env_ty a b =
-  let equal_bindings_ty a b =
-    try
-      Table.fold2 ~f:(fun _ acc a b ->
-          acc &&
-            a.b_ty_location = b.b_ty_location &&
-            a.b_ty_kind     = b.b_ty_kind &&
-            equal a.b_ty b.b_ty)
-        true a b
-    with Invalid_argument _ -> (* different length *) false
-  in
+let lambda_args_of_formal_args formal_args =
+  List.map (fun formal_arg ->
+      match formal_arg with
+      | Syntax.FormalSelf((loc,_))
+      -> { la_location = loc;
+           la_kind     = Syntax.LVarImmutable;
+           la_name     = "self"; }
+      | Syntax.FormalArg((loc,_),lv)        | Syntax.FormalOptArg((loc,_),lv,_)
+      | Syntax.FormalRest((loc,_),lv)       | Syntax.FormalKwArg((loc,_),lv)
+      | Syntax.FormalKwOptArg((loc,_),lv,_) | Syntax.FormalKwRest((loc,_),lv)
+      -> { la_location = loc;
+           la_kind     = fst lv;
+           la_name     = snd lv; })
+    formal_args
+
+let tys_of_lambda_ty_elems lambda_args =
+  List.map (fun ty_elem ->
+      match ty_elem with
+      | LambdaArg ty       | LambdaOptArg ty       | LambdaRest ty
+      | LambdaKwArg (_,ty) | LambdaKwOptArg (_,ty) | LambdaKwRest ty
+      -> ty)
+    lambda_args
+
+let rec equal_binding_ty a b =
+  a.b_ty_location = b.b_ty_location &&
+    a.b_ty_kind     = b.b_ty_kind &&
+    equal a.b_ty b.b_ty
+
+and equal_bindings_ty a b =
+  try
+    Table.fold2 ~f:(fun _ acc a b ->
+        acc && equal_binding_ty a b)
+      true a b
+  with Invalid_argument _ -> (* different length *) false
+
+and equal_local_env_ty a b =
   let eq_parent =
     match a.e_ty_parent, b.e_ty_parent with
     | None, None -> true
@@ -505,12 +537,23 @@ and equal a b =
   | RecordTy(a),        RecordTy(b)
   -> Assoc.equal ~eq:equal a b
   | FunctionTy(aa,ar),  FunctionTy(ba,br)
-  | ClosureTy(aa,ar),   ClosureTy(ba,br)
   -> equal_list aa ba && equal ar br
-  | LambdaTy(a),        LambdaTy(b)
-  -> (equal a.l_ty_args b.l_ty_args &&
-        equal a.l_ty_kwargs b.l_ty_kwargs &&
-        equal a.l_ty_result b.l_ty_result)
+  | LambdaTy(aa,ar),    LambdaTy(ba,br)
+  -> (let equal_lambda_ty_elem a b =
+        match a, b with
+        | LambdaArg a,    LambdaArg b
+        | LambdaOptArg a, LambdaOptArg b
+        | LambdaRest a,   LambdaRest b
+        | LambdaKwRest a, LambdaKwRest b
+        -> equal a b
+        | LambdaKwArg (ka,a),     LambdaKwArg (kb,b)
+        | LambdaKwOptArg (ka,a),  LambdaKwOptArg (kb,b)
+        -> ka = kb && equal a b
+        | _
+        -> false
+      in
+      List.fold_left (&) true (List.map2 equal_lambda_ty_elem aa ba) &&
+        equal ar br)
 
   (* Mutable values and types. *)
   | EnvironmentTy(a),   EnvironmentTy(b)
@@ -532,7 +575,10 @@ and equal a b =
 
 let (=^-^=) = equal
 
-let rec hash_local_env_ty env =
+let rec hash_binding_ty binding =
+  hash binding.b_ty
+
+and hash_local_env_ty env =
   let seed =
     match env.e_ty_parent with
     | Some env -> hash_local_env_ty env
@@ -541,7 +587,7 @@ let rec hash_local_env_ty env =
   Hashtbl.hash (seed, (Table.map_list ~ordered:true
                         ~f:(fun k _ -> k) env.e_ty_bindings))
 
-let rec hash value =
+and hash value =
   let hash_list lst =
     Hashtbl.hash (List.map hash lst)
   in
@@ -571,9 +617,16 @@ let rec hash value =
   -> hash ty
   | EnvironmentTy(x)
   -> hash_local_env_ty x
-  | LambdaTy(x)
-  -> hash_list [x.l_ty_args; x.l_ty_kwargs; x.l_ty_result]
-  | FunctionTy(xa, xr) | ClosureTy(xa, xr)
+  | LambdaTy(xa,xr)
+  -> (let hash_lambda_elem_ty ty =
+        match ty with
+        | LambdaArg ty | LambdaOptArg ty | LambdaRest ty | LambdaKwRest ty
+        -> hash ty
+        | LambdaKwArg (kw,ty) | LambdaKwOptArg (kw,ty)
+        -> Hashtbl.hash (kw, hash ty)
+      in
+      Hashtbl.hash (hash xr :: (List.map hash_lambda_elem_ty xa)))
+  | FunctionTy(xa, xr)
   -> hash_list (xr :: xa)
 
   (* Mutable values and types. *)
@@ -665,25 +718,21 @@ and inspect_type ty =
     | RecordTy(xs)
     -> "{" ^ (String.concat ", " (Assoc.map_list
                 (fun k v -> k ^ ": " ^ (inspect_type v)) xs)) ^ "}"
-    | LambdaTy(lm)
-    -> (let args_ty =
-          match lm.l_ty_args with
-          | TupleTy(xs) -> List.map inspect_type xs
-          | o -> ["*" ^ (inspect_type o)]
-        in let kwargs_ty =
-          match lm.l_ty_kwargs with
-          | RecordTy(xs) -> Assoc.map_list
-                              (fun k v -> k ^ ": " ^ (inspect_type v)) xs
-          | o -> ["**" ^ (inspect_type o)]
-        in "(" ^ (String.concat ", " (args_ty @ kwargs_ty)) ^
-           ") -> " ^ (inspect_type lm.l_ty_result))
+    | LambdaTy(xa, xr)
+    -> (let inspect_arg arg =
+          match arg with
+          | LambdaArg ty           -> inspect_type ty
+          | LambdaOptArg ty        -> "?" ^ (inspect_type ty)
+          | LambdaRest ty          -> "*" ^ (inspect_type ty)
+          | LambdaKwArg (kw,ty)    -> kw ^ ": " ^ (inspect_type ty)
+          | LambdaKwOptArg (kw,ty) -> "?" ^ kw ^ ": " ^ (inspect_type ty)
+          | LambdaKwRest ty        -> "**" ^ (inspect_type ty)
+        in
+        "(" ^ (String.concat ", " (List.map inspect_arg xa)) ^ ") -> " ^ (inspect_type xr))
     | EnvironmentTy(env)
     -> "`env " ^ (inspect_local_env_ty env)
     | FunctionTy(args_ty, result_ty)
     -> "`fun (" ^ (String.concat ", " (List.map inspect_type args_ty)) ^
-                ") -> " ^ (inspect_type result_ty)
-    | ClosureTy(args_ty, result_ty)
-    -> "`lam (" ^ (String.concat ", " (List.map inspect_type args_ty)) ^
                 ") -> " ^ (inspect_type result_ty)
     | _
     -> "\\(" ^ (inspect_value ty) ^ ")")
@@ -787,8 +836,7 @@ let tenv_resolve env name =
 exception CEnvUnbound
 exception CEnvAlreadyBound of value
 
-let cenv_create () : const_env =
-  [!roots.pToplevel]
+let cenv_empty : const_env = []
 
 let cenv_extend env pkg =
   pkg :: env

@@ -106,7 +106,7 @@ let rec string_of_value state value =
 
   | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy | StringTy | UnsignedTy _
   | SignedTy _ | OptionTy _ | TupleTy _ | RecordTy _  | ArrayTy _ | LambdaTy _ | EnvironmentTy _
-  | FunctionTy _ | ClosureTy _ | BasicBlockTy
+  | FunctionTy _ | BasicBlockTy
   -> "type " ^ (string_of_ty state value)
 
 and string_of_ty state ty =
@@ -126,8 +126,6 @@ and string_of_ty state ty =
   | LambdaTy(lt)      -> string_of_lambda_ty state lt
   | EnvironmentTy(x)  -> "environment " ^ (string_of_local_env_ty state x)
   | FunctionTy(xs,x)  -> "function (" ^ (string_of_seq xs (string_of_ty state)) ^ ") -> " ^
-                            (string_of_ty state x)
-  | ClosureTy(xs,x)   -> "closure (" ^ (string_of_seq xs (string_of_ty state)) ^ ") -> " ^
                             (string_of_ty state x)
   | BasicBlockTy      -> assert false
   | Class(k,sp)       -> "class " ^ (string_of_klass state k) ^
@@ -150,7 +148,7 @@ and string_of_klass state klass =
       (string_of_some (Assoc.is_empty klass.k_parameters) (fun () ->
         "  parameters { " ^
           (string_of_assoc "  " klass.k_parameters (string_of_tvar state)) ^
-        " }\n")) ^
+        "}\n")) ^
       (string_of_some (Assoc.is_empty klass.k_ivars) (fun () ->
         "  ivars {" ^
           (string_of_assoc "  " klass.k_ivars (string_of_ivar state)) ^
@@ -181,10 +179,18 @@ and string_of_tvar state (tvar:tvar) =
   "tvar(" ^ (string_of_int (tvar :> int)) ^ ")"
 
 and string_of_lambda_ty state lambda_ty =
-  "lambda (" ^
-    (string_of_ty state lambda_ty.l_ty_args) ^ ", " ^
-    (string_of_ty state lambda_ty.l_ty_kwargs) ^ ") -> " ^
-    (string_of_ty state lambda_ty.l_ty_result)
+  let of_ty = string_of_ty state in
+  let of_lambda_ty_elem elem =
+    match elem with
+    | LambdaArg ty           -> of_ty ty
+    | LambdaOptArg ty        -> "?" ^ (of_ty ty)
+    | LambdaRest ty          -> "*" ^ (of_ty ty)
+    | LambdaKwArg (kw,ty)    -> (escape_as_literal kw) ^ " = " ^ (of_ty ty)
+    | LambdaKwOptArg (kw,ty) -> "?" ^ (escape_as_literal kw) ^ " = " ^ (of_ty ty)
+    | LambdaKwRest ty        -> "**" ^ (of_ty ty)
+  in
+  let args_ty, ret_ty = lambda_ty in
+  "lambda(" ^ (String.concat ", " (List.map of_lambda_ty_elem args_ty)) ^ ") -> " ^ (of_ty ret_ty)
 
 and string_of_ivar state ivar =
   let kind =
@@ -212,11 +218,44 @@ and string_of_lambda state lam =
         (string_of_seq lam.l_const_env (string_of_package state)) ^
       "]\n" ^
       "  type " ^ (string_of_lambda_ty state lam.l_ty) ^ "\n" ^
-      "  args " ^ (Unicode.adopt_utf8s
-          (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_formal_args lam.l_args))) ^ "\n" ^
+      "  args [" ^
+        (string_of_seq lam.l_args (string_of_lambda_arg state)) ^
+      "]\n" ^
       "  body " ^ (Unicode.adopt_utf8s
           (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_exprs lam.l_body))) ^ "\n" ^
     "}\n")
+
+and string_of_lvar_kind kind =
+  match kind with
+  | Syntax.LVarImmutable -> "immutable"
+  | Syntax.LVarMutable   -> "mutable"
+
+and string_of_lambda_arg state larg =
+  (string_of_loc larg.la_location) ^ " " ^
+    (string_of_lvar_kind larg.la_kind) ^ " " ^
+    (escape_as_literal larg.la_name)
+
+and string_of_bindings_ty state bindings =
+  "{" ^
+    (string_of_table "  " bindings (fun b ->
+      (string_of_loc b.b_ty_location) ^ " " ^
+      (string_of_lvar_kind b.b_ty_kind) ^ " " ^
+      (string_of_ty state b.b_ty))) ^
+  "}"
+
+and string_of_local_env_ty state ty =
+  (string_of_bindings_ty state ty.e_ty_bindings) ^
+    (match ty.e_ty_parent with
+    | Some parent_ty -> " -> " ^ (string_of_local_env_ty state parent_ty)
+    | None -> "")
+
+and string_of_bindings state bindings =
+  "{" ^
+    (string_of_table "  " bindings (fun b ->
+      (string_of_loc b.b_location) ^ " " ^
+      (string_of_lvar_kind b.b_kind) ^ " " ^
+      (string_of_value state b.b_value))) ^
+  "}"
 
 and string_of_local_env state lenv =
   bind state (Environment lenv) ("") (fun () ->
@@ -226,38 +265,6 @@ and string_of_local_env state lenv =
         "" lenv.e_parent) ^
       "  bindings " ^ (string_of_bindings state lenv.e_bindings) ^ "\n" ^
     "}\n")
-
-and string_of_local_env_ty state ty =
-  "{" ^ string_of_table "    " ty.e_ty_bindings (fun b ->
-    (string_of_loc b.b_ty_location) ^ " " ^
-    (match b.b_ty_kind with
-    | Syntax.LVarImmutable -> "immutable"
-    | Syntax.LVarMutable   -> "mutable") ^ " " ^
-    (string_of_ty state b.b_ty)) ^
-  "}" ^
-    (match ty.e_ty_parent with
-    | Some parent_ty -> " -> " ^ (string_of_local_env_ty state parent_ty)
-    | None -> "")
-
-and string_of_bindings state bindings =
-  "{" ^
-    (string_of_table "  " bindings (fun b ->
-      (string_of_loc b.b_location) ^ " " ^
-      (match b.b_kind with
-      | Syntax.LVarImmutable -> "immutable"
-      | Syntax.LVarMutable   -> "mutable") ^ " " ^
-      (string_of_value state b.b_value))) ^
-  "}"
-
-and string_of_bindings_ty state bindings =
-  "{" ^
-    (string_of_table "  " bindings (fun b ->
-      (string_of_loc b.b_ty_location) ^ " " ^
-      (match b.b_ty_kind with
-      | Syntax.LVarImmutable -> "immutable"
-      | Syntax.LVarMutable   -> "mutable") ^ " " ^
-      (string_of_value state b.b_ty))) ^
-  "}"
 
 and string_of_package state package =
   bind state (Package package) ("p." ^ package.p_name) (fun () ->
@@ -361,8 +368,6 @@ let rec string_of_ssa_name state value =
     call_instr ("call " ^ (print func)) operands
   | ClosureInstr (func, env) ->
     instr "closure" [print func; print env]
-  | ResolveInstr (obj, meth) ->
-    instr "resolve" [print obj; print meth]
   | SpecializeInstr (cls, operands) ->
     group_instr "specialize" (print cls) (Assoc.map_list
           (fun param value -> (escape_as_literal param) ^ " => " ^ (print value)) operands)

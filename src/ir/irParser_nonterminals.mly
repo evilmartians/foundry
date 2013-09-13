@@ -89,10 +89,7 @@
       pToplevel     = get_package (u"p.toplevel");
     }
 
-  let dummy_lambda_ty =
-    { l_ty_args   = Rt.NilTy;
-      l_ty_kwargs = Rt.NilTy;
-      l_ty_result = Rt.NilTy; }
+  let dummy_lambda_ty = [], Rt.NilTy
 
   let dummy_local_env =
     { e_hash     = Hash_seed.make ();
@@ -201,13 +198,21 @@
           tvar: Tvar LParen x=Lit_Integer RParen
                 { (fun env -> Rt.adopt_tvar (int_of_big_int x)) }
 
-     lambda_ty: Lambda LParen args=ty Comma kwargs=ty RParen Arrow result=ty
-                { (fun env -> {
-                    l_ty_args   = args   env;
-                    l_ty_kwargs = kwargs env;
-                    l_ty_result = result env;
-                  })
-                }
+lambda_ty_elem: ty=ty
+                { (fun env -> LambdaArg (ty env)) }
+              | Question ty=ty
+                { (fun env -> LambdaOptArg (ty env)) }
+              | Star ty=ty
+                { (fun env -> LambdaRest (ty env)) }
+              | kw=Lit_String Equal ty=ty
+                { (fun env -> LambdaKwArg (kw, ty env)) }
+              | Question kw=Lit_String Equal ty=ty
+                { (fun env -> LambdaKwOptArg (kw, ty env)) }
+              | StarStar ty=ty
+                { (fun env -> LambdaKwRest (ty env)) }
+
+     lambda_ty: Lambda args=args(lambda_ty_elem) Arrow result=ty
+                { (fun env -> args env, result env) }
 
 environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> Some {
@@ -248,8 +253,6 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> LambdaTy (x env)) }
               | Function args=args(ty) Arrow ty=ty
                 { (fun env -> FunctionTy (args env, ty env)) }
-              | Closure args=args(ty) Arrow ty=ty
-                { (fun env -> ClosureTy (args env, ty env)) }
 
             ty: x=tvar
                 { (fun env -> Tvar (x env)) }
@@ -340,12 +343,24 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                     im_body    = x env;
                   }) }
 
-   lambda_code: args=Syntax_Args body=Syntax_Exprs
+    lambda_arg: loc=location kind=lvar_kind name=Lit_String
+                { {
+                    la_location = loc;
+                    la_kind     = kind;
+                    la_name     = name;
+                  } }
+
+   lambda_args: Args LBrack args=separated_list(Comma, lambda_arg) RBrack
+                { args }
+
+   lambda_code: args=lambda_args body=Syntax_Exprs
                 { args, body }
               | lam=Syntax_Lambda
                 { match lam with
-                  | Syntax.Lambda (_, args, _, body) -> args, [body]
-                  | _ -> assert false }
+                  | Syntax.Lambda (_, args, _, body)
+                  -> Rt.lambda_args_of_formal_args args, [body]
+                  | _
+                  -> assert false }
 
    struct_body: bind_as=Name_Global Equal
                   Class name=Lit_String LBrace
@@ -434,16 +449,16 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                          code=lambda_code
                   RBrace
                 { (fun env ->
-                    let args, exprs = code in
+                    let args, body = code in
                     let lambda = {
                       l_hash      = Hash_seed.make ();
                       l_location  = loc;
                       l_ty        = dummy_lambda_ty;
                       l_local_env = dummy_local_env;
                       l_type_env  = Rt.tenv_create ();
-                      l_const_env = Rt.cenv_create ();
+                      l_const_env = Rt.cenv_empty;
                       l_args      = args;
-                      l_body      = exprs;
+                      l_body      = body;
                     } in
                     Table.set env bind_as (NamedLambda lambda);
                     (fun () ->
@@ -609,8 +624,6 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun env -> RecordExtendInstr (re env, operands env)) }
               | Record_concat re=operand Comma other=operand
                 { (fun env -> RecordConcatInstr (re env, other env)) }
-              | Resolve obj=operand Comma meth=operand
-                { (fun env -> ResolveInstr (obj env, meth env)) }
               | Jump target=operand
                 { (fun env -> JumpInstr (target env)) }
               | Jump_if cond=operand Comma if_true=operand Comma if_false=operand
