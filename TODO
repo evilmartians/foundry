@@ -1,5 +1,9 @@
+integer coercion:
+ * special rules for int_ primitives
+ * primitive inlining
+ * method resolution on literals
+
 features:
- * integer coercion
  * != -> !(==)
  * (() do end) -> do || end
  * x = 1 -> let mut x = 1
@@ -10,5 +14,4 @@ features:
  * Rt.tvar / Rt.tvar_ty
 
 bugs:
- * allocate fresh tvars on copy_func
  * faster iv type lookup
