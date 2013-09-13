@@ -78,6 +78,13 @@ let tup_slice args =
   | _
   -> assert false
 
+(* Record primitive implementations. *)
+
+let rec_lookup args =
+  match args with
+  | [Record(xs); Symbol(n)] -> Assoc.find xs n
+  | _ -> assert false
+
 (* Symbol primitive implementations. *)
 
 let sym_to_str args =
@@ -157,7 +164,7 @@ let prim = Table.create [
   "tup_slice",  (false,    tup_slice);
   "tup_enum",   (true,     fun _ -> assert false);
   (* -- records ---------------------------------------- *)
-  "rec_lookup", (false,    fun _ -> assert false);
+  "rec_lookup", (false,    rec_lookup);
   "rec_enum",   (true,     fun _ -> assert false);
   (* -- symbols ---------------------------------------- *)
   "sym_to_str", (false,    sym_to_str);
