@@ -70,9 +70,9 @@ class ColorLCDShield
 
     # Reset and initialize LCD
     GPIOA.set(10, false)
-    self.delay(500u32)
+    self.delay(500)
     GPIOA.set(10, true)
-    self.delay(500u32)
+    self.delay(500)
 
     self.spi_tx(false, 0x11) # sleep out
 

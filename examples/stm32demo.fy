@@ -46,6 +46,6 @@ def main
     elsif LCD.bottom_pressed?
       cy += 1
     end
-    LCD.delay(50000u32)
+    LCD.delay(50000)
   end
 end
