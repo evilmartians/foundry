@@ -17,13 +17,13 @@ let fold_equiv ty =
   -> Rt.SymbolTy
   | Class (klass, _) when klass == roots.kString
   -> Rt.StringTy
-  | Class (klass, specz) when klass == roots.kUnsigned
+  | Class (klass, specz) when klass == roots.kFixed
   -> (match Assoc.find_option specz "width" with
-      | Some (Integer width) -> UnsignedTy (int_of_big_int width)
-      | _ -> ty)
-  | Class (klass, specz) when klass == roots.kSigned
-  -> (match Assoc.find_option specz "width" with
-      | Some (Integer width) -> SignedTy (int_of_big_int width)
+      | Some (Integer width)
+      -> (match Assoc.find_option specz "signed" with
+          | Some Lies  -> UnsignedTy (int_of_big_int width)
+          | Some Truth -> SignedTy (int_of_big_int width)
+          | _ -> ty)
       | _ -> ty)
   | _
   -> ty
@@ -33,9 +33,11 @@ let unfold_equiv ty =
   | Class (k, sp)
   -> k, sp
   | UnsignedTy (width)
+  -> (let width = big_int_of_int width in
+      klass_of_type ty, Assoc.sorted ["width", Rt.Integer (width); "signed", Rt.Lies])
   | SignedTy (width)
   -> (let width = big_int_of_int width in
-      klass_of_type ty, Assoc.sorted ["width", Rt.Integer (width)])
+      klass_of_type ty, Assoc.sorted ["width", Rt.Integer (width); "signed", Rt.Truth])
   | _ -> raise (Invalid_argument ("Typing.unfold_equiv" :> latin1s))
 
 let equiv ~f ty =

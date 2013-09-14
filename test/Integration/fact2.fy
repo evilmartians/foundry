@@ -4,7 +4,7 @@
 
 # CHECK: [DEBUG: 0x00375f00]
 
-class Unsigned
+class Fixed
   def *(other)
     invokeprimitive int_mul(self, other)
   end

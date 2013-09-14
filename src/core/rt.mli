@@ -191,8 +191,7 @@ type roots = {
   kInteger          : klass;
   kSymbol           : klass;
   kString           : klass;
-  kUnsigned         : klass;
-  kSigned           : klass;
+  kFixed            : klass;
   kOption           : klass;
   kTuple            : klass;
   kRecord           : klass;

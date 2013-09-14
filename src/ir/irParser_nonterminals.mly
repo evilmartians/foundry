@@ -31,10 +31,8 @@
         (u"c.meta:Boolean",       NamedClass roots.kBoolean.k_metaclass);
         (u"c.Integer",            NamedClass roots.kInteger);
         (u"c.meta:Integer",       NamedClass roots.kInteger.k_metaclass);
-        (u"c.Unsigned",           NamedClass roots.kUnsigned);
-        (u"c.meta:Unsigned",      NamedClass roots.kUnsigned.k_metaclass);
-        (u"c.Signed",             NamedClass roots.kSigned);
-        (u"c.meta:Signed",        NamedClass roots.kSigned.k_metaclass);
+        (u"c.Fixed",              NamedClass roots.kFixed);
+        (u"c.meta:Fixed",         NamedClass roots.kFixed.k_metaclass);
         (u"c.Symbol",             NamedClass roots.kSymbol);
         (u"c.meta:Symbol",        NamedClass roots.kSymbol.k_metaclass);
         (u"c.String",             NamedClass roots.kString);
@@ -75,8 +73,7 @@
       kNil          = get_class (u"c.Nil");
       kBoolean      = get_class (u"c.Boolean");
       kInteger      = get_class (u"c.Integer");
-      kUnsigned     = get_class (u"c.Unsigned");
-      kSigned       = get_class (u"c.Signed");
+      kFixed        = get_class (u"c.Fixed");
       kSymbol       = get_class (u"c.Symbol");
       kString       = get_class (u"c.String");
       kOption       = get_class (u"c.Option");

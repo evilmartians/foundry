@@ -2,14 +2,14 @@
 ; RUN: %foundry_gen %t | lli | %file_check %s
 ; CHECK: [DEBUG: 0x00000003]
 
-@c.Unsigned = class "Unsigned" {
-  metaclass @c.meta:Unsigned
+@c.Fixed = class "Fixed" {
+  metaclass @c.meta:Fixed
   methods {
-    "+" = @"Unsigned:+"
+    "+" = @"Fixed:+"
   }
 }
 
-@"Unsigned:+" = lambda (0 0) {
+@"Fixed:+" = lambda (0 0) {
   local_env empty
   type lambda (tvar(1), tvar(2)) -> tvar(3)
   code (self, other) { invokeprimitive int_add (self, other) };;

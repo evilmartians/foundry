@@ -4,7 +4,7 @@
 
 # CHECK: [DEBUG: 0x00000019]
 
-class Unsigned
+class Fixed
   def +(other)
     invokeprimitive int_add(self, other)
   end

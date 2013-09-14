@@ -1,4 +1,4 @@
-class Signed
+class Fixed
   def +(other)
     invokeprimitive int_add(self, other)
   end
@@ -12,19 +12,21 @@ class Signed
   end
 
   def /(other)
-    invokeprimitive int_sdiv(self, other)
+    let [quo, rem] = invokeprimitive int_divmod(self, other)
+    quo
   end
 
-  # def %(other)
-  #   invokeprimitive int_mod(self, other)
-  # end
+  def %(other)
+    let [quo, rem] = invokeprimitive int_divmod(self, other)
+    rem
+  end
 
   def **(power)
     invokeprimitive int_exp(self, power)
   end
 
   def -@()
-    0s64 - self
+    0u32 - self
   end
 
   def &(other)
@@ -40,14 +42,14 @@ class Signed
   end
 
   def >>(bits)
-    invokeprimitive int_ashr(self, bits)
+    invokeprimitive int_shr(self, bits)
   end
 
   def <<(bits)
     invokeprimitive int_shl(self, bits)
   end
 
-  def ~@()
+  def ~@
     -self - 1
   end
 
@@ -60,18 +62,26 @@ class Signed
   end
 
   def >(other)
-    invokeprimitive int_sgt(self, other)
+    invokeprimitive int_gt(self, other)
   end
 
   def >=(other)
-    invokeprimitive int_sge(self, other)
+    invokeprimitive int_ge(self, other)
   end
 
   def <(other)
-    invokeprimitive int_slt(self, other)
+    invokeprimitive int_lt(self, other)
   end
 
   def <=(other)
-    invokeprimitive int_sle(self, other)
+    invokeprimitive int_le(self, other)
+  end
+
+  def times(block)
+    let mut i = 0
+    while i < self
+      block.call(i)
+      i += 1
+    end
   end
 end

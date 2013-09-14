@@ -207,7 +207,8 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
                 else if not (Assoc.mem klass.k_parameters kw) then
                   exc_fail ("Class `" ^ klass.k_name ^ "' is not parametric by `" ^ kw) [loc]
                 else
-                  (kw, ty) :: acc) new_specz kw_args
+                  (kw, ty) :: acc)
+              new_specz kw_args
             in
             let cls = Class (klass, Assoc.merge specz (Assoc.sorted new_specz)) in
             Typing.fold_equiv cls)

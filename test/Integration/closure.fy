@@ -10,7 +10,7 @@
 # CHECK:     [DEBUG: 0x0000000a]
 # CHECK-NOT: [DEBUG
 
-class Unsigned
+class Fixed
   def +(other)
     invokeprimitive int_add(self, other)
   end

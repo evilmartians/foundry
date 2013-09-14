@@ -9,7 +9,7 @@
 # CHECK-LL-DAG: %Vector1D = type { %Object, i32 }
 # CHECK-LL-DAG: %Vector2D = type { %Vector1D, i32 }
 
-class Unsigned
+class Fixed
   def +(other)
     invokeprimitive int_add(self, other)
   end

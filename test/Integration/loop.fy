@@ -9,7 +9,7 @@
 # CHECK:     [DEBUG: 0x00000004]
 # CHECK-NOT: [DEBUG:
 
-class Unsigned
+class Fixed
   def <(other)
     invokeprimitive int_ult(self, other)
   end

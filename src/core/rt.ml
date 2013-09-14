@@ -159,8 +159,7 @@ type roots = {
   kInteger          : klass;
   kSymbol           : klass;
   kString           : klass;
-  kUnsigned         : klass;
-  kSigned           : klass;
+  kFixed            : klass;
   kOption           : klass;
   kTuple            : klass;
   kRecord           : klass;
@@ -277,13 +276,12 @@ let create_roots () =
     kSymbol       = new_class ~ancestor:kValue "Symbol";
     kString       = new_class ~ancestor:kObject "String";
 
-    kUnsigned     = new_class ~ancestor:kValue
-                              ~parameters:(Assoc.sequental ["width", tvar ()])
-                              "Unsigned";
-
-    kSigned       = new_class ~ancestor:kValue
-                              ~parameters:(Assoc.sequental ["width", tvar ()])
-                              "Signed";
+    kFixed        = new_class ~ancestor:kValue
+                              ~parameters:(Assoc.sequental [
+                                "width",  tvar ();
+                                "signed", tvar ();
+                              ])
+                              "Fixed";
 
     kOption       = new_class ~ancestor:kValue "Option";
     kTuple        = new_class ~ancestor:kValue "Tuple";
@@ -302,8 +300,7 @@ let create_roots () =
   }
   in
   let constants = roots.pToplevel.p_constants in
-  List.iter (fun (k, v) ->
-      Table.set constants k (Class (v, Assoc.empty)))
+  List.iter (fun (k, v) -> Table.set constants k (Class (v, Assoc.empty)))
     [
       "Class",        roots.kClass;
       "Object",       roots.kObject;
@@ -316,8 +313,7 @@ let create_roots () =
       "Symbol",       roots.kSymbol;
       "String",       roots.kString;
 
-      "Signed",       roots.kSigned;
-      "Unsigned",     roots.kUnsigned;
+      "Fixed",        roots.kFixed;
       "Tuple",        roots.kTuple;
       "Record",       roots.kRecord;
       "Lambda",       roots.kLambda;
@@ -325,6 +321,10 @@ let create_roots () =
       "Mixin",        roots.kMixin;
       "Package",      roots.kPackage;
     ];
+  Table.set constants "Unsigned" (Class (roots.kFixed, Assoc.sorted [
+                                    "width", Tvar (tvar ()); "signed", Lies;  ]));
+  Table.set constants "Signed"   (Class (roots.kFixed, Assoc.sorted [
+                                    "width", Tvar (tvar ()); "signed", Truth; ]));
   roots
 
 let roots = ref (create_roots ())
@@ -362,8 +362,8 @@ let klass_of_type ?(dispatch=false) ty =
   | IntegerTy     -> !roots.kInteger
   | SymbolTy      -> !roots.kSymbol
   | StringTy      -> !roots.kString
-  | UnsignedTy(_) -> !roots.kUnsigned
-  | SignedTy(_)   -> !roots.kSigned
+  | UnsignedTy(_) -> !roots.kFixed
+  | SignedTy(_)   -> !roots.kFixed
   | TupleTy(_)    -> !roots.kTuple
   | RecordTy(_)   -> !roots.kRecord
 
@@ -383,8 +383,8 @@ let klass_of_value ?(dispatch=false) ?(meta=true) value =
   | Integer(_)    -> !roots.kInteger
   | Symbol(_)     -> !roots.kSymbol
   | String(_)     -> !roots.kString
-  | Unsigned(_)   -> !roots.kUnsigned
-  | Signed(_)     -> !roots.kSigned
+  | Unsigned(_)   -> !roots.kFixed
+  | Signed(_)     -> !roots.kFixed
   | Tuple(_)      -> !roots.kTuple
   | Record(_)     -> !roots.kRecord
 
@@ -673,6 +673,7 @@ let string_of_value value =
 let rec inspect_literal_or value f =
   match value with
   | TvarTy        -> "TypeVariable"
+  | Tvar(tv)      -> "\\" ^ (string_of_int tv)
   | Truth         -> "true"
   | Lies          -> "false"
   | BooleanTy     -> "Boolean"
@@ -712,7 +713,6 @@ and inspect_value value =
 and inspect_type ty =
   inspect_literal_or ty (fun x ->
     match ty with
-    | Tvar(tv)     -> "\\" ^ (string_of_int tv)
     | TupleTy(xs)
     -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
     | RecordTy(xs)

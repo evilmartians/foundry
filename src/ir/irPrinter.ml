@@ -386,11 +386,16 @@ let rec string_of_ssa_name state value =
 let string_of_roots state roots =
   List.iter (fun klass -> ignore (string_of_klass state klass)) [
     roots.kClass;
+    roots.kObject;
+    roots.kValue;
     roots.kTypeVariable;
     roots.kNil;
     roots.kBoolean;
     roots.kInteger;
     roots.kSymbol;
+    roots.kString;
+    roots.kFixed;
+    roots.kOption;
     roots.kTuple;
     roots.kRecord;
     roots.kLambda;

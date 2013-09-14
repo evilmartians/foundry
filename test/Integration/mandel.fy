@@ -21,7 +21,7 @@
 # CHECK: *************+++******
 # CHECK: **********************
 
-class Signed
+class Fixed
   def ==(other)
     invokeprimitive int_eq(self, other)
   end

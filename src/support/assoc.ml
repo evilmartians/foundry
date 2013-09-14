@@ -103,17 +103,17 @@ let merge_fold ~f acc lft rgt =
        merge_pair acc lft_rest rgt_rest ((k1, v) :: rest)
 
     | (k1, v1) :: lft_rest, (k2, v2) :: rgt_rest
-      when (compare k1 k2) > 0
+      when k1 < k2
     -> merge_pair acc lft_rest rgt ((k1, v1) :: rest)
 
     | (k1, v1) :: lft_rest, (k2, v2) :: rgt_rest
     -> merge_pair acc lft rgt_rest ((k2, v2) :: rest)
 
     | [], rgt_rest
-    -> acc, rgt_rest
+    -> acc, (List.rev rest) @ rgt_rest
 
     | lft_rest, []
-    -> acc, lft_rest
+    -> acc, (List.rev rest) @ lft_rest
   in
   let acc, assoc = merge_pair acc lft rgt [] in
   acc, assoc
@@ -129,7 +129,7 @@ let update assoc values =
     | [], []
     -> rest
     | _, _
-    -> raise (Invalid_argument ("Assoc.update" :> latin1s))
+    -> invalid_arg "Assoc.update"
   in
   update_pair assoc values []
 

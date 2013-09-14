@@ -2,9 +2,9 @@
 # RUN: %foundry_xfrm %t1 -std-xfrms | %foundry_gen -o %t2
 # RUN: llvm-dis %t2 -o - | %file_check %s
 
-# CHECK: Unsigned
+# CHECK: Fixed
 
-class Unsigned
+class Fixed
   def +(other)
     invokeprimitive int_add(self, other)
   end
