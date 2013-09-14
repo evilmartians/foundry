@@ -303,6 +303,15 @@ let rec gen_func llmod heap funcn =
   (* Map FSSA primitive to LLVM primitive. *)
   let gen_prim instr id prim operands =
     let module Icmp = Llvm.Icmp in
+    let int_binop lhs rhs unsigned_op signed_op =
+      match lhs.Ssa.ty, rhs.Ssa.ty with
+      | Rt.UnsignedTy(wa), Rt.UnsignedTy(wb) when wa = wb
+      -> unsigned_op (lookup lhs) (lookup rhs) id builder
+      | Rt.SignedTy(wa),   Rt.SignedTy(wb)   when wa = wb
+      -> signed_op   (lookup lhs) (lookup rhs) id builder
+      | _
+      -> assert false
+    in
     match prim, operands with
     (* Debug primitives. *)
     | "debug", [operand]
@@ -321,24 +330,19 @@ let rec gen_func llmod heap funcn =
     | "int_add",  [lhs; rhs] -> Llvm.build_add  (lookup lhs) (lookup rhs) id builder
     | "int_sub",  [lhs; rhs] -> Llvm.build_sub  (lookup lhs) (lookup rhs) id builder
     | "int_mul",  [lhs; rhs] -> Llvm.build_mul  (lookup lhs) (lookup rhs) id builder
-    | "int_udiv", [lhs; rhs] -> Llvm.build_udiv (lookup lhs) (lookup rhs) id builder
-    | "int_sdiv", [lhs; rhs] -> Llvm.build_sdiv (lookup lhs) (lookup rhs) id builder
+    | "int_div",  [lhs; rhs] -> int_binop lhs rhs Llvm.build_udiv Llvm.build_sdiv
+    | "int_mod",  [lhs; rhs] -> int_binop lhs rhs Llvm.build_urem Llvm.build_srem
     | "int_and",  [lhs; rhs] -> Llvm.build_and  (lookup lhs) (lookup rhs) id builder
     | "int_or",   [lhs; rhs] -> Llvm.build_or   (lookup lhs) (lookup rhs) id builder
     | "int_xor",  [lhs; rhs] -> Llvm.build_xor  (lookup lhs) (lookup rhs) id builder
     | "int_shl",  [lhs; rhs] -> Llvm.build_shl  (lookup lhs) (lookup rhs) id builder
-    | "int_lshr", [lhs; rhs] -> Llvm.build_lshr (lookup lhs) (lookup rhs) id builder
-    | "int_ashr", [lhs; rhs] -> Llvm.build_ashr (lookup lhs) (lookup rhs) id builder
+    | "int_shr",  [lhs; rhs] -> int_binop lhs rhs Llvm.build_lshr Llvm.build_ashr
     | "int_eq",   [lhs; rhs] -> Llvm.build_icmp Icmp.Eq  (lookup lhs) (lookup rhs) id builder
     | "int_ne",   [lhs; rhs] -> Llvm.build_icmp Icmp.Ne  (lookup lhs) (lookup rhs) id builder
-    | "int_ule",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ule (lookup lhs) (lookup rhs) id builder
-    | "int_ult",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ult (lookup lhs) (lookup rhs) id builder
-    | "int_uge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Uge (lookup lhs) (lookup rhs) id builder
-    | "int_ugt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Ugt (lookup lhs) (lookup rhs) id builder
-    | "int_sle",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sle (lookup lhs) (lookup rhs) id builder
-    | "int_slt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Slt (lookup lhs) (lookup rhs) id builder
-    | "int_sge",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sge (lookup lhs) (lookup rhs) id builder
-    | "int_sgt",  [lhs; rhs] -> Llvm.build_icmp Icmp.Sgt (lookup lhs) (lookup rhs) id builder
+    | "int_le",   [lhs; rhs] -> int_binop lhs rhs (Llvm.build_icmp Icmp.Ule) (Llvm.build_icmp Icmp.Sle)
+    | "int_lt",   [lhs; rhs] -> int_binop lhs rhs (Llvm.build_icmp Icmp.Ult) (Llvm.build_icmp Icmp.Slt)
+    | "int_ge",   [lhs; rhs] -> int_binop lhs rhs (Llvm.build_icmp Icmp.Uge) (Llvm.build_icmp Icmp.Sge)
+    | "int_gt",   [lhs; rhs] -> int_binop lhs rhs (Llvm.build_icmp Icmp.Ugt) (Llvm.build_icmp Icmp.Sgt)
 
     (* Tuple operations. *)
     | "tup_lookup", [tup; { Ssa.opcode = Ssa.Const (Rt.Integer idx) }]
@@ -381,7 +385,7 @@ let rec gen_func llmod heap funcn =
 
     (* Memory manipulation. *)
     | ("mem_load" | "mem_loadv"),
-                    [ { Ssa.opcode = Ssa.Const (Rt.Integer align) };
+                    [ { Ssa.opcode = Ssa.Const (Rt.Unsigned (_, align)) };
                       { Ssa.ty     = Rt.UnsignedTy (ptr_width)    } as addr ]
     -> (let width     =
           match instr.Ssa.ty with
@@ -402,7 +406,7 @@ let rec gen_func llmod heap funcn =
         Llvm.build_call llfunc llargs "" builder)
 
     | ( "mem_store" | "mem_storev" ),
-                    [ { Ssa.opcode = Ssa.Const (Rt.Integer align) };
+                    [ { Ssa.opcode = Ssa.Const (Rt.Unsigned (_, align)) };
                       { Ssa.ty     = Rt.UnsignedTy (ptr_width)    } as addr;
                       { Ssa.ty     = Rt.UnsignedTy (width)        } as value ]
     -> (let align     = int_of_big_int align in

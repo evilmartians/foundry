@@ -37,6 +37,12 @@ let append ?(ty=Rt.NilTy) ~opcode blockn =
   Ssa.append_instr instr blockn;
   instr
 
+let append_int entry value =
+  let value = Ssa.const value
+  and ty    = Rt.Class ((!Rt.roots).Rt.kFixed,
+                        Assoc.sorted ["width", tvar (); "signed", tvar ()]) in
+  append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("int_coerce", [value]))
+
 let load ~state entry name =
   let append_load ty =
     let instr = append entry ~ty ~opcode:(Ssa.LVarLoadInstr (state.frame, name)) in
@@ -45,12 +51,8 @@ let load ~state entry name =
   in
   let append_const value =
     match value with
-    | Rt.Integer _
-    -> (let value = Ssa.const value in
-        append entry ~ty:(tvar ())
-                     ~opcode:(Ssa.PrimitiveInstr ("int_coerce", [value])))
-    | _
-    -> Ssa.const value
+    | Rt.Integer _ -> append_int entry value
+    | _            -> Ssa.const value
   in
   let rec lookup_sta env =
     match Table.get env.Rt.e_bindings name with
@@ -111,9 +113,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
   | Syntax.Symbol (_, value)
   -> entry, Ssa.const (Rt.Symbol value)
   | Syntax.Integer (_, value)
-  -> (let value = Ssa.const (Rt.Integer value) in
-      entry, append entry ~ty:(tvar ())
-                          ~opcode:(Ssa.PrimitiveInstr ("int_coerce", [value])))
+  -> entry, append_int entry (Rt.Integer value)
   | Syntax.Unsigned (_, width, value)
   -> entry, Ssa.const (Rt.Unsigned (width, value))
   | Syntax.Signed (_, width, value)

@@ -38,17 +38,6 @@ let int_cmpop op =
 let int_shl = int_binop (fun lhs rhs -> shift_left_big_int  lhs (int_of_big_int rhs))
 let int_shr = int_binop (fun lhs rhs -> shift_right_big_int lhs (int_of_big_int rhs))
 
-let int_divmod args =
-  match args with
-  | [Unsigned(wl,lhs); Unsigned(wr,rhs)] when wl = wr
-  -> (let quo, rem = quomod_big_int lhs rhs in
-        Tuple [Unsigned(wl, quo); Unsigned(wl, rem)])
-  | [Integer(lhs); Integer(rhs)]
-  -> (let quo, rem = quomod_big_int lhs rhs in
-        Tuple [Integer(quo); Integer(rem)])
-  | _
-  -> assert false
-
 let int_to_str args =
   match args with
   | [Integer(value)] | [Signed(_, value)] | [Unsigned(_, value)]
@@ -136,26 +125,21 @@ let prim = Table.create [
   "int_add",    (false,    int_binop add_big_int);
   "int_sub",    (false,    int_binop sub_big_int);
   "int_mul",    (false,    int_binop mult_big_int);
-  "int_sdiv",   (false,    int_divmod);
-  "int_udiv",   (false,    int_divmod);
+  "int_div",    (false,    int_binop div_big_int);
+  "int_mod",    (false,    int_binop mod_big_int);
   "int_and",    (false,    int_binop and_big_int);
   "int_or",     (false,    int_binop or_big_int);
   "int_xor",    (false,    int_binop xor_big_int);
   "int_shl",    (false,    int_shl);
-  "int_lshr",   (false,    int_shr);
-  "int_ashr",   (false,    int_shr);
+  "int_shr",    (false,    int_shr);
   "int_exp",    (false,    int_binop power_big_int_positive_big_int);
   "int_cmp",    (false,    int_binop (fun lhs rhs -> big_int_of_int (compare_big_int lhs rhs)));
   "int_eq",     (false,    int_cmpop eq_big_int);
   "int_ne",     (false,    int_cmpop (fun lhs rhs -> not (eq_big_int lhs rhs)));
-  "int_ule",    (false,    int_cmpop le_big_int);
-  "int_sle",    (false,    int_cmpop le_big_int);
-  "int_ult",    (false,    int_cmpop lt_big_int);
-  "int_slt",    (false,    int_cmpop lt_big_int);
-  "int_uge",    (false,    int_cmpop ge_big_int);
-  "int_sge",    (false,    int_cmpop ge_big_int);
-  "int_ugt",    (false,    int_cmpop gt_big_int);
-  "int_sgt",    (false,    int_cmpop gt_big_int);
+  "int_le",     (false,    int_cmpop le_big_int);
+  "int_lt",     (false,    int_cmpop lt_big_int);
+  "int_ge",     (false,    int_cmpop ge_big_int);
+  "int_gt",     (false,    int_cmpop gt_big_int);
   "int_coerce", (false,    fun _ -> assert false);
   "int_to_str", (false,    int_to_str);
   (* -- tuples ----------------------------------------- *)

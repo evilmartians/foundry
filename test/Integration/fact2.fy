@@ -14,7 +14,7 @@ class Fixed
   end
 
   def >(other)
-    invokeprimitive int_ugt(self, other)
+    invokeprimitive int_gt(self, other)
   end
 end
 

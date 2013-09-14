@@ -2,7 +2,7 @@
 
 @fib = function (unsigned(32) %n) -> unsigned(32) {
 entry:
-  %is_one = boolean primitive "int_ule" (%n, unsigned(32) 2)
+  %is_one = boolean primitive "int_le" (%n, unsigned(32) 2)
   jump_if %is_one, %ret_one, %recur
 ret_one:
   return unsigned(32) 1

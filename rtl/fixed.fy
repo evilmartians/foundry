@@ -12,13 +12,11 @@ class Fixed
   end
 
   def /(other)
-    let [quo, rem] = invokeprimitive int_divmod(self, other)
-    quo
+    invokeprimitive int_div(self, other)
   end
 
   def %(other)
-    let [quo, rem] = invokeprimitive int_divmod(self, other)
-    rem
+    invokeprimitive int_mod(self, other)
   end
 
   def **(power)
@@ -26,7 +24,7 @@ class Fixed
   end
 
   def -@()
-    0u32 - self
+    0 - self
   end
 
   def &(other)

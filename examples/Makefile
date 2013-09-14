@@ -3,7 +3,7 @@ device := maple-leaf
 llvm   := -3.4
 cross  := arm-linux-gnueabi-
 
-stdrtl := class.fy object.fy value.fy integer.fy unsigned.fy signed.fy \
+stdrtl := class.fy object.fy value.fy integer.fy fixed.fy \
 				  symbol.fy lambda.fy
 stdrtl := $(addprefix ../rtl/,$(stdrtl))
 

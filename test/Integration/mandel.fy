@@ -27,11 +27,11 @@ class Fixed
   end
 
   def >(other)
-    invokeprimitive int_sgt(self, other)
+    invokeprimitive int_gt(self, other)
   end
 
   def <(other)
-    invokeprimitive int_slt(self, other)
+    invokeprimitive int_lt(self, other)
   end
 
   def -@
@@ -51,7 +51,7 @@ class Fixed
   end
 
   def >>(other)
-    invokeprimitive int_ashr(self, other)
+    invokeprimitive int_shr(self, other)
   end
 end
 

@@ -16,7 +16,7 @@ class Fixed
   end
 
   def <(other)
-    invokeprimitive int_ult(self, other)
+    invokeprimitive int_lt(self, other)
   end
 
   def times(block)

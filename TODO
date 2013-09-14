@@ -1,8 +1,3 @@
-integer coercion:
- * special rules for int_ primitives
- * primitive inlining
- * method resolution on literals
-
 features:
  * != -> !(==)
  * (() do end) -> do || end

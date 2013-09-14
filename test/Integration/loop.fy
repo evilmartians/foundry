@@ -11,7 +11,7 @@
 
 class Fixed
   def <(other)
-    invokeprimitive int_ult(self, other)
+    invokeprimitive int_lt(self, other)
   end
 
   def +(other)

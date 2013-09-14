@@ -12,12 +12,12 @@ class Integer
   end
 
   def /(other)
-    invokeprimitive int_sdiv(self, other)
+    invokeprimitive int_div(self, other)
   end
 
-  # def %(other)
-  #   invokeprimitive int_mod(self, other)
-  # end
+  def %(other)
+    invokeprimitive int_mod(self, other)
+  end
 
   def **(power)
     invokeprimitive int_exp(self, power)
@@ -40,7 +40,7 @@ class Integer
   end
 
   def >>(bits)
-    invokeprimitive int_ashr(self, bits)
+    invokeprimitive int_shr(self, bits)
   end
 
   def <<(bits)
@@ -60,18 +60,18 @@ class Integer
   end
 
   def >(other)
-    invokeprimitive int_sgt(self, other)
+    invokeprimitive int_gt(self, other)
   end
 
   def >=(other)
-    invokeprimitive int_sge(self, other)
+    invokeprimitive int_ge(self, other)
   end
 
   def <(other)
-    invokeprimitive int_slt(self, other)
+    invokeprimitive int_lt(self, other)
   end
 
   def <=(other)
-    invokeprimitive int_sle(self, other)
+    invokeprimitive int_le(self, other)
   end
 end

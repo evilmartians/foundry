@@ -119,8 +119,8 @@ let run_on_function passmgr capsule funcn =
     (* Primitives obey simple, primitive-specific typing rules. *)
     | PrimitiveInstr (prim, operands)
     -> (let unify_int_op int_op_ty =
-          (* Match de-facto type of this primitive invocation with
-              its polymorphic signature. *)
+          (* Unify actual type of this primitive invocation with
+             its polymorphic signature. *)
           let ty =
             match operands with
             | [a; b] -> Rt.FunctionTy ([a.Ssa.ty; b.Ssa.ty], instr.Ssa.ty)
@@ -131,13 +131,17 @@ let run_on_function passmgr capsule funcn =
           (* Verify that the substitution yields a valid primitive
              signature, i.e. it is indeed an integer operation. *)
           match ty' with
-          | Rt.FunctionTy([Rt.IntegerTy;     Rt.IntegerTy],     _)
-          | Rt.FunctionTy([Rt.UnsignedTy(_); Rt.UnsignedTy(_)], _)
-          | Rt.FunctionTy([Rt.SignedTy(_);   Rt.SignedTy(_)],   _)
+          | Rt.FunctionTy([Rt.IntegerTy;     _], _)
+          | Rt.FunctionTy([Rt.UnsignedTy(_); _], _)
+          | Rt.FunctionTy([Rt.SignedTy(_);   _], _)
           -> (* Only specialize if the unification produced substitutions
                 for the original function. As intop signatures are
                 polymorphic, they will always produce non-empty env's. *)
              (if not (Rt.equal ty ty') then
+                specialize env)
+          | Rt.FunctionTy([Rt.Class(klass, _); _], _)
+            when klass == (!Rt.roots).Rt.kFixed
+          -> (if not (Rt.equal ty ty') then
                 specialize env)
           | _
           -> ()
@@ -151,12 +155,11 @@ let run_on_function passmgr capsule funcn =
         (* Operands to integer primitives must have the
            same integral type. *)
         | "int_add"  | "int_sub"  | "int_mul" | "int_and"
-        | "int_or"   | "int_xor"  | "int_shl" | "int_lshr"
-        | "int_ashr" | "int_exp"
+        | "int_or"   | "int_xor"  | "int_shl" | "int_shr"
+        | "int_exp"
         -> unify_int_op int_binop_ty
-        | "int_eq"   | "int_ne"   | "int_ule" | "int_sle"
-        | "int_ult"  | "int_slt"  | "int_uge" | "int_sge"
-        | "int_ugt"  | "int_sgt"
+        | "int_eq"   | "int_ne"   | "int_le"  | "int_lt"
+        | "int_ge"   | "int_gt"
         -> unify_int_op int_cmpop_ty
 
         (* Tuple and record primitives have type-level semantics not
@@ -210,11 +213,13 @@ let run_on_function passmgr capsule funcn =
             -> ())
 
         (* Memory access primitives. *)
-        | "mem_store" | "mem_storev"
+        | "mem_load" | "mem_loadv" | "mem_store" | "mem_storev"
         -> (match operands with
-            | { ty = addr_ty } :: _
-            -> (unify addr_ty  (Rt.UnsignedTy 32); (* TODO non-64bit-clean *)
-                unify instr.ty Rt.NilTy)
+            | { ty = align_ty } :: { ty = addr_ty } :: _
+            -> (unify align_ty (Rt.UnsignedTy 32);
+                unify addr_ty  (Rt.UnsignedTy 32);
+                if prim = "mem_store" || prim = "mem_storev" then
+                  unify instr.ty Rt.NilTy)
             | _
             -> assert false)
 

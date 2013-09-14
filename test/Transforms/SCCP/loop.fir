@@ -5,7 +5,7 @@ entry:
   jump %loop
 loop:
   %x     = int phi [ %entry => int 1, %incr => %x.add ]
-  %cond  = boolean primitive "int_uge" (%x, int 5)
+  %cond  = boolean primitive "int_ge" (%x, int 5)
   jump_if %cond, %incr, %exit
 incr:
   %x.add = int primitive "int_add" (%x, int 1)

@@ -30,13 +30,13 @@ class GPIOUnit < Unit
   end
 
   def as_output(n, alternate:, open_drain:)
-    let cnf  = (if alternate  then 2_u32 else 0_u32 end) |
-               (if open_drain then 1_u32 else 0_u32 end)
+    let cnf  = (if alternate  then 2 else 0 end) |
+               (if open_drain then 1 else 0 end)
     self.pin_mode(n, 1, cnf)
   end
 
   def as_input(n, pull:)
-    let cnf  = (if pull then 2_u32 else 1_u32 end)
+    let cnf  = (if pull then 2 else 1 end)
     self.pin_mode(n, 0, cnf)
   end
 
