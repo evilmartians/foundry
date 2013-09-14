@@ -2,6 +2,8 @@
 
 set -e
 
+[ -f scripts/local.sh ] && . scripts/local.sh
+
 if ! [ -x vendor/_prefix/bin/menhir ]; then
   echo "Building menhir..."
   (cd vendor/menhir;
