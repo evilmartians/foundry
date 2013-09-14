@@ -5,6 +5,7 @@ def main
   Board.setup
   LCD.setup
   LCD.clear(0xFF, 0xFF, 0xFF)
+  LCD.backlight_on = true
 
   let mut cx = 10u8
   let mut cy = 10u8

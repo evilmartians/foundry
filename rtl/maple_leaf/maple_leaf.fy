@@ -3,7 +3,7 @@ class MapleLeaf
     RCC.CR = RCC.CR.set_hseon(true)
     while !RCC.CR.hserdy; end
 
-    RCC.CFGR = RCC.CFGR.set_pllmul(0b1111).set_pllsrc(true)
+    RCC.CFGR = RCC.CFGR.set_pllmul(0b0001).set_pllsrc(true)
     RCC.CR   = RCC.CR.set_pllon(true)
     while !RCC.CR.pllrdy; end
 
