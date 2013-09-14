@@ -204,12 +204,12 @@ let rec llconst_of_value llmod heap value =
       let llty = lltype_of_ty ~ptr:false metaklass in
       memoize llty (fun llvalue ->
         Llvm.set_value_name ("package." ^ (pkg.Rt.p_name :> string)) llvalue;
-        Llvm.const_named_struct llty [||]))
+        Llvm.const_null llty))
   | Rt.Class (klass, specz)
   -> (let llty = lltype_of_ty ~ptr:false (Rt.type_of_value value) in
       memoize llty (fun llvalue ->
         Llvm.set_value_name ("class." ^ (klass.Rt.k_name :> string)) llvalue;
-        Llvm.const_named_struct llty [||]))
+        Llvm.const_null llty))
   | Rt.Instance ({ Rt.i_class = klass, specz; Rt.i_slots = slots; })
   -> (let rec gen_inst klass =
         let elems = Assoc.map_list klass.Rt.k_ivars ~f:(fun name _ ->
