@@ -24,7 +24,6 @@ if [ -n "$JS_OF_OCAML" ]; then
   FOUNDRY_JS=foundry_web.js
 fi
 
-export OCAMLPATH=/usr/lib/ocaml/llvm-3.4/
 ocamlbuild -j 8 -use-ocamlfind \
   unittest/test_foundry.native  \
   src/tools/file_check.native    \
