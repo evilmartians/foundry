@@ -12,7 +12,7 @@ devrtl := metal/register.fy metal/unit.fy \
 					maple_leaf/color_lcd_shield.fy maple_leaf/maple_leaf.fy
 devrtl := $(addprefix ../rtl/,$(devrtl))
 
-devlib := volatile.ll startup32.ll cortex-m3.ll
+devlib := startup32.ll cortex-m3.ll
 devlib := $(addprefix ../lib/,$(devlib))
 
 .SUFFIXES:

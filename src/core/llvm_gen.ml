@@ -371,57 +371,37 @@ let rec gen_func llmod heap funcn =
            propagation, and uses its return type to determine an object of which
            type it should return (duh). *)
         | Rt.Class(klass, _) as cls
-        -> (let llty = lltype_of_ty cls in
+        -> (let llty = lltype_of_ty ~ptr:false cls in
             if klass.Rt.k_is_value then
               Llvm.undef llty
             else
-              let llmalloc = gen_llfunc llmod "malloc"
-                                [| Llvm.i64_type ctx |]
-                                (Llvm.pointer_type (Llvm.i8_type ctx)) in
-              let llobj = Llvm.build_call llmalloc [| Llvm.size_of llty |] "" builder in
-              Llvm.build_bitcast llobj llty id builder)
+              Llvm.build_malloc llty id builder)
         | _
         -> assert false)
 
     (* Memory manipulation. *)
     | ("mem_load" | "mem_loadv"),
-                    [ { Ssa.opcode = Ssa.Const (Rt.Unsigned (_, align)) };
-                      { Ssa.ty     = Rt.UnsignedTy (ptr_width)    } as addr ]
-    -> (let width     =
+      [ { Ssa.opcode = Ssa.Const (Rt.Unsigned (_, align)) }; addr ]
+    -> (let width =
           match instr.Ssa.ty with
           | Rt.UnsignedTy (width) -> width
           | _ -> assert false
         in
-        let align     = int_of_big_int align in
         let llret_ty  = Llvm.integer_type ctx width in
-        let lladdr    =
-          Llvm.build_inttoptr (lookup addr) (Llvm.pointer_type llret_ty) "" builder
-        in
-        let llargs    = [| lladdr              |] in
-        let llargs_ty = [| Llvm.type_of lladdr |] in
-        let name      = "foundry." ^ prim ^ ".a" ^ (string_of_int align) ^
-                        ".i" ^ (string_of_int width)
-        in
-        let llfunc    = gen_llfunc llmod name llargs_ty llret_ty in
-        Llvm.build_call llfunc llargs "" builder)
+        let lladdr    = Llvm.build_inttoptr (lookup addr) (Llvm.pointer_type llret_ty) "" builder in
+        let llload    = Llvm.build_load lladdr id builder in
+        Llvm.set_instruction_alignment (int_of_big_int align) llload;
+        Llvm.set_volatile (prim = "mem_loadv") llload;
+        llload)
 
     | ( "mem_store" | "mem_storev" ),
-                    [ { Ssa.opcode = Ssa.Const (Rt.Unsigned (_, align)) };
-                      { Ssa.ty     = Rt.UnsignedTy (ptr_width)    } as addr;
-                      { Ssa.ty     = Rt.UnsignedTy (width)        } as value ]
-    -> (let align     = int_of_big_int align in
-        let llval     = lookup value in
+      [ { Ssa.opcode = Ssa.Const (Rt.Unsigned (_, align)) }; addr; value ]
+    -> (let llval     = lookup value in
         let llval_ty  = Llvm.type_of llval in
-        let lladdr    =
-          Llvm.build_inttoptr (lookup addr) (Llvm.pointer_type llval_ty) "" builder
-        in
-        let llargs    = [| lladdr;              llval    |] in
-        let llargs_ty = [| Llvm.type_of lladdr; llval_ty |] in
-        let name      = "foundry." ^ prim ^ ".a" ^ (string_of_int align) ^
-                        ".i" ^ (string_of_int width)
-        in
-        let llfunc    = gen_llfunc llmod name llargs_ty (Llvm.void_type ctx) in
-        ignore (Llvm.build_call llfunc llargs "" builder);
+        let lladdr    = Llvm.build_inttoptr (lookup addr) (Llvm.pointer_type llval_ty) "" builder in
+        let llstore   = Llvm.build_store llval lladdr builder in
+        Llvm.set_instruction_alignment (int_of_big_int align) llstore;
+        Llvm.set_volatile (prim = "mem_storev") llstore;
         llconst_of_value Rt.Nil)
 
     (* Calling C functions. *)
