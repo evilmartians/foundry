@@ -12,7 +12,7 @@ class Register(\width) < Value
   def self.flag(name, kind, offset:)
     let mask = 1 << offset
 
-    if kind == :r || kind == :rw
+    if kind == :r || kind == :rw || kind == :rc_w0 || kind == :rc_w1
       self.define_method(name, (self) do
         @value & mask != 0
       end)
@@ -25,6 +25,18 @@ class Register(\width) < Value
         else
           self { @value = @value & ~mask }
         end
+      end)
+    end
+
+    if kind == :rc_w0
+      self.define_method(:"clear_#{name}", (self) do
+        self { @value = @value & ~mask }
+      end)
+    end
+
+    if kind == :rc_w1
+      self.define_method(:"clear_#{name}", (self) do
+        self { @value = @value | mask }
       end)
     end
   end

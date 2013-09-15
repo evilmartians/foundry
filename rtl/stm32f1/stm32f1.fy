@@ -1,4 +1,6 @@
 RCC   =  RCCUnit.new(0x4002_1000_u32)
+AFIO  = AFIOUnit.new(0x4001_0000_u32)
+EXTI  = EXTIUnit.new(0x4001_0400_u32)
 GPIOA = GPIOUnit.new(0x4001_0800_u32)
 GPIOB = GPIOUnit.new(0x4001_0C00_u32)
 GPIOC = GPIOUnit.new(0x4001_1000_u32)
