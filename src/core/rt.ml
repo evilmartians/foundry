@@ -263,7 +263,7 @@ let create_roots () =
   let kPackage    = new_class ~ancestor:kObject "Package" in
 
   let roots = {
-    last_tvar     = !last_tvar;
+    last_tvar     = 0;
 
     kClass        = kClass;
     kObject       = kObject;
@@ -325,6 +325,7 @@ let create_roots () =
                                     "width", Tvar (tvar ()); "signed", Lies;  ]));
   Table.set constants "Signed"   (Class (roots.kFixed, Assoc.sorted [
                                     "width", Tvar (tvar ()); "signed", Truth; ]));
+  roots.last_tvar <- !last_tvar;
   roots
 
 let roots = ref (create_roots ())
