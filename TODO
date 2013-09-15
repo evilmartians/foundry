@@ -1,12 +1,12 @@
 features:
- * != -> !(==)
- * (() do end) -> do || end
- * x = 1 -> let mut x = 1
- * inliner
- * better errors
- * store location map in fir
- * insert_instr
  * Rt.tvar / Rt.tvar_ty
+ * implement missing stuff in Vm
+ * (() do end) -> do || end
+ * store location in fir instructions
+ * Array -> Vector
+ * llvm_gen for vector instrinsics
+ * x = 1 -> let mut x = 1
+ * != -> !(==), <=/>=/</> -> <=>
 
 bugs:
  * faster iv type lookup
