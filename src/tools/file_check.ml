@@ -130,6 +130,9 @@ let patt_parse loc patt =
                !group) :: !defs;
       incr group;
       lex_patt_capture (re ^ "\\(") loc lexbuf)
+  (* Line-relative backreference *)
+  | "@LINE"
+  -> lex_patt_line re loc lexbuf
   (* Syntax error *)
   | name eof -> errwith "unterminated backreference" loc
   | _        -> errwith "invalid variable name in capture group" (lexeme_loc lexbuf)
@@ -140,6 +143,16 @@ let patt_parse loc patt =
   -> lex_patt (re ^ "\\)") lexbuf
   | eof
   -> errwith "unterminated capture group" loc
+  and lex_patt_line re loc = lexer
+  | "]]"
+  -> (let _, line = Location.file_line loc in
+      lex_patt (re ^ (string_of_int line)) lexbuf)
+  | ['+''-'] ['0'-'9']+ "]]"
+  -> (let _, line = Location.file_line loc in
+      Scanf.sscanf (lexeme_prefix lexbuf 2) "%d" (fun offset ->
+        lex_patt (re ^ (string_of_int (line + offset))) lexbuf))
+  | eof -> errwith "unterminated @LINE expression" loc
+  | _   -> errwith "invalid @LINE expression" (lexeme_loc lexbuf)
   in
 
   let lexbuf = Ulexing.from_utf8_string patt in

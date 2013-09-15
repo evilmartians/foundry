@@ -29,6 +29,7 @@ fi
 ocamlbuild -j 8 -use-ocamlfind \
   unittest/test_foundry.native  \
   src/tools/file_check.native    \
+  src/tools/not.native           \
   src/tools/foundry_vm.native    \
   src/tools/foundry_xfrm.native  \
   src/tools/foundry_gen.native   \

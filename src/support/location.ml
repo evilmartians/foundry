@@ -54,16 +54,21 @@ let sub loc lft rgt =
 let next_pos target (_, pos) =
   pos <= target
 
+let find_line pos =
+  let line, start = List.find (next_pos pos) !lines in
+  line, pos - start
+
 let decompose loc =
   let file, _ = List.find (next_pos (fst loc)) !files in
-  let find_line pos =
-    let line, start = List.find (next_pos pos) !lines in
-      line, pos - start
-  in file, find_line (fst loc), find_line (snd loc)
+  file, find_line (fst loc), find_line (snd loc)
+
+let file_line loc =
+  let file, _ = List.find (next_pos (fst loc)) !files in
+  file, fst (find_line (fst loc))
 
 let unpack loc =
-  let file, p = List.find (next_pos (fst loc)) !files
-  in file, (fst loc) - p, (snd loc) - p
+  let file, p = List.find (next_pos (fst loc)) !files in
+  file, (fst loc) - p, (snd loc) - p
 
 let line_source loc =
   let _, line_start = List.find (next_pos (fst loc)) !lines in

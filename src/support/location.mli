@@ -21,6 +21,7 @@ val find        : t list -> t
 
 val unpack      : t -> string * int * int
 val decompose   : t -> string * (int * int) * (int * int)
+val file_line   : t -> string * int
 
 val line_source : t -> string
 
