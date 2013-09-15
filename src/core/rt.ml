@@ -313,7 +313,6 @@ let create_roots () =
       "Symbol",       roots.kSymbol;
       "String",       roots.kString;
 
-      "Fixed",        roots.kFixed;
       "Tuple",        roots.kTuple;
       "Record",       roots.kRecord;
       "Lambda",       roots.kLambda;
@@ -321,6 +320,8 @@ let create_roots () =
       "Mixin",        roots.kMixin;
       "Package",      roots.kPackage;
     ];
+  Table.set constants "Fixed"    (Class (roots.kFixed, Assoc.sorted [
+                                    "width", Tvar (tvar ()); "signed", Tvar (tvar ()); ]));
   Table.set constants "Unsigned" (Class (roots.kFixed, Assoc.sorted [
                                     "width", Tvar (tvar ()); "signed", Lies;  ]));
   Table.set constants "Signed"   (Class (roots.kFixed, Assoc.sorted [
