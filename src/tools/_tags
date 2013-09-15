@@ -1,4 +1,5 @@
 <file_check.{ml,byte,native}>: -use_utf8str, use_utf8str_safe, package(ulex)
+<gen_vectors.{ml,byte,native}>: -use_utf8str, use_utf8str_safe
 
 <foundry_web.ml>: -use_utf8str, package(js_of_ocaml.syntax)
 <foundry_web.{ml,byte}>: package(js_of_ocaml)

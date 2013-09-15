@@ -7,4 +7,4 @@ MEMORY
 	ram (RWX)    : ORIGIN = 0x20000000, LENGTH = 0x2000
 }
 
-INCLUDE devices/common.ld
+INCLUDE devices/common32.ld

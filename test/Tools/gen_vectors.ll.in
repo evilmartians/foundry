@@ -1,0 +1,14 @@
+; RUN: %gen_vectors -input %s | %file_check %s
+; CHECK:      declare extern_weak void @_foo()
+; CHECK-NEXT: declare extern_weak void @_bar()
+; CHECK-NEXT: declare extern_weak void @_baz()
+; CHECK:      @__vectors__ = appending global [4 x i32*] [
+; CHECK-NEXT:   i32* bitcast(void()* @_foo to i32*),
+; CHECK-NEXT:   i32* bitcast(void()* @_bar to i32*),
+; CHECK-NEXT:   i32* null, ; reserved
+; CHECK-NEXT:   i32* bitcast(void()* @_baz to i32*)
+; CHECK-NEXT: ], section ".vectors"
+foo
+BAR
+-
+baz
