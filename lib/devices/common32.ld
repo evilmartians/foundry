@@ -4,7 +4,7 @@ ENTRY(_startup)
 SECTIONS {
 	.vectors : {
 		*(.vectors)
-	} > vectors
+	} > flash
 
 	.text : {
 		*(.text)
