@@ -217,7 +217,12 @@ let run_on_function passmgr capsule funcn =
             -> (unify align_ty (Rt.UnsignedTy 32);
                 unify addr_ty  (Rt.UnsignedTy 32);
                 if prim = "mem_store" || prim = "mem_storev" then
-                  unify instr.ty Rt.NilTy)
+                  unify instr.ty Rt.NilTy
+                else
+                  unify instr.ty (Rt.Class (!Rt.roots.Rt.kFixed, Assoc.sorted [
+                                              "width",  (Rt.Tvar (Rt.new_tvar ()));
+                                              "signed", (Rt.Tvar (Rt.new_tvar ()));
+                                            ])))
             | _
             -> assert false)
 
