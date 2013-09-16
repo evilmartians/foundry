@@ -43,21 +43,21 @@ let append_int entry value =
                         Assoc.sorted ["width", tvar (); "signed", tvar ()]) in
   append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("int_coerce", [value]))
 
+let append_const entry value =
+  match value with
+  | Rt.Integer _ -> append_int entry value
+  | _            -> Ssa.const value
+
 let load ~state entry name =
   let append_load ty =
     let instr = append entry ~ty ~opcode:(Ssa.LVarLoadInstr (state.frame, name)) in
     Ssa.set_id instr ("lvar." ^ name);
     instr
   in
-  let append_const value =
-    match value with
-    | Rt.Integer _ -> append_int entry value
-    | _            -> Ssa.const value
-  in
   let rec lookup_sta env =
     match Table.get env.Rt.e_bindings name with
     | Some ({ Rt.b_kind = Syntax.LVarImmutable } as binding)
-    -> append_const binding.Rt.b_value
+    -> append_const entry binding.Rt.b_value
     | Some binding
     -> append_load (Rt.type_of_value binding.Rt.b_value)
     | None
@@ -159,7 +159,7 @@ let rec ssa_of_expr ~entry ~state ~expr =
 
   (* Constants. *)
   | Syntax.Const (_, name)
-  -> entry, Ssa.const (Rt.cenv_lookup state.const_env name)
+  -> entry, append_const entry (Rt.cenv_lookup state.const_env name)
 
   (* Types. *)
   | Syntax.TVar (_, name)
