@@ -27,7 +27,7 @@ class Unit < Value
     end
   end
 
-  def self.registers(name, kind, offset:, align:, spacing: 0, impl:,
+  def self.registers(name, kind, offset:, spacing: 0, count:, align:, impl:,
                      invariant_set: 0, invariant_clear: 0)
     if kind == :r || kind == :rw || kind == :rwc
       self.define_method(name, (self, n) do

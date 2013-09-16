@@ -45,7 +45,7 @@ class Register(\width) < Value
     end
   end
 
-  def self.flags(name, kind, offset:, spacing: 0)
+  def self.flags(name, kind, offset:, spacing: 0, count:)
     if kind == :r || kind == :rw || kind == :rc_w0 || kind == :rc_w1 || kind == :t
       self.define_method(name, (self, n) do
         let mask = 1 << (offset + n * (1 + spacing))
@@ -109,7 +109,7 @@ class Register(\width) < Value
     end
   end
 
-  def self.fields(name, kind, offset:, width:, spacing: 0)
+  def self.fields(name, kind, offset:, spacing: 0, count:, width:)
     let mask = (1 << width) - 1
 
     if kind == :r || kind == :rw

@@ -1,15 +1,15 @@
 class GPIOUnit < Unit
   class GPIO_CR < Register(32)
-    self.fields(:mode, :rw, offset: 0, width: 2, spacing: 2)
-    self.fields(:cnf,  :rw, offset: 2, width: 2, spacing: 2)
+    self.fields(:mode, :rw, offset: 0, count: 16, width: 2, spacing: 2)
+    self.fields(:cnf,  :rw, offset: 2, count: 16, width: 2, spacing: 2)
   end
 
   class GPIO_IDR < Register(32)
-    self.flags(:idr,   :r,  offset: 0)
+    self.flags(:idr,   :r,  offset: 0, count: 32)
   end
 
   class GPIO_ODR < Register(32)
-    self.flags(:odr,   :rw, offset: 0)
+    self.flags(:odr,   :rw, offset: 0, count: 32)
   end
 
   self.register(:CRL,  :rw, offset: 0x00, align: 4, impl: GPIO_CR)

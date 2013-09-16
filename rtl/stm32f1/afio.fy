@@ -26,7 +26,7 @@ class AFIOUnit < Unit
   end
 
   class AFIO_EXTICR < Register(32)
-    self.fields(:exti, :rw, offset: 0, width: 4)
+    self.fields(:exti, :rw, offset: 0, count: 4, width: 4)
   end
 
   class AFIO_MAPR2 < Register(32)
@@ -40,6 +40,6 @@ class AFIOUnit < Unit
 
   self.register(:EVCR,    :rw, offset: 0x00, align: 4, impl: AFIO_EVCR)
   self.register(:MAPR,    :rw, offset: 0x04, align: 4, impl: AFIO_MAPR)
-  self.registers(:EXTICR, :rw, offset: 0x08, align: 4, impl: AFIO_EXTICR)
+  self.registers(:EXTICR, :rw, offset: 0x08, count: 4, align: 4, impl: AFIO_EXTICR)
   self.register(:MAPR2,   :rw, offset: 0x1C, align: 4, impl: AFIO_MAPR2)
 end

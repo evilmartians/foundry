@@ -54,13 +54,12 @@ class USBUnit < Unit
     self.flag(:ctr_rx,    :rc_w0, offset: 15)
   end
 
-  self.registers(:USB_EPnR, :rwc, offset: 0x00, align: 4, impl: USB_EPnR,
-                                  invariant_set:   0b1000_0000_1000_0000,
-                                  invariant_clear: 0b0111_0000_0111_0000)
-
-  self.register(:CNTR,  :rw, offset: 0x40, align: 4, impl: USB_CNTR)
-  self.register(:ISTR,  :rw, offset: 0x44, align: 4, impl: USB_ISTR,
-                             invariant_set: 0b0111_1111_0000_0000)
-  self.register(:FNR,   :r,  offset: 0x48, align: 4, impl: USB_FNR)
-  self.register(:DADDR, :r,  offset: 0x4C, align: 4, impl: USB_DADDR)
+  self.registers(:EPnR, :rwc, offset: 0x00, count: 8, align: 4, impl: USB_EPnR,
+                              invariant_set:   0b1000_0000_1000_0000,
+                              invariant_clear: 0b0111_0000_0111_0000)
+  self.register(:CNTR,  :rw,  offset: 0x40, align: 4, impl: USB_CNTR)
+  self.register(:ISTR,  :rwc, offset: 0x44, align: 4, impl: USB_ISTR,
+                              invariant_set:   0b0111_1111_0000_0000)
+  self.register(:FNR,   :r,   offset: 0x48, align: 4, impl: USB_FNR)
+  self.register(:DADDR, :r,   offset: 0x4C, align: 4, impl: USB_DADDR)
 end
