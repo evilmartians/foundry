@@ -12,7 +12,7 @@ class Register(\width) < Value
   def self.flag(name, kind, offset:)
     let mask = 1 << offset
 
-    if kind == :r || kind == :rw || kind == :rc_w0 || kind == :rc_w1
+    if kind == :r || kind == :rw || kind == :rc_w0 || kind == :rc_w1 || kind == :t
       self.define_method(name, (self) do
         @value & mask != 0
       end)
@@ -34,15 +34,19 @@ class Register(\width) < Value
       end)
     end
 
-    if kind == :rc_w1
-      self.define_method(:"clear_#{name}", (self) do
+    if kind == :rc_w1 || kind == :t
+      let meth = (if    kind == :rc_w1 then :"clear_#{name}"
+                  elsif kind == :t     then :"toggle_#{name}"
+                  end)
+
+      self.define_method(meth, (self) do
         self { @value = @value | mask }
       end)
     end
   end
 
   def self.flags(name, kind, offset:, spacing: 0)
-    if kind == :r || kind == :rw
+    if kind == :r || kind == :rw || kind == :rc_w0 || kind == :rc_w1 || kind == :t
       self.define_method(name, (self, n) do
         let mask = 1 << (offset + n * (1 + spacing))
 
@@ -61,19 +65,43 @@ class Register(\width) < Value
         end
       end)
     end
+
+    if kind == :rc_w0
+      self.define_method(:"clear_#{name}", (self, n) do
+        let mask = 1 << (offset + n * (1 + spacing))
+
+        self { @value = @value & ~mask }
+      end)
+    end
+
+    if kind == :rc_w1 || kind == :t
+      let meth = (if    kind == :rc_w1 then :"clear_#{name}"
+                  elsif kind == :t     then :"toggle_#{name}"
+                  end)
+
+      self.define_method(meth, (self, n) do
+        let mask = 1 << (offset + n * (1 + spacing))
+
+        self { @value = @value | mask }
+      end)
+    end
   end
 
   def self.field(name, kind, offset:, width:)
     let mask = (1 << width) - 1
 
-    if kind == :r || kind == :rw
+    if kind == :r || kind == :rw || kind == :t
       self.define_method(name, (self) do
         (@value >> offset) & mask
       end)
     end
 
-    if kind == :w || kind == :rw
-      self.define_method(:"set_#{name}", (self, field_value) do
+    if kind == :w || kind == :rw || kind == :t
+      let meth = (if kind == :t then :"toggle_#{name}"
+                  else               :"set_#{name}"
+                  end)
+
+      self.define_method(meth, (self, field_value) do
         self do
           @value = @value & ~(mask << offset) | ((field_value & mask) << offset)
         end

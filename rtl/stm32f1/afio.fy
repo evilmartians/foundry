@@ -40,9 +40,6 @@ class AFIOUnit < Unit
 
   self.register(:EVCR,    :rw, offset: 0x00, align: 4, impl: AFIO_EVCR)
   self.register(:MAPR,    :rw, offset: 0x04, align: 4, impl: AFIO_MAPR)
-  self.register(:EXTICR1, :rw, offset: 0x08, align: 4, impl: AFIO_EXTICR)
-  self.register(:EXTICR2, :rw, offset: 0x0C, align: 4, impl: AFIO_EXTICR)
-  self.register(:EXTICR3, :rw, offset: 0x10, align: 4, impl: AFIO_EXTICR)
-  self.register(:EXTICR4, :rw, offset: 0x14, align: 4, impl: AFIO_EXTICR)
+  self.registers(:EXTICR, :rw, offset: 0x08, align: 4, impl: AFIO_EXTICR)
   self.register(:MAPR2,   :rw, offset: 0x1C, align: 4, impl: AFIO_MAPR2)
 end
