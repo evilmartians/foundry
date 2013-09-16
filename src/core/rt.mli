@@ -95,6 +95,7 @@ and lambda_arg = {
           la_location     : Location.t;
           la_kind         : Syntax.lvar_kind;
           la_name         : string;
+          la_default      : Syntax.expr option;
 }
 and lambda_args = lambda_arg list
 and package = {

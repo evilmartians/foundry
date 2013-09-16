@@ -1,6 +1,7 @@
 %token <Unicode.utf8s>      Name_Local
 %token <Unicode.utf8s>      Name_Global
 %token <Unicode.utf8s>      Name_Label
+%token <Unicode.utf8s>      Name_Syntax
 
 %token <Unicode.utf8s>      Lit_String
 %token <Fy_big_int.big_int> Lit_Integer
@@ -54,6 +55,8 @@
 %token Type_env
 %token Const_env
 %token Args
+%token Default
+%token Body
 
 %token Metaclass
 %token Objectclass

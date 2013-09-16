@@ -611,9 +611,17 @@ and eval_lambda ?(is_initializer=false) body args kwargs =
     -> (let value =
           match Assoc.find_option kwargs kw with
           | Some v -> v
-          | None -> assert false
+          | None -> exc_fail ("Argument " ^ kw ^ " is expected but not provided") [arg.la_location]
         in
         bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen:(kw :: kwseen))
+
+    | arg :: args, LambdaKwOptArg (kw, ty) :: arg_tys, rest
+    -> (let kwseen, value =
+          match Assoc.find_option kwargs kw with
+          | Some v -> kw :: kwseen, v
+          | None   -> kwseen, eval_expr env (Option.get arg.la_default)
+        in
+        bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen)
 
     | arg :: args, LambdaKwRest ty :: arg_tys, rest
     -> (let value  = Record (Assoc.filter kwargs ~f:(fun kw _ -> List.mem kw kwseen)) in

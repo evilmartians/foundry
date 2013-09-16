@@ -148,6 +148,16 @@ and expr        =
 and exprs       = expr list
 with sexp
 
+module ExprsIdentity =
+struct
+  type t = exprs
+
+  let equal = (=)
+  let hash  = Hashtbl.hash
+end
+
+module Exprstbl = Hashtbl.Make(ExprsIdentity)
+
 let loc expr =
   match expr with
   | Self (loc)    | Truth (loc) | Lies (loc)   | Nil (loc)

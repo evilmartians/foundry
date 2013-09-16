@@ -24,29 +24,50 @@ let string_of_loc loc =
 (* Serializer state *)
 
 type state = {
-          symtab  : Symtab.t;
-          globals : string Valuetbl.t;
-  mutable image   : string
+          syntax_symtab : Symtab.t;
+          syntax        : string Syntax.Exprstbl.t;
+          global_symtab : Symtab.t;
+          globals       : string Valuetbl.t;
+  mutable image         : string;
 }
 
 let create_state capsule_symtab =
-  { symtab  = Symtab.copy capsule_symtab;
-    globals = Valuetbl.create 10;
-    image   = ""; }
+  { syntax_symtab = Symtab.create ();
+    syntax        = Syntax.Exprstbl.create 10;
+    global_symtab = Symtab.copy capsule_symtab;
+    globals       = Valuetbl.create 10;
+    image         = ""; }
 
-let bind state value id printer =
+let bind_value state value id printer =
   let id =
     try
       Valuetbl.find state.globals value
     with Not_found ->
       (* Assign a fresh unique identifier. *)
-      let id = Symtab.add state.symtab id in
+      let id = Symtab.add state.global_symtab id in
       Valuetbl.add state.globals value id;
       (* Append serialized entity to the image. *)
       let entity = "@" ^ (escape_as_ident id) ^ " = " ^ (printer ()) in
       state.image <- state.image ^ entity ^ "\n";
       id
-  in "@" ^ (escape_as_ident id)
+  in
+  "@" ^ (escape_as_ident id)
+
+let bind_syntax state exprs =
+  let id =
+    try  Syntax.Exprstbl.find state.syntax exprs
+    with Not_found ->
+      (* Assign a fresh unique identifier. *)
+      let id = Symtab.add state.syntax_symtab "" in
+      Syntax.Exprstbl.add state.syntax exprs id;
+      (* Append serialized entity to the image. *)
+      let entity = "#" ^ (escape_as_ident id) ^ " = sexp " ^
+                   (Unicode.assert_utf8s (Sexplib.Sexp.to_string_hum
+                      (Syntax.sexp_of_exprs exprs))) ^ "\n" in
+      state.image <- state.image ^ entity ^ "\n";
+      id
+  in
+  "#" ^ (escape_as_ident id)
 
 (* Basic operations *)
 
@@ -136,7 +157,7 @@ and string_of_array state array =
   assert false
 
 and string_of_klass state klass =
-  bind state (Class (klass, Assoc.empty)) ("c." ^ klass.k_name) (fun () ->
+  bind_value state (Class (klass, Assoc.empty)) ("c." ^ klass.k_name) (fun () ->
     "class " ^ (escape_as_literal klass.k_name) ^ " {\n" ^
       "  metaclass " ^ (string_of_klass state klass.k_metaclass) ^ "\n" ^
       (Option.map_default (fun klass ->
@@ -166,7 +187,7 @@ and string_of_klass state klass =
     "}\n")
 
 and string_of_mixin state mixin =
-  bind state (Mixin (mixin, Assoc.empty)) ("m." ^ mixin.m_name) (fun () ->
+  bind_value state (Mixin (mixin, Assoc.empty)) ("m." ^ mixin.m_name) (fun () ->
     "mixin " ^ (escape_as_literal mixin.m_name) ^ " {\n" ^
       "  metaclass " ^ (string_of_klass state mixin.m_metaclass) ^ "\n" ^
       (string_of_some (Assoc.is_empty mixin.m_methods) (fun () ->
@@ -208,7 +229,7 @@ and string_of_method state meth =
     (string_of_lambda state meth.im_body)
 
 and string_of_lambda state lam =
-  bind state (Lambda lam) "" (fun () ->
+  bind_value state (Lambda lam) "" (fun () ->
     "lambda " ^ (string_of_loc lam.l_location) ^ " {\n" ^
       "  local_env " ^ (string_of_local_env state lam.l_local_env) ^ "\n" ^
       "  type_env {" ^
@@ -221,8 +242,7 @@ and string_of_lambda state lam =
       "  args [" ^
         (string_of_seq lam.l_args (string_of_lambda_arg state)) ^
       "]\n" ^
-      "  body " ^ (Unicode.adopt_utf8s
-          (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_exprs lam.l_body))) ^ "\n" ^
+      "  body " ^ (bind_syntax state lam.l_body) ^ "\n" ^
     "}\n")
 
 and string_of_lvar_kind kind =
@@ -233,7 +253,10 @@ and string_of_lvar_kind kind =
 and string_of_lambda_arg state larg =
   (string_of_loc larg.la_location) ^ " " ^
     (string_of_lvar_kind larg.la_kind) ^ " " ^
-    (escape_as_literal larg.la_name)
+    (escape_as_literal larg.la_name) ^
+    (Option.map_default (fun expr ->
+        " default " ^ (bind_syntax state [expr]))
+      "" larg.la_default)
 
 and string_of_bindings_ty state bindings =
   "{" ^
@@ -258,7 +281,7 @@ and string_of_bindings state bindings =
   "}"
 
 and string_of_local_env state lenv =
-  bind state (Environment lenv) ("") (fun () ->
+  bind_value state (Environment lenv) ("") (fun () ->
     "environment {\n" ^
       (Option.map_default (fun parent ->
           "  parent " ^ (string_of_local_env state parent) ^ "\n")
@@ -267,7 +290,7 @@ and string_of_local_env state lenv =
     "}\n")
 
 and string_of_package state package =
-  bind state (Package package) ("p." ^ package.p_name) (fun () ->
+  bind_value state (Package package) ("p." ^ package.p_name) (fun () ->
     "package " ^ (escape_as_literal package.p_name) ^ " {\n" ^
       "  metaclass " ^ (string_of_klass state package.p_metaclass) ^ "\n" ^
       (string_of_some (Table.is_empty package.p_constants) (fun () ->
@@ -278,7 +301,7 @@ and string_of_package state package =
     "}\n")
 
 and string_of_instance state inst =
-  bind state (Instance inst) "" (fun () ->
+  bind_value state (Instance inst) "" (fun () ->
     let klass, specz = inst.i_class in
     "instance " ^ (string_of_klass state klass) ^
       "{" ^ (string_of_assoc_inline specz (string_of_value state)) ^ "} {" ^

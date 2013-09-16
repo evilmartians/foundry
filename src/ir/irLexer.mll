@@ -16,6 +16,8 @@ rule lex = parse
 | '@' '"' ([^'"']+ as n) '"' { Name_Global (Unicode.adopt_utf8s n) }
 | (name as n) ':'            { Name_Label  (Unicode.adopt_utf8s n) }
 | '"' ([^'"']+ as n) '"' ':' { Name_Label  (Unicode.adopt_utf8s n) }
+| '#' (name as n)            { Name_Syntax (Unicode.adopt_utf8s n) }
+| '#' '"' ([^'"']+ as n) '"' { Name_Syntax (Unicode.adopt_utf8s n) }
 
 | '"' ([^'"']+ as s) '"' { Lit_String  (Unicode.adopt_utf8s s) }
 | ['0'-'9']+ as d        { Lit_Integer (big_int_of_string d) }
@@ -66,6 +68,8 @@ rule lex = parse
 | "type_env"      { Type_env }
 | "const_env"     { Const_env }
 | "args"          { Args }
+| "default"       { Default }
+| "body"          { Body }
 
 | "metaclass"     { Metaclass }
 | "objectclass"   { Objectclass }
@@ -77,7 +81,7 @@ rule lex = parse
 | "appended"      { Appended }
 | "constants"     { Constants }
 
-| "body"
+| "sexp"
   { Syntax_Exprs (Syntax.exprs_of_sexp (Sexplib.Sexp.scan_sexp lexbuf)) }
 
 | "code" (([^';']+ ';'?)+ as code) ";;"

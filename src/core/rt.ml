@@ -95,6 +95,7 @@ and lambda_arg = {
           la_location     : Location.t;
           la_kind         : Syntax.lvar_kind;
           la_name         : string;
+          la_default      : Syntax.expr option;
 }
 and lambda_args = lambda_arg list
 and package = {
@@ -456,13 +457,20 @@ let lambda_args_of_formal_args formal_args =
       | Syntax.FormalSelf((loc,_))
       -> { la_location = loc;
            la_kind     = Syntax.LVarImmutable;
-           la_name     = "self"; }
-      | Syntax.FormalArg((loc,_),lv)        | Syntax.FormalOptArg((loc,_),lv,_)
-      | Syntax.FormalRest((loc,_),lv)       | Syntax.FormalKwArg((loc,_),lv)
-      | Syntax.FormalKwOptArg((loc,_),lv,_) | Syntax.FormalKwRest((loc,_),lv)
+           la_name     = "self";
+           la_default  = None; }
+      | Syntax.FormalArg((loc,_), lv)  | Syntax.FormalKwArg((loc,_), lv)
+      | Syntax.FormalRest((loc,_), lv) | Syntax.FormalKwRest((loc,_), lv)
       -> { la_location = loc;
            la_kind     = fst lv;
-           la_name     = snd lv; })
+           la_name     = snd lv;
+           la_default  = None; }
+      | Syntax.FormalKwOptArg((loc,_), lv, default)
+      | Syntax.FormalOptArg((loc,_), lv, default)
+      -> { la_location = loc;
+           la_kind     = fst lv;
+           la_name     = snd lv;
+           la_default  = Some default })
     formal_args
 
 let tys_of_lambda_ty_elems lambda_args =

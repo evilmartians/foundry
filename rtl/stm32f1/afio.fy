@@ -26,7 +26,7 @@ class AFIOUnit < Unit
   end
 
   class AFIO_EXTICR < Register(32)
-    self.fields(:exti, :rw, offset: 0, width: 4, spacing: 0)
+    self.fields(:exti, :rw, offset: 0, width: 4)
   end
 
   class AFIO_MAPR2 < Register(32)

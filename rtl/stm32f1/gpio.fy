@@ -5,11 +5,11 @@ class GPIOUnit < Unit
   end
 
   class GPIO_IDR < Register(32)
-    self.flags(:idr,   :r,  offset: 0, spacing: 0)
+    self.flags(:idr,   :r,  offset: 0)
   end
 
   class GPIO_ODR < Register(32)
-    self.flags(:odr,   :rw, offset: 0, spacing: 0)
+    self.flags(:odr,   :rw, offset: 0)
   end
 
   self.register(:CRL,  :rw, offset: 0x00, align: 4, impl: GPIO_CR)
