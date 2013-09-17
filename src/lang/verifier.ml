@@ -79,6 +79,14 @@ and check_ty cx ty =
   | TypeSplice(_,expr)
   -> check_expr cx expr
 
+and check_access cx loc name =
+  if name = "" then
+    ["Variable name `_' is a placeholder and can not be accessed.", [loc]]
+  else
+    match lookup cx.env name with
+    | Some binding -> []
+    | None         -> ["Local variable `" ^ name ^ "' is not bound.", [loc]]
+
 and check_assign cx lhs rhs =
   match lhs with
   | Var((loc,_),name)
@@ -210,6 +218,7 @@ and check_expr cx expr =
   -> (let rec check_elem elem =
         match elem with
         | RecordElem(_,_,expr)  -> check_expr cx expr
+        | RecordPunElem((loc,_),lvar) -> check_access cx loc lvar
         | RecordSplice(_,expr)  -> check_expr cx expr
         | RecordPair(_,lhs,rhs) -> check_expr cx @: [lhs; rhs]
       in check_elem @: elems)
@@ -220,12 +229,7 @@ and check_expr cx expr =
         | QuoteSplice(_,expr) -> check_expr cx expr
       in check_elem @: elems)
   | Var((loc, _), name)
-  -> (if name = "" then
-        ["Variable name `_' is a placeholder and can not be accessed.", [loc]]
-      else
-        match lookup cx.env name with
-        | Some binding -> []
-        | None -> ["Local variable `" ^ name ^ "' is not declared.", [loc]])
+  -> check_access cx loc name
   | Assign(_, lhs, rhs) | OpAssign(_, lhs, _, rhs)
   | OrAssign(_, lhs, rhs) | AndAssign(_, lhs, rhs)
   -> check_assign cx lhs rhs
@@ -257,6 +261,8 @@ and check_expr cx expr =
         -> check_expr cx expr
         | ActualKwPair(_,lhs,rhs)
         -> check_expr cx @: [lhs; rhs]
+        | ActualKwPunArg((loc,_),lvar)
+        -> check_access cx loc lvar
       in
       let ds = check_expr cx expr in
       ds @ (check_arg @: args))

@@ -129,7 +129,10 @@
 
    record_elem: id=Id_LABEL expr=expr
                 { let (label_loc, label) = id in
-                    Syntax.RecordElem (op_unary label_loc expr, label, expr) }
+                  Syntax.RecordElem (op_unary label_loc expr, label, expr) }
+              | id=Id_LABEL
+                { let (label_loc, label) = id in
+                  Syntax.RecordPunElem (nullary label_loc, label) }
               | lhs=expr tk=Tk_ROCKET rhs=expr
                 { Syntax.RecordPair (op_binary lhs tk rhs, lhs, rhs) }
               | op=Tk_DSTAR expr=expr
@@ -252,7 +255,10 @@
                 { Syntax.ActualSplice (op_unary (fst op) expr, expr) }
               | id=Id_LABEL expr=expr
                 { let (label_loc, label) = id in
-                    Syntax.ActualKwArg (op_unary label_loc expr, label, expr) }
+                  Syntax.ActualKwArg (op_unary label_loc expr, label, expr) }
+              | id=Id_LABEL
+                { let (label_loc, label) = id in
+                  Syntax.ActualKwPunArg (nullary label_loc, label) }
               | op=Tk_DSTAR expr=expr
                 { Syntax.ActualKwSplice (op_unary (fst op) expr, expr) }
 
@@ -439,6 +445,11 @@
                 { let (loc, name) = id in Syntax.IVar (nullary loc, name) }
               | id=Id_CONST
                 { let (loc, name) = id in Syntax.Const (nullary loc, name) }
+
+              | recv=expr op=Tk_DOT id=Id_METHOD lp=Tk_LPAREN args=args rp=Tk_RPAREN
+                { let (name_loc, name) = id in
+                  Syntax.Send (send_method recv op name_loc lp rp,
+                               recv, name, args) }
 
               | recv=expr op=Tk_DOT id=Id_METHOD
                 { let (name_loc, name) = id in

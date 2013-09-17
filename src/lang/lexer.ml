@@ -63,7 +63,8 @@ let unexpected state lexbuf =
 
 let regexp w_space     = [' ' '\t']+
 let regexp w_newline   = '\n' | "\r\n"
-let regexp w_any       = w_space | w_newline
+let regexp w_comment   = '#' [^'\n']*
+let regexp w_any       = w_space | w_newline | w_comment
 
 let regexp digits      = ['0'-'9']+
 let regexp hexdigits   = ['0'-'9' 'a'-'f' 'A'-'F']+
@@ -94,7 +95,7 @@ let rec lex_code state = lexer
                       expr_begin state true;
                       Tk_NEWLINE (locate state lexbuf)
                     end)
-| '#' [^'\n']*  -> lex_code state lexbuf
+| w_comment     -> lex_code state lexbuf
 
 (* Punctuation *)
 | operator '=' -> expr_begin state true; Tk_OP_ASGN  (locate state lexbuf, sub_lexeme lexbuf 0 (-1))

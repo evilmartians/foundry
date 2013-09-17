@@ -72,10 +72,13 @@ let rec eval_tuple env elem =
       | Tuple(_) as t -> t
       | o -> exc_type "Tuple" o [Syntax.loc expr])
 
-and eval_record env elem =
+and eval_record ((lenv, tenv, cenv) as env) elem =
   match elem with
   | Syntax.RecordElem(_,k,v)
-  -> Record (Assoc.sorted [k, (eval_expr env v)])
+  -> Record (Assoc.sorted [k, eval_expr env v])
+
+  | Syntax.RecordPunElem(_,k)
+  -> Record (Assoc.sorted [k, lenv_lookup lenv k])
 
   | Syntax.RecordSplice(_,expr)
   -> (match (eval_expr env expr) with
@@ -251,7 +254,7 @@ and eval_closure_ty (lenv, tenv, cenv) formal_args ty_expr =
       let ty = List.map lambda_elem_ty_of_formal_arg formal_args, Tvar (new_tvar ()) in
       tenv, ty, lambda_args)
 
-and eval_args env lst =
+and eval_args ((lenv, tenv, cenv) as env) lst =
   let rec eval_args args =
     match args with
     | Syntax.ActualArg(_,arg) :: rest
@@ -269,6 +272,10 @@ and eval_args env lst =
     match args with
     | Syntax.ActualKwArg(_,k,v) :: rest
     -> (let assoc = Assoc.add assoc k (eval_expr env v) in
+        eval_kwargs rest assoc)
+
+    | Syntax.ActualKwPunArg(_,k) :: rest
+    -> (let assoc = Assoc.add assoc k (lenv_lookup lenv k) in
         eval_kwargs rest assoc)
 
     | Syntax.ActualKwSplice(_,expr) :: rest
