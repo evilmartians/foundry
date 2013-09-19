@@ -219,6 +219,9 @@ let rec ssa_of_expr ~state ~entry ~expr =
       ignore (send entry receiver (selector ^ "=") args kwargs);
       entry, value)
 
+  | Syntax.Assign (_, _, _)
+  -> assert false
+
   | Syntax.OpAssign (_, Syntax.Var (_, name), selector, expr)
   -> (let entry, arg   = ssa_of_expr ~state ~entry ~expr in
       let value        = load entry name in
@@ -241,6 +244,9 @@ let rec ssa_of_expr ~state ~entry ~expr =
       let args,  kwargs   = send_args entry [receiver; value'] in
       ignore (send entry receiver (selector ^ "=") args kwargs);
       entry, value')
+
+  | Syntax.OpAssign (_, _, _, _)
+  -> assert false
 
   | Syntax.Let (_, pattern, _ty, expr)
   -> ssa_of_pattern ~state ~entry ~pattern ~expr
@@ -276,8 +282,8 @@ let rec ssa_of_expr ~state ~entry ~expr =
       if false_entry != head then
         ignore (append false_entry ~opcode:(Ssa.JumpInstr tail));
       tail, append tail ~ty:(tvar ())
-                ~opcode:(Ssa.PhiInstr [true_entry,  true_value;
-                                       false_entry, false_value]))
+                        ~opcode:(Ssa.PhiInstr [true_entry,  true_value;
+                                               false_entry, false_value]))
 
   | Syntax.While (_, cond, exprs)
   | Syntax.Until (_, cond, exprs)
@@ -312,8 +318,8 @@ let rec ssa_of_expr ~state ~entry ~expr =
       in
       ignore (append head ~opcode:(Ssa.JumpIfInstr (lhs_value, if_true, if_false)));
       tail, append tail ~ty:(tvar ())
-                ~opcode:(Ssa.PhiInstr [head, lhs_value;
-                                       body, rhs_value]))
+                        ~opcode:(Ssa.PhiInstr [head, lhs_value;
+                                               body, rhs_value]))
 
   | Syntax.Not (_, expr)
   -> (let entry, value = ssa_of_expr ~state ~entry ~expr in
@@ -341,14 +347,18 @@ let rec ssa_of_expr ~state ~entry ~expr =
 
   | Syntax.InvokePrimitive (_, name, operands)
   -> (let entry, operands = ssa_of_exprs ~state ~entry ~exprs:operands in
-      entry, append entry
-              ~ty:(tvar ())
-              ~opcode:(Ssa.PrimitiveInstr (name, List.rev operands)))
+      entry, append entry ~ty:(tvar ())
+                          ~opcode:(Ssa.PrimitiveInstr (name, List.rev operands)))
 
-  | _
-  -> failwith ("ssa_of_expr: " ^
-        (Unicode.assert_utf8s
-          (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))))
+  | Syntax.Quote (_, _, _) | Syntax.Super (_, _) | Syntax.Unless (_, _, _)
+  | Syntax.OrAssign (_, _, _) | Syntax.AndAssign (_, _, _)
+  -> failwith ("cannot ssa_gen " ^
+               (Unicode.assert_utf8s
+                (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));
+
+  | Syntax.Class (_, _, _, _, _) | Syntax.DefMethod (_, _, _, _, _)
+  | Syntax.DefSelfMethod (_, _, _, _, _) | Syntax.DefIVar (_, _, _, _)
+  -> failwith "no metaprogramming in ssa"
 
 and ssa_of_exprs ~state ~entry ~exprs =
   List.fold_left
