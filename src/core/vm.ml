@@ -5,22 +5,45 @@ open Rt
 
 (* Eval helper routines *)
 
-type env = local_env * type_env * const_env ref
+type env = {
+          selector  : string option;
+          local_env : local_env;
+          type_env  : type_env;
+  mutable const_env : const_env;
+}
 
 let env_create () =
-  let lenv = lenv_create None
-  and tenv = tenv_create ()
-  and cenv = cenv_extend cenv_empty !roots.pToplevel in
-  lenv_bind lenv "self" ~value:(Package !roots.pToplevel)
-                        ~kind:Syntax.LVarImmutable
-                        ~loc:Location.empty;
-  lenv, tenv, ref cenv
+  let env = {
+     selector = None;
+    local_env = lenv_create None;
+     type_env = tenv_create ();
+    const_env = cenv_extend cenv_empty !roots.pToplevel
+  }
+  in
+  lenv_bind env.local_env "self" ~value:(Package !roots.pToplevel)
+                                 ~kind:Syntax.LVarImmutable
+                                 ~loc:Location.empty;
+  env
 
 let rec ivars_of_klass klass =
   let ivars = Assoc.keys klass.k_ivars in
   match klass.k_ancestor with
   | Some ancestor -> List.merge compare ivars (ivars_of_klass ancestor)
   | None -> ivars
+
+let lookup_method klass selector =
+  let rec lookup' klass' =
+    let method_table = klass'.k_methods in
+    try
+      Some (Assoc.find method_table selector)
+    with Not_found ->
+      match klass'.k_ancestor with
+      | Some ancestor
+      -> lookup' ancestor
+      | None
+      -> None
+  in
+  lookup' klass
 
 let concat_tuple lhs rhs =
   match lhs, rhs with
@@ -81,7 +104,7 @@ let rec eval_tuple env elem =
       | Tuple(_) as t -> t
       | o -> exc_type "Tuple" o [Syntax.loc expr])
 
-and eval_record ((lenv, tenv, cenv) as env) elem =
+and eval_record env elem =
   match elem with
   | Syntax.RecordElem(_,k,v)
   -> Record (Assoc.sorted [k, eval_expr env v])
@@ -114,12 +137,12 @@ and eval_string env elem =
           | String str -> str
           | _ -> exc_type "string" value [loc]))
 
-and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
+and eval_pattern env lhs value =
   match lhs with
-  | Syntax.PatVariable((loc,_),(kind,name))
-  -> lenv_bind lenv name ~kind ~value ~loc
+  | Syntax.PatVariable((loc,_), (kind, name))
+  -> lenv_bind env.local_env name ~kind ~value ~loc
 
-  | Syntax.PatTuple((loc,_),pats)
+  | Syntax.PatTuple((loc,_), pats)
   -> (match value with
       | Tuple(xs)
       -> (if List.length(xs) = List.length(pats) then
@@ -133,46 +156,38 @@ and eval_pattern ((lenv, tenv, cenv) as env) lhs value =
 
   | _ -> assert false
 
-and eval_assign (lenv, tenv, cenv) lhs value =
+and eval_assign env lhs value =
   match lhs with
   | Syntax.Var((loc,_), name)
-  -> lenv_mutate lenv name ~value
+  -> lenv_mutate env.local_env name ~value
   | Syntax.Const((loc,_), name)
   -> (try
-        cenv_bind !cenv name value
+        cenv_bind env.const_env name value
       with CEnvAlreadyBound value ->
         exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value) ^ ".") [loc])
   | Syntax.IVar((loc,_), name)
-  -> (let self  = lenv_lookup lenv "self" in
-      let klass = Rt.klass_of_value self  in
-      if not (List.mem name (klass_ivars klass)) then
-        exc_fail ("Class " ^ klass.k_name ^ " does not define an instance variable @" ^
-                  name) [loc];
-      match self with
-      | Instance(inst)
-      -> (if (fst inst.i_class).k_is_value then
-            let slots' = Table.copy inst.i_slots in
-            Table.set slots' name value;
-            lenv_mutate lenv "self" (Instance ({
-              i_hash  = Hash_seed.make ();
-              i_class = inst.i_class;
-              i_slots = slots';
-            }))
-          else
-            Table.set inst.i_slots name value)
-      | _
-      -> assert false)
+  -> (let self = lenv_lookup env.local_env "self" in
+      use_ivar self name loc (fun inst ->
+        let klass, _ = inst.i_class in
+        if klass.k_is_value then
+          let slots' = Table.copy inst.i_slots in
+          Table.set slots' name value;
+          lenv_mutate env.local_env "self" (Instance ({
+            i_hash  = Hash_seed.make ();
+            i_class = inst.i_class;
+            i_slots = slots';
+          }))
+        else
+          Table.set inst.i_slots name value))
   | _
   -> assert false
 
-and eval_type ((lenv, tenv, cenv) as env) expr =
+and eval_type env expr =
   let as_type expr =
     let ty = eval_type env expr in
       match ty with
-      | Tvar(_) | TvarTy | NilTy | BooleanTy
-      | IntegerTy | SymbolTy
-      | UnsignedTy(_) | SignedTy(_)
-      | TupleTy(_) | RecordTy(_) | LambdaTy(_)
+      | Tvar(_) | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy
+      | UnsignedTy(_) | SignedTy(_) | TupleTy(_) | RecordTy(_) | LambdaTy(_)
       | Class(_,_)
       -> ty
       | _
@@ -180,7 +195,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
   in
   match expr with
   | Syntax.TypeVar(_,name)
-  -> Tvar (tenv_resolve tenv name)
+  -> Tvar (tenv_resolve env.type_env name)
   | Syntax.TypeTuple(_,xs)
   -> TupleTy (List.map as_type xs)
   | Syntax.TypeRecord(_,xs)
@@ -194,7 +209,7 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
       LambdaTy (List.map lambda_ty_elem_of_arg_ty args, as_type ret))
   | Syntax.TypeConstr((loc, _), name, args)
   -> (try
-        match cenv_lookup !cenv name with
+        match cenv_lookup env.const_env name with
         | (NilTy | BooleanTy | IntegerTy | SymbolTy | TvarTy) as ty
         -> (match args with
             | [] -> ty
@@ -232,15 +247,15 @@ and eval_type ((lenv, tenv, cenv) as env) expr =
   | Syntax.TypeSplice(_,expr)
   -> eval_expr env expr
 
-and eval_closure_ty (lenv, tenv, cenv) formal_args ty_expr =
+and eval_closure_ty env formal_args ty_expr =
   let lambda_args = Rt.lambda_args_of_formal_args formal_args in
   match ty_expr with
   | Some ty_expr
-  -> (let tenv = tenv_fork tenv in
-      let ty   = eval_type (lenv, tenv, cenv) ty_expr in
+  -> (let type_env = tenv_fork env.type_env in
+      let ty = eval_type { env with type_env } ty_expr in
         match ty with
         | LambdaTy(ty)
-        -> tenv, ty, lambda_args
+        -> type_env, ty, lambda_args
         | _
         -> exc_type "closure type" ty [Syntax.ty_loc ty_expr])
   | None
@@ -261,9 +276,9 @@ and eval_closure_ty (lenv, tenv, cenv) formal_args ty_expr =
         -> LambdaKwRest (Tvar (new_tvar ()))
       in
       let ty = List.map lambda_elem_ty_of_formal_arg formal_args, Tvar (new_tvar ()) in
-      tenv, ty, lambda_args)
+      env.type_env, ty, lambda_args)
 
-and eval_args ((lenv, tenv, cenv) as env) lst =
+and eval_args env lst =
   let rec eval_args args =
     match args with
     | Syntax.ActualArg(_,arg) :: rest
@@ -284,7 +299,7 @@ and eval_args ((lenv, tenv, cenv) as env) lst =
         eval_kwargs rest assoc)
 
     | Syntax.ActualKwPunArg(_,k) :: rest
-    -> (let assoc = Assoc.add assoc k (lenv_lookup lenv k) in
+    -> (let assoc = Assoc.add assoc k (lenv_lookup env.local_env k) in
         eval_kwargs rest assoc)
 
     | Syntax.ActualKwSplice(_,expr) :: rest
@@ -303,7 +318,7 @@ and eval_args ((lenv, tenv, cenv) as env) lst =
   in
   eval_args lst, eval_kwargs lst Assoc.empty
 
-and eval_expr ((lenv, tenv, cenv) as env) expr =
+and eval_expr env expr =
   match expr with
   | Syntax.Nil(_)   -> Nil
   | Syntax.Truth(_) -> Truth
@@ -331,22 +346,22 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       | Syntax.QuoteAsSymbol -> Symbol value)
 
   | Syntax.Type(_, ty_expr)
-  -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
+  -> eval_type { env with type_env = tenv_fork env.type_env } ty_expr
 
   | Syntax.Const(loc, name)
   -> (try
-        cenv_lookup !cenv name
+        cenv_lookup env.const_env name
       with CEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
 
   | Syntax.Self(loc)
-  -> lenv_lookup lenv "self"
+  -> lenv_lookup env.local_env "self"
 
   | Syntax.Var(loc, name)
-  -> lenv_lookup lenv name
+  -> lenv_lookup env.local_env name
 
   | Syntax.IVar((loc, _), name)
-  -> (let self = lenv_lookup lenv "self" in
+  -> (let self = lenv_lookup env.local_env "self" in
       use_ivar self name loc (fun inst ->
         match Table.get inst.i_slots name with
         | Some value -> value
@@ -379,9 +394,9 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
         l_hash      = Hash_seed.make ();
         l_location  = Syntax.loc expr;
         l_ty        = ty;
-        l_local_env = lenv;
-        l_type_env  = tenv;
-        l_const_env = !cenv;
+        l_local_env = env.local_env;
+        l_type_env  = env.type_env;
+        l_const_env = env.const_env;
         l_args      = args;
         l_body      = [body]
       })
@@ -400,7 +415,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       (* Check if we should extend existing class, or create a new one
          and bind it. *)
       let cls =
-        match cenv_peek !cenv name with
+        match cenv_peek env.const_env name with
         (* There's an existing one, and it is compatible *)
         | Some(Class (klass, _) as value)
           when klass.k_ancestor = ancestor && params = []
@@ -442,9 +457,9 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
               let name, tvar =
                 match arg with
                 | Syntax.FormalTypeArg (_, name)
-                -> name, (tenv_resolve tenv name)
+                -> name, (tenv_resolve env.type_env name)
                 | Syntax.FormalTypeKwArg (_, kw, name)
-                -> kw,   (tenv_resolve tenv name)
+                -> kw,   (tenv_resolve env.type_env name)
               in
               if Assoc.mem params name then
                 Assoc.replace params name tvar
@@ -455,17 +470,17 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
             let ancestor   = Option.default !roots.kObject ancestor in
             let parameters = List.fold_left eval_param ancestor.k_parameters params in
             let value      = Class (new_class ~ancestor ~parameters name, specz) in
-            cenv_bind !cenv name value;
+            cenv_bind env.const_env name value;
             value)
       in
       (* Evaluate class body in a context where self is bound to the class *)
-      let lenv = lenv_create (Some lenv) in
-      lenv_bind lenv "self" ~value:cls ~kind:Syntax.LVarImmutable ~loc;
-      eval (lenv, tenv, cenv) body)
+      let local_env = lenv_create (Some env.local_env) in
+      lenv_bind local_env "self" ~value:cls ~kind:Syntax.LVarImmutable ~loc;
+      eval { env with local_env } body)
 
   | Syntax.DefMethod((loc,_),name,args,ty_expr,body)
   -> (let definee  =
-        match lenv_lookup lenv "self" with
+        match lenv_lookup env.local_env "self" with
         | Package(p) when p == !roots.pToplevel
         -> Class(p.p_metaclass, Assoc.empty)
         | other
@@ -479,9 +494,9 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
           l_hash      = Hash_seed.make ();
           l_location  = loc;
           l_ty        = ty;
-          l_local_env = lenv;
-          l_type_env  = tenv;
-          l_const_env = !cenv;
+          l_local_env = env.local_env;
+          l_type_env  = env.type_env;
+          l_const_env = env.const_env;
           l_args      = args;
           l_body      = body;
         }
@@ -490,7 +505,7 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
 
   | Syntax.DefSelfMethod((loc,_),name,args,ty_expr,body)
   -> (let tenv, ty, args = eval_closure_ty env args ty_expr in
-      let definee  = Class (klass_of_value ~dispatch:true (lenv_lookup lenv "self"),
+      let definee  = Class (klass_of_value ~dispatch:true (lenv_lookup env.local_env "self"),
                             Assoc.empty) in
       define_method definee name {
         im_hash     = Hash_seed.make ();
@@ -499,9 +514,9 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
           l_hash    = Hash_seed.make ();
           l_location  = loc;
           l_ty        = ty;
-          l_local_env = lenv;
-          l_type_env  = tenv;
-          l_const_env = !cenv;
+          l_local_env = env.local_env;
+          l_type_env  = env.type_env;
+          l_const_env = env.const_env;
           l_args      = args;
           l_body      = body;
         }
@@ -509,17 +524,17 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       Nil)
 
   | Syntax.DefIVar((loc,_),name,kind,ty_expr)
-  -> (define_ivar (lenv_lookup lenv "self") name {
+  -> (define_ivar (lenv_lookup env.local_env "self") name {
         iv_hash     = Hash_seed.make ();
         iv_location = loc;
         iv_ty       = eval_type env ty_expr;
         iv_kind     = kind;
       } loc; Nil)
 
-  | Syntax.InvokePrimitive(_, name, args) when name = "lam_call"
+  | Syntax.InvokePrimitive((loc,_), name, args) when name = "lam_call"
   -> (match List.map (eval_expr env) args with
       | [Rt.Lambda lambda; Rt.Tuple args; Rt.Record kwargs]
-      -> eval_lambda lambda args kwargs
+      -> eval_lambda ~loc lambda args kwargs
       | _
       -> assert false)
 
@@ -589,98 +604,117 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
                (Unicode.assert_utf8s
                 (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));
 
-and eval_send ?(args=[]) ?(kwargs=Assoc.empty) recv selector ~loc =
-  let rec lookup klass =
-    let method_table = klass.k_methods in
-    try
-      Assoc.find method_table selector
-    with Not_found ->
-      match klass.k_ancestor with
-      | Some ancestor
-      -> lookup ancestor
-      | None
-      -> (let klass = klass_of_value ~dispatch:true recv in
-          exc_fail ("Undefined instance method " ^ klass.k_name ^
-                    "#" ^ selector ^ " for " ^ (inspect_value recv) ^ ".") [loc])
+and eval_send ?(args=[]) ?(kwargs=Assoc.empty) ~loc recv selector =
+  let klass = klass_of_value ~dispatch:true recv in
+  let meth  =
+    match lookup_method klass selector with
+    | Some meth
+    -> meth
+    | None
+    -> exc_fail ("Undefined instance method " ^ klass.k_name ^
+                 "#" ^ selector ^ " for " ^ (inspect_value recv) ^ ".") [loc]
   in
-  let klass  = klass_of_value ~dispatch:true recv in
-  let is_initializer = (selector = "initialize") in
-  let result = eval_lambda ~is_initializer (lookup klass).im_body (recv :: args) kwargs in
-  if is_initializer then begin
+  let result = eval_lambda ~loc ~selector meth.im_body (recv :: args) kwargs in
+  if selector = "initialize" then begin
     match result with
     | Instance({ i_class = klass, specz; i_slots = slots; })
     -> (let slot_ivars    = List.sort (Table.keys slots)
-        and defined_ivars = klass_ivars klass in
+        and defined_ivars = ivars_of_klass klass in
         let diff_ivars    = List.fold_left List.remove defined_ivars slot_ivars in
         let diff_ivars    = String.concat ", " (List.map (fun iv -> "@" ^ iv) diff_ivars) in
         if slot_ivars <> defined_ivars then
-          exc_fail ("Initializer did not initialize slots: " ^ diff_ivars) [loc];
+          exc_fail ("Initializer did not initialize slots: " ^ diff_ivars ^ ".")
+                   [meth.im_body.l_location];
         result)
     | _
     -> assert false
   end else result
 
-and eval_lambda ?(is_initializer=false) body args kwargs =
-  let lenv = lenv_create (Some body.l_local_env) in
-  let tenv = tenv_fork   body.l_type_env  in
-  let cenv = ref         body.l_const_env in
-  let env  = (lenv, tenv, cenv) in
-
-  let rec bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen =
+and eval_lambda ~loc ?selector body args kwargs =
+  let env = {
+    selector  = selector;
+    local_env = lenv_create (Some body.l_local_env);
+     type_env = tenv_fork body.l_type_env;
+    const_env = body.l_const_env
+  }
+  in
+  let rec bind ~f_arg ~ty ~value ~f_args ~f_arg_tys ~rest ~kwseen =
     (* TODO check ty *)
     let kind =
-      match (arg.la_name :> latin1s), value with
+      match (f_arg.la_name :> latin1s), value with
       | "self", Instance ({ i_class = klass, _; }) when klass.k_is_value
       -> Syntax.LVarMutable
       | _
-      -> arg.la_kind
+      -> f_arg.la_kind
     in
-    lenv_bind lenv arg.la_name ~loc:arg.la_location ~kind ~value;
-    bind_args args arg_tys rest kwseen
+    lenv_bind env.local_env f_arg.la_name ~loc:f_arg.la_location ~kind ~value;
+    bind_args f_args f_arg_tys rest kwseen
 
-  and bind_args args arg_tys rest kwseen =
-    match args, arg_tys, rest with
+  and bind_args f_args f_arg_tys rest kwseen =
+    match f_args, f_arg_tys, rest with
     | [], [], []
-    -> (if (List.sort kwseen) <> (Assoc.keys kwargs) then
-          assert false
-        else ())
+    -> (
+        let unexpected = Assoc.filter_map_list (fun key _ ->
+            if List.mem key kwseen then None
+            else Some key)
+          kwargs
+        in
+        if unexpected = [] then
+          ()
+        else
+          exc_fail ("Unexpected keyword arguments " ^ (String.concat ", " unexpected) ^ ".") [loc])
 
-    | arg :: args, LambdaArg ty    :: arg_tys, value :: rest
-    | arg :: args, LambdaOptArg ty :: arg_tys, value :: rest
-    -> bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen
+    | [], [], _
+    -> (let expected = List.length body.l_args - 1
+        and actual   = List.length args in
+        exc_fail ("Too much positional arguments: " ^ (string_of_int expected) ^
+                  " expected, " ^ (string_of_int actual) ^ " provided.")) [loc]
 
-    | arg :: args, LambdaRest ty :: arg_tys, rest
-    -> bind ~arg ~ty ~value:(Tuple rest) ~args ~arg_tys ~rest:[] ~kwseen
+    | f_arg :: f_args, LambdaArg ty    :: f_arg_tys, value :: rest
+    | f_arg :: f_args, LambdaOptArg ty :: f_arg_tys, value :: rest
+    -> bind ~f_arg ~ty ~value ~f_args ~f_arg_tys ~rest ~kwseen
 
-    | arg :: args, LambdaKwArg (kw, ty) :: arg_tys, rest
+    | f_arg :: f_args, LambdaArg ty    :: f_arg_tys, []
+    -> (let num = List.length body.l_args - List.length f_args in
+        exc_fail ("Positional argument " ^ (string_of_int num) ^
+                  " is expected but not provided.")) [loc]
+
+    | f_arg :: f_args, LambdaOptArg ty :: f_arg_tys, []
+    -> (let value = eval_expr env (Option.get f_arg.la_default) in
+        bind ~f_arg ~ty ~value ~f_args ~f_arg_tys ~rest:[] ~kwseen)
+
+    | f_arg :: f_args, LambdaRest ty :: f_arg_tys, rest
+    -> bind ~f_arg ~ty ~value:(Tuple rest) ~f_args ~f_arg_tys ~rest:[] ~kwseen
+
+    | f_arg :: f_args, LambdaKwArg (kw, ty) :: f_arg_tys, rest
     -> (let value =
           match Assoc.find_option kwargs kw with
           | Some v -> v
-          | None -> exc_fail ("Argument " ^ kw ^ " is expected but not provided") [arg.la_location]
+          | None -> exc_fail ("Keyword argument " ^ kw ^ " is expected but not provided.") [loc]
         in
-        bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen:(kw :: kwseen))
+        bind ~f_arg ~ty ~value ~f_args ~f_arg_tys ~rest ~kwseen:(kw :: kwseen))
 
-    | arg :: args, LambdaKwOptArg (kw, ty) :: arg_tys, rest
+    | f_arg :: f_args, LambdaKwOptArg (kw, ty) :: f_arg_tys, rest
     -> (let kwseen, value =
           match Assoc.find_option kwargs kw with
           | Some v -> kw :: kwseen, v
-          | None   -> kwseen, eval_expr env (Option.get arg.la_default)
+          | None   -> kwseen, eval_expr env (Option.get f_arg.la_default)
         in
-        bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen)
+        bind ~f_arg ~ty ~value ~f_args ~f_arg_tys ~rest ~kwseen:(kw :: kwseen))
 
-    | arg :: args, LambdaKwRest ty :: arg_tys, rest
-    -> (let value  = Record (Assoc.filter kwargs ~f:(fun kw _ -> List.mem kw kwseen)) in
-        let kwseen = Assoc.keys kwargs in
-        bind ~arg ~ty ~value ~args ~arg_tys ~rest ~kwseen)
+    | f_arg :: f_args, LambdaKwRest ty :: f_arg_tys, rest
+    -> (let value  = Record (Assoc.filter kwargs ~f:(fun kw _ -> not (List.mem kw kwseen))) in
+        bind ~f_arg ~ty ~value ~f_args ~f_arg_tys ~rest ~kwseen:(Assoc.keys kwargs))
 
-    | _
+    | [], _::_, _
+    | _::_, [], _
     -> assert false
   in
   bind_args body.l_args (fst body.l_ty) args [];
 
   let result = eval env body.l_body in
-  if is_initializer then
-    lenv_lookup lenv "self"
+  if selector = Some "initialize" then
+    lenv_lookup env.local_env "self"
   else
     result
 
