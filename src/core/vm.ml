@@ -109,9 +109,6 @@ and eval_record env elem =
   | Syntax.RecordElem(_,k,v)
   -> Record (Assoc.sorted [k, eval_expr env v])
 
-  | Syntax.RecordPunElem(_,k)
-  -> Record (Assoc.sorted [k, lenv_lookup lenv k])
-
   | Syntax.RecordSplice(_,expr)
   -> (match (eval_expr env expr) with
      | Record(_) as r -> r
@@ -141,7 +138,7 @@ and eval_pattern env lhs value =
   match lhs with
   | Syntax.PatVariable((loc,_), (kind, name))
   -> lenv_bind env.local_env name ~kind ~value ~loc
-
+(*
   | Syntax.PatTuple((loc,_), pats)
   -> (match value with
       | Tuple(xs)
@@ -153,7 +150,7 @@ and eval_pattern env lhs value =
                       " does not match pattern of length " ^
                       (string_of_int (List.length pats)) ^ ".") [loc])
       | o -> exc_type "Tuple" o [Syntax.pat_loc lhs])
-
+ *)
   | _ -> assert false
 
 and eval_assign env lhs value =

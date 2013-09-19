@@ -6,8 +6,7 @@ type severity =
 | Warning
 | Note
 
-type t =
-  severity * string * Location.t list
+type t = severity * string * Location.t list
 
 val string_of_severity : severity -> string
 

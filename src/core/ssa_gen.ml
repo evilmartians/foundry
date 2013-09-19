@@ -141,10 +141,6 @@ let rec ssa_of_expr ~state ~entry ~expr =
             -> (let name = Ssa.const (Rt.Symbol name) in
                 let entry, value = ssa_of_expr ~state ~entry ~expr in
                 entry, Ssa_interp.append interp (Ssa_interp.Elem (name, value)))
-            | Syntax.RecordPunElem (_, lvar)
-            -> (let name  = Ssa.const (Rt.Symbol lvar) in
-                let value = load entry lvar in
-                entry, Ssa_interp.append interp (Ssa_interp.Elem (name, value)))
             | Syntax.RecordPair (_, name_expr, value_expr)
             -> (let entry, name  = ssa_of_expr ~state ~entry ~expr:name_expr  in
                 let entry, value = ssa_of_expr ~state ~entry ~expr:value_expr in

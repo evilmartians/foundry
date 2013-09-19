@@ -49,7 +49,6 @@ with sexp
 
 type let_bind_i   = {
   mut             : Location.t;
-  rename          : Location.t;
   identifier      : Location.t;
 }
 and  let_bind     = Location.t * let_bind_i
@@ -90,25 +89,23 @@ and formal_ty_arg =
 | FormalTypeArg   of nullary    * string
 | FormalTypeKwArg of operator   * string * string
 and formal_ty_args = formal_ty_arg list
-and tuple_elem  =
-| TupleElem       of nullary    * expr
-| TupleSplice     of operator   * expr
-and tuple_elems = tuple_elem list
-and record_elem =
-| RecordElem      of operator   * string * expr
-| RecordPunElem   of nullary    * string
-| RecordPair      of operator   * expr * expr
-| RecordSplice    of operator   * expr
-and record_elems = record_elem list
+and 'a tuple_elem  =
+| TupleElem       of nullary    * 'a
+| TupleSplice     of operator   * 'a
+and 'a tuple_elems = 'a tuple_elem list
+and 'a record_elem =
+| RecordElem      of operator   * string * 'a
+| RecordPair      of operator   * expr * 'a
+| RecordSplice    of operator   * 'a
+and 'a record_elems = 'a record_elem list
 and quote_elem  =
 | QuoteString     of nullary    * string
 | QuoteSplice     of collection * expr
 and quote_elems = quote_elem list
 and pattern     =
 | PatVariable     of let_bind   * local_var
-| PatTuple        of collection * pattern list
-| PatRecord       of collection * pat_extract list
-and pat_extract = let_bind  * local_var * pattern
+| PatTuple        of collection * pattern  tuple_elem list
+| PatRecord       of collection * pattern record_elem list
 and expr        =
 | Self            of nullary
 | Truth           of nullary (* true  *)
@@ -125,8 +122,8 @@ and expr        =
 | And             of operator   * expr * expr
 | Or              of operator   * expr * expr
 | Not             of operator   * expr
-| Tuple           of collection * tuple_elems
-| Record          of collection * record_elems
+| Tuple           of collection * expr tuple_elems
+| Record          of collection * expr record_elems
 | Quote           of collection * quote * quote_elems
 | Begin           of collection * exprs
 | Send            of send       * expr * string * actual_args

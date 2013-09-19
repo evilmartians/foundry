@@ -75,14 +75,11 @@
       Syntax.rparen   = rparen;
     })
 
-  let let_bind mut rename ident =
-    let left =
-      Loc.find [mut; rename; ident]
-    in (Loc.join left ident, {
+  let let_bind mut ident =
+    Loc.join (Loc.find [mut; ident]) ident, {
       Syntax.mut        = mut;
-      Syntax.rename     = rename;
       Syntax.identifier = ident;
-    })
+    }
 
   let arg expr =
     [Syntax.ActualArg (nullary (Syntax.loc expr), expr)]
@@ -105,6 +102,9 @@
 %start <Syntax.expr list> toplevel
 
 %%
+          none: /* nothing */
+                { () }
+
            eof: EOF | Tk_DSEMI
                 {}
 
@@ -132,7 +132,8 @@
                   Syntax.RecordElem (op_unary label_loc expr, label, expr) }
               | id=Id_LABEL
                 { let (label_loc, label) = id in
-                  Syntax.RecordPunElem (nullary label_loc, label) }
+                  Syntax.RecordElem ((label_loc, { Syntax.operator = Loc.empty }), label,
+                                     Syntax.Var (nullary label_loc, label)) }
               | lhs=expr tk=Tk_ROCKET rhs=expr
                 { Syntax.RecordPair (op_binary lhs tk rhs, lhs, rhs) }
               | op=Tk_DSTAR expr=expr
@@ -150,36 +151,47 @@
    quote_elems: elems=list(quote_elem)
                 { elems }
 
-     pat_ident: id=Id_LOCAL
-                { let (id_loc, id) = id in
-                    Syntax.PatVariable (let_bind Loc.empty Loc.empty id_loc,
-                                        (Syntax.LVarImmutable, id)) }
-              | kw=Kw_MUT id=Id_LOCAL
-                { let (kw_loc, _), (id_loc, id) = kw, id in
-                    Syntax.PatVariable (let_bind kw_loc Loc.empty id_loc,
-                                        (Syntax.LVarMutable, id)) }
+       pat_mut: /* nothing */
+                { Loc.empty, Syntax.LVarImmutable }
+              | kw=Kw_MUT
+                { let (kw_loc, _) = kw in
+                  kw_loc,    Syntax.LVarMutable }
 
-   pat_extract: pat=pat_ident
-                { match pat with
-                  | Syntax.PatVariable(loc, var) ->
-                    let_bind Loc.empty Loc.empty (Syntax.pat_loc pat),
-                      var, pat
-                  | _ -> assert false }
-              | label=Id_LABEL pat=pattern
-                { let (label_loc, label) = label in
-                    let_bind Loc.empty label_loc (Syntax.pat_loc pat),
-                      (Syntax.LVarImmutable, label), pat }
-              | kw=Kw_MUT label=Id_LABEL pat=pattern
-                { let (kw_loc, kw)       = kw in
-                  let (label_loc, label) = label in
-                    let_bind kw_loc label_loc (Syntax.pat_loc pat),
-                      (Syntax.LVarImmutable, label), pat }
+   %public
+   pat_bind(X): mut=pat_mut x=X id=Id_LOCAL
+                { let (label_loc, label) = id
+                  and (mut_loc, mut)     = mut in
+                  x, Syntax.PatVariable (let_bind mut_loc label_loc, (mut, label)) }
+
+     pat_ident: bind=pat_bind(none)
+                { snd bind }
+
+  pat_tup_elem: bind=pat_bind(none)
+                { let _, pat = bind in
+                  Syntax.TupleElem (nullary (Syntax.pat_loc pat), pat) }
+              | bind=pat_bind(Tk_STAR)
+                { let (star_loc, _), pat = bind in
+                  Syntax.TupleSplice (pat_unary star_loc pat, pat) }
+
+  pat_rec_elem: mut=pat_mut id=Id_LOCAL
+                { let (local_loc, local) = id
+                  and (mut_loc, mut)     = mut in
+                  Syntax.RecordElem ((local_loc, { Syntax.operator = local_loc }),
+                                     local,
+                                     Syntax.PatVariable (let_bind mut_loc local_loc,
+                                                         (mut, local))) }
+              | bind=pat_bind(Id_LABEL)
+                { let (label_loc, label), pat = bind in
+                  Syntax.RecordElem (pat_unary label_loc pat, label, pat) }
+              | bind=pat_bind(Tk_DSTAR)
+                { let (dstar_loc, _), pat = bind in
+                  Syntax.RecordSplice (pat_unary dstar_loc pat, pat) }
 
        pattern: ident=pat_ident
                 { ident }
-              | lb=Tk_LBRACK elems=separated_list(Tk_COMMA, pattern) rb=Tk_RBRACK
+              | lb=Tk_LBRACK elems=separated_list(Tk_COMMA, pat_tup_elem) rb=Tk_RBRACK
                 { Syntax.PatTuple (collection lb rb, elems) }
-              | lb=Tk_LCURLY elems=separated_list(Tk_COMMA, pat_extract) rb=Tk_RCURLY
+              | lb=Tk_LCURLY elems=separated_list(Tk_COMMA, pat_rec_elem) rb=Tk_RCURLY
                 { Syntax.PatRecord (collection lb rb, elems) }
 
        %inline
@@ -356,7 +368,7 @@
                 { Syntax.Assign (op_binary lhs op rhs, lhs, rhs) }
               | lhs=lhs op=Tk_OP_ASGN rhs=stmt
                 { let (op_loc, op) = op in
-                    Syntax.OpAssign (op_binary lhs op_loc rhs, lhs, op, rhs) }
+                  Syntax.OpAssign (op_binary lhs op_loc rhs, lhs, op, rhs) }
               | lhs=lhs op=Tk_OR_ASGN rhs=stmt
                 { Syntax.OrAssign (op_binary lhs op rhs, lhs, rhs) }
               | lhs=lhs op=Tk_AND_ASGN rhs=stmt
