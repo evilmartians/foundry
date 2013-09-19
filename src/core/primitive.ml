@@ -8,9 +8,8 @@ exception Undefined_primitive of string
 (* Debug primitive implementations. *)
 
 let debug args =
-  match args with
-  | [arg] -> assert false
-  | _ -> assert false
+  prerr_endline ("[DEBUG: " ^ (String.concat "," (List.map Rt.inspect_value args)) ^ "]");
+  Rt.Nil
 
 (* Integer primitive implementations. *)
 
