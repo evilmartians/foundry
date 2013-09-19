@@ -547,6 +547,19 @@ and eval_expr env expr =
       let args, kwargs = eval_args env args in
       eval_send recv name ~args ~kwargs ~loc)
 
+  | Syntax.Super((loc,_), args)
+  -> (let self = lenv_lookup env.local_env "self" in
+      let args, kwargs = eval_args env args in
+      let value = eval_super env self ~args ~kwargs ~loc in
+      match self with
+      | Instance(inst)
+      -> (let klass, _ = inst.i_class in
+          if env.selector = Some "initialize" && klass.k_is_value then
+            lenv_mutate env.local_env "self" value;
+          value)
+      | _
+      -> value)
+
   | Syntax.If(_, cond_expr, if_true, if_false)
   -> (let cond = eval_expr env cond_expr in
       match cond with
@@ -629,6 +642,28 @@ and eval_send ?(args=[]) ?(kwargs=Assoc.empty) ~loc recv selector =
     | _
     -> assert false
   end else result
+
+and eval_super env ~args ~kwargs ~loc recv =
+  let klass = klass_of_value ~dispatch:true recv in
+  let klass =
+    match klass.k_ancestor with
+    | Some klass -> klass
+    | None
+    -> exc_fail ("Class " ^ klass.k_name ^ " does not have a superclass.") [loc]
+  and selector =
+    match env.selector with
+    | Some selector -> selector
+    | None
+    -> exc_fail ("Cannot call superclass method from a non-method closure.") [loc]
+  in
+  let meth  =
+    match lookup_method klass selector with
+    | Some meth -> meth
+    | None
+    -> exc_fail ("Undefined superclass method " ^ klass.k_name ^
+                 "#" ^ selector ^ " for " ^ (inspect_value recv) ^ ".") [loc]
+  in
+  eval_lambda ~loc ~selector meth.im_body (recv :: args) kwargs
 
 and eval_lambda ~loc ?selector body args kwargs =
   let env = {

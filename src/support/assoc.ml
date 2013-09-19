@@ -74,6 +74,14 @@ let filter ~f assoc =
   List.filter (fun (key, value) ->
     f key value) assoc
 
+let filter_map ~f assoc =
+  ExtList.List.filter_map (fun (key, value) ->
+    Option.map (fun value -> key, value) (f key value)) assoc
+
+let filter_map_list ~f assoc =
+  ExtList.List.filter_map (fun (key, value) ->
+    f key value) assoc
+
 let keys assoc =
   List.map fst assoc
 

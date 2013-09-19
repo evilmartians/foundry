@@ -74,6 +74,7 @@
 %token <Location.t * Unicode.utf8s> Kw_TYPE    "type"
 %token <Location.t * Unicode.utf8s> Kw_META    "meta"
 %token <Location.t * Unicode.utf8s> Kw_DYNAMIC "dynamic"
+%token <Location.t * Unicode.utf8s> Kw_SUPER   "super"
 %token <Location.t * Unicode.utf8s> Kw_WHILE   "while"
 %token <Location.t * Unicode.utf8s> Kw_UNTIL   "until"
 %token <Location.t * Unicode.utf8s> Kw_DO      "do"

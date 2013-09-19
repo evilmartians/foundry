@@ -67,8 +67,8 @@
       Syntax.rparen   = Loc.empty;
     })
 
-  let send_call recv lparen rparen =
-    (Loc.join (Syntax.loc recv) rparen, {
+  let send_bare recv lparen rparen =
+    (Loc.join recv rparen, {
       Syntax.dot      = Loc.empty;
       Syntax.selector = Loc.empty;
       Syntax.lparen   = lparen;
@@ -457,7 +457,7 @@
                                recv, name, []) }
 
               | recv=expr lb=Tk_LBRACK args=args rb=Tk_RBRACK
-                { Syntax.Send (send_call recv lb rb,
+                { Syntax.Send (send_bare (Syntax.loc recv) lb rb,
                                recv, u"[]", args) }
 
           expr: expr=expr_noid
@@ -488,8 +488,12 @@
                                recv, name, []) }
 
               | recv=expr lb=Tk_LBRACK args=args rb=Tk_RBRACK
-                { Syntax.Send (send_call recv lb rb,
+                { Syntax.Send (send_bare (Syntax.loc recv) lb rb,
                                recv, u"[]", args) }
+
+              | kw=Kw_SUPER lp=Tk_LPAREN args=args rp=Tk_RPAREN
+                { let (kw_loc, _) = kw in
+                  Syntax.Super (send_bare kw_loc lp rp, args) }
 
               | lhs=expr op=binop rhs=expr
                 { let (name_loc, name) = op in
@@ -505,8 +509,8 @@
 
               | kw=Kw_INVOKEPRIMITIVE id=Id_LOCAL
                     lp=Tk_LPAREN args=separated_list(Tk_COMMA, expr) rp=Tk_RPAREN
-                { let (kw_loc,_) = kw in
-                  let (_,id) = id in
+                { let (kw_loc, _) = kw
+                  and (_, id)     = id in
                   Syntax.InvokePrimitive (nullary (Loc.join kw_loc rp),
                                           id, args) }
 

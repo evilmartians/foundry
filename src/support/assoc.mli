@@ -30,6 +30,9 @@ val map_list    : f:(string -> 'a -> 'c) -> ('a, 'b) t -> 'c list
 val fold        : f:(string -> 'c -> 'a -> 'c) -> 'c -> ('a, 'b) t -> 'c
 val fold2       : f:(string -> 'b -> 'a -> 'a -> 'b) -> 'b -> ('a, 'c) t -> ('a, 'd) t -> 'b
 val filter      : f:(string -> 'a -> bool) -> ('a, 'b) t -> ('a, 'b) t
+val filter_map  : f:(string -> 'a -> 'c option) -> ('a, 'b) t -> ('c, 'b) t
+val filter_map_list
+                : f:(string -> 'a -> 'c option) -> ('a, 'b) t -> 'c list
 
 val prepend     : ('a, 'b) t -> string -> 'a -> ('a, sequental) t
 val append      : ('a, 'b) t -> string -> 'a -> ('a, sequental) t

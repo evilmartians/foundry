@@ -92,6 +92,7 @@ let name_of_token = function
   | Kw_ASSERT _ -> "Kw_ASSERT"
   | Id_METHOD _ -> "Id_METHOD"
   | Id_ASSIGN _ -> "Id_ASSIGN"
+  | Kw_SUPER _ -> "Kw_SUPER"
   | Tk_NE _ -> "Tk_NE"
 
 let loc_of_token token =
@@ -156,6 +157,7 @@ let loc_of_token token =
   | Kw_TYPE (loc, _) -> loc
   | Kw_TRUE (loc, _) -> loc
   | Kw_THEN (loc, _) -> loc
+  | Kw_SUPER (loc, _) -> loc
   | Kw_SELF (loc, _) -> loc
   | Kw_RETURN (loc, _) -> loc
   | Kw_PUBLIC (loc, _) -> loc

@@ -130,6 +130,7 @@ and expr        =
 | Quote           of collection * quote * quote_elems
 | Begin           of collection * exprs
 | Send            of send       * expr * string * actual_args
+| Super           of send       * actual_args
 | Lambda          of collection * formal_args * ty option * expr
 | Let             of operator   * pattern * ty option * expr
 | If              of nullary    * expr * exprs * expr option
@@ -170,11 +171,11 @@ let loc expr =
   | DefIVar(loc,_,_,_) | If(loc,_,_,_) | Unless(loc,_,_)
   | While(loc,_,_) | Until(loc,_,_)
   | InvokePrimitive(loc,_,_) -> fst loc
-  | And (loc,_,_) | Or (loc,_,_) | Not (loc,_) | Update(loc,_)
+  | And(loc,_,_) | Or(loc,_,_) | Not(loc,_) | Update(loc,_)
   | Let(loc,_,_,_)  | Assign(loc,_,_) | OpAssign(loc,_,_,_)
   | OrAssign(loc,_,_) | AndAssign(loc,_,_) | Type(loc,_) -> fst loc
-  | Send (loc,_,_,_) -> fst loc
-  | Tuple(loc,_) | Record(loc,_) | Begin (loc,_)
+  | Send(loc,_,_,_) | Super(loc,_) -> fst loc
+  | Tuple(loc,_) | Record(loc,_) | Begin(loc,_)
   | Quote(loc,_,_) | Lambda(loc,_,_,_) -> fst loc
 
 let pat_loc pattern =

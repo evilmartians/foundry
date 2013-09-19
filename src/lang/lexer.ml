@@ -179,6 +179,7 @@ let rec lex_code state = lexer
 | "type"   -> expr_begin state true;  Kw_TYPE    (locate state lexbuf, lexeme lexbuf)
 | "public" -> expr_begin state true;  Kw_PUBLIC  (locate state lexbuf, lexeme lexbuf)
 | "dynamic"-> expr_begin state true;  Kw_DYNAMIC (locate state lexbuf, lexeme lexbuf)
+| "super"  -> expr_begin state true;  Kw_SUPER   (locate state lexbuf, lexeme lexbuf)
 | "package"-> expr_begin state true;  Kw_PACKAGE (locate state lexbuf, lexeme lexbuf)
 | "class"  -> expr_begin state true;  Kw_CLASS   (locate state lexbuf, lexeme lexbuf)
 | "mixin"  -> expr_begin state true;  Kw_MIXIN   (locate state lexbuf, lexeme lexbuf)

@@ -253,7 +253,9 @@ and check_expr cx expr =
   | Until(_, cond, exprs)
   -> (let ds = check_expr cx cond in
       ds @ (check_expr cx @: exprs))
-  | Send(_, expr, _, args)
+
+  | Send(_, _, _, args)
+  | Super(_, args)
   -> (let check_arg arg =
         match arg with
         | ActualArg(_,expr)     | ActualSplice(_,expr)
@@ -264,8 +266,14 @@ and check_expr cx expr =
         | ActualKwPunArg((loc,_),lvar)
         -> check_access cx loc lvar
       in
-      let ds = check_expr cx expr in
+      let ds =
+        match expr with
+        | Send(_, recv, _, _) -> check_expr cx recv
+        | Super(_, _)         -> []
+        | _ -> assert false
+      in
       ds @ (check_arg @: args))
+
   | Class(_, name, params, ancestor, exprs)
   -> (let rec check_params ds seen params =
         match params with
