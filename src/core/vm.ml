@@ -3,12 +3,6 @@ open Unicode.Std
 open ExtList
 open Rt
 
-let rec klass_ivars klass =
-  let ivars = Assoc.keys klass.k_ivars in
-  match klass.k_ancestor with
-  | Some ancestor -> ivars @ klass_ivars ancestor
-  | None -> ivars
-
 (* Eval helper routines *)
 
 type env = local_env * type_env * const_env ref
@@ -21,6 +15,12 @@ let env_create () =
                         ~kind:Syntax.LVarImmutable
                         ~loc:Location.empty;
   lenv, tenv, ref cenv
+
+let rec ivars_of_klass klass =
+  let ivars = Assoc.keys klass.k_ivars in
+  match klass.k_ancestor with
+  | Some ancestor -> List.merge compare ivars (ivars_of_klass ancestor)
+  | None -> ivars
 
 let concat_tuple lhs rhs =
   match lhs, rhs with
@@ -47,7 +47,7 @@ let define_method obj name body loc =
         klass.k_methods <- Assoc.append klass.k_methods name body)
   | value -> exc_type "Class" value [loc]
 
-let define_ivar obj name body loc =
+let define_ivar obj name ty loc =
   match obj with
   | Class (klass,_)
   -> (try
@@ -57,8 +57,17 @@ let define_ivar obj name body loc =
                   ": it is already defined with type " ^
                   (inspect_type ivar.iv_ty)) [loc; ivar.iv_location]
       with Not_found ->
-        klass.k_ivars <- Assoc.append klass.k_ivars name body)
+        klass.k_ivars <- Assoc.append klass.k_ivars name ty)
   | value -> exc_type "Class" value [loc]
+
+let use_ivar self name loc f =
+  let klass = Rt.klass_of_value self in
+  if not (List.mem name (ivars_of_klass klass)) then
+    exc_fail ("Class " ^ klass.k_name ^ " does not define an instance variable @" ^
+              name) [loc];
+  match self with
+  | Instance(inst) -> f inst
+  | _ -> assert false
 
 (* E V A L *)
 
@@ -324,25 +333,33 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
   | Syntax.Type(_, ty_expr)
   -> eval_type (lenv, (tenv_fork tenv), cenv) ty_expr
 
-  | Syntax.Let(_, pat, ty, expr)
-  -> (let value = eval_expr env expr in
-        eval_pattern env pat value;
-        value)
-
-  | Syntax.Var(loc, name)
-  -> lenv_lookup lenv name
-
-  | Syntax.Self(loc)
-  -> lenv_lookup lenv "self"
-
   | Syntax.Const(loc, name)
   -> (try
         cenv_lookup !cenv name
       with CEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
 
+  | Syntax.Self(loc)
+  -> lenv_lookup lenv "self"
+
+  | Syntax.Var(loc, name)
+  -> lenv_lookup lenv name
+
+  | Syntax.IVar((loc, _), name)
+  -> (let self = lenv_lookup lenv "self" in
+      use_ivar self name loc (fun inst ->
+        match Table.get inst.i_slots name with
+        | Some value -> value
+        | None
+        -> exc_fail ("Instance variable @" ^ name ^ " is not assigned yet.") [loc]))
+
   | Syntax.Begin(_, exprs)
   -> eval env exprs
+
+  | Syntax.Let(_, pat, ty, expr)
+  -> (let value = eval_expr env expr in
+      eval_pattern env pat value;
+      value)
 
   | Syntax.Assign(_, lhs, rhs)
   -> (let value = eval_expr env rhs in
@@ -520,33 +537,54 @@ and eval_expr ((lenv, tenv, cenv) as env) expr =
       match cond with
       | Rt.Truth -> eval env if_true
       | Rt.Lies  -> Option.map_default (eval_expr env) Rt.Nil if_false
-      | _ -> exc_type "boolean value" cond [Syntax.loc cond_expr])
+      | _ -> exc_type "Boolean" cond [Syntax.loc cond_expr])
+
+  | Syntax.Unless(_, cond_expr, if_false)
+  -> (let cond = eval_expr env cond_expr in
+      match cond with
+      | Rt.Truth -> Rt.Nil
+      | Rt.Lies  -> eval env if_false
+      | _ -> exc_type "Boolean" cond [Syntax.loc cond_expr])
 
   | Syntax.While(_, cond_expr, body)
+  | Syntax.Until(_, cond_expr, body)
   -> (let rec loop () =
         let cond = eval_expr env cond_expr in
-        match cond with
-        | Rt.Truth -> ignore (eval env body); loop ()
-        | Rt.Lies  -> Nil
-        | _ -> exc_type "boolean value" cond [Syntax.loc cond_expr]
+        match cond, expr with
+        | Rt.Truth, Syntax.While _
+        | Rt.Lies,  Syntax.Until _
+        -> ignore (eval env body); loop ()
+        | Rt.Lies,  Syntax.While _
+        | Rt.Truth, Syntax.Until _
+        -> Nil
+        | _
+        -> exc_type "Boolean" cond [Syntax.loc cond_expr]
       in
       loop ())
+
+  | Syntax.Not (_, expr)
+  -> (let value = eval_expr env expr in
+      match value with
+      | Rt.Truth -> Rt.Lies
+      | Rt.Lies  -> Rt.Truth
+      | _ -> exc_type "Boolean" value [Syntax.loc expr])
 
   | Syntax.Or (_, lhs_expr, rhs_expr)
   -> (let lhs = eval_expr env lhs_expr in
       match lhs with
       | Rt.Truth -> lhs
       | Rt.Lies  -> eval_expr env rhs_expr
-      | _ -> exc_type "boolean value" lhs [Syntax.loc lhs_expr])
+      | _ -> exc_type "Boolean" lhs [Syntax.loc lhs_expr])
 
   | Syntax.And (_, lhs_expr, rhs_expr)
   -> (let lhs = eval_expr env lhs_expr in
       match lhs with
       | Rt.Truth -> eval_expr env rhs_expr
       | Rt.Lies  -> lhs
-      | _ -> exc_type "boolean value" lhs [Syntax.loc lhs_expr])
+      | _ -> exc_type "Boolean" lhs [Syntax.loc lhs_expr])
 
-  | _
+  | Syntax.TVar (_, _) | Syntax.OrAssign (_, _, _) | Syntax.AndAssign (_, _, _)
+  | Syntax.Update (_, _)
   -> failwith ("cannot eval " ^
                (Unicode.assert_utf8s
                 (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));
