@@ -404,8 +404,12 @@ and ssa_of_type ~state ~entry ~expr =
                           ~opcode:(Ssa.SpecializeInstr (Ssa.const ty, specz)))
   | Syntax.TypeSplice (_, expr)
   -> ssa_of_expr ~state ~entry ~expr
-  | _
-  -> assert false
+
+  | Syntax.TypeTuple (_, _) | Syntax.TypeRecord (_, _)
+  | Syntax.TypeFunction (_, _, _) | Syntax.TypeVar (_, _)
+  -> failwith ("cannot ssa_gen " ^
+               (Unicode.assert_utf8s
+                (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_ty expr))));
 
 and ssa_of_pattern ~state ~entry ~pattern ~expr =
   match pattern with
@@ -419,8 +423,11 @@ and ssa_of_pattern ~state ~entry ~pattern ~expr =
       let entry, expr = ssa_of_expr ~state ~entry ~expr in
       ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, name, expr)));
       entry, expr)
-  | _
-  -> assert false
+
+  | Syntax.PatTuple (_, _) | Syntax.PatRecord (_, _)
+  -> failwith ("cannot ssa_gen " ^
+               (Unicode.assert_utf8s
+                (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_pattern pattern))));
 
 and ssa_of_actual_args ~state ~entry ~receiver ~actual_args =
   let args = Ssa_interp.append Ssa_interp.empty (Ssa_interp.Elem receiver) in
