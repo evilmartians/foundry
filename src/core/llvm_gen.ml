@@ -28,12 +28,13 @@ let rec lltype_of_ty ?(ptr=true) ty =
       try
         Rt.Valuetbl.find types ty
       with Not_found ->
-        (* Create and populate a named struct type. *)
+        (* Create and memoize a named struct type. *)
         let llty = Llvm.named_struct_type ctx name in
+        Rt.Valuetbl.add types ty llty;
+        (* Populate the contents of the type. *)
         let is_packed, elts = generate () in
         Llvm.struct_set_body llty (Array.of_list elts) is_packed;
-        (* Memoize and return this type. *)
-        Rt.Valuetbl.add types ty llty;
+        (* Return newly defined type. *)
         llty
     in
     if ptr then Llvm.pointer_type llty else llty
