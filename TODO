@@ -1,10 +1,8 @@
 features:
  * Rt.tvar / Rt.tvar_ty
- * implement missing stuff in Vm
  * (() do end) -> do || end
  * store location in fir instructions
- * Array -> Vector
- * llvm_gen for vector instrinsics
+ * llvm_gen for array instrinsics
  * x = 1 -> let mut x = 1
  * != -> !(==), <=/>=/</> -> <=>
 

@@ -187,8 +187,11 @@ let run_on_function passmgr capsule funcn =
         -> (match operands with
             | [ { ty     = Rt.RecordTy xs };
                 { opcode = Const (Rt.Symbol sym) } ]
-            -> (let ty = Assoc.find xs sym in
-                unify instr.ty ty)
+            -> (try
+                  let ty = Assoc.find xs sym in
+                  unify instr.ty ty
+                with Not_found ->
+                  failwith ("rec_lookup: not found at %" ^ instr.id))
             | _
             -> ())
 

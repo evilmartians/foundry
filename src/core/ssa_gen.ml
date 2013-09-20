@@ -97,7 +97,36 @@ let send ~state entry receiver selector args kwargs =
                           args; kwargs
                         ]))
 
-let rec ssa_of_expr ~state ~entry ~expr =
+let rec ssa_of_assign ~state ~entry ~lhs ~value =
+  match lhs with
+  | Syntax.Var (_, name)
+  -> entry, store ~state entry name value
+
+  | Syntax.IVar (_, name)
+  -> (match state.update with
+      | Some self
+      -> (let new_self = append entry ~ty:(self.Ssa.ty)
+                                      ~opcode:(Ssa.IVarStoreInstr (self, name, value)) in
+          state.update <- Some new_self;
+          entry, value)
+      | _
+      -> (let self = load ~state entry "self" in
+          match state.kind with
+          | ConvObject | ConvInitializer
+          -> (ignore (append entry ~opcode:(Ssa.IVarStoreInstr (self, name, value)));
+              entry, value)
+          | ConvValueInitializer
+          -> (let new_self = append entry ~ty:(self.Ssa.ty)
+                                          ~opcode:(Ssa.IVarStoreInstr (self, name, value)) in
+              ignore (store ~state entry "self" new_self);
+              entry, value)
+          | ConvValue
+          -> failwith "ivar assignment in value non-initializer"))
+
+  | _
+  -> assert false
+
+and ssa_of_expr ~state ~entry ~expr =
   let load      = load  ~state in
   let store     = store ~state in
   let send_args = send_args ~state in
@@ -167,7 +196,7 @@ let rec ssa_of_expr ~state ~entry ~expr =
   | Syntax.Type (_, expr)
   -> ssa_of_type ~state ~entry ~expr
 
-  (* Variable access and assignment. *)
+  (* Variable access. *)
   | Syntax.Self (_)
   -> entry, load entry "self"
   | Syntax.Var (_, name)
@@ -177,52 +206,26 @@ let rec ssa_of_expr ~state ~entry ~expr =
       entry, append entry ~ty:(tvar ())
                           ~opcode:(Ssa.IVarLoadInstr (self, name)))
 
-  | Syntax.Assign (_, Syntax.Var (_, name), expr)
-  -> (let entry, value = ssa_of_expr ~state ~entry ~expr in
-      entry, store entry name value)
-
-  | Syntax.Assign (_, Syntax.IVar (_, name), expr)
-    when state.update <> None
-  -> (match state.update with
-      | Some self
-      -> (let entry, value = ssa_of_expr ~state ~entry ~expr in
-          let new_self = append entry ~ty:(self.Ssa.ty)
-                                      ~opcode:(Ssa.IVarStoreInstr (self, name, value)) in
-          state.update <- Some new_self;
-          entry, value)
-      | _
-      -> assert false)
-
-  | Syntax.Assign (_, Syntax.IVar (_, name), expr)
-  -> (let self = load entry "self" in
-      let entry, value = ssa_of_expr ~state ~entry ~expr in
-      match state.kind with
-      | ConvObject | ConvInitializer
-      -> (ignore (append entry ~opcode:(Ssa.IVarStoreInstr (self, name, value)));
-          entry, value)
-      | ConvValueInitializer
-      -> (let new_self = append entry ~ty:(self.Ssa.ty)
-                                      ~opcode:(Ssa.IVarStoreInstr (self, name, value)) in
-          ignore (store entry "self" new_self);
-          entry, value)
-      | ConvValue
-      -> failwith "ivar assignment in value non-initializer")
-
-  | Syntax.OpAssign (_, Syntax.Var (_, name), selector, expr)
-  -> (let entry, arg   = ssa_of_expr ~state ~entry ~expr in
-      let value        = load entry name in
-      let args, kwargs = send_args entry [value; arg] in
-      let value'       = send entry value selector args kwargs in
-      entry, store entry name value')
-
-  | Syntax.Let (_, pattern, _ty, expr)
+  (* Variable binding. *)
+  | Syntax.Let (_, pattern, ty, expr) (* TODO ty *)
   -> ssa_of_pattern ~state ~entry ~pattern ~expr
 
-  (* Method calls. *)
+  (* Method calls and mutation. *)
   | Syntax.Send (_, receiver, selector, actual_args)
   -> (let entry, receiver     = ssa_of_expr ~state ~entry ~expr:receiver in
       let entry, args, kwargs = ssa_of_actual_args ~state ~entry ~receiver ~actual_args in
       entry, send entry receiver selector args kwargs)
+
+  | Syntax.Super (_, actual_args)
+  -> (let self  = load entry "self" in
+      let entry, args, kwargs = ssa_of_actual_args ~state ~entry ~receiver:self ~actual_args in
+      let value = append entry ~ty:(tvar ())
+                               ~opcode:(Ssa.PrimitiveInstr ("obj_super", [self; args; kwargs])) in
+      match state.kind with
+      | ConvValueInitializer
+      -> entry, store entry "self" value
+      | _
+      -> entry, value)
 
   | Syntax.Assign (_, Syntax.Send (_, receiver, selector, actual_args), arg_expr)
   ->  (* Fetch receiver and base args. *)
@@ -236,6 +239,10 @@ let rec ssa_of_expr ~state ~entry ~expr =
       (* Perform the assignment. *)
       ignore (send entry receiver (selector ^ "=") args kwargs);
       entry, value)
+
+  | Syntax.Assign (_, lhs, expr)
+  -> (let entry, value = ssa_of_expr ~state ~entry ~expr in
+      ssa_of_assign ~state ~entry ~lhs ~value)
 
   | Syntax.OpAssign (_, Syntax.Send (_, receiver, selector, actual_args), operator, arg_expr)
   ->  (* Fetch receiver and base args. *)
@@ -254,12 +261,22 @@ let rec ssa_of_expr ~state ~entry ~expr =
       ignore (send entry receiver (selector ^ "=") args kwargs);
       entry, value')
 
+  | Syntax.OpAssign (_, lhs, selector, expr)
+  ->  (* Load current value. *)
+     (let entry, value = ssa_of_expr ~state ~entry ~expr:lhs in
+      (* Compute new value. *)
+      let entry, arg   = ssa_of_expr ~state ~entry ~expr in
+      let args, kwargs = send_args entry [value; arg] in
+      let value'       = send entry value selector args kwargs in
+      (* Write it back. *)
+      ssa_of_assign ~state ~entry ~lhs ~value:value')
+
   (* Control flow. *)
   | Syntax.If (_, cond, true_exprs, false_expr)
   -> (let head, cond = ssa_of_expr ~state ~entry ~expr:cond in
-      let true_pred = Ssa.create_block state.funcn in
-      let true_entry, true_value =
-        ssa_of_seq ~entry:true_pred ~state ~exprs:true_exprs in
+      let true_entry = Ssa.create_block state.funcn in
+      let true_exit, true_value =
+        ssa_of_seq ~entry:true_entry ~state ~exprs:true_exprs in
       let false_tup =
         Option.map (fun expr ->
             let false_entry = Ssa.create_block state.funcn in
@@ -267,20 +284,32 @@ let rec ssa_of_expr ~state ~entry ~expr =
           false_expr
       in
       let tail = Ssa.create_block state.funcn in
-      let false_pred, false_entry, false_value =
+      let false_entry, false_exit, false_value =
         match false_tup with
-        | Some (pred, (entry, value))
-        -> pred, entry, value
+        | Some (entry, (exit, value))
+        -> entry, exit, value
         | None
         -> tail, head, Ssa.const Rt.Nil
       in
-      ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, true_pred, false_pred)));
-      ignore (append true_entry ~opcode:(Ssa.JumpInstr tail));
-      if false_entry != head then
-        ignore (append false_entry ~opcode:(Ssa.JumpInstr tail));
+      ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, true_entry, false_entry)));
+      ignore (append true_exit ~opcode:(Ssa.JumpInstr tail));
+      if false_exit != head then
+        ignore (append false_exit ~opcode:(Ssa.JumpInstr tail));
       tail, append tail ~ty:(tvar ())
-                        ~opcode:(Ssa.PhiInstr [true_entry,  true_value;
-                                               false_entry, false_value]))
+                        ~opcode:(Ssa.PhiInstr [true_exit,  true_value;
+                                               false_exit, false_value]))
+
+  | Syntax.Unless (_, cond, false_exprs)
+  -> (let head, cond  = ssa_of_expr ~state ~entry ~expr:cond
+      and false_entry = Ssa.create_block state.funcn in
+      let false_exit, false_value =
+        ssa_of_seq ~entry:false_entry ~state ~exprs:false_exprs
+      and tail        = Ssa.create_block state.funcn in
+      ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, tail, false_entry)));
+      ignore (append false_exit ~opcode:(Ssa.JumpInstr tail));
+      tail, append tail ~ty:(tvar ())
+                        ~opcode:(Ssa.PhiInstr [head,       Ssa.const Rt.Nil;
+                                               false_exit, false_value]))
 
   | Syntax.While (_, cond, exprs)
   | Syntax.Until (_, cond, exprs)
@@ -300,8 +329,8 @@ let rec ssa_of_expr ~state ~entry ~expr =
       ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, if_true, if_false)));
       tail, Ssa.const Rt.Nil)
 
-  | Syntax.Or (_, lhs, rhs)
-  | Syntax.And (_, lhs, rhs)
+  | Syntax.Or  (_, lhs, rhs) | Syntax.OrAssign  (_, lhs, rhs)
+  | Syntax.And (_, lhs, rhs) | Syntax.AndAssign (_, lhs, rhs)
   -> (let head, lhs_value = ssa_of_expr ~state ~entry ~expr:lhs in
       let       rhs_pred  = Ssa.create_block state.funcn in
       let body, rhs_value = ssa_of_expr ~entry:rhs_pred ~state ~expr:rhs in
@@ -309,14 +338,22 @@ let rec ssa_of_expr ~state ~entry ~expr =
       ignore (append body ~opcode:(Ssa.JumpInstr tail));
       let if_true, if_false =
         match expr with
-        | Syntax.Or  _ -> tail, rhs_pred
-        | Syntax.And _ -> rhs_pred, tail
+        | Syntax.Or  _ | Syntax.OrAssign _  -> tail, rhs_pred
+        | Syntax.And _ | Syntax.AndAssign _ -> rhs_pred, tail
         | _ -> assert false
       in
       ignore (append head ~opcode:(Ssa.JumpIfInstr (lhs_value, if_true, if_false)));
-      tail, append tail ~ty:(tvar ())
-                        ~opcode:(Ssa.PhiInstr [head, lhs_value;
-                                               body, rhs_value]))
+      let entry, value =
+        tail, append tail ~ty:(tvar ())
+                          ~opcode:(Ssa.PhiInstr [head, lhs_value;
+                                                 body, rhs_value]) in
+      match expr with
+      | Syntax.Or _ | Syntax.And _
+      -> entry, value
+      | Syntax.OrAssign _ | Syntax.AndAssign _
+      -> ssa_of_assign ~state ~entry ~lhs ~value
+      | _
+      -> assert false)
 
   | Syntax.Not (_, expr)
   -> (let entry, value = ssa_of_expr ~state ~entry ~expr in
@@ -347,14 +384,7 @@ let rec ssa_of_expr ~state ~entry ~expr =
       entry, append entry ~ty:(tvar ())
                           ~opcode:(Ssa.PrimitiveInstr (name, List.rev operands)))
 
-  | Syntax.Assign (_, _, _)
-  -> assert false
-
-  | Syntax.OpAssign (_, _, _, _)
-  -> assert false
-
-  | Syntax.Quote (_, _, _) | Syntax.Super (_, _) | Syntax.Unless (_, _, _)
-  | Syntax.OrAssign (_, _, _) | Syntax.AndAssign (_, _, _)
+  | Syntax.Quote (_, _, _)
   -> failwith ("cannot ssa_gen " ^
                (Unicode.assert_utf8s
                 (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));

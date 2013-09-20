@@ -156,10 +156,12 @@ and eval_pattern env lhs value =
 and eval_assign env lhs value =
   match lhs with
   | Syntax.Var((loc,_), name)
-  -> lenv_mutate env.local_env name ~value
+  -> (lenv_mutate env.local_env name ~value;
+      value)
   | Syntax.Const((loc,_), name)
   -> (try
-        cenv_bind env.const_env name value
+        cenv_bind env.const_env name value;
+        value
       with CEnvAlreadyBound value ->
         exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value) ^ ".") [loc])
   | Syntax.IVar((loc,_), name)
@@ -175,7 +177,8 @@ and eval_assign env lhs value =
             i_slots = slots';
           }))
         else
-          Table.set inst.i_slots name value))
+          Table.set inst.i_slots name value);
+      value)
   | _
   -> assert false
 
@@ -375,15 +378,13 @@ and eval_expr env expr =
 
   | Syntax.Assign(_, lhs, rhs)
   -> (let value = eval_expr env rhs in
-      eval_assign env lhs value;
-      value)
+      eval_assign env lhs value)
 
   | Syntax.OpAssign((loc, _), lhs, meth, rhs)
   -> (let value  = eval_expr env lhs in
       let arg    = eval_expr env rhs in
       let result = eval_send value meth ~args:[arg] ~kwargs:Assoc.empty ~loc in
-      eval_assign env lhs result;
-      result)
+      eval_assign env lhs result)
 
   | Syntax.Lambda(_, args, ty_expr, body)
   -> (let tenv, ty, args = eval_closure_ty env args ty_expr in
@@ -594,22 +595,23 @@ and eval_expr env expr =
       | Rt.Lies  -> Rt.Truth
       | _ -> exc_type "Boolean" value [Syntax.loc expr])
 
-  | Syntax.Or (_, lhs_expr, rhs_expr)
-  -> (let lhs = eval_expr env lhs_expr in
-      match lhs with
-      | Rt.Truth -> lhs
-      | Rt.Lies  -> eval_expr env rhs_expr
-      | _ -> exc_type "Boolean" lhs [Syntax.loc lhs_expr])
+  | Syntax.Or  (_, lhs, rhs) | Syntax.OrAssign  (_, lhs, rhs)
+  | Syntax.And (_, lhs, rhs) | Syntax.AndAssign (_, lhs, rhs)
+  -> (let value = eval_expr env lhs in
+      match lhs, value with
+      | (Syntax.Or _  | Syntax.OrAssign _),  Rt.Truth
+      | (Syntax.And _ | Syntax.AndAssign _), Rt.Lies
+      -> value
+      | (Syntax.Or _  | Syntax.OrAssign _),  Rt.Lies
+      | (Syntax.And _ | Syntax.AndAssign _), Rt.Truth
+      -> (let value' = eval_expr env rhs in
+          match expr with
+          | Syntax.OrAssign _ | Syntax.AndAssign _
+          -> eval_assign env lhs value'
+          | _ -> value')
+      | _ -> exc_type "Boolean" value [Syntax.loc lhs])
 
-  | Syntax.And (_, lhs_expr, rhs_expr)
-  -> (let lhs = eval_expr env lhs_expr in
-      match lhs with
-      | Rt.Truth -> eval_expr env rhs_expr
-      | Rt.Lies  -> lhs
-      | _ -> exc_type "Boolean" lhs [Syntax.loc lhs_expr])
-
-  | Syntax.TVar (_, _) | Syntax.OrAssign (_, _, _) | Syntax.AndAssign (_, _, _)
-  | Syntax.Update (_, _)
+  | Syntax.TVar (_, _) | Syntax.Update (_, _)
   -> failwith ("cannot eval " ^
                (Unicode.assert_utf8s
                 (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));
