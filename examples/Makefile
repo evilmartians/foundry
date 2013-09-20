@@ -8,6 +8,7 @@ stdrtl := class.fy object.fy value.fy integer.fy fixed.fy \
 stdrtl := $(addprefix ../rtl/,$(stdrtl))
 
 devrtl := metal/register.fy metal/unit.fy \
+					usb/usb_device.fy \
 					stm32f1/rcc.fy stm32f1/afio.fy stm32f1/gpio.fy stm32f1/exti.fy \
 					stm32f1/usb.fy stm32f1/stm32f1.fy \
 					maple_leaf/color_lcd_shield.fy maple_leaf/maple_leaf.fy

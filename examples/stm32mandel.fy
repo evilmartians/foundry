@@ -2,7 +2,7 @@ Board = MapleLeaf.new
 LCD   = ColorLCDShield.new
 
 def main
-  Board.setup
+  Board.setup_pll(72_000_000)
   LCD.setup
   LCD.backlight_on = true
   LCD.clear(0xFF, 0xFF, 0xFF)

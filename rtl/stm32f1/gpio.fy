@@ -32,11 +32,13 @@ class GPIOUnit < Unit
   def as_output(n, alternate:, open_drain:)
     let cnf  = (if alternate  then 2 else 0 end) |
                (if open_drain then 1 else 0 end)
+
     self.pin_mode(n, 1, cnf)
   end
 
   def as_input(n, pull:)
     let cnf  = (if pull then 2 else 1 end)
+
     self.pin_mode(n, 0, cnf)
   end
 
@@ -46,6 +48,7 @@ class GPIOUnit < Unit
 
   def set(n, is_high)
     self.ODR = self.ODR.set_odr(n, is_high)
+
     self
   end
 
