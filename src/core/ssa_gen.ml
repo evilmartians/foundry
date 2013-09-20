@@ -208,41 +208,12 @@ let rec ssa_of_expr ~state ~entry ~expr =
       | ConvValue
       -> failwith "ivar assignment in value non-initializer")
 
-  | Syntax.Assign (_, Syntax.Send (_, receiver, selector, operands), value)
-  -> (let entry, receiver = ssa_of_expr ~state ~entry ~expr:receiver in
-      let entry, value    = ssa_of_expr ~state ~entry ~expr:value    in
-      let args,  kwargs   = send_args entry [receiver; value] in
-      ignore (send entry receiver (selector ^ "=") args kwargs);
-      entry, value)
-
-  | Syntax.Assign (_, _, _)
-  -> assert false
-
   | Syntax.OpAssign (_, Syntax.Var (_, name), selector, expr)
   -> (let entry, arg   = ssa_of_expr ~state ~entry ~expr in
       let value        = load entry name in
       let args, kwargs = send_args entry [value; arg] in
       let value'       = send entry value selector args kwargs in
       entry, store entry name value')
-
-  | Syntax.OpAssign (_, Syntax.Send (_, receiver, selector, operands), operator, expr)
-  ->  (* Fetch the base expression. *)
-     (let entry, receiver = ssa_of_expr ~state ~entry ~expr:receiver in
-      (* Fetch the old value. *)
-      let args,  kwargs   = send_args entry [receiver] in
-      let value           = send entry receiver selector args kwargs in
-      (* Fetch the argument. *)
-      let entry, arg      = ssa_of_expr ~state ~entry ~expr in
-      (* Perform the operation. *)
-      let args,  kwargs   = send_args entry [value; arg] in
-      let value'          = send entry value operator args kwargs in
-      (* Write back the new value. *)
-      let args,  kwargs   = send_args entry [receiver; value'] in
-      ignore (send entry receiver (selector ^ "=") args kwargs);
-      entry, value')
-
-  | Syntax.OpAssign (_, _, _, _)
-  -> assert false
 
   | Syntax.Let (_, pattern, _ty, expr)
   -> ssa_of_pattern ~state ~entry ~pattern ~expr
@@ -252,6 +223,36 @@ let rec ssa_of_expr ~state ~entry ~expr =
   -> (let entry, receiver     = ssa_of_expr ~state ~entry ~expr:receiver in
       let entry, args, kwargs = ssa_of_actual_args ~state ~entry ~receiver ~actual_args in
       entry, send entry receiver selector args kwargs)
+
+  | Syntax.Assign (_, Syntax.Send (_, receiver, selector, actual_args), arg_expr)
+  ->  (* Fetch receiver and base args. *)
+     (let entry, receiver     = ssa_of_expr ~state ~entry ~expr:receiver in
+      let entry, args, kwargs = ssa_of_actual_args ~state ~entry ~receiver ~actual_args in
+      (* Compute the assigned value. *)
+      let entry, value        = ssa_of_expr ~state ~entry ~expr:arg_expr in
+      (* Append the value to the positional args. *)
+      let args = append entry ~ty:(tvar ())
+                              ~opcode:(Ssa.TupleExtendInstr (args, [value])) in
+      (* Perform the assignment. *)
+      ignore (send entry receiver (selector ^ "=") args kwargs);
+      entry, value)
+
+  | Syntax.OpAssign (_, Syntax.Send (_, receiver, selector, actual_args), operator, arg_expr)
+  ->  (* Fetch receiver and base args. *)
+     (let entry, receiver     = ssa_of_expr ~state ~entry ~expr:receiver in
+      let entry, args, kwargs = ssa_of_actual_args ~state ~entry ~receiver ~actual_args in
+      (* Fetch the old value. *)
+      let value               = send entry receiver selector args kwargs in
+      (* Compute the argument. *)
+      let entry, arg          = ssa_of_expr ~state ~entry ~expr:arg_expr in
+      (* Perform the operation. *)
+      let op_args, op_kwargs  = send_args entry [value; arg] in
+      let value'              = send entry value operator op_args op_kwargs in
+      (* Write back the new value. *)
+      let args = append entry ~ty:(tvar ())
+                              ~opcode:(Ssa.TupleExtendInstr (args, [value'])) in
+      ignore (send entry receiver (selector ^ "=") args kwargs);
+      entry, value')
 
   (* Control flow. *)
   | Syntax.If (_, cond, true_exprs, false_expr)
@@ -345,6 +346,12 @@ let rec ssa_of_expr ~state ~entry ~expr =
   -> (let entry, operands = ssa_of_exprs ~state ~entry ~exprs:operands in
       entry, append entry ~ty:(tvar ())
                           ~opcode:(Ssa.PrimitiveInstr (name, List.rev operands)))
+
+  | Syntax.Assign (_, _, _)
+  -> assert false
+
+  | Syntax.OpAssign (_, _, _, _)
+  -> assert false
 
   | Syntax.Quote (_, _, _) | Syntax.Super (_, _) | Syntax.Unless (_, _, _)
   | Syntax.OrAssign (_, _, _) | Syntax.AndAssign (_, _, _)
