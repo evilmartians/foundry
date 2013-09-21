@@ -130,10 +130,10 @@
    record_elem: id=Id_LABEL expr=expr
                 { let (label_loc, label) = id in
                   Syntax.RecordElem (op_unary label_loc expr, label, expr) }
-              | id=Id_LABEL
-                { let (label_loc, label) = id in
-                  Syntax.RecordElem ((label_loc, { Syntax.operator = Loc.empty }), label,
-                                     Syntax.Var (nullary label_loc, label)) }
+              | id=Id_LOCAL
+                { let (local_loc, local) = id in
+                  Syntax.RecordElem ((local_loc, { Syntax.operator = Loc.empty }), local,
+                                     Syntax.Var (nullary local_loc, local)) }
               | lhs=expr tk=Tk_ROCKET rhs=expr
                 { Syntax.RecordPair (op_binary lhs tk rhs, lhs, rhs) }
               | op=Tk_DSTAR expr=expr
