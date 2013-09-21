@@ -104,6 +104,7 @@ rule lex = parse
 | "jump_if"       { Jump_if }
 | "return"        { Return }
 | "phi"           { Phi }
+| "select"        { Select }
 | "frame"         { Frame }
 | "lvar_load"     { Lvar_load }
 | "lvar_store"    { Lvar_store }

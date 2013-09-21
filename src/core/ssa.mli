@@ -40,12 +40,13 @@ and opcode =
 | BasicBlock        of basic_block
 (* Constants *)
 | Const             of Rt.value
-(* Phi *)
-| PhiInstr          of ((*basic_block*) name * (*value*) name) list
 (* Terminators *)
 | JumpInstr         of (*target*) name
 | JumpIfInstr       of (*condition*) name * (*if_true*) name * (*if_false*) name
 | ReturnInstr       of (*value*) name
+(* Other *)
+| PhiInstr          of ((*basic_block*) name * (*value*) name) list
+| SelectInstr       of (*condition*) name * (*if_true*) name * (*if_false*) name
 (* Language-specific opcodes *)
 | FrameInstr        of (*parent*) name
 | LVarLoadInstr     of (*environment*) name * (*name*) string

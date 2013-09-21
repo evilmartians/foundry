@@ -43,12 +43,13 @@ sig
   | BasicBlock        of basic_block
   (* Constants *)
   | Const             of Rt.value
-  (* Phi *)
-  | PhiInstr          of ((*basic_block*) name * (*value*) name) list
   (* Terminators *)
   | JumpInstr         of (*target*) name
   | JumpIfInstr       of (*condition*) name * (*if_true*) name * (*if_false*) name
   | ReturnInstr       of (*value*) name
+  (* Other *)
+  | PhiInstr          of ((*basic_block*) name * (*value*) name) list
+  | SelectInstr       of (*condition*) name * (*if_true*) name * (*if_false*) name
   (* Language-specific opcodes *)
   | FrameInstr        of (*parent*) name
   | LVarLoadInstr     of (*environment*) name * (*name*) string
@@ -305,6 +306,7 @@ let instr_operands instr =
   | JumpInstr target
   -> [target]
   | JumpIfInstr (cond, if_true, if_false)
+  | SelectInstr (cond, if_true, if_false)
   -> [cond; if_true; if_false]
   | ReturnInstr value
   -> [value]
@@ -473,6 +475,8 @@ let map_instr_operands instr operands =
   -> JumpIfInstr (cond, if_true, if_false)
   | ReturnInstr _, [value]
   -> ReturnInstr value
+  | SelectInstr _, [cond; if_true; if_false]
+  -> SelectInstr (cond, if_true, if_false)
   | FrameInstr _,  [parent]
   -> FrameInstr parent
   | LVarLoadInstr (_, name), [frame]

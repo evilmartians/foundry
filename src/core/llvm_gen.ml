@@ -470,6 +470,10 @@ let rec gen_func llmod heap funcn =
           List.iter (fun (block, op) -> fixups := (llphi, block, op) :: !fixups) succ;
           llphi)
 
+      (* Select. *)
+      | Ssa.SelectInstr (condn, truen, falsen)
+      -> Llvm.build_select (lookup condn) (lookup truen) (lookup falsen) id builder
+
       (* Local variables. *)
       | Ssa.FrameInstr nextn
       -> (let env_map = env_map_of_ty instr.Ssa.ty in

@@ -622,6 +622,8 @@ lambda_arg_def: Default expr=expr
 
     instr_body: Phi operands=phi_ops
                 { (fun defs -> PhiInstr (operands defs)) }
+              | Select cond=operand Comma if_true=operand Comma if_false=operand
+                { (fun defs -> SelectInstr (cond defs, if_true defs, if_false defs)) }
               | Frame parent=local_env_op
                 { (fun defs -> FrameInstr (parent defs)) }
               | Lvar_load lenv=local_env_op Comma name=Lit_String

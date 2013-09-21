@@ -75,6 +75,7 @@
 %token Jump_if
 %token Return
 %token Phi
+%token Select
 %token Frame
 %token Lvar_load
 %token Lvar_store

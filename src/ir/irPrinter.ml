@@ -377,6 +377,8 @@ let rec string_of_ssa_name state value =
   | PhiInstr operands ->
     (prefix ()) ^ "phi [" ^ (String.concat ", " (List.map (fun (block, value) ->
                   (print block) ^ " => " ^ (print value)) operands)) ^ "]"
+  | SelectInstr (cond, if_true, if_false) ->
+    instr "select" [print cond; print if_true; print if_false]
   | FrameInstr (parent) ->
     instr "frame" [print parent]
   | LVarLoadInstr (env, var) ->
