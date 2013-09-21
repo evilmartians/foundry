@@ -598,7 +598,7 @@ and eval_expr env expr =
   | Syntax.Or  (_, lhs, rhs) | Syntax.OrAssign  (_, lhs, rhs)
   | Syntax.And (_, lhs, rhs) | Syntax.AndAssign (_, lhs, rhs)
   -> (let value = eval_expr env lhs in
-      match lhs, value with
+      match expr, value with
       | (Syntax.Or _  | Syntax.OrAssign _),  Rt.Truth
       | (Syntax.And _ | Syntax.AndAssign _), Rt.Lies
       -> value
