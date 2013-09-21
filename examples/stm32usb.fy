@@ -1,5 +1,3 @@
-self.use_USB
-
 Board = MapleLeaf.new
 
 def main

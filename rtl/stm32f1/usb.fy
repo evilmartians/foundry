@@ -16,7 +16,7 @@ class USBEndpointUnit < Unit
   self.register(:ADDR_TX,   :rw, offset: 0x00, align: 4, impl: USB_ADDR)
   self.register(:COUNT_TX,  :rw, offset: 0x04, align: 4, impl: USB_COUNT_TX)
   self.register(:ADDR_RX,   :rw, offset: 0x08, align: 4, impl: USB_ADDR)
-  self.register(:COUNT_TX,  :rw, offset: 0x0C, align: 4, impl: USB_COUNT_RX)
+  self.register(:COUNT_RX,  :rw, offset: 0x0C, align: 4, impl: USB_COUNT_RX)
 
   def @buffer_base : Unsigned(32)
 
@@ -36,7 +36,11 @@ class USBEndpointUnit < Unit
     self.COUNT_RX = self.COUNT_RX.set_bl_size(big_blocks).
                                   set_num_block(num_blocks)
 
-    self
+    if big_blocks
+      num_blocks * 32
+    else
+      num_blocks * 2
+    end
   end
 
   def setup_tx(offset:, length:)
@@ -44,28 +48,28 @@ class USBEndpointUnit < Unit
     self.ADDR_TX  = self.ADDR_TX.set_addr(offset)
     self.COUNT_TX = self.COUNT_TX.set_count(length)
 
-    self
+    length
   end
 
-  # def rx_buffer : (\self) -> ROMemory(align: 4, width: 2, stride: 2)
-  #   let {addr: offset}       = self.ADDR_RX
-  #   let {bl_size, num_block} = self.COUNT_RX
+  def rx_buffer : (\self) -> ROMemory(align: 4, width: 2, stride: 2)
+    let {addr: offset}       = self.ADDR_RX
+    let {bl_size, num_block} = self.COUNT_RX
 
-  #   let address = @buffer_base + offset << 1
-  #   let length  = (if bl_size then num_block * 32
-  #                  else            num_block * 2  end)
+    let address = @buffer_base + offset << 1
+    let length  = (if bl_size then num_block * 32
+                   else            num_block * 2  end)
 
-  #   invokeprimitive fat_alloc(address, length)
-  # end
+    invokeprimitive fat_alloc(address, length)
+  end
 
-  # def tx_buffer : (\self) -> RWMemory(align: 4, width: 2, stride: 2)
-  #   let {addr: offset}  = self.ADDR_RX
-  #   let {count: length} = self.COUNT_TX
+  def tx_buffer : (\self) -> RWMemory(align: 4, width: 2, stride: 2)
+    let {addr: offset}  = self.ADDR_RX
+    let {count: length} = self.COUNT_TX
 
-  #   let address = @buffer_base + offset << 1
+    let address = @buffer_base + offset << 1
 
-  #   invokeprimitive fat_alloc(address, length)
-  # end
+    invokeprimitive fat_alloc(address, length)
+  end
 end
 
 class USBUnit < Unit
@@ -122,6 +126,14 @@ class USBUnit < Unit
     self.field(:stat_rx,  :t,     offset: 12, width: 2)
     self.flag(:dtog_rx,   :t,     offset: 14)
     self.flag(:ctr_rx,    :rc_w0, offset: 15)
+
+    def set_stat_tx(stat_tx)
+      self.toggle_stat_tx(self.stat_tx ^ stat_tx)
+    end
+
+    def set_stat_rx(stat_rx)
+      self.toggle_stat_rx(self.stat_rx ^ stat_rx)
+    end
   end
 
   class USB_BTABLE < Register(16)
@@ -138,11 +150,12 @@ class USBUnit < Unit
   self.register(:DADDR,   :rw,  offset: 0x4C, align: 4, impl: USB_DADDR)
   self.register(:BTABLE,  :rw,  offset: 0x50, align: 4, impl: USB_BTABLE)
 
-  def @buffer_base  : Unsigned(32)
+  def @buffer_base : Unsigned(32)
+
   def initialize(base, buffer_base:)
     super(base)
 
-    @buffer_base  = buffer_base
+    @buffer_base = buffer_base
   end
 
   def address
@@ -154,7 +167,9 @@ class USBUnit < Unit
   end
 
   def endpoint(num)
-    USBEndpointUnit.new(@buffer_base + (self.BTABLE.btable + num) << 3,
+    # USBEndpointUnit.new(@buffer_base + (self.BTABLE.btable + num) << 3,
+    #                     buffer_base: @buffer_base)
+    USBEndpointUnit.new(@buffer_base + num << 3,
                         buffer_base: @buffer_base)
   end
 
@@ -184,21 +199,21 @@ class USBUnit < Unit
 
   def setup_control(tx_length:, rx_length:)
     # Set up the control endpoint.
-    self.EPR(0) = self.EPR(0).set_ea(0).           # endpoint 0
-                              set_ep_type(0b01).   # control
-                              toggle_stat_rx(0b11) # ACK RX
+    self.EPR(0) = self.EPR(0).set_ea(0).         # endpoint 0
+                              set_ep_type(0b01). # control
+                              set_stat_rx(0b11)  # ACK RX
 
     # Set up control endpoint buffers.
     let ep0 = self.endpoint(0)
 
     # One endpoint descriptor is 4 word = 8 byte long. There are
     # 8 of them.
-    let mut offset = 8 * 8
+    let mut offset = 8u16 * 8u16
     offset += ep0.setup_rx(offset:, length: rx_length)
     offset += ep0.setup_tx(offset:, length: tx_length)
 
     # Return token and endpoint.
-    [{ id: 1u16, offset: }, ep0]
+    [{ id: 1u16, offset }, ep0]
   end
 
   def setup_endpoint(token, address:, kind:, tx_length:, rx_length:)
@@ -207,13 +222,12 @@ class USBUnit < Unit
 
     # Set up the endpoint. If {rx,tx}_length is zero, mark the corresponding
     # OUT/IN endpoint as DISABLED, otherwise as VALID/NAK.
-    # It is assumed that the USB core was just reset.
-    let stat_rx  = (if rx_length == 0 then 0b00 else 0b11 end)
+    let stat_rx  = (if rx_length == 0 then 0b00 else 0b10 end)
     let stat_tx  = (if tx_length == 0 then 0b00 else 0b10 end)
     self.EPR(id) = self.EPR(id).set_ea(address).
                                 set_ep_type(kind).
-                                toggle_stat_rx(stat_rx).
-                                toggle_stat_tx(stat_tx)
+                                set_stat_rx(stat_rx).
+                                set_stat_tx(stat_tx)
 
     # Set up endpoint buffers.
     let ep = self.endpoint(id)
@@ -222,26 +236,32 @@ class USBUnit < Unit
     offset += ep.setup_tx(offset:, length: tx_length)
 
     # Return token and endpoint.
-    [{ id: id + 1, offset: }, ep]
+    [{ id: id + 1, offset }, ep]
   end
 
-  def handle_interrupt
+  def handle_interrupt(device)
     if self.ISTR.ctrm
       # A transfer has successfully finished. Record where it happened.
       let {ep_id}                 = self.ISTR
       let {ctr_tx, ctr_rx, setup} = self.EPR(ep_id)
 
-      if ep_id == 0
-        # ep_id = 0 always corresponds to EP0, i.e. control endpoint.
-        if ctr_rx && setup
-          @control_pipe.handle_setup
-        elsif ctr_rx
-          @control_pipe.handle_rx
-        end
+      if ctr_rx
+        # Mark RX endpoint as NAK.
+        self.rx_status(ep_id) = 0b10
 
-        if ctr_tx
-          @control_pipe.handle_tx
+        if ep_id == 0 && setup
+          # ep_id = 0 always corresponds to EP0, i.e. control endpoint.
+          device.handle_setup
+        else
+          device.handle_rx(ep_id)
         end
+      end
+
+      if ctr_tx
+        # Mark TX endpoint as NAK.
+        self.tx_status(ep_id) = 0b10
+
+        device.handle_tx(ep_id)
       end
 
       # Clear TX/RX completion flags.
@@ -250,5 +270,13 @@ class USBUnit < Unit
     end
 
     nil
+  end
+
+  def rx_status=(ep_id, status)
+    self.EPR(ep_id) = self.EPR(ep_id).set_stat_rx(status)
+  end
+
+  def tx_status=(ep_id, status)
+    self.EPR(ep_id) = self.EPR(ep_id).set_stat_tx(status)
   end
 end
