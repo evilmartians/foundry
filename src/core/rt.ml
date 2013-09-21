@@ -25,7 +25,7 @@ type value =
 | String        of string
 | StringTy
 (* Complex types *)
-| Option        of value option
+| Option        of value_option
 | OptionTy      of ty
 | Tuple         of value list
 | TupleTy       of ty    list
@@ -50,6 +50,9 @@ type value =
 and ty = value
 and 'a specialized = 'a * value Assoc.sorted_t
 and slots          = value Table.t
+and value_option =
+| Full  of value
+| Empty of ty
 and binding_ty = {
           b_ty_location   : Location.t;
           b_ty_kind       : Syntax.lvar_kind;
@@ -435,8 +438,14 @@ let rec type_of_value value =
   | Integer(_)      -> IntegerTy
   | Symbol(_)       -> SymbolTy
   | String(_)       -> StringTy
-  | Unsigned(w,_)   -> UnsignedTy(w)
-  | Signed(w,_)     -> SignedTy(w)
+  | Unsigned(w,_)   -> UnsignedTy w
+  | Signed(w,_)     -> SignedTy w
+
+  | Option(x)
+  -> (match x with
+      | Full  v  -> OptionTy (type_of_value v)
+      | Empty ty -> OptionTy (ty))
+
   | Tuple(xs)       -> TupleTy (List.map type_of_value xs)
   | Record(xs)      -> RecordTy (Assoc.map (fun _ -> type_of_value) xs)
 
@@ -560,6 +569,10 @@ and equal a b =
   -> wa = wb && a = b
 
   (* Immutable values and types with possibly mutable parameters. *)
+  | Option(Full a),     Option(Full b)
+  | Option(Empty a),    Option(Empty b)
+  | OptionTy(a),        OptionTy(b)
+  -> equal a b
   | Tuple(a),           Tuple(b)
   | TupleTy(a),         TupleTy(b)
   -> equal_list a b
@@ -641,8 +654,9 @@ and hash value =
   -> hash_assoc x
   | ArrayTy(x)
   -> hash x
-  | Option value
-  -> Option.map_default hash 0 value
+  | Option x
+  -> (match x with
+      | Full v | Empty v -> hash v)
   | OptionTy ty
   -> hash ty
   | EnvironmentTy(x)
@@ -728,6 +742,10 @@ let rec inspect_literal_or value f =
 and inspect_value value =
   inspect_literal_or value (fun x ->
     match value with
+    | Option(x)
+    -> (match x with
+        | Full  v  -> "Option.some(" ^ (inspect_value v) ^ ")"
+        | Empty ty -> "Option.none")
     | Tuple(xs)
     -> "[" ^ (String.concat ", " (List.map inspect_value xs)) ^ "]"
     | Record(xs)
@@ -743,6 +761,8 @@ and inspect_value value =
 and inspect_type ty =
   inspect_literal_or ty (fun x ->
     match ty with
+    | OptionTy(x)
+    -> "Option(" ^ (inspect_type x) ^ ")"
     | TupleTy(xs)
     -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
     | RecordTy(xs)

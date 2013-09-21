@@ -1,5 +1,4 @@
 usb:
- * optional args
  * export
  * class and class
  * Memory, fat_alloc

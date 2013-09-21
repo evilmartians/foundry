@@ -24,7 +24,7 @@ type value =
 | String        of string
 | StringTy
 (* Complex types *)
-| Option        of value option
+| Option        of value_option
 | OptionTy      of ty
 | Tuple         of value list
 | TupleTy       of ty    list
@@ -49,6 +49,9 @@ type value =
 and ty = value
 and 'a specialized = 'a * ty Assoc.sorted_t
 and slots          = value Table.t
+and value_option =
+| Full  of value
+| Empty of ty
 and binding_ty = {
           b_ty_location   : Location.t;
           b_ty_kind       : Syntax.lvar_kind;

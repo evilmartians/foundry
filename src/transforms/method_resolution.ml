@@ -44,32 +44,45 @@ let parse_arguments ~before ~arg_tys ~args ~kwargs =
       let int n = Ssa.const (Rt.Integer (big_int_of_int n))
       and sym s = Ssa.const (Rt.Symbol s) in
       let right_idx idx =
-        let args_len = append (Ssa.PrimitiveInstr ("tup_length", [args])) in
-        append (Ssa.PrimitiveInstr ("int_sub", [args_len; idx]))
+        let len = append (Ssa.PrimitiveInstr ("tup_length", [args])) in
+        append (Ssa.PrimitiveInstr ("int_sub", [len; idx]))
       in
       match ty_elem with
       | Rt.LambdaArg ty
-      -> (let arg_idx =
+      -> (let idx =
             if !arg_idx >= 0 then begin
-              let idx_name = int !arg_idx in
+              let idx = int !arg_idx in
               incr arg_idx;
-              idx_name
+              idx
             end else begin
-              let idx_name = right_idx (int (-(!arg_idx))) in
+              let idx = right_idx (int (-(!arg_idx))) in
               decr arg_idx;
-              idx_name
+              idx
             end
           in
-          append ~ty (Ssa.PrimitiveInstr ("tup_lookup", [args; arg_idx])))
+          append ~ty (Ssa.PrimitiveInstr ("tup_lookup", [args; idx])))
+      | Rt.LambdaOptArg ty
+      -> (let idx  = int !arg_idx in
+          incr arg_idx;
+          let tup_len = append (Ssa.PrimitiveInstr ("tup_length",  [args])) in
+          let has_arg = append (Ssa.PrimitiveInstr ("int_gt",      [tup_len; idx]))
+          and arg     = append (Ssa.PrimitiveInstr ("tup_lookup",  [args; idx])) in
+          let full    = append (Ssa.PrimitiveInstr ("opt_alloc",   [arg]))
+          and empty   = Ssa.const (Rt.Option (Empty ty)) in
+          append ~ty:(Rt.OptionTy ty) (Ssa.SelectInstr (has_arg, full, empty)))
       | Rt.LambdaRest ty
       -> (let last_idx = right_idx (int post_count) in
           append ~ty (Ssa.PrimitiveInstr ("tup_slice", [args; int !arg_idx; last_idx])))
       | Rt.LambdaKwArg (kw, ty)
       -> append ~ty (Ssa.PrimitiveInstr ("rec_lookup", [kwargs; sym kw]))
+      | Rt.LambdaKwOptArg (kw, ty)
+      -> (let has_arg = append (Ssa.PrimitiveInstr ("rec_incl",    [kwargs; sym kw]))
+          and arg     = append (Ssa.PrimitiveInstr ("rec_lookup",  [kwargs; sym kw])) in
+          let full    = append (Ssa.PrimitiveInstr ("opt_alloc",   [arg]))
+          and empty   = Ssa.const (Rt.Option (Empty ty)) in
+          append ~ty:(Rt.OptionTy ty) (Ssa.SelectInstr (has_arg, full, empty)))
       | Rt.LambdaKwRest ty
-      -> kwargs (* TODO stub *)
-      | _
-      -> assert false)
+      -> kwargs (* TODO stub *))
     arg_tys
 
 let run_on_function passmgr capsule caller =

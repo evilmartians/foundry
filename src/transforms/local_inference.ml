@@ -90,6 +90,11 @@ let run_on_function passmgr capsule funcn =
         let env = Typing.unify_list (instr.ty :: tys) in
         specialize env)
 
+    (* Select. *)
+    | SelectInstr (cond, if_true, if_false)
+    -> (let env = Typing.unify_list ([instr.ty; if_true.ty; if_false.ty]) in
+        specialize env)
+
     (* Tuples. *)
     | TupleExtendInstr ({ ty = Rt.TupleTy xs }, operands)
     -> (let operand_tys = List.map (fun x -> x.ty) operands in
@@ -160,16 +165,36 @@ let run_on_function passmgr capsule funcn =
         | "int_eq"   | "int_ne"   | "int_le"  | "int_lt"  | "int_ge"   | "int_gt"
         -> unify_int_op int_cmpop_ty
 
-        (* Tuple and record primitives have type-level semantics not
-           expressible with type variables. *)
+        (* Option primitives. *)
+        | "opt_alloc"
+        -> (match operands with
+            | [ { ty } ]
+            -> (let ty = Rt.OptionTy (ty) in
+                unify instr.ty ty)
+            | _
+            -> ())
+        | "opt_any"
+        -> unify instr.ty Rt.BooleanTy
+        | "opt_get"
+        -> (match operands with
+            | [ { ty = Rt.OptionTy (ty) } ]
+            -> unify instr.ty ty
+            | _
+            -> ())
+
+        (* Tuple and record primitives. *)
         | "tup_lookup"
         -> (match operands with
             | [ { ty     = Rt.TupleTy xs };
                 { opcode = Const (Rt.Integer idx) } ]
-            -> (let ty = List.nth xs (int_of_big_int idx) in
-                unify instr.ty ty)
+            -> (try
+                  let ty = List.nth xs (int_of_big_int idx) in
+                  unify instr.ty ty
+                with List.Invalid_index _ ->
+                  ())
             | _
             -> ())
+
         | "tup_slice"
         -> (match operands with
             | [ { ty     = Rt.TupleTy xs };
@@ -191,7 +216,7 @@ let run_on_function passmgr capsule funcn =
                   let ty = Assoc.find xs sym in
                   unify instr.ty ty
                 with Not_found ->
-                  failwith ("rec_lookup: not found at %" ^ instr.id))
+                  ())
             | _
             -> ())
 

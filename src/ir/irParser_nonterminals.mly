@@ -263,7 +263,7 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun defs -> SymbolTy) }
               | String
                 { (fun defs -> StringTy) }
-              | Option x=ty
+              | Option LParen x=ty RParen
                 { (fun defs -> OptionTy (x defs)) }
               | xs=seq(ty)
                 { (fun defs -> TupleTy (xs defs)) }
@@ -310,8 +310,10 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun defs -> Symbol x) }
               | String x=Lit_String
                 { (fun defs -> String x) }
-              | Option LParen x=value? RParen
-                { (fun defs -> Option (Option.map (fun x -> x defs) x)) }
+              | Option LParen x=value RParen
+                { (fun defs -> Option (Full (x defs))) }
+              | Option LParen Empty x=ty RParen
+                { (fun defs -> Option (Empty (x defs))) }
               | xs=seq(value)
                 { (fun defs -> Tuple (xs defs)) }
               | xs=assoc_ord(value)

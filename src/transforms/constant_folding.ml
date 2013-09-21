@@ -121,6 +121,13 @@ let run_on_function passmgr capsule funcn =
               set_opcode instr (JumpInstr target);
               schedule_block target)); Top
 
+      (* Handle select. *)
+      | SelectInstr (cond, if_true, if_false)
+      -> (match get cond with
+          | Rt.Truth -> lookup if_true
+          | Rt.Lies  -> lookup if_false
+          | _        -> Bottom)
+
       (* Tuple instructions. *)
       | TupleConcatInstr ({ opcode = Ssa.Const (Rt.Tuple []) }, tup)
       | TupleConcatInstr (tup, { opcode = Ssa.Const (Rt.Tuple []) })
@@ -183,8 +190,26 @@ let run_on_function passmgr capsule funcn =
           -> (match tup.ty with
               | Rt.TupleTy(xs) -> Const (Rt.Integer (big_int_of_int (List.length xs)))
               | _ -> Bottom)
+
+          | "tup_lookup", [tup; idx]
+          -> (match get tup, get idx with
+              | Rt.Tuple(xs), Rt.Integer num
+              -> (try  Const (List.nth xs (int_of_big_int num))
+                  with Not_found -> Bottom)
+              | _
+              -> Bottom)
+
+          | "rec_lookup", [re; key]
+          -> (match get re, get key with
+              | Rt.Record(xs), Rt.Symbol(name)
+              -> (try  Const (Assoc.find xs name)
+                  with Not_found -> Bottom)
+              | _
+              -> Bottom)
+
           | "int_coerce", _
           -> Bottom
+
           | _
           -> (if Primitive.has_side_effects name then
                 Bottom

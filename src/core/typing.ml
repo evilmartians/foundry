@@ -75,6 +75,9 @@ let rec unify' env a b =
     when wa = wb
   -> env
 
+  | OptionTy(xa), OptionTy(xb)
+  -> unify' env xa xb
+
   | TupleTy(xsa), TupleTy(xsb)
   -> List.fold_left2 unify' env xsa xsb
 
@@ -158,6 +161,12 @@ let rec derive f value =
   -> value
   | Tvar tvar
   -> f tvar
+  | OptionTy x
+  -> OptionTy (derive f x)
+  | Option x
+  -> (match x with
+      | Full  v  -> Option (Full (derive f v))
+      | Empty ty -> Option (Empty (derive f ty)))
   | TupleTy xs
   -> TupleTy (List.map (derive f) xs)
   | Tuple xs

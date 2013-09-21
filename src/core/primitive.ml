@@ -5,6 +5,9 @@ open Rt
 
 exception Undefined_primitive of string
 
+let value_of_bool x =
+  if x then Rt.Truth else Rt.Lies
+
 (* Debug primitive implementations. *)
 
 let debug args =
@@ -29,9 +32,9 @@ let int_cmpop op =
     | [Unsigned(wl,lhs); Unsigned(wr,rhs)]
     | [  Signed(wl,lhs);   Signed(wr,rhs)]
       when wl = wr
-    -> if op lhs rhs then Rt.Truth else Rt.Lies
+    -> value_of_bool (op lhs rhs)
     | [Integer(lhs); Integer(rhs)]
-    -> if op lhs rhs then Rt.Truth else Rt.Lies
+    -> value_of_bool (op lhs rhs)
     | _ -> assert false)
 
 let int_shl = int_binop (fun lhs rhs -> shift_left_big_int  lhs (int_of_big_int rhs))
@@ -43,6 +46,25 @@ let int_to_str args =
   -> String (string_of_big_int value)
   | _
   -> assert false
+
+(* Option primitive implementations. *)
+
+let opt_alloc args =
+  match args with
+  | [x] -> Option (Full x)
+  | []  -> Option (Empty (Tvar (Rt.new_tvar ())))
+  | _ -> assert false
+
+let opt_any args =
+  match args with
+  | [Option (Full _)]  -> Rt.Truth
+  | [Option (Empty _)] -> Rt.Lies
+  | _ -> assert false
+
+let opt_get args =
+  match args with
+  | [Option (Full x)] -> x
+  | _ -> assert false
 
 (* Tuple primitive implementations. *)
 
@@ -67,6 +89,11 @@ let tup_slice args =
   -> assert false
 
 (* Record primitive implementations. *)
+
+let rec_incl args =
+  match args with
+  | [Record(xs); Symbol(n)] -> value_of_bool (Assoc.mem xs n)
+  | _ -> assert false
 
 let rec_lookup args =
   match args with
@@ -141,12 +168,17 @@ let prim = Table.create [
   "int_gt",     (false,    int_cmpop gt_big_int);
   "int_coerce", (false,    fun _ -> assert false);
   "int_to_str", (false,    int_to_str);
+  (* -- options ---------------------------------------- *)
+  "opt_alloc",  (false,    opt_alloc);
+  "opt_any",    (false,    opt_any);
+  "opt_get",    (false,    opt_get);
   (* -- tuples ----------------------------------------- *)
   "tup_length", (false,    tup_length);
   "tup_lookup", (false,    tup_lookup);
   "tup_slice",  (false,    tup_slice);
   "tup_enum",   (true,     fun _ -> assert false);
   (* -- records ---------------------------------------- *)
+  "rec_incl",   (false,    rec_incl);
   "rec_lookup", (false,    rec_lookup);
   "rec_enum",   (true,     fun _ -> assert false);
   (* -- symbols ---------------------------------------- *)

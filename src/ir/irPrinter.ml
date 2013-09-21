@@ -112,7 +112,9 @@ let rec string_of_value state value =
   | String(s)         -> "string " ^ (escape_as_literal s)
   | Unsigned(w,v)     -> "unsigned(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
   | Signed(w,v)       -> "signed(" ^ (string_of_int w) ^ ") " ^ (string_of_big_int v)
-  | Option(x)         -> Option.map_default (fun x -> "option(" ^ (string_of_value state x) ^ ")") "option()" x
+  | Option(x)         -> (match x with
+                          | Full  v  -> "option(" ^ (string_of_value state v) ^ ")"
+                          | Empty ty -> "option(empty " ^ (string_of_ty state ty) ^ ")")
   | Tuple(xs)         -> "[" ^ (string_of_seq xs (string_of_value state)) ^ "]"
   | Record(xs)        -> "{" ^ (string_of_assoc_inline xs (string_of_value state)) ^ "}"
   | Array(ty,xs)      -> "array " ^ (string_of_array state xs)

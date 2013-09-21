@@ -490,20 +490,53 @@ and ssa_of_actual_args ~state ~entry ~receiver ~actual_args =
   entry, (Ssa_interp.tup_apply args entry), (Ssa_interp.rec_apply kwargs entry)
 
 and ssa_of_formal_args ~state ~entry ~args ~arg_names =
-  List.iter2 (fun arg arg_name ->
+  List.fold_left2 (fun entry arg arg_name ->
+      let ty = tvar () in
+      let entry, value =
+        match arg.Rt.la_default with
+        | None
+        -> entry, arg_name
+        | Some expr
+        -> (let if_none = Ssa.create_block state.funcn
+            and if_any  = Ssa.create_block state.funcn
+            and tail    = Ssa.create_block state.funcn in
+            (* Check if we have an incoming argument. *)
+            let has_arg = append entry ~ty:Rt.BooleanTy
+                                       ~opcode:(Ssa.PrimitiveInstr ("opt_any", [arg_name])) in
+            ignore (append entry ~opcode:(Ssa.JumpIfInstr (has_arg, if_any, if_none)));
+            (* We have an argument, extract it. *)
+            let any_value = append if_any ~ty
+                                          ~opcode:(Ssa.PrimitiveInstr ("opt_get", [arg_name])) in
+            ignore (append if_any ~opcode:(Ssa.JumpInstr (tail)));
+            (* Nope, execute the default expression. *)
+            let if_none, none_value = ssa_of_expr ~state ~entry:if_none ~expr in
+            ignore (append if_none ~opcode:(Ssa.JumpInstr tail));
+            (* Gather the value. *)
+            tail, append tail ~ty ~opcode:(Ssa.PhiInstr [if_none, none_value;
+                                                         if_any,  any_value]))
+      in
       Table.set state.frame_ty.Rt.e_ty_bindings arg.Rt.la_name {
         Rt.b_ty_location = arg.Rt.la_location;
         Rt.b_ty_kind     = arg.Rt.la_kind;
-        Rt.b_ty          = tvar ();
+        Rt.b_ty          = ty;
       };
-      ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, arg.Rt.la_name, arg_name))))
-    args arg_names
+      ignore (append entry ~opcode:(Ssa.LVarStoreInstr (state.frame, arg.Rt.la_name, value)));
+      entry)
+    entry args arg_names
 
 and ssa_of_lambda_expr ~state ~entry ~formal_args ~expr =
   let args = Rt.lambda_args_of_formal_args formal_args in
   let arg_ids, arg_tys, ret_ty =
-    List.map (fun arg -> arg.Rt.la_name) args,
-    List.map (fun _ -> tvar ()) args,
+    List.map (fun l_arg -> l_arg.Rt.la_name) args,
+    List.map (fun l_arg ->
+        match l_arg with
+        | Syntax.FormalSelf _
+        | Syntax.FormalArg _    | Syntax.FormalRest _
+        | Syntax.FormalKwArg _  | Syntax.FormalKwRest _
+        -> tvar ()
+        | Syntax.FormalOptArg _ | Syntax.FormalKwOptArg _
+        -> Rt.OptionTy (tvar ()))
+      formal_args,
     tvar ()
   in
   let funcn = Ssa.create_func ~arg_ids:("env" :: arg_ids)
@@ -536,7 +569,7 @@ and ssa_of_lambda_expr ~state ~entry ~formal_args ~expr =
                       type_env = Table.copy state.type_env;
                       depth    = state.depth + 1 } in
 
-    ignore (ssa_of_formal_args ~entry:lam_entry ~state:lam_state ~args ~arg_names);
+    let lam_entry = ssa_of_formal_args ~entry:lam_entry ~state:lam_state ~args ~arg_names in
     let lam_entry, lam_value = ssa_of_expr ~entry:lam_entry ~state:lam_state ~expr in
     ignore (append lam_entry ~ty:Rt.NilTy ~opcode:(Ssa.ReturnInstr lam_value));
 
@@ -565,9 +598,11 @@ let name_of_lambda klass selector lambda capsule =
       List.map2 (fun l_arg ty_elem ->
           let id = l_arg.Rt.la_name in
           match ty_elem with
-          | Rt.LambdaArg ty       | Rt.LambdaOptArg ty       | Rt.LambdaRest ty
-          | Rt.LambdaKwArg (_,ty) | Rt.LambdaKwOptArg (_,ty) | Rt.LambdaKwRest ty
-          -> id, ty)
+          | Rt.LambdaArg ty       | Rt.LambdaRest ty
+          | Rt.LambdaKwArg (_,ty) | Rt.LambdaKwRest ty
+          -> id, ty
+          | Rt.LambdaOptArg ty    | Rt.LambdaKwOptArg (_,ty)
+          -> id, Rt.OptionTy ty)
         lambda.Rt.l_args (fst lambda.Rt.l_ty)
     in
     List.map fst args, List.map snd args, snd lambda.Rt.l_ty
@@ -614,7 +649,7 @@ let name_of_lambda klass selector lambda capsule =
                   const_env = lambda.Rt.l_const_env;
                   update    = None; } in
 
-    ignore (ssa_of_formal_args ~state ~entry ~args:lambda.Rt.l_args ~arg_names);
+    let entry = ssa_of_formal_args ~state ~entry ~args:lambda.Rt.l_args ~arg_names in
     let entry, value = ssa_of_seq ~state ~entry ~exprs:lambda.Rt.l_body in
 
     begin match kind with

@@ -47,6 +47,12 @@ let rec lltype_of_ty ?(ptr=true) ty =
   | Rt.UnsignedTy width
   | Rt.SignedTy width
   -> Llvm.integer_type ctx width
+  | Rt.OptionTy x
+  -> (let llty = lltype_of_ty x in
+      if Llvm.classify_type llty = Llvm.TypeKind.Pointer then
+        llty
+      else
+        Llvm.struct_type ctx [| Llvm.i1_type ctx; llty |])
   | Rt.TupleTy xs
   -> Llvm.struct_type ctx (Array.of_list (List.map lltype_of_ty xs))
   | Rt.RecordTy xs
@@ -173,6 +179,13 @@ let rec llconst_of_value llmod heap value =
         (* Very slow path. > 64 bits.
            There is no direct big_int -> llvalue converter. *)
         Llvm.const_int_of_string llty ((string_of_big_int ivalue) :> string) 10)
+  | Rt.Option x
+  -> (match x with
+      | Rt.Empty ty
+      -> Llvm.const_null (lltype_of_ty (Rt.OptionTy ty))
+      | Rt.Full v
+      -> (let llone = Llvm.const_int (Llvm.integer_type ctx 1) 1 in
+          Llvm.const_struct ctx [| llone; llconst_of_value llmod heap v |]))
   | Rt.Tuple xs
   -> Llvm.const_struct ctx (Array.of_list (List.map (llconst_of_value llmod heap) xs))
   | Rt.Record xs
@@ -344,6 +357,35 @@ let rec gen_func llmod heap funcn =
     | "int_lt",   [lhs; rhs] -> int_binop lhs rhs (Llvm.build_icmp Icmp.Ult) (Llvm.build_icmp Icmp.Slt)
     | "int_ge",   [lhs; rhs] -> int_binop lhs rhs (Llvm.build_icmp Icmp.Uge) (Llvm.build_icmp Icmp.Sge)
     | "int_gt",   [lhs; rhs] -> int_binop lhs rhs (Llvm.build_icmp Icmp.Ugt) (Llvm.build_icmp Icmp.Sgt)
+
+    (* Option operations. *)
+    | "opt_alloc",  [item]
+    -> (let llitem   = lookup item in
+        let llitemty = Llvm.type_of llitem in
+        if Llvm.classify_type llitemty <> Llvm.TypeKind.Pointer then
+          let llopt = Llvm.undef (lltype_of_ty instr.Ssa.ty) in
+          let llone = Llvm.const_int (Llvm.i1_type ctx) 1 in
+          let llopt = Llvm.build_insertvalue llopt llone  0 "" builder in
+          let llopt = Llvm.build_insertvalue llopt llitem 1 id builder in
+          llopt
+        else
+          llitem)
+
+    | "opt_any",    [opt]
+    -> (let llopt   = lookup opt in
+        let lloptty = Llvm.type_of llopt in
+        if Llvm.classify_type lloptty <> Llvm.TypeKind.Pointer then
+          Llvm.build_extractvalue llopt 0 id builder
+        else
+          Llvm.build_is_null llopt id builder)
+
+    | "opt_get",    [opt]
+    -> (let llopt   = lookup opt in
+        let lloptty = Llvm.type_of llopt in
+        if Llvm.classify_type lloptty <> Llvm.TypeKind.Pointer then
+          Llvm.build_extractvalue llopt 1 id builder
+        else
+          llopt)
 
     (* Tuple operations. *)
     | "tup_lookup", [tup; { Ssa.opcode = Ssa.Const (Rt.Integer idx) }]
