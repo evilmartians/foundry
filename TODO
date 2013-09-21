@@ -1,3 +1,13 @@
+usb:
+ * optional args
+ * export
+ * class and class
+ * Memory, fat_alloc
+ * Memory#fill
+ * case/when
+ * (value : ty)
+ * [< >]
+
 features:
  * Rt.tvar / Rt.tvar_ty
  * (() do end) -> do || end

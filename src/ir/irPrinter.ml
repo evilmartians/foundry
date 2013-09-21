@@ -423,6 +423,7 @@ let string_of_roots state roots =
     roots.kRecord;
     roots.kLambda;
     roots.kMixin;
+    roots.kMemory;
     roots.kPackage
   ];
   ignore (string_of_package state roots.pToplevel)

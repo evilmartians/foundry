@@ -199,6 +199,7 @@ type roots = {
   kLambda           : klass;
   kMixin            : klass;
   kPackage          : klass;
+  kMemory           : klass;
 
   pToplevel         : package;
 }

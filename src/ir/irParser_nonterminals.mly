@@ -60,6 +60,8 @@
       (u"c.meta:Mixin",         NamedClass roots.kMixin.k_metaclass);
       (u"c.Package",            NamedClass roots.kPackage);
       (u"c.meta:Package",       NamedClass roots.kPackage.k_metaclass);
+      (u"c.Memory",             NamedClass roots.kMemory);
+      (u"c.meta:Memory",        NamedClass roots.kMemory.k_metaclass);
       (u"p.toplevel",           NamedPackage roots.pToplevel);
       (u"p.meta:toplevel",      NamedClass roots.pToplevel.p_metaclass);
     ]
@@ -93,6 +95,7 @@
       kLambda       = get_class (u"c.Lambda");
       kMixin        = get_class (u"c.Mixin");
       kPackage      = get_class (u"c.Package");
+      kMemory       = get_class (u"c.Memory");
 
       pToplevel     = get_package (u"p.toplevel");
     }

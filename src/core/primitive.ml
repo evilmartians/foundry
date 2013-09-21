@@ -161,6 +161,8 @@ let prim = Table.create [
   "cls_alloc",  (false,    fun _ -> assert false);
   "cls_defm",   (true,     cls_defm);
   "cls_defv",   (true,     fun _ -> assert false);
+  (* -- memory ----------------------------------------- *)
+  "fat_alloc",  (false,    fun _ -> assert false);
   (* -- hardware access -------------------------------- *)
   "mem_load",   (false,    fun _ -> assert false);
   "mem_store",  (true,     fun _ -> assert false);

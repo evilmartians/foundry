@@ -167,6 +167,7 @@ type roots = {
   kLambda           : klass;
   kMixin            : klass;
   kPackage          : klass;
+  kMemory           : klass;
 
   pToplevel         : package;
 }
@@ -279,8 +280,7 @@ let create_roots () =
 
     kFixed        = new_class ~ancestor:kValue
                               ~parameters:(Assoc.sequental [
-                                "width",  tvar ();
-                                "signed", tvar ();
+                                "width",  tvar (); "signed", tvar ();
                               ])
                               "Fixed";
 
@@ -288,6 +288,13 @@ let create_roots () =
     kTuple        = new_class ~ancestor:kValue "Tuple";
     kRecord       = new_class ~ancestor:kValue "Record";
     kLambda       = new_class ~ancestor:kValue "Lambda";
+
+    kMemory       = new_class ~ancestor:kValue
+                              ~parameters:(Assoc.sequental [
+                                "writable", tvar (); "align",    tvar ();
+                                "width",    tvar (); "stride",   tvar ();
+                              ])
+                              "Memory";
 
     kMixin        = new_class ~ancestor:kObject "Mixin";
     kPackage      = kPackage;
@@ -321,12 +328,25 @@ let create_roots () =
       "Mixin",        roots.kMixin;
       "Package",      roots.kPackage;
     ];
+
   Table.set constants "Fixed"    (Class (roots.kFixed, Assoc.sorted [
                                     "width", Tvar (tvar ()); "signed", Tvar (tvar ()); ]));
   Table.set constants "Unsigned" (Class (roots.kFixed, Assoc.sorted [
                                     "width", Tvar (tvar ()); "signed", Lies;  ]));
   Table.set constants "Signed"   (Class (roots.kFixed, Assoc.sorted [
                                     "width", Tvar (tvar ()); "signed", Truth; ]));
+
+  let one = Integer (big_int_of_int 1) in
+  Table.set constants "Memory"   (Class (roots.kMemory, Assoc.sorted [
+                                    "writable", Tvar (tvar ()); "align",  one;
+                                    "width",    one;   "stride", one ]));
+  Table.set constants "ROMemory" (Class (roots.kMemory, Assoc.sorted [
+                                    "writable", Lies;  "align",  one;
+                                    "width",    one;   "stride", one ]));
+  Table.set constants "RWMemory" (Class (roots.kMemory, Assoc.sorted [
+                                    "writable", Truth; "align",  one;
+                                    "width",    one;   "stride", one ]));
+
   roots.last_tvar <- !last_tvar;
   roots
 
