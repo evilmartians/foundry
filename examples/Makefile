@@ -1,20 +1,43 @@
-device := maple-leaf
+# Target configuration
+
+#core   := cortex-m3
+#series := stm32f1
+#device := maple_leaf
+
+core   := cortex-m3
+series := stm32l1
+device := foundry_gamepad
+
+### DO NOT MODIFY BELOW THIS LINE ###
 
 llvm   := -3.4
 cross  := arm-linux-gnueabi-
 
 stdrtl := class.fy object.fy value.fy integer.fy fixed.fy \
-				  symbol.fy lambda.fy
+	  symbol.fy lambda.fy
 stdrtl := $(addprefix ../rtl/,$(stdrtl))
 
-devrtl := metal/register.fy metal/unit.fy \
-					stm32f1/rcc.fy stm32f1/afio.fy stm32f1/gpio.fy stm32f1/exti.fy \
-					stm32f1/usb.fy stm32f1/stm32f1.fy \
-					maple_leaf/color_lcd_shield.fy maple_leaf/maple_leaf.fy \
-					#usb/usb_device.fy
+devrtl := metal/register.fy metal/unit.fy
+
+ifeq ($(series),stm32f1)
+devrtl := $(devrtl) $(addprefix $(series)/,rcc.fy afio.fy gpio.fy exti.fy usb.fy $(series).fy)
+endif
+
+ifeq ($(series),stm32l1)
+devrtl := $(devrtl) $(addprefix $(series)/,rcc.fy pwr.fy gpio.fy $(series).fy)
+endif
+
+ifeq ($(device),maple_leaf)
+devrtl := $(devrtl) $(addprefix $(device)/,color_lcd_shield.fy $(device).fy)
+endif
+
+ifeq ($(device),foundry_gamepad)
+devrtl := $(devrtl) $(addprefix $(device)/,$(device).fy)
+endif
+
 devrtl := $(addprefix ../rtl/,$(devrtl))
 
-devlib := startup32.ll cortex-m3.ll stm32f1.ll
+devlib := startup32.ll $(core).ll $(series).ll
 devlib := $(addprefix ../lib/startup/,$(devlib))
 
 .SUFFIXES:
@@ -38,6 +61,9 @@ devlib := $(addprefix ../lib/startup/,$(devlib))
 
 %.bin: %.elf
 	$(cross)objcopy -Obinary $^ $@
+
+%.ihex: %.elf
+	$(cross)objcopy -Oihex $^ $@
 
 clean:
 	rm -f *.fir *.bc *.ll *.s *.o *.bin *.elf

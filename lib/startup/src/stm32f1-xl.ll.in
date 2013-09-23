@@ -1,4 +1,4 @@
-; STM32F1xx XL-density
+; STM32F1xx XL density
 WWDG
 PVD
 TAMPER

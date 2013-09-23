@@ -1,0 +1,9 @@
+RAMSIZE = 0x4000;
+
+MEMORY
+{
+  flash (RX)   : ORIGIN = 0x08000000, LENGTH = 0x20000
+  ram (RWX)    : ORIGIN = 0x20000000, LENGTH = 0x4000
+}
+
+INCLUDE devices/common32.ld
