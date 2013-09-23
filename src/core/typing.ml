@@ -221,7 +221,7 @@ let instantiate value =
       try
         List.assoc tvar !tvar_map
       with Not_found ->
-        let new_tvar = Rt.Tvar (Rt.new_tvar ()) in
+        let new_tvar = Rt.tvar_as_ty () in
         tvar_map := (tvar, new_tvar) :: !tvar_map;
         new_tvar)
     value

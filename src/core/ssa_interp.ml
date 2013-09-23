@@ -32,7 +32,7 @@ let apply init comb_bare comb_packed interp entry =
   | _  -> comb_bare entry packed (List.rev bare)
 
 let ssa_append ~opcode blockn =
-  let instr = create_instr (Rt.Tvar (Rt.new_tvar ())) opcode in
+  let instr = create_instr (Rt.tvar_as_ty ()) opcode in
   append_instr instr blockn;
   instr
 

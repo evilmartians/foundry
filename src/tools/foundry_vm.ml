@@ -59,7 +59,7 @@ let _ =
     let entry    = Ssa.create_block ~id:u"entry" funcn in
     let toplevel = Ssa.const (Rt.Package (!Rt.roots).Rt.pToplevel) in
 
-    let send     = Ssa.create_instr (Rt.Tvar (Rt.new_tvar ()))
+    let send     = Ssa.create_instr (Rt.tvar_as_ty ())
                       (Ssa.PrimitiveInstr (u"obj_send", [
                         toplevel; Ssa.const (Rt.Symbol u"main");
                           Ssa.const (Rt.Tuple ([

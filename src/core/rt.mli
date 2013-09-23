@@ -214,8 +214,9 @@ val create_roots    : unit -> roots
 
 val adopt_tvar      : int -> tvar
 
-val new_tvar        : unit -> tvar
-val new_static_tvar : unit -> tvar
+val tvar            : unit -> tvar
+val tvar_as_ty      : unit -> ty
+val static_tvar     : unit -> tvar (* deprecated *)
 
 val new_class       : ?ancestor:klass ->
                           ?parameters:tvar Assoc.sequental_t ->

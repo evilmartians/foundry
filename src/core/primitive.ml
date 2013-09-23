@@ -52,7 +52,7 @@ let int_to_str args =
 let opt_alloc args =
   match args with
   | [x] -> Option (Full x)
-  | []  -> Option (Empty (Tvar (Rt.new_tvar ())))
+  | []  -> Option (Empty (Rt.tvar_as_ty ()))
   | _ -> assert false
 
 let opt_any args =

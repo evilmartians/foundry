@@ -8,7 +8,6 @@ usb:
  * [< >]
 
 features:
- * Rt.tvar / Rt.tvar_ty
  * common frontend
  * store location in fir instructions
  * (() do end) -> do || end

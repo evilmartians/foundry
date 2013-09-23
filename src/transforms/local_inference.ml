@@ -5,7 +5,7 @@ open Ssa
 
 let name = "Local Inference"
 
-let stvar () = Rt.Tvar (Rt.new_static_tvar ())
+let stvar () = Rt.Tvar (Rt.static_tvar ())
 
 let int_binop_ty = (* val int_binop : 'a -> 'a -> 'a *)
   let tv = stvar () in Rt.FunctionTy ([tv; tv], tv)
@@ -248,8 +248,8 @@ let run_on_function passmgr capsule funcn =
                   unify instr.ty Rt.NilTy
                 else
                   unify instr.ty (Rt.Class (!Rt.roots.Rt.kFixed, Assoc.sorted [
-                                              "width",  (Rt.Tvar (Rt.new_tvar ()));
-                                              "signed", (Rt.Tvar (Rt.new_tvar ()));
+                                              "width",  Rt.tvar_as_ty ();
+                                              "signed", Rt.tvar_as_ty ();
                                             ])))
             | _
             -> assert false)

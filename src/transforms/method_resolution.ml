@@ -34,7 +34,7 @@ let parse_arguments ~before ~arg_tys ~args ~kwargs =
   (* Make sure the order of evaluation matches lexical order of
      arguments. *)
   let arg_idx = ref 0 in
-  let append ?(ty=(Rt.Tvar (Rt.new_tvar ()))) instr =
+  let append ?(ty=Rt.tvar_as_ty ()) instr =
     let instr = Ssa.create_instr ty instr in
     Ssa.prepend_instr ~before instr (instr_parent before);
     instr
@@ -68,7 +68,7 @@ let parse_arguments ~before ~arg_tys ~args ~kwargs =
           let has_arg = append (Ssa.PrimitiveInstr ("int_gt",      [tup_len; idx]))
           and arg     = append (Ssa.PrimitiveInstr ("tup_lookup",  [args; idx])) in
           let full    = append (Ssa.PrimitiveInstr ("opt_alloc",   [arg]))
-          and empty   = Ssa.const (Rt.Option (Empty ty)) in
+          and empty   = Ssa.const (Rt.Option (Rt.Empty ty)) in
           append ~ty:(Rt.OptionTy ty) (Ssa.SelectInstr (has_arg, full, empty)))
       | Rt.LambdaRest ty
       -> (let last_idx = right_idx (int post_count) in
@@ -79,7 +79,7 @@ let parse_arguments ~before ~arg_tys ~args ~kwargs =
       -> (let has_arg = append (Ssa.PrimitiveInstr ("rec_incl",    [kwargs; sym kw]))
           and arg     = append (Ssa.PrimitiveInstr ("rec_lookup",  [kwargs; sym kw])) in
           let full    = append (Ssa.PrimitiveInstr ("opt_alloc",   [arg]))
-          and empty   = Ssa.const (Rt.Option (Empty ty)) in
+          and empty   = Ssa.const (Rt.Option (Rt.Empty ty)) in
           append ~ty:(Rt.OptionTy ty) (Ssa.SelectInstr (has_arg, full, empty)))
       | Rt.LambdaKwRest ty
       -> kwargs (* TODO stub *))

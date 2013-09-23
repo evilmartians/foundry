@@ -29,9 +29,6 @@ type ssa_conv_state = {
   mutable update    : Ssa.name option;
 }
 
-let tvar () =
-  Rt.Tvar (Rt.new_tvar ())
-
 let append ?(ty=Rt.NilTy) ~opcode blockn =
   let instr = Ssa.create_instr ty opcode in
   Ssa.append_instr instr blockn;
@@ -40,7 +37,8 @@ let append ?(ty=Rt.NilTy) ~opcode blockn =
 let append_int entry value =
   let value = Ssa.const value
   and ty    = Rt.Class ((!Rt.roots).Rt.kFixed,
-                        Assoc.sorted ["width", tvar (); "signed", tvar ()]) in
+                        Assoc.sorted ["width",  Rt.tvar_as_ty ();
+                                      "signed", Rt.tvar_as_ty ()]) in
   append entry ~ty ~opcode:(Ssa.PrimitiveInstr ("int_coerce", [value]))
 
 let append_const entry value =
@@ -85,12 +83,12 @@ let store ~state entry name value =
   value
 
 let send_args ~state entry args =
-  append entry ~ty:(tvar ())
+  append entry ~ty:(Rt.tvar_as_ty ())
                ~opcode:(Ssa.TupleExtendInstr (Ssa.const (Rt.Tuple []), args)),
   Ssa.const (Rt.Record Assoc.empty)
 
 let send ~state entry receiver selector args kwargs =
-  append entry ~ty:(tvar ())
+  append entry ~ty:(Rt.tvar_as_ty ())
                ~opcode:(Ssa.PrimitiveInstr ("obj_send", [
                           receiver;
                           Ssa.const (Rt.Symbol selector);
@@ -203,7 +201,7 @@ and ssa_of_expr ~state ~entry ~expr =
   -> entry, load entry name
   | Syntax.IVar (_, name)
   -> (let self = load entry "self" in
-      entry, append entry ~ty:(tvar ())
+      entry, append entry ~ty:(Rt.tvar_as_ty ())
                           ~opcode:(Ssa.IVarLoadInstr (self, name)))
 
   (* Variable binding. *)
@@ -219,7 +217,7 @@ and ssa_of_expr ~state ~entry ~expr =
   | Syntax.Super (_, actual_args)
   -> (let self  = load entry "self" in
       let entry, args, kwargs = ssa_of_actual_args ~state ~entry ~receiver:self ~actual_args in
-      let value = append entry ~ty:(tvar ())
+      let value = append entry ~ty:(Rt.tvar_as_ty ())
                                ~opcode:(Ssa.PrimitiveInstr ("obj_super", [self; args; kwargs])) in
       match state.kind with
       | ConvValueInitializer
@@ -234,7 +232,7 @@ and ssa_of_expr ~state ~entry ~expr =
       (* Compute the assigned value. *)
       let entry, value        = ssa_of_expr ~state ~entry ~expr:arg_expr in
       (* Append the value to the positional args. *)
-      let args = append entry ~ty:(tvar ())
+      let args = append entry ~ty:(Rt.tvar_as_ty ())
                               ~opcode:(Ssa.TupleExtendInstr (args, [value])) in
       (* Perform the assignment. *)
       ignore (send entry receiver (selector ^ "=") args kwargs);
@@ -256,7 +254,7 @@ and ssa_of_expr ~state ~entry ~expr =
       let op_args, op_kwargs  = send_args entry [value; arg] in
       let value'              = send entry value operator op_args op_kwargs in
       (* Write back the new value. *)
-      let args = append entry ~ty:(tvar ())
+      let args = append entry ~ty:(Rt.tvar_as_ty ())
                               ~opcode:(Ssa.TupleExtendInstr (args, [value'])) in
       ignore (send entry receiver (selector ^ "=") args kwargs);
       entry, value')
@@ -295,7 +293,7 @@ and ssa_of_expr ~state ~entry ~expr =
       ignore (append true_exit ~opcode:(Ssa.JumpInstr tail));
       if false_exit != head then
         ignore (append false_exit ~opcode:(Ssa.JumpInstr tail));
-      tail, append tail ~ty:(tvar ())
+      tail, append tail ~ty:(Rt.tvar_as_ty ())
                         ~opcode:(Ssa.PhiInstr [true_exit,  true_value;
                                                false_exit, false_value]))
 
@@ -307,7 +305,7 @@ and ssa_of_expr ~state ~entry ~expr =
       and tail        = Ssa.create_block state.funcn in
       ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, tail, false_entry)));
       ignore (append false_exit ~opcode:(Ssa.JumpInstr tail));
-      tail, append tail ~ty:(tvar ())
+      tail, append tail ~ty:(Rt.tvar_as_ty ())
                         ~opcode:(Ssa.PhiInstr [head,       Ssa.const Rt.Nil;
                                                false_exit, false_value]))
 
@@ -344,7 +342,7 @@ and ssa_of_expr ~state ~entry ~expr =
       in
       ignore (append head ~opcode:(Ssa.JumpIfInstr (lhs_value, if_true, if_false)));
       let entry, value =
-        tail, append tail ~ty:(tvar ())
+        tail, append tail ~ty:(Rt.tvar_as_ty ())
                           ~opcode:(Ssa.PhiInstr [head, lhs_value;
                                                  body, rhs_value]) in
       match expr with
@@ -381,7 +379,7 @@ and ssa_of_expr ~state ~entry ~expr =
 
   | Syntax.InvokePrimitive (_, name, operands)
   -> (let entry, operands = ssa_of_exprs ~state ~entry ~exprs:operands in
-      entry, append entry ~ty:(tvar ())
+      entry, append entry ~ty:(Rt.tvar_as_ty ())
                           ~opcode:(Ssa.PrimitiveInstr (name, List.rev operands)))
 
   | Syntax.Quote (_, _, _)
@@ -430,7 +428,7 @@ and ssa_of_type ~state ~entry ~expr =
         -> specz
       in
       let specz = combine entry klass.Rt.k_parameters specz args in
-      entry, append entry ~ty:(tvar ())
+      entry, append entry ~ty:(Rt.tvar_as_ty ())
                           ~opcode:(Ssa.SpecializeInstr (Ssa.const ty, specz)))
   | Syntax.TypeSplice (_, expr)
   -> ssa_of_expr ~state ~entry ~expr
@@ -444,7 +442,7 @@ and ssa_of_type ~state ~entry ~expr =
 and ssa_of_pattern ~state ~entry ~pattern ~expr =
   match pattern with
   | Syntax.PatVariable (_, (kind, name))
-  -> (let ty = tvar () in
+  -> (let ty = Rt.tvar_as_ty () in
       Table.set state.frame_ty.Rt.e_ty_bindings name {
         Rt.b_ty_location = Location.empty;
         Rt.b_ty_kind     = kind;
@@ -491,7 +489,7 @@ and ssa_of_actual_args ~state ~entry ~receiver ~actual_args =
 
 and ssa_of_formal_args ~state ~entry ~args ~arg_names =
   List.fold_left2 (fun entry arg arg_name ->
-      let ty = tvar () in
+      let ty = Rt.tvar_as_ty () in
       let entry, value =
         match arg.Rt.la_default with
         | None
@@ -533,11 +531,11 @@ and ssa_of_lambda_expr ~state ~entry ~formal_args ~expr =
         | Syntax.FormalSelf _
         | Syntax.FormalArg _    | Syntax.FormalRest _
         | Syntax.FormalKwArg _  | Syntax.FormalKwRest _
-        -> tvar ()
+        -> Rt.tvar_as_ty ()
         | Syntax.FormalOptArg _ | Syntax.FormalKwOptArg _
-        -> Rt.OptionTy (tvar ()))
+        -> Rt.OptionTy (Rt.tvar_as_ty ()))
       formal_args,
-    tvar ()
+    Rt.tvar_as_ty ()
   in
   let funcn = Ssa.create_func ~arg_ids:("env" :: arg_ids)
                 (Rt.EnvironmentTy state.frame_ty :: arg_tys) ret_ty in

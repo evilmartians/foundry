@@ -263,19 +263,19 @@ and eval_closure_ty env formal_args ty_expr =
         match arg with
         | Syntax.FormalSelf _
         | Syntax.FormalArg _
-        -> LambdaArg (Tvar (new_tvar ()))
+        -> LambdaArg (tvar_as_ty ())
         | Syntax.FormalOptArg _
-        -> LambdaOptArg (Tvar (new_tvar ()))
+        -> LambdaOptArg (tvar_as_ty ())
         | Syntax.FormalRest _
-        -> LambdaRest (Tvar (new_tvar ()))
+        -> LambdaRest (tvar_as_ty ())
         | Syntax.FormalKwArg (_, (_, kw))
-        -> LambdaKwArg (kw, Tvar (new_tvar ()))
+        -> LambdaKwArg (kw, tvar_as_ty ())
         | Syntax.FormalKwOptArg (_, (_, kw), _)
-        -> LambdaKwOptArg (kw, Tvar (new_tvar ()))
+        -> LambdaKwOptArg (kw, tvar_as_ty ())
         | Syntax.FormalKwRest _
-        -> LambdaKwRest (Tvar (new_tvar ()))
+        -> LambdaKwRest (tvar_as_ty ())
       in
-      let ty = List.map lambda_elem_ty_of_formal_arg formal_args, Tvar (new_tvar ()) in
+      let ty = List.map lambda_elem_ty_of_formal_arg formal_args, tvar_as_ty () in
       env.type_env, ty, lambda_args)
 
 and eval_args env lst =

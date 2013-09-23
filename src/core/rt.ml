@@ -358,14 +358,17 @@ let roots = ref (create_roots ())
 let adopt_tvar value : tvar =
   value
 
-let new_tvar () : tvar =
+let tvar () : tvar =
   let roots = !roots in
   roots.last_tvar <- roots.last_tvar + 1;
   roots.last_tvar
 
+let tvar_as_ty () =
+  Tvar (tvar ())
+
 let last_static_tvar = ref 0
 
-let new_static_tvar () : tvar =
+let static_tvar () : tvar =
   last_static_tvar := !last_static_tvar - 1;
   !last_static_tvar
 
@@ -876,10 +879,10 @@ let tenv_fork env =
 let tenv_resolve env name =
   match Table.get env name with
   | Some tvar -> tvar
-  | None ->
-    let tvar = new_tvar () in
+  | None
+  -> (let tvar = tvar () in
       Table.set env name tvar;
-      tvar
+      tvar)
 
 (* Constant environment *)
 
