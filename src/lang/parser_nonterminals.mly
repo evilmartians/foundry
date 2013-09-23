@@ -94,7 +94,8 @@
 %left     Tk_STAR Tk_DIVIDE Tk_PERCENT
 %left     Tk_DSTAR
 %left     Tk_LSHFT Tk_RSHFT
-%left     Tk_AMPER Tk_PIPE Tk_CARET
+%left     Tk_PIPE
+%left     Tk_AMPER Tk_CARET
 %right    Tk_TILDE Tk_UPLUS Tk_UMINUS
 %nonassoc Tk_LBRACK Tk_DOT
 /* highest */
