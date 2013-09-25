@@ -31,7 +31,7 @@ type value =
 | TupleTy       of ty    list
 | Record        of value Assoc.sorted_t
 | RecordTy      of ty    Assoc.sorted_t
-| Array         of ty * value DynArray.t
+| Array         of ty * storage
 | ArrayTy       of ty
 (* Function type *)
 | Environment   of local_env
@@ -53,6 +53,12 @@ and slots          = value Table.t
 and value_option =
 | Full  of value
 | Empty of ty
+and storage = {
+          st_hash         : int;
+          st_ty           : ty;
+          st_capacity     : int;
+          st_elems        : value DynArray.t;
+}
 and binding_ty = {
           b_ty_location   : Location.t;
           b_ty_kind       : Syntax.lvar_kind;
@@ -167,6 +173,7 @@ type roots = {
   kOption           : klass;
   kTuple            : klass;
   kRecord           : klass;
+  kArray            : klass;
   kLambda           : klass;
   kMixin            : klass;
   kPackage          : klass;
@@ -292,6 +299,14 @@ let create_roots () =
     kRecord       = new_class ~ancestor:kValue "Record";
     kLambda       = new_class ~ancestor:kValue "Lambda";
 
+    kArray        = new_class ~ancestor:kObject
+                              ~parameters:(Assoc.sequental [
+                                "element",   tvar ();
+                                "writable",  tvar ();
+                                "resizable", tvar ();
+                              ])
+                              "Array";
+
     kMemory       = new_class ~ancestor:kValue
                               ~parameters:(Assoc.sequental [
                                 "writable", tvar (); "align",    tvar ();
@@ -349,6 +364,10 @@ let create_roots () =
   Table.set constants "RWMemory" (Class (roots.kMemory, Assoc.sorted [
                                     "writable", Truth; "align",  one;
                                     "width",    one;   "stride", one ]));
+
+  Table.set constants "Array"    (Class (roots.kArray,  Assoc.sorted [
+                                    "element",   Tvar (tvar ());
+                                    "resizable", Truth; "writable", Truth ]));
 
   roots.last_tvar <- !last_tvar;
   roots
@@ -451,6 +470,7 @@ let rec type_of_value value =
 
   | Tuple(xs)       -> TupleTy (List.map type_of_value xs)
   | Record(xs)      -> RecordTy (Assoc.map (fun _ -> type_of_value) xs)
+  | Array(ty,_)     -> ArrayTy ty
 
   | Environment(e)  -> EnvironmentTy (type_of_environment e)
   | Lambda(c)       -> LambdaTy c.l_ty
@@ -575,6 +595,7 @@ and equal a b =
   | Option(Full a),     Option(Full b)
   | Option(Empty a),    Option(Empty b)
   | OptionTy(a),        OptionTy(b)
+  | ArrayTy(a),         ArrayTy(b)
   -> equal a b
   | Tuple(a),           Tuple(b)
   | TupleTy(a),         TupleTy(b)
@@ -582,6 +603,8 @@ and equal a b =
   | Record(a),          Record(b)
   | RecordTy(a),        RecordTy(b)
   -> Assoc.equal ~eq:equal a b
+  | Array(_,ast),       Array(_,bst)
+  -> ast == bst
   | FunctionTy(aa,ar),  FunctionTy(ba,br)
   -> equal_list aa ba && equal ar br
   | LambdaTy(aa,ar),    LambdaTy(ba,br)
@@ -678,7 +701,7 @@ and hash value =
 
   (* Mutable values and types. *)
   | Array(ty, xs)
-  -> Hashtbl.hash (ArrayTy ty)
+  -> xs.st_hash
   | Environment(x)
   -> x.e_hash
   | Lambda(x)
@@ -754,6 +777,8 @@ and inspect_value value =
     | Record(xs)
     -> "{" ^ (String.concat ", " (Assoc.map_list
                 (fun k v -> k ^ ": " ^ (inspect_value v)) xs)) ^ "}"
+    | Array(ty, x)
+    -> "`array"
     | Lambda(lm)
     -> "#<Lambda " ^ Location.at(lm.l_location) ^ ">"
     | TupleTy(_) | RecordTy(_) | LambdaTy(_)
@@ -771,6 +796,8 @@ and inspect_type ty =
     | RecordTy(xs)
     -> "{" ^ (String.concat ", " (Assoc.map_list
                 (fun k v -> k ^ ": " ^ (inspect_type v)) xs)) ^ "}"
+    | ArrayTy(x)
+    -> "Array(" ^ (inspect_type x) ^ ")"
     | LambdaTy(xa, xr)
     -> (let inspect_arg arg =
           match arg with

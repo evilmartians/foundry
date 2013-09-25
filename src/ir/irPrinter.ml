@@ -117,7 +117,7 @@ let rec string_of_value state value =
                           | Empty ty -> "option(empty " ^ (string_of_ty state ty) ^ ")")
   | Tuple(xs)         -> "[" ^ (string_of_seq xs (string_of_value state)) ^ "]"
   | Record(xs)        -> "{" ^ (string_of_assoc_inline xs (string_of_value state)) ^ "}"
-  | Array(ty,xs)      -> "array " ^ (string_of_array state xs)
+  | Array(ty,xs)      -> "array(" ^ (string_of_ty state ty) ^ ") " ^ (string_of_array state ty xs)
   | Environment(e)    ->  string_of_local_env state e
   | Lambda(l)         -> "lambda " ^ (string_of_lambda state l)
   | Class(k,sp)       -> "class " ^ (string_of_klass state k) ^
@@ -146,6 +146,7 @@ and string_of_ty state ty =
   | OptionTy(ty)      -> "option(" ^ (string_of_ty state ty) ^ ")"
   | TupleTy(xs)       -> "[" ^ (string_of_seq xs (string_of_ty state)) ^ "]"
   | RecordTy(xs)      -> "{" ^ (string_of_assoc_inline xs (string_of_ty state)) ^ "}"
+  | ArrayTy(x)        -> "array(" ^ (string_of_ty state x) ^ ")"
   | LambdaTy(lt)      -> string_of_lambda_ty state lt
   | EnvironmentTy(x)  -> "environment " ^ (string_of_local_env_ty state x)
   | FunctionTy(xs,x)  -> "function (" ^ (string_of_seq xs (string_of_ty state)) ^ ") -> " ^
@@ -155,8 +156,14 @@ and string_of_ty state ty =
                            "{" ^(string_of_assoc_inline sp (string_of_value state))  ^ "}"
   | _                 -> assert false (* interpolation *)
 
-and string_of_array state array =
-  assert false
+and string_of_array state ty st =
+  bind_value state (Array (ty, st)) "" (fun () ->
+    "storage(" ^ (string_of_int st.st_capacity) ^
+      " x " ^ (string_of_ty state st.st_ty) ^ ") [\n" ^
+      (String.concat ",\n"
+        (List.map (fun value -> "  " ^ (string_of_value state value))
+          (DynArray.to_list st.st_elems))) ^
+    "]\n")
 
 and string_of_klass state klass =
   bind_value state (Class (klass, Assoc.empty)) ("c." ^ klass.k_name) (fun () ->
@@ -425,6 +432,7 @@ let string_of_roots state roots =
     roots.kOption;
     roots.kTuple;
     roots.kRecord;
+    roots.kArray;
     roots.kLambda;
     roots.kMixin;
     roots.kMemory;

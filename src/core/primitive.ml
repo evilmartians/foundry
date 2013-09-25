@@ -181,6 +181,11 @@ let prim = Table.create [
   "rec_incl",   (false,    rec_incl);
   "rec_lookup", (false,    rec_lookup);
   "rec_enum",   (true,     fun _ -> assert false);
+  (* -- arrays ----------------------------------------- *)
+  "ary_capa",   (false,    fun _ -> assert false);
+  "ary_length", (false,    fun _ -> assert false);
+  "ary_get",    (false,    fun _ -> assert false);
+  "ary_set",    (false,    fun _ -> assert false);
   (* -- symbols ---------------------------------------- *)
   "sym_to_str", (false,    sym_to_str);
   (* -- closures --------------------------------------- *)

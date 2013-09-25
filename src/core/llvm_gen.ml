@@ -58,6 +58,10 @@ let rec lltype_of_ty ?(ptr=true) ty =
   | Rt.RecordTy xs
   -> Llvm.struct_type ctx (Array.of_list
         (Assoc.map_list xs ~f:(fun _ -> lltype_of_ty ~ptr:false)))
+  | Rt.ArrayTy _
+  -> (memoize ~ptr "array" (fun () ->
+        false, [ Llvm.i32_type ctx; Llvm.i32_type ctx;
+                 Llvm.pointer_type (Llvm.i8_type ctx) ]))
   | Rt.EnvironmentTy env_ty
   -> Llvm.pointer_type (Llvm.i8_type ctx)
   | Rt.Class (klass, specz)
@@ -149,9 +153,9 @@ let rec llconst_of_value llmod heap value =
     with Not_found ->
       let llglobal = Llvm.declare_global lltype "" llmod in
       let llvalue  = (f llglobal) in
-        Llvm.set_initializer llvalue llglobal;
-        Rt.Valuetbl.add heap value llglobal;
-        llglobal
+      Llvm.set_initializer llvalue llglobal;
+      Rt.Valuetbl.add heap value llglobal;
+      llglobal
   in
   match value with
   | Rt.Nil
@@ -191,6 +195,30 @@ let rec llconst_of_value llmod heap value =
   | Rt.Record xs
   -> Llvm.const_struct ctx (Array.of_list
       (Assoc.map_list xs ~f:(fun _ -> llconst_of_value llmod heap)))
+  | Rt.Array (_, x)
+  -> (let llty = lltype_of_ty ~ptr:false (Rt.ArrayTy x.Rt.st_ty) in
+      memoize llty (fun _ ->
+        let const_i32 =
+          Llvm.const_int (Llvm.i32_type ctx)
+        in
+        let llelemty = lltype_of_ty x.Rt.st_ty in
+        let llelems  = List.map (llconst_of_value llmod heap) (DynArray.to_list x.Rt.st_elems) in
+        let llundefs =
+          let rec pad count undefs =
+            if count = 0 then undefs
+            else pad (count - 1) (Llvm.undef llelemty :: undefs)
+          in
+          pad (x.Rt.st_capacity - (DynArray.length x.Rt.st_elems)) []
+        in
+        let llary =
+          Llvm.define_global "" (Llvm.const_array llelemty
+                                  (Array.of_list (llelems @ llundefs))) llmod
+        in
+        Llvm.const_named_struct llty [|
+          const_i32 x.Rt.st_capacity;
+          const_i32 (DynArray.length x.Rt.st_elems);
+          Llvm.const_bitcast llary (Llvm.pointer_type (Llvm.i8_type ctx))
+        |]))
   | Rt.Environment env
   -> (let env_ty  = Rt.type_of_environment ~imm:false env in
       let env_map = env_map_of_local_env_ty env_ty in
@@ -404,6 +432,35 @@ let rec gen_func llmod heap funcn =
     | "rec_lookup", [ { Ssa.ty     = Rt.RecordTy fields } as re;
                       { Ssa.opcode = Ssa.Const (Rt.Symbol field) } ]
     -> Llvm.build_extractvalue (lookup re) (Assoc.index fields field) "" builder
+
+    (* Array operations. *)
+    | "ary_capa",   [ary]
+    -> (let llary = lookup ary in
+        let llptr = Llvm.build_struct_gep llary 0 "" builder in
+        Llvm.build_load llptr id builder)
+
+    | "ary_length", [ary]
+    -> (let llary = lookup ary in
+        let llptr = Llvm.build_struct_gep llary 1 "" builder in
+        Llvm.build_load llptr id builder)
+
+    | ("ary_get" | "ary_set"),
+                    ({ Ssa.ty = Rt.ArrayTy(elem_ty) } as ary)   ::
+                    ({ Ssa.ty = Rt.UnsignedTy(32)   } as index) :: rest
+    -> (let llary     = lookup ary
+        and llindex   = lookup index
+        and llelemty  = lltype_of_ty elem_ty in
+        let llstgptr  = Llvm.build_struct_gep llary 2 "" builder in
+        let llstg     = Llvm.build_load llstgptr "" builder in
+        let llstg     = Llvm.build_bitcast llstg (Llvm.pointer_type llelemty) "" builder in
+        let llelemptr = Llvm.build_in_bounds_gep llstg [| llindex |] "" builder in
+        match prim, rest with
+        | "ary_get", []
+        -> Llvm.build_load  llelemptr id builder
+        | "ary_set", [value]
+        -> Llvm.build_store (lookup value) llelemptr builder
+        | _
+        -> assert false)
 
     (* Object operations. *)
     | "obj_alloc", [cls]

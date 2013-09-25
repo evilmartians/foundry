@@ -13,6 +13,7 @@
   | NamedLocalEnv  of local_env
   | NamedInstance  of instance
   | NamedFunction  of name
+  | NamedStorage   of storage
 
   type definitions = {
             syntax    : Syntax.exprs Table.t;
@@ -54,6 +55,8 @@
       (u"c.meta:Tuple",         NamedClass roots.kTuple.k_metaclass);
       (u"c.Record",             NamedClass roots.kRecord);
       (u"c.meta:Record",        NamedClass roots.kRecord.k_metaclass);
+      (u"c.Array",              NamedClass roots.kArray);
+      (u"c.meta:Array",         NamedClass roots.kArray.k_metaclass);
       (u"c.Lambda",             NamedClass roots.kLambda);
       (u"c.meta:Lambda",        NamedClass roots.kLambda.k_metaclass);
       (u"c.Mixin",              NamedClass roots.kMixin);
@@ -92,6 +95,7 @@
       kOption       = get_class (u"c.Option");
       kTuple        = get_class (u"c.Tuple");
       kRecord       = get_class (u"c.Record");
+      kArray        = get_class (u"c.Array");
       kLambda       = get_class (u"c.Lambda");
       kMixin        = get_class (u"c.Mixin");
       kPackage      = get_class (u"c.Package");
@@ -222,6 +226,12 @@
                     | NamedFunction f -> f
                     | _ -> assert false) }
 
+       storage: x=global
+                { (fun defs ->
+                    match x defs with
+                    | NamedStorage a -> a
+                    | _ -> assert false) }
+
           tvar: Tvar LParen x=Lit_Integer RParen
                 { (fun defs -> Rt.adopt_tvar (int_of_big_int x)) }
 
@@ -269,6 +279,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun defs -> TupleTy (xs defs)) }
               | xs=assoc_ord(ty)
                 { (fun defs -> RecordTy (xs defs)) }
+              | Array LParen x=ty RParen
+                { (fun defs -> ArrayTy (x defs)) }
               | Environment xs=table(lvar_ty) parent=environment_ty
                 { (fun defs -> EnvironmentTy {
                     e_ty_parent   = parent defs;
@@ -318,6 +330,8 @@ environment_ty: Arrow xs=table(lvar_ty) parent=environment_ty
                 { (fun defs -> Tuple (xs defs)) }
               | xs=assoc_ord(value)
                 { (fun defs -> Record (xs defs)) }
+              | Array LParen ty=ty RParen x=storage
+                { (fun defs -> Array (ty defs, x defs)) }
               | Environment x=local_env
                 { (fun defs -> Environment (x defs)) }
               | Lambda x=lambda
@@ -527,6 +541,19 @@ lambda_arg_def: Default expr=expr
                     (fun () ->
                       Table.replace inst.i_slots (slots defs)))
                 }
+
+              | bind_as=Name_Global Equal
+                  Storage LParen capa=Lit_Integer X ty=ty RParen xs=seq(value)
+                { (fun defs ->
+                    let storage = {
+                      st_hash     = Hash_seed.make ();
+                      st_ty       = ty defs;
+                      st_capacity = int_of_big_int capa;
+                      st_elems    = DynArray.create ();
+                    } in
+                    Table.set defs.globals bind_as (NamedStorage storage);
+                    (fun () ->
+                      List.iter (DynArray.add storage.st_elems) (xs defs))) }
 
        fun_arg: ty=ty name=Name_Local
                 { (fun defs -> ty defs, name) }

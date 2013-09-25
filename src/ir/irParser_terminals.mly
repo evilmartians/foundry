@@ -22,6 +22,7 @@
 %token Question
 %token Star
 %token StarStar
+%token X
 
 %token Type
 %token Tvar
@@ -35,6 +36,8 @@
 %token Symbol
 %token String
 %token Option
+%token Array
+%token Storage
 %token Environment
 %token Lambda
 %token Closure

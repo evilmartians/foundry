@@ -30,7 +30,7 @@ type value =
 | TupleTy       of ty    list
 | Record        of value Assoc.sorted_t
 | RecordTy      of ty    Assoc.sorted_t
-| Array         of ty * value DynArray.t
+| Array         of ty * storage
 | ArrayTy       of ty
 (* Function type *)
 | Environment   of local_env
@@ -52,6 +52,12 @@ and slots          = value Table.t
 and value_option =
 | Full  of value
 | Empty of ty
+and storage = {
+          st_hash         : int;
+          st_ty           : ty;
+          st_capacity     : int;
+          st_elems        : value DynArray.t;
+}
 and binding_ty = {
           b_ty_location   : Location.t;
           b_ty_kind       : Syntax.lvar_kind;
@@ -199,6 +205,7 @@ type roots = {
   kOption           : klass;
   kTuple            : klass;
   kRecord           : klass;
+  kArray            : klass;
   kLambda           : klass;
   kMixin            : klass;
   kPackage          : klass;

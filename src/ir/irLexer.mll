@@ -35,6 +35,7 @@ rule lex = parse
 | '?'  { Question }
 | '*'  { Star }
 | "**" { StarStar }
+| "x"  { X }
 
 | "type"          { Type }
 | "tvar"          { Tvar }
@@ -48,6 +49,8 @@ rule lex = parse
 | "symbol"        { Symbol }
 | "string"        { String }
 | "option"        { Option }
+| "array"         { Array }
+| "storage"       { Storage }
 | "environment"   { Environment }
 | "lambda"        { Lambda }
 | "closure"       { Closure }
