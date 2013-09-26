@@ -7,35 +7,34 @@ SECTIONS {
 	} > flash
 
 	.text : {
-		*(.text)
+		*(.text .text.*)
 
 		. = ALIGN(4);
 
-		*(.rodata)
+		*(.rodata .rodata.*)
 
 		. = ALIGN(4);
 
 		__text_end__ = .;
 	} > flash
 
-	.data : {
+	.data : AT (__text_end__) {
 		__ram_begin__  = .;
 		__data_begin__ = .;
 
-		*(.data)
+		*(.data .data.*)
 
 		. = ALIGN(4);
 
 		__data_end__ = .;
-	} > ram AT>flash
+	} > ram
 
 	. = ALIGN(4);
 
 	.bss : {
 		__bss_begin__ = .;
 
-		*(.bss)
-		*(COMMON)
+		*(.bss* COMMON)
 
 		. = ALIGN(4);
 
