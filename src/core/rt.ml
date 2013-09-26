@@ -414,6 +414,7 @@ let klass_of_type ?(dispatch=false) ty =
   | SignedTy(_)   -> !roots.kFixed
   | TupleTy(_)    -> !roots.kTuple
   | RecordTy(_)   -> !roots.kRecord
+  | ArrayTy(_)    -> if dispatch then !roots.kArray.k_metaclass else !roots.kArray
 
   | LambdaTy(_)   -> !roots.kLambda
 
@@ -435,6 +436,7 @@ let klass_of_value ?(dispatch=false) ?(meta=true) value =
   | Signed(_)     -> !roots.kFixed
   | Tuple(_)      -> !roots.kTuple
   | Record(_)     -> !roots.kRecord
+  | Array(_)      -> !roots.kArray
 
   | Lambda(_)     -> !roots.kLambda
 
@@ -444,7 +446,7 @@ let klass_of_value ?(dispatch=false) ?(meta=true) value =
   | Mixin(m,_)    -> if dispatch then m.m_metaclass else !roots.kMixin
 
   | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
-  | TupleTy _ | RecordTy _ | LambdaTy _ | SignedTy _
+  | TupleTy _ | RecordTy _ | ArrayTy _ | LambdaTy _ | SignedTy _
   | UnsignedTy _
   -> klass_of_type ~dispatch value
 
@@ -480,7 +482,7 @@ let rec type_of_value value =
   | Instance(i)     -> Class i.i_class
 
   | BooleanTy | NilTy | TvarTy | IntegerTy | SymbolTy
-  | TupleTy(_) | RecordTy(_) | LambdaTy(_)
+  | TupleTy(_) | RecordTy(_) | ArrayTy(_) | LambdaTy(_)
   | SignedTy(_) | UnsignedTy(_)
   -> Class (klass_of_type value, Assoc.empty)
 
@@ -738,7 +740,7 @@ module EnvTytbl = Hashtbl.Make(EnvTyIdentity)
 (* Inspecting types and values *)
 
 let string_of_value value =
-  assert false
+  "`unknown"
 
 let rec inspect_literal_or value f =
   match value with
@@ -759,6 +761,8 @@ let rec inspect_literal_or value f =
   | UnsignedTy(w) -> "Unsigned(" ^ (string_of_int w) ^ ")"
   | Signed(w,v)   -> (string_of_big_int v) ^ "s" ^ (string_of_int w)
   | SignedTy(w)   -> "Signed(" ^ (string_of_int w) ^ ")"
+  | OptionTy(x)   -> "Option(" ^ (inspect_type x) ^ ")"
+  | ArrayTy(x)    -> "Array(" ^ (inspect_type x) ^ ")"
   | Class(k,sp)   -> k.k_name ^ "(" ^ (String.concat ", " (Assoc.map_list
                           (fun k v -> k ^ ": " ^ (inspect_type v)) sp)) ^ ")"
   | Instance(i)   -> "#<" ^ (inspect_type (Class i.i_class)) ^ (String.concat "" (Table.map_list
@@ -789,15 +793,11 @@ and inspect_value value =
 and inspect_type ty =
   inspect_literal_or ty (fun x ->
     match ty with
-    | OptionTy(x)
-    -> "Option(" ^ (inspect_type x) ^ ")"
     | TupleTy(xs)
     -> "[" ^ (String.concat ", " (List.map inspect_type xs)) ^ "]"
     | RecordTy(xs)
     -> "{" ^ (String.concat ", " (Assoc.map_list
                 (fun k v -> k ^ ": " ^ (inspect_type v)) xs)) ^ "}"
-    | ArrayTy(x)
-    -> "Array(" ^ (inspect_type x) ^ ")"
     | LambdaTy(xa, xr)
     -> (let inspect_arg arg =
           match arg with

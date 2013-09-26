@@ -14,7 +14,7 @@ llvm   := -3.4
 cross  := arm-linux-gnueabi-
 
 stdrtl := class.fy object.fy value.fy integer.fy fixed.fy \
-	  symbol.fy lambda.fy
+	  array.fy symbol.fy lambda.fy
 stdrtl := $(addprefix ../rtl/,$(stdrtl))
 
 devrtl := metal/register.fy metal/unit.fy
@@ -32,7 +32,7 @@ devrtl := $(devrtl) $(addprefix $(device)/,color_lcd_shield.fy $(device).fy)
 endif
 
 ifeq ($(device),foundry_gamepad)
-devrtl := $(devrtl) $(addprefix $(device)/,$(device).fy)
+devrtl := $(devrtl) $(addprefix $(device)/,gamepad_lcd.fy gamepad.fy)
 endif
 
 devrtl := $(addprefix ../rtl/,$(devrtl))
@@ -66,7 +66,7 @@ devlib := $(addprefix ../lib/startup/,$(devlib))
 	$(cross)objcopy -Oihex $^ $@
 
 clean:
-	rm -f *.fir *.bc *.ll *.s *.o *.bin *.elf
+	rm -f *.fir *.bc *.ll *.s *.o *.bin *.elf *.ihex
 
 # (h)ost rules
 

@@ -188,7 +188,7 @@ and eval_type env expr =
       match ty with
       | Tvar(_) | TvarTy | NilTy | BooleanTy | IntegerTy | SymbolTy
       | UnsignedTy(_) | SignedTy(_) | TupleTy(_) | RecordTy(_) | LambdaTy(_)
-      | Class(_,_)
+      | ArrayTy(_) | Class(_,_)
       -> ty
       | _
       -> exc_type "type" ty [Syntax.ty_loc expr]
@@ -353,6 +353,15 @@ and eval_expr env expr =
         cenv_lookup env.const_env name
       with CEnvUnbound ->
         exc_fail ("Name " ^ name ^ " is not bound") [Syntax.loc expr])
+
+  | Syntax.TVar((loc, _), name)
+  -> (let self = lenv_lookup env.local_env "self" in
+      let _, specz = Typing.unfold_equiv self in
+      try
+        Assoc.find specz name
+      with Not_found ->
+        exc_fail ("Object " ^ (inspect_value self) ^
+                  " is not specialized by \\" ^ name ^ ".") [loc])
 
   | Syntax.Self(loc)
   -> lenv_lookup env.local_env "self"
@@ -611,7 +620,7 @@ and eval_expr env expr =
           | _ -> value')
       | _ -> exc_type "Boolean" value [Syntax.loc lhs])
 
-  | Syntax.TVar (_, _) | Syntax.Update (_, _)
+  | Syntax.Update (_, _)
   -> failwith ("cannot eval " ^
                (Unicode.assert_utf8s
                 (Sexplib.Sexp.to_string_hum (Syntax.sexp_of_expr expr))));

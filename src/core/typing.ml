@@ -25,6 +25,12 @@ let fold_equiv ty =
           | Some Truth -> SignedTy (int_of_big_int width)
           | _ -> ty)
       | _ -> ty)
+  | Class (klass, specz) when klass == roots.kArray
+  -> (match Assoc.find_option specz "element" with
+      | Some elem
+      -> ArrayTy elem
+      | _
+      -> ty)
   | _
   -> ty
 
@@ -38,6 +44,9 @@ let unfold_equiv ty =
   | SignedTy (width)
   -> (let width = big_int_of_int width in
       klass_of_type ty, Assoc.sorted ["width", Rt.Integer (width); "signed", Rt.Truth])
+  | ArrayTy (ty)
+  -> (klass_of_type ty, Assoc.sorted ["element", ty;
+                                      "resizable", Rt.Truth; "writable", Rt.Truth])
   | _ -> raise (Invalid_argument ("Typing.unfold_equiv" :> latin1s))
 
 let equiv ~f ty =
@@ -84,6 +93,9 @@ let rec unify' env a b =
   | RecordTy(xsa), RecordTy(xsb)
   -> fst (Assoc.merge_fold ~f:(fun k env v1 v2 -> unify' env v1 v2, v1) env xsa xsb)
 
+  | ArrayTy(xa), ArrayTy(xb)
+  -> unify' env xa xb
+
   | EnvironmentTy(xa), EnvironmentTy(xb)
   -> unify_env' env xa xb
 
@@ -110,6 +122,8 @@ let rec unify' env a b =
   | (UnsignedTy(_) as b), (Class(_) as a)
   | (Class(_) as a),      (SignedTy(_) as b)
   | (SignedTy(_) as b),   (Class(_) as a)
+  | (Class(_) as a),      (ArrayTy(_) as b)
+  | (ArrayTy(_) as b),    (Class(_) as a)
   -> unify' env a (Class (unfold_equiv b))
 
   | a, b
@@ -175,6 +189,8 @@ let rec derive f value =
   -> RecordTy (Assoc.map (fun _ -> derive f) xs)
   | Record xs
   -> Record (Assoc.map (fun _ -> derive f) xs)
+  | ArrayTy x
+  -> ArrayTy (derive f x)
   | Environment _
   -> value
   | EnvironmentTy x

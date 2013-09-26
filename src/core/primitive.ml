@@ -100,6 +100,21 @@ let rec_lookup args =
   | [Record(xs); Symbol(n)] -> Assoc.find xs n
   | _ -> assert false
 
+(* Array primitive implementations. *)
+
+let ary_alloc args =
+  match args with
+  | [elem_ty; Integer(reserve)]
+  -> (let capacity = int_of_big_int reserve in
+      Array(elem_ty, {
+        st_hash     = Hash_seed.make ();
+        st_ty       = elem_ty;
+        st_capacity = capacity;
+        st_elems    = DynArray.create ();
+      }))
+  | _
+  -> assert false
+
 (* Symbol primitive implementations. *)
 
 let sym_to_str args =
@@ -182,6 +197,7 @@ let prim = Table.create [
   "rec_lookup", (false,    rec_lookup);
   "rec_enum",   (true,     fun _ -> assert false);
   (* -- arrays ----------------------------------------- *)
+  "ary_alloc",  (false,    ary_alloc);
   "ary_capa",   (false,    fun _ -> assert false);
   "ary_length", (false,    fun _ -> assert false);
   "ary_get",    (false,    fun _ -> assert false);
