@@ -27,6 +27,10 @@ let run_on_function passmgr capsule funcn =
             append_instr instr blockn)
           succn;
 
+        (* Replace all uses of now-empty block with current block.
+           Due to conditions above, there will not be any non-phi uses. *)
+        replace_all_uses_with succn blockn;
+
         (* Remove now-empty dominated block. *)
         remove_block succn;
         Worklist.remove worklist succn;

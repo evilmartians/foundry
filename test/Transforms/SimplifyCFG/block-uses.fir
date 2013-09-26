@@ -2,7 +2,7 @@
 
 ; CHECK:      @foo = function () -> nil {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   return int 1
+; CHECK-NEXT:   return nil
 ; CHECK-NEXT: }
 @foo = function () -> nil {
 entry:
@@ -16,5 +16,5 @@ incr:
   jump %loop
 
 exit:                                              ; preds = %loop
-  return int 1
+  return nil
 }
