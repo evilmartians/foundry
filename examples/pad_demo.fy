@@ -1,25 +1,24 @@
-Board = FoundryGamepad.new
+Board = Gamepad.new
+LCD   = Board.lcd
 
 def main
   Board.setup
 
-  let mut x = 0u32
-  let mut y = 0u32
+  let mut paddle_width = 12u32
+  let mut paddle_pos   = 64 - paddle_width / 2
+
   while true
-    Board.set_pixel(x:, y:, true)
-    if Board.up_pressed?
-      y -= 1
-    elsif Board.down_pressed?
-      y += 1
-    elsif Board.left_pressed?
-      x -= 1
-    elsif Board.right_pressed?
-      x += 1
+    if Board.left_pressed? && paddle_pos > 0
+      paddle_pos -= 1
+    elsif Board.right_pressed? && paddle_pos + paddle_width < 128
+      paddle_pos += 1
     end
 
-    x &= 127
-    y &= 63
+    LCD.clear
+    # paddle
+    LCD.rectangle(x: paddle_pos, y: 60, w: paddle_width, h: 2, true)
 
-    Board.delay(25_000)
+    LCD.refresh
+    Board.delay(5_000)
   end
 end
