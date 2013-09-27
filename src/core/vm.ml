@@ -158,12 +158,14 @@ and eval_assign env lhs value =
   | Syntax.Var((loc,_), name)
   -> (lenv_mutate env.local_env name ~value;
       value)
+
   | Syntax.Const((loc,_), name)
   -> (try
         cenv_bind env.const_env name value;
         value
       with CEnvAlreadyBound value ->
         exc_fail ("Name " ^ name ^ " is already bound to " ^ (inspect value) ^ ".") [loc])
+
   | Syntax.IVar((loc,_), name)
   -> (let self = lenv_lookup env.local_env "self" in
       use_ivar self name loc (fun inst ->
@@ -179,6 +181,13 @@ and eval_assign env lhs value =
         else
           Table.set inst.i_slots name value);
       value)
+
+  | Syntax.Send((_, { Syntax.selector = loc }), recv, selector, args)
+  -> (let recv = eval_expr env recv in
+      let args, kwargs = eval_args env args in
+      ignore (eval_send recv (selector ^ "=") ~args:(args @ [value]) ~kwargs ~loc);
+      value)
+
   | _
   -> assert false
 
