@@ -74,4 +74,12 @@ class Integer
   def <=(other)
     invokeprimitive int_le(self, other)
   end
+
+  def times(block)
+    let mut i = 0
+    while i < self
+      block.call(i)
+      i += 1
+    end
+  end
 end

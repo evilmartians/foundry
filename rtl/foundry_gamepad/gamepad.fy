@@ -15,6 +15,8 @@ class Gamepad
   end
 
   def setup
+    RCC.ICSCR = RCC.ICSCR.set_msirange(0b110)
+
     RCC.AHBENR = RCC.AHBENR.
           set_gpioaen(true)
 
