@@ -129,9 +129,6 @@ let rec lex_code state = lexer
 | "=>"     -> expr_begin state true;  Tk_ROCKET  (locate state lexbuf)
 
 (* Operators *)
-| "+@"     -> expr_begin state false; Tk_UPLUS   (locate state lexbuf, lexeme lexbuf)
-| "-@"     -> expr_begin state false; Tk_UMINUS  (locate state lexbuf, lexeme lexbuf)
-| "~@"     -> expr_begin state false; Tk_UTILDE  (locate state lexbuf, lexeme lexbuf)
 | '+'      -> expr_begin state true;  Tk_PLUS    (locate state lexbuf, lexeme lexbuf)
 | '-'      -> expr_begin state true;  Tk_MINUS   (locate state lexbuf, lexeme lexbuf)
 | '*'      -> expr_begin state true;  Tk_STAR    (locate state lexbuf, lexeme lexbuf)
@@ -246,7 +243,12 @@ and lex_dot state = lexer
                      Id_METHOD (locate state lexbuf, lexeme lexbuf)
 | ident '='       -> goto state lex_code;
                      Id_ASSIGN (locate state lexbuf, lexeme lexbuf)
-
+| "-@"            -> goto state lex_code;
+                     Tk_UMINUS (locate state lexbuf, lexeme lexbuf)
+| "+@"            -> goto state lex_code;
+                     Tk_UPLUS  (locate state lexbuf, lexeme lexbuf)
+| "~@"            -> goto state lex_code;
+                     Tk_UTILDE (locate state lexbuf, lexeme lexbuf)
 | _               -> Ulexing.rollback lexbuf; goto state lex_code;
                      lex_code state lexbuf
 | eof             -> eof state lexbuf
