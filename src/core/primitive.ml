@@ -22,6 +22,10 @@ let int_binop op =
     | [Unsigned(wl,lhs); Unsigned(wr,rhs)] when wl = wr
     -> (let prec = shift_left_big_int unit_big_int wl in
         Unsigned(wl, mod_big_int (op lhs rhs) prec))
+    | [Unsigned(w,lhs);     Integer(rhs)]
+    | [   Integer(lhs);  Unsigned(w,rhs)]
+    -> (let prec = shift_left_big_int unit_big_int w in
+        Unsigned(w, mod_big_int (op lhs rhs) prec))
     | [Integer(lhs); Integer(rhs)]
     -> Integer(op lhs rhs)
     | _ -> assert false)
@@ -32,6 +36,11 @@ let int_cmpop op =
     | [Unsigned(wl,lhs); Unsigned(wr,rhs)]
     | [  Signed(wl,lhs);   Signed(wr,rhs)]
       when wl = wr
+    -> value_of_bool (op lhs rhs)
+    | [Unsigned(_,lhs);     Integer(rhs)]
+    | [   Integer(lhs);  Unsigned(_,rhs)]
+    | [  Signed(_,lhs);     Integer(rhs)]
+    | [   Integer(lhs);    Signed(_,rhs)]
     -> value_of_bool (op lhs rhs)
     | [Integer(lhs); Integer(rhs)]
     -> value_of_bool (op lhs rhs)
@@ -105,13 +114,40 @@ let rec_lookup args =
 let ary_alloc args =
   match args with
   | [elem_ty; Integer(reserve)]
-  -> (let capacity = int_of_big_int reserve in
+  | [elem_ty; Unsigned(_,reserve)]
+  -> (let capa = int_of_big_int reserve in
       Array(elem_ty, {
         st_hash     = Hash_seed.make ();
         st_ty       = elem_ty;
-        st_capacity = capacity;
+        st_capacity = capa;
         st_elems    = DynArray.create ();
       }))
+  | _
+  -> assert false
+
+let ary_get args =
+  match args with
+  | [Array(_, st); Integer(idx)]
+  | [Array(_, st); Unsigned(_,idx)]
+  -> (let idx = int_of_big_int idx in
+      DynArray.get st.st_elems idx)
+  | _
+  -> assert false
+
+let ary_set args =
+  match args with
+  | [Array(_, st); Integer(idx);    elem]
+  | [Array(_, st); Unsigned(_,idx); elem]
+  -> (let idx = int_of_big_int idx in
+      assert (idx < st.st_capacity);
+      assert (equal (type_of_value elem) st.st_ty);
+      if idx < DynArray.length st.st_elems then
+        DynArray.set st.st_elems idx elem
+      else if idx = DynArray.length st.st_elems then
+        DynArray.add st.st_elems elem
+      else
+        assert false;
+      elem)
   | _
   -> assert false
 
@@ -155,7 +191,7 @@ let cls_defm args =
   -> assert false
 
 let prim = Table.create [
-  (* name       side-eff?  impl *)
+  (* name       unpure?    impl *)
   (* -- debug ------------------------------------------ *)
   "debug",      (true,     debug);
   "external",   (true,     fun _ -> assert false);
@@ -198,10 +234,10 @@ let prim = Table.create [
   "rec_enum",   (true,     fun _ -> assert false);
   (* -- arrays ----------------------------------------- *)
   "ary_alloc",  (false,    ary_alloc);
-  "ary_capa",   (false,    fun _ -> assert false);
-  "ary_length", (false,    fun _ -> assert false);
-  "ary_get",    (false,    fun _ -> assert false);
-  "ary_set",    (false,    fun _ -> assert false);
+  "ary_capa",   (true,     fun _ -> assert false);
+  "ary_length", (true,     fun _ -> assert false);
+  "ary_get",    (true,     ary_get);
+  "ary_set",    (true,     ary_set);
   (* -- symbols ---------------------------------------- *)
   "sym_to_str", (false,    sym_to_str);
   (* -- closures --------------------------------------- *)
@@ -217,7 +253,7 @@ let prim = Table.create [
   (* -- memory ----------------------------------------- *)
   "fat_alloc",  (false,    fun _ -> assert false);
   (* -- hardware access -------------------------------- *)
-  "mem_load",   (false,    fun _ -> assert false);
+  "mem_load",   (true,     fun _ -> assert false);
   "mem_store",  (true,     fun _ -> assert false);
   "mem_loadv",  (true,     fun _ -> assert false);
   "mem_storev", (true,     fun _ -> assert false);
