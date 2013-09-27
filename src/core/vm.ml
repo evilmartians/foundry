@@ -28,7 +28,7 @@ let env_create () =
 let rec ivars_of_klass klass =
   let ivars = Assoc.keys klass.k_ivars in
   match klass.k_ancestor with
-  | Some ancestor -> List.merge compare ivars (ivars_of_klass ancestor)
+  | Some ancestor -> ivars @ (ivars_of_klass ancestor)
   | None -> ivars
 
 let lookup_method klass selector =
@@ -640,7 +640,7 @@ and eval_send ?(args=[]) ?(kwargs=Assoc.empty) ~loc recv selector =
     match result with
     | Instance({ i_class = klass, specz; i_slots = slots; })
     -> (let slot_ivars    = List.sort (Table.keys slots)
-        and defined_ivars = ivars_of_klass klass in
+        and defined_ivars = List.sort (ivars_of_klass klass) in
         let diff_ivars    = List.fold_left List.remove defined_ivars slot_ivars in
         let diff_ivars    = String.concat ", " (List.map (fun iv -> "@" ^ iv) diff_ivars) in
         if slot_ivars <> defined_ivars then
