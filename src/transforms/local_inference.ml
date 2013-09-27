@@ -159,7 +159,7 @@ let run_on_function passmgr capsule funcn =
 
         (* Operands to integer primitives must have the
            same integral type. *)
-        | "int_add"  | "int_sub"  | "int_mul" | "int_div" | "int_exp"
+        | "int_add"  | "int_sub"  | "int_mul" | "int_div" | "int_mod"  | "int_exp"
         | "int_and"  | "int_or"   | "int_xor" | "int_shl" | "int_shr"
         -> unify_int_op int_binop_ty
         | "int_eq"   | "int_ne"   | "int_le"  | "int_lt"  | "int_ge"   | "int_gt"
