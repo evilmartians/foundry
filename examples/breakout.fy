@@ -177,9 +177,9 @@ def main
       Game.tick
     end
 
-    if Board.left_pressed?
+    if Board.left_pressed? || Board.a_pressed?
       Game.handle_left
-    elsif Board.right_pressed?
+    elsif Board.right_pressed? || Board.b_pressed?
       Game.handle_right
     elsif Board.up_pressed?
       Game.handle_up
