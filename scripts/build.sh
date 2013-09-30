@@ -8,7 +8,7 @@ if ! [ -x vendor/_prefix/bin/menhir ]; then
   echo "Building menhir..."
   (cd vendor/menhir;
    touch manual.pdf; # missing for some reason
-   make PREFIX=$(pwd)/../_prefix/ install;
+   make PREFIX=$(pwd)/../_prefix/ USE_OCAMLFIND=0 install;
    git clean -dxf >/dev/null 2>&1)
 fi
 
