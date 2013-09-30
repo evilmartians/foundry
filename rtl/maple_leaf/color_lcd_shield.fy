@@ -57,11 +57,11 @@ class ColorLCDShield
     GPIOA.as_output(4, alternate: false, open_drain: false)
 
     # Joystick
-    GPIOC.as_input(0, pull: true).
-          as_input(1, pull: true).
-          as_input(2, pull: true).
-          as_input(3, pull: true).
-          as_input(4, pull: true).
+    GPIOC.as_input(0, pull_up: true).
+          as_input(1, pull_up: true).
+          as_input(2, pull_up: true).
+          as_input(3, pull_up: true).
+          as_input(4, pull_up: true).
           set(0, true).
           set(1, true).
           set(2, true).

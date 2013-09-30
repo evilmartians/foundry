@@ -11,7 +11,6 @@ features:
  * common frontend
  * store location in fir instructions
  * (() do end) -> do || end
- * llvm_gen for array instrinsics
  * x = 1 -> let mut x = 1
  * != -> !(==), <=/>=/</> -> <=>
 

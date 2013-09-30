@@ -12,6 +12,7 @@ device := foundry_gamepad
 
 llvm   := -3.4
 cross  := arm-linux-gnueabi-
+root   := ..
 
 stdrtl := class.fy object.fy value.fy integer.fy fixed.fy \
 	  array.fy symbol.fy lambda.fy
@@ -45,10 +46,10 @@ devlib := $(addprefix ../lib/startup/,$(devlib))
 # Common rules for all targets
 
 %.fir: $(stdrtl) $(devrtl) %.fy
-	../foundry_vm.native $^ -o $@
+	$(root)/foundry_vm.native $^ -o $@
 
 %.opt.fir: %.fir
-	../foundry_xfrm.native $^ -std-xfrms -o $@
+	$(root)/foundry_xfrm.native $^ -std-xfrms -o $@
 
 %.ll: %.bc
 	llvm-dis$(llvm) $^ -o $@
@@ -71,7 +72,7 @@ clean:
 # (h)ost rules
 
 %.h.bc: %.opt.fir
-	../foundry_gen.native -target x86_64 $^ -o $@
+	$(root)/foundry_gen.native -target x86_64 $^ -o $@
 
 %.h.opt.bc: %.h.bc
 	opt$(llvm) $^ \
@@ -84,7 +85,7 @@ clean:
 # (d)evice rules
 
 %.d.bc: %.opt.fir
-	../foundry_gen.native -target thumbv7m $^ -o $@
+	$(root)/foundry_gen.native -target thumbv7m $^ -o $@
 
 %.d.opt.bc: $(devlib) %.d.bc
 	llvm-link$(llvm) $^ | opt$(llvm) \

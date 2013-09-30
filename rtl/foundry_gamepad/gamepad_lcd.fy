@@ -73,7 +73,7 @@ class GamepadLCD
     if on
       @framebuffer[index] |= mask
     else
-      @framebuffer[index] &= mask
+      @framebuffer[index] &= ~mask
     end
   end
 
