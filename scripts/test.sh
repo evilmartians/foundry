@@ -2,6 +2,8 @@
 
 set -e
 
+[ -f scripts/local.sh ] && . scripts/local.sh
+
 if [ -n "$COVERAGE" ]; then
   find test -name 'bisect*.out' -delete
 fi
