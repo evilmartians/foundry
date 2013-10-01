@@ -2,6 +2,8 @@
 
 set -e
 
+opam install sexplib extlib ulex ounit batteries js_of_ocaml bisect
+
 if ! [ -x vendor/_prefix/bin/menhir ]; then
   echo "Building menhir..."
   (cd vendor/menhir;
@@ -18,5 +20,3 @@ if ! [ -x vendor/merr/merr.native ]; then
    ocamlbuild -use-ocamlfind merr/merr.native;
    ocamlbuild -use-ocamlfind merr/merr.native)
 fi
-
-opam install sexplib extlib ulex ounit batteries js_of_ocaml bisect
