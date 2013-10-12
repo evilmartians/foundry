@@ -490,7 +490,7 @@ let rec gen_func llmod heap funcn =
         let llret_ty  = Llvm.integer_type ctx width in
         let lladdr    = Llvm.build_inttoptr (lookup addr) (Llvm.pointer_type llret_ty) "" builder in
         let llload    = Llvm.build_load lladdr id builder in
-        Llvm.set_instruction_alignment (int_of_big_int align) llload;
+        Llvm.set_instr_alignment (int_of_big_int align) llload;
         Llvm.set_volatile (prim = "mem_loadv") llload;
         llload)
 
@@ -500,7 +500,7 @@ let rec gen_func llmod heap funcn =
         let llval_ty  = Llvm.type_of llval in
         let lladdr    = Llvm.build_inttoptr (lookup addr) (Llvm.pointer_type llval_ty) "" builder in
         let llstore   = Llvm.build_store llval lladdr builder in
-        Llvm.set_instruction_alignment (int_of_big_int align) llstore;
+        Llvm.set_instr_alignment (int_of_big_int align) llstore;
         Llvm.set_volatile (prim = "mem_storev") llstore;
         llconst_of_value Rt.Nil)
 
