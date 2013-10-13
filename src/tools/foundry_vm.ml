@@ -1,5 +1,3 @@
-open Fy_big_int
-
 let _ =
   let output   = ref "-" in
   let inputs   = ref []  in
