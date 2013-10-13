@@ -1,8 +1,8 @@
 open Unicode.Std
 
 type t =
-| Sequental of seq_passes
-| Worklist  of dep_passes
+| Sequential of seq_passes
+| Worklist   of dep_passes
 and seq_passes = {
   mutable passes          : (string * (Ssa.capsule -> unit)) list;
 }
@@ -49,9 +49,9 @@ let print_exn exn reason =
   print_verbose ("Reason: " ^ reason);
   if !verbose then raise Exit else raise exn
 
-let create ~sequental =
-  if sequental
-  then Sequental {
+let create ~sequential =
+  if sequential
+  then Sequential {
     passes = []
   }
   else Worklist {
@@ -72,7 +72,7 @@ let run' passmgr capsule =
     print_verbose ("Leaving function pass '" ^ name ^ "'.")
   in
   match passmgr with
-  | Sequental { passes }
+  | Sequential { passes }
   -> List.iter run_capsule passes
   | Worklist passmgr'
   -> ((* Set a sigint signal to allow premature termination. *)
@@ -131,7 +131,7 @@ let mark passmgr ?reason funcn =
 let add_capsule_pass passmgr pass =
   let module Pass = (val pass : CapsulePass) in
   match passmgr with
-  | Sequental passmgr'
+  | Sequential passmgr'
   -> passmgr'.passes <- passmgr'.passes @
         [Pass.name,
          Pass.run_on_capsule passmgr]
@@ -143,7 +143,7 @@ let add_capsule_pass passmgr pass =
 let add_function_pass passmgr pass =
   let module Pass = (val pass : FunctionPass) in
   match passmgr with
-  | Sequental passmgr'
+  | Sequential passmgr'
   -> passmgr'.passes <- passmgr'.passes @
         [Pass.name,
          fun capsule -> Ssa.iter_funcs capsule ~f:(Pass.run_on_function passmgr capsule)]
@@ -161,7 +161,7 @@ let add_pass_manager passmgr inner_passmgr =
       level := !level - 1)
   in
   match passmgr with
-  | Sequental passmgr'
+  | Sequential passmgr'
   -> passmgr'.passes <- passmgr'.passes @ [passmgr_pass]
   | Worklist passmgr'
   -> passmgr'.capsule_passes <- passmgr'.capsule_passes @ [passmgr_pass]

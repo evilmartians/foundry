@@ -14,7 +14,7 @@ sig
   val run_on_capsule  : t -> Ssa.capsule -> unit
 end
 
-val create            : sequental:bool -> t
+val create            : sequential:bool -> t
 val add_function_pass : t -> (module FunctionPass) -> unit
 val add_capsule_pass  : t -> (module CapsulePass)  -> unit
 val add_pass_manager  : t -> t -> unit

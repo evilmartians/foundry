@@ -23,3 +23,14 @@ let input_all channel =
   in
   let bytes = input_some (ByteArray.create 4096) 0 4096 in
   Unicode.assert_utf8s bytes
+
+let input_file filename =
+  let chan = open_in filename in
+  let buf  = input_all chan in
+  close_in chan;
+  buf
+
+let output_file filename buf =
+  let chan = open_out filename in
+  output_string chan buf;
+  close_out chan
