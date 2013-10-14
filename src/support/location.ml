@@ -25,14 +25,14 @@ let register file line content =
   lines  := (line, !cursor) :: !lines;
 
   (* Locate and memorize newlines. *)
-  let rec start_line line index =
-    try
+  try
+    let rec start_line line index =
       let index = (String.index_from content index '\n') + 1 in
       lines := (line, !cursor + index) :: !lines;
       start_line (line + 1) index
-    with Not_found -> ()
-  in
-  start_line (line + 1) 0;
+    in
+    start_line (line + 1) 0;
+  with Not_found -> ();
 
   (* Memorize start of the newly added file. *)
   let mark = !cursor in
