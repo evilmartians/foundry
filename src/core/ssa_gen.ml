@@ -588,7 +588,7 @@ and ssa_of_lambda_expr ~state ~entry ~formal_args ~expr =
                       ~opcode:(Ssa.ClosureInstr (funcn, state.frame))
 
 let name_of_lambda klass selector lambda capsule =
-  let id = klass.Rt.k_name ^ ":" ^ selector in
+  let id = klass.Rt.k_name ^ "$" ^ selector in
 
   (* Create the function with the signature corresponding to that of lambda.*)
   let arg_ids, arg_tys, ret_ty =

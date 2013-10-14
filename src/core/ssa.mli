@@ -28,6 +28,7 @@ and func = private {
   (* Internal fields *)
           f_symtab     : Symtab.t;
   mutable f_original   : name option;
+          f_name       : string;
 }
 and basic_block = private {
   mutable instructions : name list;

@@ -30,43 +30,43 @@
     let roots = Rt.create_roots () in
     Table.create [
       (u"c.Class",              NamedClass roots.kClass);
-      (u"c.meta:Class",         NamedClass roots.kClass.k_metaclass);
+      (u"c.meta.Class",         NamedClass roots.kClass.k_metaclass);
       (u"c.Object",             NamedClass roots.kObject);
-      (u"c.meta:Object",        NamedClass roots.kObject.k_metaclass);
+      (u"c.meta.Object",        NamedClass roots.kObject.k_metaclass);
       (u"c.Value",              NamedClass roots.kValue);
-      (u"c.meta:Value",         NamedClass roots.kValue.k_metaclass);
+      (u"c.meta.Value",         NamedClass roots.kValue.k_metaclass);
       (u"c.TypeVariable",       NamedClass roots.kTypeVariable);
-      (u"c.meta:TypeVariable",  NamedClass roots.kTypeVariable.k_metaclass);
+      (u"c.meta.TypeVariable",  NamedClass roots.kTypeVariable.k_metaclass);
       (u"c.Nil",                NamedClass roots.kNil);
-      (u"c.meta:Nil",           NamedClass roots.kNil.k_metaclass);
+      (u"c.meta.Nil",           NamedClass roots.kNil.k_metaclass);
       (u"c.Boolean",            NamedClass roots.kBoolean);
-      (u"c.meta:Boolean",       NamedClass roots.kBoolean.k_metaclass);
+      (u"c.meta.Boolean",       NamedClass roots.kBoolean.k_metaclass);
       (u"c.Integer",            NamedClass roots.kInteger);
-      (u"c.meta:Integer",       NamedClass roots.kInteger.k_metaclass);
+      (u"c.meta.Integer",       NamedClass roots.kInteger.k_metaclass);
       (u"c.Fixed",              NamedClass roots.kFixed);
-      (u"c.meta:Fixed",         NamedClass roots.kFixed.k_metaclass);
+      (u"c.meta.Fixed",         NamedClass roots.kFixed.k_metaclass);
       (u"c.Symbol",             NamedClass roots.kSymbol);
-      (u"c.meta:Symbol",        NamedClass roots.kSymbol.k_metaclass);
+      (u"c.meta.Symbol",        NamedClass roots.kSymbol.k_metaclass);
       (u"c.String",             NamedClass roots.kString);
-      (u"c.meta:String",        NamedClass roots.kString.k_metaclass);
+      (u"c.meta.String",        NamedClass roots.kString.k_metaclass);
       (u"c.Option",             NamedClass roots.kOption);
-      (u"c.meta:Option",        NamedClass roots.kOption.k_metaclass);
+      (u"c.meta.Option",        NamedClass roots.kOption.k_metaclass);
       (u"c.Tuple",              NamedClass roots.kTuple);
-      (u"c.meta:Tuple",         NamedClass roots.kTuple.k_metaclass);
+      (u"c.meta.Tuple",         NamedClass roots.kTuple.k_metaclass);
       (u"c.Record",             NamedClass roots.kRecord);
-      (u"c.meta:Record",        NamedClass roots.kRecord.k_metaclass);
+      (u"c.meta.Record",        NamedClass roots.kRecord.k_metaclass);
       (u"c.Array",              NamedClass roots.kArray);
-      (u"c.meta:Array",         NamedClass roots.kArray.k_metaclass);
+      (u"c.meta.Array",         NamedClass roots.kArray.k_metaclass);
       (u"c.Lambda",             NamedClass roots.kLambda);
-      (u"c.meta:Lambda",        NamedClass roots.kLambda.k_metaclass);
+      (u"c.meta.Lambda",        NamedClass roots.kLambda.k_metaclass);
       (u"c.Mixin",              NamedClass roots.kMixin);
-      (u"c.meta:Mixin",         NamedClass roots.kMixin.k_metaclass);
+      (u"c.meta.Mixin",         NamedClass roots.kMixin.k_metaclass);
       (u"c.Package",            NamedClass roots.kPackage);
-      (u"c.meta:Package",       NamedClass roots.kPackage.k_metaclass);
+      (u"c.meta.Package",       NamedClass roots.kPackage.k_metaclass);
       (u"c.Memory",             NamedClass roots.kMemory);
-      (u"c.meta:Memory",        NamedClass roots.kMemory.k_metaclass);
+      (u"c.meta.Memory",        NamedClass roots.kMemory.k_metaclass);
       (u"p.toplevel",           NamedPackage roots.pToplevel);
-      (u"p.meta:toplevel",      NamedClass roots.pToplevel.p_metaclass);
+      (u"p.meta.toplevel",      NamedClass roots.pToplevel.p_metaclass);
     ]
 
   let extract_roots defs =

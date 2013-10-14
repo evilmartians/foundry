@@ -199,7 +199,7 @@ let empty_class kClass ?ancestor ?(parameters=Assoc.empty) name =
       k_appended    = []; }
   and metaklass =
     { k_hash        = Hash_seed.make ();
-      k_name        = "meta:" ^ name;
+      k_name        = "meta." ^ name;
       k_ancestor    = Some (Option.map_default (fun k -> k.k_metaclass) kClass ancestor);
       k_metaclass   = kClass;
       k_objectclass = Some klass;
@@ -244,7 +244,7 @@ let create_class () =
       k_appended    = []; }
   and kmetaClass =
     { k_hash        = Hash_seed.make ();
-      k_name        = "meta:Class";
+      k_name        = "meta.Class";
       k_ancestor    = Some kClass;
       k_metaclass   = kClass;
       k_objectclass = Some kClass;

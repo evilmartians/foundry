@@ -31,6 +31,7 @@ sig
     mutable basic_blocks : name list;
             f_symtab     : Symtab.t;
     mutable f_original   : name option;
+            f_name       : string;
   }
   and basic_block = {
     mutable instructions : name list;
@@ -153,7 +154,8 @@ let find_func capsule id =
   List.find (fun funcn -> funcn.id = id) capsule.functions
 
 let add_func capsule funcn =
-  funcn.id <- Symtab.add capsule.c_symtab funcn.id;
+  let func = func_of_name funcn in
+  funcn.id <- Symtab.add capsule.c_symtab func.f_name;
   capsule.functions <- funcn :: capsule.functions
 
 let remove_func capsule funcn =
@@ -193,6 +195,7 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
     basic_blocks = [];
     f_symtab     = symtab;
     f_original   = None;
+    f_name       = id;
   } in
   let funcn = {
     id;
@@ -541,7 +544,7 @@ let copy_func ?(suffix="") funcn =
   (* Duplicate the function. *)
   let arg_ids = List.map (fun arg -> arg.id ^ suffix) func.arguments in
   let args_ty, ret_ty = func_ty funcn in
-  let funcn' = create_func ~id:funcn.id ~arg_ids args_ty ret_ty in
+  let funcn' = create_func ~id:func.f_name ~arg_ids args_ty ret_ty in
   let func'  = func_of_name funcn' in
   (* Duplicate function content while maintaining referentional
      integrity. *)
