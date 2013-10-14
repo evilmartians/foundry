@@ -17,5 +17,6 @@ ocamlbuild -j 8 -use-ocamlfind \
   src/tools/foundry_vm.native    \
   src/tools/foundry_xfrm.native  \
   src/tools/foundry_gen.native   \
+  src/tools/foundry.native       \
   src/tools/gen_vectors.native   \
   $FOUNDRY_JS
