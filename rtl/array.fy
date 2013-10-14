@@ -7,7 +7,7 @@ class Array
     invokeprimitive ary_get(self, index)
   end
 
-  def []=(index, value) : (Array(\element), Unsigned(32), \element) -> Nil
+  def []=(index, value) : (Array(\element), Unsigned(32), \element) -> \element
     invokeprimitive ary_set(self, index, value)
   end
 

@@ -359,9 +359,9 @@ let rec gen_func llmod heap funcn =
     | "debug", [operand]
     -> (let operand = lookup operand in
         let operand = Llvm.build_intcast operand (Llvm.i32_type ctx) "" builder in
-        match Llvm.lookup_function "__fy_debug" llmod with
-        | Some lldebug -> Llvm.build_call lldebug [| operand |] "" builder
-        | None -> assert false)
+        let lldebug = Option.get (Llvm.lookup_function "__fy_debug" llmod) in
+        ignore (Llvm.build_call lldebug [| operand |] "" builder);
+        llconst_of_value Rt.Nil)
 
     (* Boolean operations. *)
     | "bool_neg", [value]
@@ -456,9 +456,11 @@ let rec gen_func llmod heap funcn =
         let llelemptr = Llvm.build_in_bounds_gep llstg [| llindex |] "" builder in
         match prim, rest with
         | "ary_get", []
-        -> Llvm.build_load  llelemptr id builder
+        -> Llvm.build_load llelemptr id builder
         | "ary_set", [value]
-        -> Llvm.build_store (lookup value) llelemptr builder
+        -> (let llvalue = lookup value in
+            ignore (Llvm.build_store llvalue llelemptr builder);
+            llvalue)
         | _
         -> assert false)
 
