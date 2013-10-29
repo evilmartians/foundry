@@ -16,20 +16,20 @@ let empty =
 let append interp elem =
   elem :: interp
 
-let apply init comb_bare comb_packed interp entry =
+let apply init combine_bare combine_packed interp entry =
   let fold (bare, packed) elem =
     match elem, bare with
     | Elem elem, _
     -> elem :: bare, packed
     | Splice splice, []
-    -> [], comb_packed entry packed splice
+    -> [], combine_packed entry packed splice
     | Splice splice, _
-    -> [], comb_packed entry (comb_bare entry packed (List.rev bare)) splice
+    -> [], combine_packed entry (combine_bare entry packed (List.rev bare)) splice
   in
   let bare, packed = List.fold_left fold ([], init) (List.rev interp) in
   match bare with
   | [] -> packed
-  | _  -> comb_bare entry packed (List.rev bare)
+  | _  -> combine_bare entry packed (List.rev bare)
 
 let ssa_append ~opcode blockn =
   let instr = create_instr (Rt.tvar_as_ty ()) opcode in
@@ -37,19 +37,19 @@ let ssa_append ~opcode blockn =
   instr
 
 let tup_apply =
-  let comb_bare entry packed elems =
+  let combine_bare entry packed elems =
     ssa_append entry ~opcode:(Ssa.TupleExtendInstr (packed, elems))
   in
-  let comb_packed entry packed splice =
+  let combine_packed entry packed splice =
     ssa_append entry ~opcode:(Ssa.TupleConcatInstr (packed, splice))
   in
-  apply (Ssa.const (Rt.Tuple [])) comb_bare comb_packed
+  apply (Ssa.const (Rt.Tuple [])) combine_bare combine_packed
 
 let rec_apply =
-  let comb_bare entry packed elems =
+  let combine_bare entry packed elems =
     ssa_append entry ~opcode:(Ssa.RecordExtendInstr (packed, elems))
   in
-  let comb_packed entry packed splice =
+  let combine_packed entry packed splice =
     ssa_append entry ~opcode:(Ssa.RecordConcatInstr (packed, splice))
   in
-  apply (Ssa.const (Rt.Record Assoc.empty)) comb_bare comb_packed
+  apply (Ssa.const (Rt.Record Assoc.empty)) combine_bare combine_packed
