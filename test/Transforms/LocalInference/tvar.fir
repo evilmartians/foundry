@@ -1,6 +1,6 @@
 ; RUN: %foundry_xfrm %s -no-roots -ordered -infer -specialize | %file_check %s
 
-@c.meta:Printer = class "meta:Printer" {
+@c.meta.Printer = class "meta.Printer" {
   metaclass @c.Class
   objectclass @c.Printer
   parameters {
@@ -9,13 +9,13 @@
 }
 
 @c.Printer = class "Printer" {
-  metaclass @c.meta:Printer
+  metaclass @c.meta.Printer
   parameters {
     "v" = tvar(3)
   }
 }
 
-@print = function (class @c.meta:Printer{"v" = tvar(3)} %args) -> nil {
+@print = function (class @c.meta.Printer{"v" = tvar(3)} %args) -> nil {
 entry:
 ; CHECK: primitive "debug" (unsigned(32) 1)
   primitive "debug" (tvar(3))

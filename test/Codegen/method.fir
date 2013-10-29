@@ -3,7 +3,7 @@
 ; CHECK: [DEBUG: 0x00000003]
 
 @c.Fixed = class "Fixed" {
-  metaclass @c.meta:Fixed
+  metaclass @c.meta.Fixed
   methods {
     "+" = @"Fixed:+"
   }

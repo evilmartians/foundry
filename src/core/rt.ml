@@ -216,7 +216,7 @@ let empty_class kClass ?ancestor ?(parameters=Assoc.empty) name =
 
 let empty_metaclass kClass ~ancestor name =
   { k_hash        = Hash_seed.make ();
-    k_name        = "meta:" ^ name;
+    k_name        = "meta." ^ name;
     k_ancestor    = Some ancestor;
     k_metaclass   = kClass;
     k_objectclass = None;

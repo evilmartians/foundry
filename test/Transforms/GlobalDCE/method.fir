@@ -2,7 +2,7 @@
 ; CHECK-NOT: map lambda
 
 @c.Fixed = class "Fixed" {
-  metaclass @c.meta:Fixed
+  metaclass @c.meta.Fixed
   methods {
     "+" = @"Fixed:+"
   }
