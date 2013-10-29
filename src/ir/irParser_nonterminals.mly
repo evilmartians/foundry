@@ -565,7 +565,7 @@ lambda_arg_def: Default expr=expr
                 { (fun defs ->
                     let args  = args defs in
                     let name  = Option.default bind_as name in
-                    let funcn = create_func ~id:name
+                    let funcn = create_func ~name
                                   ~arg_ids:(List.map snd args)
                                   (List.map fst args) (result defs) in
                     Ssa.set_id funcn bind_as;
@@ -583,9 +583,10 @@ lambda_arg_def: Default expr=expr
 
    basic_block: id=Name_Label instrs=nonempty_list(instr)
                 { (fun defs funcn ->
-                    let basic_block = create_block ~id funcn in
-                    Table.set defs.locals id basic_block;
-                    List.map (fun instr -> instr defs basic_block) instrs) }
+                    let blockn = create_block id in
+                    add_block funcn blockn;
+                    Table.set defs.locals id blockn;
+                    List.map (fun instr -> instr defs blockn) instrs) }
 
   basic_blocks: xs=nonempty_list(basic_block)
                 { (fun defs funcn ->

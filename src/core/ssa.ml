@@ -28,11 +28,11 @@ sig
   and overloads    = (Rt.ty * name) Nametbl.t
   and lambda_cache = name Lambdatbl.t
   and func = {
+            name         : string;
     mutable arguments    : name list;
     mutable basic_blocks : name list;
             f_symtab     : Symtab.t;
     mutable f_original   : name option;
-            f_name       : string;
   }
   and basic_block = {
     mutable instructions : name list;
@@ -162,7 +162,7 @@ let find_func capsule id =
 
 let add_func capsule funcn =
   let func = func_of_name funcn in
-  funcn.id <- Symtab.add capsule.c_symtab func.f_name;
+  funcn.id <- Symtab.add capsule.c_symtab func.name;
   capsule.functions <- funcn :: capsule.functions
 
 let remove_func capsule funcn =
@@ -195,17 +195,17 @@ let remove_func capsule funcn =
         Lambdatbl.remove capsule.lambda_cache lambda)
     capsule.lambda_cache
 
-let create_func ?(id="") ?location ?arg_ids ?arg_locations args_ty result_ty =
+let create_func ?(name="") ?location ?arg_ids ?arg_locations args_ty result_ty =
   let symtab = Symtab.create () in
   let func  = {
+    name;
     arguments    = [];
     basic_blocks = [];
     f_symtab     = symtab;
     f_original   = None;
-    f_name       = id;
   } in
   let funcn = {
-    id;
+    id        = name;
     ty        = Rt.FunctionTy (args_ty, result_ty);
     opcode    = Function func;
     location  = Option.default Location.empty location;
@@ -254,24 +254,27 @@ let iter_args ~f funcn =
   let func = func_of_name funcn in
   List.iter f func.arguments
 
-let create_block ?(id="") funcn =
-  let func = func_of_name funcn in
-  let block = {
-    id        = Symtab.add func.f_symtab id;
+let create_block id =
+  {
+    id;
     ty        = Rt.BasicBlockTy;
     opcode    = BasicBlock { instructions = [] };
     location  = Location.empty;
-    n_parent  = ParentFunction funcn;
+    n_parent  = ParentNone;
     n_uses    = [];
     n_hash    = Hash_seed.make ();
-  } in
-  func.basic_blocks <- func.basic_blocks @ [block];
-  block
+  }
 
 let block_parent blockn =
   match blockn.n_parent with
   | ParentFunction funcn -> funcn
   | _ -> assert false
+
+let add_block funcn blockn =
+  let func = func_of_name funcn in
+  blockn.id <- Symtab.add func.f_symtab blockn.id;
+  blockn.n_parent <- ParentFunction funcn;
+  func.basic_blocks <- func.basic_blocks @ [blockn]
 
 let remove_block blockn =
   let func = (func_of_name (block_parent blockn)) in
@@ -561,7 +564,7 @@ let copy_func ?(suffix="") funcn =
   (* Duplicate the function. *)
   let arg_ids = List.map (fun arg -> arg.id ^ suffix) func.arguments in
   let args_ty, ret_ty = func_ty funcn in
-  let funcn' = create_func ~id:func.f_name ~arg_ids args_ty ret_ty in
+  let funcn' = create_func ~name:func.name ~arg_ids args_ty ret_ty in
   let func'  = func_of_name funcn' in
   (* Duplicate function content while maintaining referentional
      integrity. *)
@@ -570,7 +573,8 @@ let copy_func ?(suffix="") funcn =
   List.iter2 (Nametbl.add map) func.arguments func'.arguments;
   (* Duplicate basic blocks and remember the mapping between them. *)
   iter_blocks funcn ~f:(fun blockn ->
-    let blockn' = create_block ~id:(blockn.id ^ suffix) funcn' in
+    let blockn' = create_block (blockn.id ^ suffix) in
+    add_block funcn' blockn';
     Nametbl.add map blockn blockn');
 
   (* Duplicate instructions while updating references through

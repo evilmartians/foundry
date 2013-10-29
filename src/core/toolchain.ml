@@ -62,10 +62,11 @@ let parse_eval_source env source =
 
 let bootstrap_capsule roots =
   let capsule  = Ssa.create_capsule () in
-  let funcn    = Ssa.create_func ~id:"main" [] (Rt.UnsignedTy 32) in
+  let funcn    = Ssa.create_func ~name:"main" [] (Rt.UnsignedTy 32) in
   Ssa.add_func capsule funcn;
 
-  let entry    = Ssa.create_block ~id:"entry" funcn in
+  let entry    = Ssa.create_block "entry" in
+  Ssa.add_block funcn entry;
   let toplevel = Ssa.const (Rt.Package roots.Rt.pToplevel) in
 
   let send     = Ssa.create_instr (Rt.tvar_as_ty ())

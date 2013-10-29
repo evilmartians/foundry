@@ -23,13 +23,13 @@ and capsule = private {
 and overloads
 and lambda_cache
 and func = private {
+          name         : string;
   mutable arguments    : name list;
   mutable basic_blocks : name list;
 
   (* Internal fields *)
           f_symtab     : Symtab.t;
   mutable f_original   : name option;
-          f_name       : string;
 }
 and basic_block = private {
   mutable instructions : name list;
@@ -96,7 +96,7 @@ val add_lambda      : capsule -> Rt.lambda -> (*func*) name -> unit
 
 (* Function level *)
 
-val create_func     : ?id:string ->
+val create_func     : ?name:string ->
                       ?location:Location.t ->
                       ?arg_ids:string list ->
                       ?arg_locations:Location.t list ->
@@ -121,8 +121,10 @@ val specialize      : (*func*) name -> (Rt.tvar * Rt.ty) list -> bool
 
 (* Basic block level *)
 
-val create_block    : ?id:string -> (*func*) name -> name
+val create_block    : string -> name
 val block_of_name   : (*basic_block*) name -> basic_block
+
+val add_block       : (*func*) name -> (*basic_block*) name -> unit
 val remove_block    : (*basic_block*) name -> unit
 
 val block_parent    : (*basic_block*) name -> (*func*) name

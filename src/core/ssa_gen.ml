@@ -29,6 +29,11 @@ type ssa_conv_state = {
   mutable update    : Ssa.name option;
 }
 
+let create_block ?(id="") funcn =
+  let blockn = Ssa.create_block id in
+  Ssa.add_block funcn blockn;
+  blockn
+
 let append ?(ty=Rt.NilTy) ~opcode blockn =
   let instr = Ssa.create_instr ty opcode in
   Ssa.append_instr instr blockn;
@@ -272,16 +277,16 @@ and ssa_of_expr ~state ~entry ~expr =
   (* Control flow. *)
   | Syntax.If (_, cond, true_exprs, false_expr)
   -> (let head, cond = ssa_of_expr ~state ~entry ~expr:cond in
-      let true_entry = Ssa.create_block state.funcn in
+      let true_entry = create_block state.funcn in
       let true_exit, true_value =
         ssa_of_seq ~entry:true_entry ~state ~exprs:true_exprs in
       let false_tup =
         Option.map (fun expr ->
-            let false_entry = Ssa.create_block state.funcn in
+            let false_entry = create_block state.funcn in
             false_entry, ssa_of_expr ~entry:false_entry ~state ~expr)
           false_expr
       in
-      let tail = Ssa.create_block state.funcn in
+      let tail = create_block state.funcn in
       let false_entry, false_exit, false_value =
         match false_tup with
         | Some (entry, (exit, value))
@@ -299,10 +304,10 @@ and ssa_of_expr ~state ~entry ~expr =
 
   | Syntax.Unless (_, cond, false_exprs)
   -> (let head, cond  = ssa_of_expr ~state ~entry ~expr:cond
-      and false_entry = Ssa.create_block state.funcn in
+      and false_entry = create_block state.funcn in
       let false_exit, false_value =
         ssa_of_seq ~entry:false_entry ~state ~exprs:false_exprs
-      and tail        = Ssa.create_block state.funcn in
+      and tail        = create_block state.funcn in
       ignore (append head ~opcode:(Ssa.JumpIfInstr (cond, tail, false_entry)));
       ignore (append false_exit ~opcode:(Ssa.JumpInstr tail));
       tail, append tail ~ty:(Rt.tvar_as_ty ())
@@ -311,13 +316,13 @@ and ssa_of_expr ~state ~entry ~expr =
 
   | Syntax.While (_, cond, exprs)
   | Syntax.Until (_, cond, exprs)
-  -> (let head = Ssa.create_block state.funcn in
+  -> (let head = create_block state.funcn in
       ignore (append entry ~opcode:(Ssa.JumpInstr head));
       let head, cond = ssa_of_expr ~entry:head ~state ~expr:cond in
-      let pred = Ssa.create_block state.funcn in
+      let pred = create_block state.funcn in
       let body, _ = ssa_of_seq ~entry:pred ~state ~exprs in
       ignore (append body ~opcode:(Ssa.JumpInstr head));
-      let tail = Ssa.create_block state.funcn in
+      let tail = create_block state.funcn in
       let if_true, if_false =
         match expr with
         | Syntax.While _ -> pred, tail
@@ -330,9 +335,9 @@ and ssa_of_expr ~state ~entry ~expr =
   | Syntax.Or  (_, lhs, rhs) | Syntax.OrAssign  (_, lhs, rhs)
   | Syntax.And (_, lhs, rhs) | Syntax.AndAssign (_, lhs, rhs)
   -> (let head, lhs_value = ssa_of_expr ~state ~entry ~expr:lhs in
-      let       rhs_pred  = Ssa.create_block state.funcn in
+      let       rhs_pred  = create_block state.funcn in
       let body, rhs_value = ssa_of_expr ~entry:rhs_pred ~state ~expr:rhs in
-      let tail            = Ssa.create_block state.funcn in
+      let tail            = create_block state.funcn in
       ignore (append body ~opcode:(Ssa.JumpInstr tail));
       let if_true, if_false =
         match expr with
@@ -495,9 +500,9 @@ and ssa_of_formal_args ~state ~entry ~args ~arg_names =
         | None
         -> entry, arg_name
         | Some expr
-        -> (let if_none = Ssa.create_block state.funcn
-            and if_any  = Ssa.create_block state.funcn
-            and tail    = Ssa.create_block state.funcn in
+        -> (let if_none = create_block state.funcn
+            and if_any  = create_block state.funcn
+            and tail    = create_block state.funcn in
             (* Check if we have an incoming argument. *)
             let has_arg = append entry ~ty:Rt.BooleanTy
                                        ~opcode:(Ssa.PrimitiveInstr ("opt_any", [arg_name])) in
@@ -549,7 +554,7 @@ and ssa_of_lambda_expr ~state ~entry ~formal_args ~expr =
   and arg_names = List.tl func.Ssa.arguments in
 
   (* Create entry block. *)
-  let lam_entry = Ssa.create_block ~id:"entry" funcn in
+  let lam_entry = create_block ~id:"entry" funcn in
     (* Define a stack frame. Its type will be mutated while the function
        is converted. *)
     let frame_ty = {
@@ -597,7 +602,7 @@ let mangle_selector selector =
   | _ -> selector
 
 let name_of_lambda klass selector lambda capsule =
-  let id = klass.Rt.k_name ^ "$" ^ (mangle_selector selector) in
+  let name = klass.Rt.k_name ^ "$" ^ (mangle_selector selector) in
 
   (* Create the function with the signature corresponding to that of lambda.*)
   let arg_ids, arg_tys, ret_ty =
@@ -614,7 +619,7 @@ let name_of_lambda klass selector lambda capsule =
     in
     List.map fst args, List.map snd args, snd lambda.Rt.l_ty
   in
-  let funcn = Ssa.create_func ~id ~arg_ids arg_tys ret_ty in
+  let funcn = Ssa.create_func ~name ~arg_ids arg_tys ret_ty in
   let func  = Ssa.func_of_name funcn in
 
   (* Register the created artifacts. *)
@@ -625,7 +630,7 @@ let name_of_lambda klass selector lambda capsule =
   let arg_names = func.Ssa.arguments in
 
   (* Create entry block. *)
-  let entry = Ssa.create_block ~id:"entry" funcn in
+  let entry = create_block ~id:"entry" funcn in
     (* Define a stack frame. Its type will be mutated while the function
        is converted. *)
     let frame_ty = {

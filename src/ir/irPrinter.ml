@@ -351,7 +351,7 @@ let rec string_of_ssa_name state value =
       | _ -> assert false
     in
     "@" ^ (escape_as_ident value.id) ^ " = function " ^
-      (escape_as_literal func.f_name) ^ " (" ^
+      (escape_as_literal func.name) ^ " (" ^
       (string_of_seq func.arguments
         (fun arg -> (string_of_ty state arg.ty) ^ " " ^ (print arg))) ^
     ") -> " ^
