@@ -412,7 +412,7 @@ and ssa_of_type ~state ~entry ~expr =
   | Syntax.TypeConstr (_, name, args)
   -> (let ty = Rt.cenv_lookup state.const_env name in
       let klass, specz = Typing.unfold_equiv ty in
-      let specz = Assoc.map specz ~f:(fun _ -> Ssa.const) in
+      let specz = Assoc.map specz ~f:(fun _ v -> Ssa.const v) in
       let rec combine entry params specz args =
         match args with
         | Syntax.TypeArg (_, ty) :: args

@@ -4,6 +4,7 @@ type name = private {
   mutable id        : string;
   mutable ty        : Rt.ty;
   mutable opcode    : opcode;
+  mutable location  : Location.t;
 
   (* Internal fields *)
   mutable n_parent  : name_parent;
@@ -68,7 +69,7 @@ module Nametbl : Hashtbl.S with type key = name
 
 (* Generic *)
 
-val const   : Rt.value -> name
+val const   : ?location:Location.t -> Rt.value -> name
 val set_id  : name -> string -> unit
 val set_ty  : name -> Rt.ty  -> unit
 
@@ -85,7 +86,9 @@ val iter_funcs      : f:( (*func*) name -> unit) ->
 (* Function level *)
 
 val create_func   : ?id:string ->
+                    ?location:Location.t ->
                     ?arg_ids:string list ->
+                    ?arg_locations:Location.t list ->
                     (*args_ty*)   Rt.ty list ->
                     (*result_ty*) Rt.ty ->
                         name
@@ -133,7 +136,7 @@ val predecessors  : (*basic_block*) name -> name list
 
 (* Instruction level *)
 
-val create_instr    : ?id:string -> Rt.ty -> opcode -> name
+val create_instr    : ?id:string -> ?location:Location.t -> Rt.ty -> opcode -> name
 val prepend_instr   : ?before:name -> (*instr*) name -> (*basic_block*) name -> unit
 val append_instr    : ?after:name  -> (*instr*) name -> (*basic_block*) name -> unit
 val set_opcode      : (*instr*) name -> opcode -> unit

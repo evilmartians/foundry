@@ -7,6 +7,7 @@ sig
     mutable id        : string;
     mutable ty        : Rt.ty;
     mutable opcode    : opcode;
+    mutable location  : Location.t;
 
     (* Internal fields *)
     mutable n_parent  : name_parent;
@@ -126,11 +127,12 @@ let symtab_of_name name =
   | _
   -> assert false
 
-let const value =
+let const ?location value =
   {
     id        = "";
     ty        = Rt.type_of_value value;
     opcode    = Const value;
+    location  = Option.default Location.empty location;
     n_parent  = ParentNone;
     n_uses    = [];
     n_hash    = Hash_seed.make ();
@@ -193,7 +195,7 @@ let remove_func capsule funcn =
         Lambdatbl.remove capsule.lambda_cache lambda)
     capsule.lambda_cache
 
-let create_func ?(id="") ?arg_ids args_ty result_ty =
+let create_func ?(id="") ?location ?arg_ids ?arg_locations args_ty result_ty =
   let symtab = Symtab.create () in
   let func  = {
     arguments    = [];
@@ -206,24 +208,32 @@ let create_func ?(id="") ?arg_ids args_ty result_ty =
     id;
     ty        = Rt.FunctionTy (args_ty, result_ty);
     opcode    = Function func;
+    location  = Option.default Location.empty location;
     n_parent  = ParentNone;
     n_uses    = [];
     n_hash    = Hash_seed.make ();
   } in
   begin
-    let make_arg id ty = {
+    let make_arg (id, loc) ty = {
       id        = Symtab.add symtab id;
       ty;
       opcode    = Argument;
+      location  = loc;
       n_parent  = ParentFunction funcn;
       n_uses    = [];
       n_hash    = Hash_seed.make ();
-    } in
-    match arg_ids with
-    | Some ids ->
-      func.arguments <- List.map2 make_arg ids args_ty
-    | None ->
-      func.arguments <- List.map (make_arg "") args_ty
+    }
+    in
+    match arg_ids, arg_locations with
+    | Some ids, Some locations
+    -> func.arguments <- List.map2 make_arg (List.combine ids locations) args_ty
+    | Some ids, None
+    -> (let ids_locs = List.map (fun id -> id, Location.empty) ids in
+        func.arguments <- List.map2 make_arg ids_locs args_ty)
+    | None, None
+    -> func.arguments <- List.map (make_arg ("", Location.empty)) args_ty
+    | _
+    -> assert false
   end;
   funcn
 
@@ -250,6 +260,7 @@ let create_block ?(id="") funcn =
     id        = Symtab.add func.f_symtab id;
     ty        = Rt.BasicBlockTy;
     opcode    = BasicBlock { instructions = [] };
+    location  = Location.empty;
     n_parent  = ParentFunction funcn;
     n_uses    = [];
     n_hash    = Hash_seed.make ();
@@ -365,15 +376,16 @@ let remove_uses instr =
 let iter_uses ~f instr =
   List.iter f instr.n_uses
 
-let create_instr ?(id="") ty opcode =
+let create_instr ?(id="") ?location ty opcode =
   let instr = {
-      id;
-      ty;
-      opcode;
-      n_parent  = ParentNone;
-      n_uses    = [];
-      n_hash    = 0;
-    }
+    id;
+    ty;
+    opcode;
+    location  = Option.default Location.empty location;
+    n_parent  = ParentNone;
+    n_uses    = [];
+    n_hash    = 0;
+  }
   in
   add_uses instr;
   instr
