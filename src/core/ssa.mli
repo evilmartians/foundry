@@ -69,9 +69,9 @@ module Nametbl : Hashtbl.S with type key = name
 
 (* Generic *)
 
-val const   : ?location:Location.t -> Rt.value -> name
-val set_id  : name -> string -> unit
-val set_ty  : name -> Rt.ty  -> unit
+val const           : ?location:Location.t -> Rt.value -> name
+val set_id          : name -> string -> unit
+val set_ty          : name -> Rt.ty  -> unit
 
 val replace_all_uses_with : name -> name -> unit
 
@@ -82,31 +82,6 @@ val create_capsule  : unit -> capsule
 val find_func       : capsule -> string -> name
 val iter_funcs      : f:( (*func*) name -> unit) ->
                           capsule -> unit
-
-(* Function level *)
-
-val create_func   : ?id:string ->
-                    ?location:Location.t ->
-                    ?arg_ids:string list ->
-                    ?arg_locations:Location.t list ->
-                    (*args_ty*)   Rt.ty list ->
-                    (*result_ty*) Rt.ty ->
-                        name
-val func_of_name  : name -> func
-
-val func_ty       : (*func*) name -> Rt.ty list * Rt.ty
-
-val add_func      : capsule -> (*func*) name -> unit
-val remove_func   : capsule -> (*func*) name -> unit
-
-val func_entry    : (*func*) name -> name
-val iter_args     : f:( (*argument*) name -> unit) ->
-                        (*func*) name -> unit
-val iter_blocks   : f:( (*basic_block*) name -> unit) ->
-                        (*func*) name -> unit
-
-val copy_func     : ?suffix:string -> (*func*) name -> (*func'*) name
-val specialize    : (*func*) name -> (Rt.tvar * Rt.ty) list -> bool
 
 val iter_overloads  : f:( (*func*)  name -> Rt.ty -> (*func'*) name -> unit) ->
                         capsule -> unit
@@ -119,20 +94,45 @@ val iter_lambdas    : f:(Rt.lambda -> (*func*) name -> unit) ->
 val lookup_lambda   : capsule -> Rt.lambda -> (*func*) name option
 val add_lambda      : capsule -> Rt.lambda -> (*func*) name -> unit
 
+(* Function level *)
+
+val create_func     : ?id:string ->
+                      ?location:Location.t ->
+                      ?arg_ids:string list ->
+                      ?arg_locations:Location.t list ->
+                      (*args_ty*)   Rt.ty list ->
+                      (*result_ty*) Rt.ty ->
+                          name
+val func_of_name    : name -> func
+
+val func_ty         : (*func*) name -> Rt.ty list * Rt.ty
+
+val add_func        : capsule -> (*func*) name -> unit
+val remove_func     : capsule -> (*func*) name -> unit
+
+val func_entry      : (*func*) name -> name
+val iter_args       : f:( (*argument*) name -> unit) ->
+                        (*func*) name -> unit
+val iter_blocks     : f:( (*basic_block*) name -> unit) ->
+                        (*func*) name -> unit
+
+val copy_func       : ?suffix:string -> (*func*) name -> (*func'*) name
+val specialize      : (*func*) name -> (Rt.tvar * Rt.ty) list -> bool
+
 (* Basic block level *)
 
-val create_block  : ?id:string -> (*func*) name -> name
-val block_of_name : (*basic_block*) name -> basic_block
-val remove_block  : (*basic_block*) name -> unit
+val create_block    : ?id:string -> (*func*) name -> name
+val block_of_name   : (*basic_block*) name -> basic_block
+val remove_block    : (*basic_block*) name -> unit
 
-val block_parent  : (*basic_block*) name -> (*func*) name
+val block_parent    : (*basic_block*) name -> (*func*) name
 
-val iter_instrs   : f:( (*func or basic_block*) name -> unit) ->
+val iter_instrs     : f:( (*func or basic_block*) name -> unit) ->
                         (*func*) name -> unit
-val terminator    : (*basic_block*) name -> name
+val terminator      : (*basic_block*) name -> name
 
-val successors    : (*basic_block*) name -> name list
-val predecessors  : (*basic_block*) name -> name list
+val successors      : (*basic_block*) name -> name list
+val predecessors    : (*basic_block*) name -> name list
 
 (* Instruction level *)
 
