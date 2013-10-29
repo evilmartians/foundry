@@ -8,7 +8,6 @@ usb:
  * [< >]
 
 features:
- * common frontend
  * store location in fir instructions
  * (() do end) -> do || end
  * x = 1 -> let mut x = 1
