@@ -1,6 +1,6 @@
 ; RUN: %foundry_xfrm %s -no-roots -coerce | %file_check %s
 
-; CHECK: @a = function () -> nil {
+; CHECK: @a = function "a" () -> nil {
 @a = function () -> nil {
 entry:
 ; CHECK-NOT: primitive "int_coerce"

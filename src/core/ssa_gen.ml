@@ -587,8 +587,17 @@ and ssa_of_lambda_expr ~state ~entry ~formal_args ~expr =
   entry, append entry ~ty:(Rt.LambdaTy (arg_ty_elems, ret_ty))
                       ~opcode:(Ssa.ClosureInstr (funcn, state.frame))
 
+let mangle_selector selector =
+  match (selector : string :> latin1s) with
+  | "+"  -> "add" | "-"   -> "sub" | "*"  -> "mul" | "/"   -> "div"
+  | "%"  -> "mod" | "+@"  -> "pos" | "-@" -> "neg" | "~@"  -> "inv"
+  | "**" -> "pow" | "|"   -> "or"  | "&"  -> "and" | "^"   -> "xor"
+  | "<"  -> "lt"  | ">"   -> "gt"  | "<=" -> "lte" | ">="  -> "gte"
+  | "==" -> "eq"  | "<=>" -> "cmp" | "[]" -> "ref" | "[]=" -> "set"
+  | _ -> selector
+
 let name_of_lambda klass selector lambda capsule =
-  let id = klass.Rt.k_name ^ "$" ^ selector in
+  let id = klass.Rt.k_name ^ "$" ^ (mangle_selector selector) in
 
   (* Create the function with the signature corresponding to that of lambda.*)
   let arg_ids, arg_tys, ret_ty =

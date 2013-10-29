@@ -1,6 +1,6 @@
 ; RUN: %foundry_xfrm -ordered %s | %file_check %s
 
-; CHECK: @id = function (unsigned(32) %n) -> unsigned(32)
+; CHECK: @id = function "id" (unsigned(32) %n) -> unsigned(32)
 @id = function (unsigned(32) %n) -> unsigned(32) {
 entry:
   return %n

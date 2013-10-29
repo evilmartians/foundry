@@ -117,7 +117,6 @@ let block_of_name name =
 
 let symtab_of_name name =
   match name with
-  | { opcode = Function func }
   | { n_parent = ParentFunction {
         opcode = Function func } }
   | { n_parent = ParentBasicBlock {
@@ -138,8 +137,14 @@ let const value =
   }
 
 let set_id name id =
-  let symtab = symtab_of_name name in
-  name.id <- Symtab.update symtab name.id id
+  match name with
+  | { opcode = Function _; n_parent = ParentNone }
+  -> name.id <- id (* Sanitized in add_func *)
+  | { opcode = Function _; n_parent = ParentCapsule capsule }
+  -> name.id <- Symtab.update capsule.c_symtab name.id id
+  | _
+  -> (let symtab = symtab_of_name name in
+      name.id <- Symtab.update symtab name.id id)
 
 let create_capsule () =
   { functions     = [];

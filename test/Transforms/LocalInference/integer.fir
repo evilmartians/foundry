@@ -1,6 +1,6 @@
 ; RUN: %foundry_xfrm %s -no-roots -infer | %file_check %s
 
-; CHECK: @a = function () -> int {
+; CHECK: @a = function "a" () -> int {
 @a = function () -> tvar(1) {
 entry:
 ; CHECK: %x = int primitive "int_add"

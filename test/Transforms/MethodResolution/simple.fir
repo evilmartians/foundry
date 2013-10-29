@@ -7,7 +7,7 @@
   }
 }
 
-; CHECK: @"Integer$+" = function (int %self, int %other) -> int {
+; CHECK: @Integer$add = function "Integer$add" (int %self, int %other) -> int {
 @"Integer$+" = lambda (0 0) {
   local_env empty
   type lambda (int, int) -> int
@@ -17,7 +17,7 @@
 @main = function () -> nil {
 entry:
 ; CHECK-NOT: primitive "obj_send"
-; CHECK:     int call @"Integer$+"
+; CHECK:     int call @Integer$add
   %x = int primitive "obj_send" (int 1, symbol "+", [int 1, int 2], {})
 
   return nil

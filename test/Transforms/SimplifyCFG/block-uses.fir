@@ -1,6 +1,6 @@
 ; RUN: %foundry_xfrm %s -no-roots -simplify-cfg | %file_check %s
 
-; CHECK:      @foo = function () -> nil {
+; CHECK:      @foo = function "foo" () -> nil {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   return nil
 ; CHECK-NEXT: }

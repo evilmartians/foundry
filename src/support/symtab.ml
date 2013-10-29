@@ -31,5 +31,7 @@ let remove symtab name =
   Hashtbl.remove symtab name
 
 let update symtab name name' =
-  remove symtab name;
-  add symtab name'
+  if name <> name' then begin
+    remove symtab name;
+    add symtab name'
+  end else name

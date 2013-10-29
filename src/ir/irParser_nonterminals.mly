@@ -559,15 +559,16 @@ lambda_arg_def: Default expr=expr
                 { (fun defs -> ty defs, name) }
 
      func_body: bind_as=Name_Global Equal
-                  Function args=args(fun_arg) Arrow result=ty LBrace
+                  Function name=Lit_String? args=args(fun_arg) Arrow result=ty LBrace
                     blocks=basic_blocks
                   RBrace
-                {
-                  (fun defs ->
+                { (fun defs ->
                     let args  = args defs in
-                    let funcn = create_func ~id:bind_as
+                    let name  = Option.default bind_as name in
+                    let funcn = create_func ~id:name
                                   ~arg_ids:(List.map snd args)
                                   (List.map fst args) (result defs) in
+                    Ssa.set_id funcn bind_as;
 
                     Table.set defs.globals bind_as (NamedFunction funcn);
                     Ssa.add_func defs.capsule funcn;

@@ -3,7 +3,7 @@
   open IrParser_tokens
 }
 
-let name = ['A'-'Z' 'a'-'z' '0'-'9' '_' ':' '.']+
+let name = ['A'-'Z' 'a'-'z' '0'-'9' '_' '$' '.']+
 
 rule lex = parse
 | '\n'         { Lexing.new_line lexbuf; lex lexbuf }
@@ -11,15 +11,15 @@ rule lex = parse
 | ';' [^'\n']* { lex lexbuf }
 
 | '%' (name as n)            { Name_Local  (Unicode.adopt_utf8s n) }
-| '%' '"' ([^'"']+ as n) '"' { Name_Local  (Unicode.adopt_utf8s n) }
+| '%' '"' ([^'"']* as n) '"' { Name_Local  (Unicode.adopt_utf8s n) }
 | '@' (name as n)            { Name_Global (Unicode.adopt_utf8s n) }
-| '@' '"' ([^'"']+ as n) '"' { Name_Global (Unicode.adopt_utf8s n) }
+| '@' '"' ([^'"']* as n) '"' { Name_Global (Unicode.adopt_utf8s n) }
 | (name as n) ':'            { Name_Label  (Unicode.adopt_utf8s n) }
-| '"' ([^'"']+ as n) '"' ':' { Name_Label  (Unicode.adopt_utf8s n) }
+| '"' ([^'"']* as n) '"' ':' { Name_Label  (Unicode.adopt_utf8s n) }
 | '#' (name as n)            { Name_Syntax (Unicode.adopt_utf8s n) }
-| '#' '"' ([^'"']+ as n) '"' { Name_Syntax (Unicode.adopt_utf8s n) }
+| '#' '"' ([^'"']* as n) '"' { Name_Syntax (Unicode.adopt_utf8s n) }
 
-| '"' ([^'"']+ as s) '"' { Lit_String  (Unicode.adopt_utf8s s) }
+| '"' ([^'"']* as s) '"' { Lit_String  (Unicode.adopt_utf8s s) }
 | ['0'-'9']+ as d        { Lit_Integer (big_int_of_string d) }
 
 | '('  { LParen }
