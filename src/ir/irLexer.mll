@@ -18,6 +18,7 @@ rule lex = parse
 | '"' ([^'"']* as n) '"' ':' { Name_Label  (Unicode.adopt_utf8s n) }
 | '#' (name as n)            { Name_Syntax (Unicode.adopt_utf8s n) }
 | '#' '"' ([^'"']* as n) '"' { Name_Syntax (Unicode.adopt_utf8s n) }
+| '!'                        { Name_Debug }
 
 | '"' ([^'"']* as s) '"' { Lit_String  (Unicode.adopt_utf8s s) }
 | ['0'-'9']+ as d        { Lit_Integer (big_int_of_string d) }

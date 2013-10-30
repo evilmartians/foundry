@@ -34,8 +34,8 @@ let create_block ?(id="") funcn =
   Ssa.add_block funcn blockn;
   blockn
 
-let append ?(ty=Rt.NilTy) ~opcode blockn =
-  let instr = Ssa.create_instr ty opcode in
+let append ?(ty=Rt.NilTy) ?(loc=Location.empty) ~opcode blockn =
+  let instr = Ssa.create_instr ~location:loc ty opcode in
   Ssa.append_instr instr blockn;
   instr
 
@@ -92,8 +92,8 @@ let send_args ~state entry args =
                ~opcode:(Ssa.TupleExtendInstr (Ssa.const (Rt.Tuple []), args)),
   Ssa.const (Rt.Record Assoc.empty)
 
-let send ~state entry receiver selector args kwargs =
-  append entry ~ty:(Rt.tvar_as_ty ())
+let send ~state ?loc entry receiver selector args kwargs =
+  append entry ?loc ~ty:(Rt.tvar_as_ty ())
                ~opcode:(Ssa.PrimitiveInstr ("obj_send", [
                           receiver;
                           Ssa.const (Rt.Symbol selector);
@@ -214,10 +214,10 @@ and ssa_of_expr ~state ~entry ~expr =
   -> ssa_of_pattern ~state ~entry ~pattern ~expr
 
   (* Method calls and mutation. *)
-  | Syntax.Send (_, receiver, selector, actual_args)
+  | Syntax.Send ((loc,_), receiver, selector, actual_args)
   -> (let entry, receiver     = ssa_of_expr ~state ~entry ~expr:receiver in
       let entry, args, kwargs = ssa_of_actual_args ~state ~entry ~receiver ~actual_args in
-      entry, send entry receiver selector args kwargs)
+      entry, send ~loc entry receiver selector args kwargs)
 
   | Syntax.Super (_, actual_args)
   -> (let self  = load entry "self" in

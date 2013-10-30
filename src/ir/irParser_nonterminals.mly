@@ -632,12 +632,13 @@ lambda_arg_def: Default expr=expr
               | /* nothing */
                 { u"" }
 
-         instr: id=opt_local_eq ty=ty? x=instr_body
+         instr: id=opt_local_eq ty=ty? x=instr_body loc=instr_loc?
                 { (fun defs basic_block ->
-                    let ty    = Option.map_default (fun ty -> ty defs) Rt.NilTy ty in
+                    let ty    = Option.map_default (fun ty -> ty defs) Rt.NilTy ty
+                    and loc   = Option.default Location.empty loc in
                     (* :( should fix this vvv *)
                     let iid   = if ty = Rt.NilTy then u"__unused" else id in
-                    let instr = create_instr ~id:iid ty InvalidInstr in
+                    let instr = create_instr ~location:loc ~id:iid ty InvalidInstr in
                     append_instr instr basic_block;
 
                     if Table.exists defs.locals id then
@@ -650,6 +651,9 @@ lambda_arg_def: Default expr=expr
                     end;
 
                     (fun () -> set_opcode instr (x defs))) }
+
+     instr_loc: Comma Name_Debug LParen a=Lit_Integer b=Lit_Integer RParen
+                { Location.empty (* TODO *) }
 
     instr_body: Phi operands=phi_ops
                 { (fun defs -> PhiInstr (operands defs)) }

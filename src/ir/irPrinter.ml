@@ -329,15 +329,21 @@ let rec string_of_ssa_name state value =
     if value.ty <> Rt.NilTy then
       "%" ^ (escape_as_ident value.id) ^ " = " ^ (string_of_ty state value.ty) ^ " "
     else ""
+  and metadata () =
+    if value.location <> Location.empty then
+      ", !" ^ (string_of_loc value.location)
+    else
+      ""
   in
   let instr opcode operands =
-    (prefix ()) ^ opcode ^ " " ^ (String.concat ", " operands)
-  in
-  let group_instr opcode subj operands =
-    (prefix ()) ^ opcode ^ " " ^ subj ^ ", [" ^ (String.concat ", " operands) ^ "]"
-  in
-  let call_instr callee operands =
-    (prefix ()) ^ callee ^ " (" ^ (String.concat ", " (List.map print operands)) ^ ")"
+    (prefix ()) ^ opcode ^ " " ^
+        (String.concat ", " operands) ^ (metadata ())
+  and group_instr opcode subj operands =
+    (prefix ()) ^ opcode ^ " " ^ subj ^
+        ", [" ^ (String.concat ", " operands) ^ "]" ^ (metadata ())
+  and call_instr callee operands =
+    (prefix ()) ^ callee ^
+        " (" ^ (String.concat ", " (List.map print operands)) ^ ")" ^ (metadata ())
   in
   match value.opcode with
   | Const value ->

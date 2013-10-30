@@ -2,6 +2,7 @@
 %token <Unicode.utf8s>      Name_Global
 %token <Unicode.utf8s>      Name_Label
 %token <Unicode.utf8s>      Name_Syntax
+%token                      Name_Debug
 
 %token <Unicode.utf8s>      Lit_String
 %token <Fy_big_int.big_int> Lit_Integer

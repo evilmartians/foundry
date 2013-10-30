@@ -599,7 +599,8 @@ let copy_func ?(suffix="") funcn =
   let phis = ref [] in
   iter_instrs funcn ~f:(fun instr ->
     (* Duplicate instruction. *)
-    let instr'  = create_instr ~id:(instr.id ^ suffix) instr.ty InvalidInstr in
+    let instr'  = create_instr ~location:instr.location ~id:(instr.id ^ suffix)
+                               instr.ty InvalidInstr in
     (* Append instruction to the corresponding basic block in the
        specialized function. *)
     let blockn' =
