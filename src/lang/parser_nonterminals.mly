@@ -459,12 +459,12 @@
               | id=Id_CONST
                 { let (loc, name) = id in Syntax.Const (nullary loc, name) }
 
-              | recv=expr op=Tk_DOT id=Id_METHOD lp=Tk_LPAREN args=args rp=Tk_RPAREN
+              | recv=expr op=Tk_DOT id=method_name lp=Tk_LPAREN args=args rp=Tk_RPAREN
                 { let (name_loc, name) = id in
                   Syntax.Send (send_method recv op name_loc lp rp,
                                recv, name, args) }
 
-              | recv=expr op=Tk_DOT id=Id_METHOD
+              | recv=expr op=Tk_DOT id=method_name
                 { let (name_loc, name) = id in
                   Syntax.Send (send_attr recv op name_loc,
                                recv, name, []) }
@@ -490,12 +490,12 @@
                 { let (op_loc, _) = op in
                   Syntax.Not (op_unary op_loc arg, arg) }
 
-              | recv=expr op=Tk_DOT id=Id_METHOD lp=Tk_LPAREN args=args rp=Tk_RPAREN
+              | recv=expr op=Tk_DOT id=method_name lp=Tk_LPAREN args=args rp=Tk_RPAREN
                 { let (name_loc, name) = id in
                   Syntax.Send (send_method recv op name_loc lp rp,
                                recv, name, args) }
 
-              | recv=expr op=Tk_DOT id=Id_METHOD
+              | recv=expr op=Tk_DOT id=method_name
                 { let (name_loc, name) = id in
                   Syntax.Send (send_attr recv op name_loc,
                                recv, name, []) }
