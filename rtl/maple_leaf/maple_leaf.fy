@@ -1,6 +1,18 @@
 class MapleLeaf
   XTAL_FREQ = 8_000_000
 
+  def setup
+    RCC.APB2ENR = RCC.APB2ENR.
+        set_iopaen(true)
+
+    # LED
+    GPIOA.as_output(5, alternate: false, open_drain: false)
+  end
+
+  def led_on=(led_on)
+    GPIOA.set(5, led_on)
+  end
+
   def setup_pll(frequency)
     RCC.enable_hse
     RCC.enable_pll(mul: frequency / XTAL_FREQ - 1, div: false,
