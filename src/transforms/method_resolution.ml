@@ -129,7 +129,7 @@ let run_on_function passmgr capsule caller =
             match Typing.instantiate (Rt.LambdaTy lambda.Rt.l_ty) with
             | Rt.LambdaTy (arg_tys, ret_ty)
             -> (let args = parse_arguments ~before:instr ~arg_tys ~args ~kwargs in
-                let call = Ssa.create_instr ~location:instr.location
+                let call = Ssa.create_instr ~loc:instr.location
                                             ret_ty (Ssa.CallInstr (callee, args)) in
                 replace_instr instr call)
             | _

@@ -127,12 +127,12 @@ let symtab_of_name name =
   | _
   -> assert false
 
-let const ?location value =
+let const ?loc value =
   {
     id        = "";
     ty        = Rt.type_of_value value;
     opcode    = Const value;
-    location  = Option.default Location.empty location;
+    location  = Option.default Location.empty loc;
     n_parent  = ParentNone;
     n_uses    = [];
     n_hash    = Hash_seed.make ();
@@ -195,7 +195,7 @@ let remove_func capsule funcn =
         Lambdatbl.remove capsule.lambda_cache lambda)
     capsule.lambda_cache
 
-let create_func ?(name="") ?location ?arg_ids ?arg_locations args_ty result_ty =
+let create_func ?(name="") ?loc ?arg_ids ?arg_locs args_ty result_ty =
   let symtab = Symtab.create () in
   let func  = {
     name;
@@ -208,7 +208,7 @@ let create_func ?(name="") ?location ?arg_ids ?arg_locations args_ty result_ty =
     id        = name;
     ty        = Rt.FunctionTy (args_ty, result_ty);
     opcode    = Function func;
-    location  = Option.default Location.empty location;
+    location  = Option.default Location.empty loc;
     n_parent  = ParentNone;
     n_uses    = [];
     n_hash    = Hash_seed.make ();
@@ -224,7 +224,7 @@ let create_func ?(name="") ?location ?arg_ids ?arg_locations args_ty result_ty =
       n_hash    = Hash_seed.make ();
     }
     in
-    match arg_ids, arg_locations with
+    match arg_ids, arg_locs with
     | Some ids, Some locations
     -> func.arguments <- List.map2 make_arg (List.combine ids locations) args_ty
     | Some ids, None
@@ -379,12 +379,12 @@ let remove_uses instr =
 let iter_uses ~f instr =
   List.iter f instr.n_uses
 
-let create_instr ?(id="") ?location ty opcode =
+let create_instr ?(id="") ?loc ty opcode =
   let instr = {
     id;
     ty;
     opcode;
-    location  = Option.default Location.empty location;
+    location  = Option.default Location.empty loc;
     n_parent  = ParentNone;
     n_uses    = [];
     n_hash    = 0;
@@ -599,7 +599,7 @@ let copy_func ?(suffix="") funcn =
   let phis = ref [] in
   iter_instrs funcn ~f:(fun instr ->
     (* Duplicate instruction. *)
-    let instr'  = create_instr ~location:instr.location ~id:(instr.id ^ suffix)
+    let instr'  = create_instr ~loc:instr.location ~id:(instr.id ^ suffix)
                                instr.ty InvalidInstr in
     (* Append instruction to the corresponding basic block in the
        specialized function. *)

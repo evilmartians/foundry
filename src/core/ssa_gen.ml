@@ -34,8 +34,8 @@ let create_block ?(id="") funcn =
   Ssa.add_block funcn blockn;
   blockn
 
-let append ?(ty=Rt.NilTy) ?(loc=Location.empty) ~opcode blockn =
-  let instr = Ssa.create_instr ~location:loc ty opcode in
+let append ?(ty=Rt.NilTy) ?loc ~opcode blockn =
+  let instr = Ssa.create_instr ?loc ty opcode in
   Ssa.append_instr instr blockn;
   instr
 

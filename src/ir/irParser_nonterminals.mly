@@ -638,7 +638,7 @@ lambda_arg_def: Default expr=expr
                     and loc   = Option.default Location.empty loc in
                     (* :( should fix this vvv *)
                     let iid   = if ty = Rt.NilTy then u"__unused" else id in
-                    let instr = create_instr ~location:loc ~id:iid ty InvalidInstr in
+                    let instr = create_instr ~loc ~id:iid ty InvalidInstr in
                     append_instr instr basic_block;
 
                     if Table.exists defs.locals id then
