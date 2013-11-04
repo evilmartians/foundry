@@ -184,14 +184,14 @@ type roots = {
 
 (* Empty regular class -- e.g. for "class Foo". *)
 
-let empty_class kClass ?ancestor ?(parameters=Assoc.empty) name =
+let empty_class kClass ?ancestor ?(parameters=Assoc.empty) ?(is_value=false) name =
   let rec klass =
     { k_hash        = Hash_seed.make ();
       k_name        = name;
       k_ancestor    = ancestor;
       k_metaclass   = metaklass;
       k_objectclass = None;
-      k_is_value    = Option.map_default (fun k -> k.k_is_value) false ancestor;
+      k_is_value    = Option.map_default (fun k -> k.k_is_value) is_value ancestor;
       k_parameters  = parameters;
       k_ivars       = Assoc.empty;
       k_methods     = Assoc.empty;
@@ -264,14 +264,12 @@ let create_roots () =
     last_tvar := !last_tvar + 1;
     (!last_tvar : tvar)
   in
-  let new_class ?ancestor ?parameters name =
-    empty_class kClass ?ancestor ?parameters name
+  let new_class ?ancestor ?parameters ?is_value name =
+    empty_class kClass ?ancestor ?parameters ?is_value name
   in
 
   let kObject     = new_class "Object" in
-  let kValue      = new_class "Value"  in
-  let kValue      = { kValue with k_is_value = true } in
-
+  let kValue      = new_class ~is_value:true "Value" in
   let kPackage    = new_class ~ancestor:kObject "Package" in
 
   let roots = {
@@ -391,7 +389,7 @@ let static_tvar () : tvar =
   last_static_tvar := !last_static_tvar - 1;
   !last_static_tvar
 
-let new_class = empty_class !roots.kClass
+let new_class = empty_class ~is_value:false !roots.kClass
 
 let new_package name =
   { p_hash      = Hash_seed.make ();
