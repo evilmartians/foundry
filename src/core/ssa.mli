@@ -69,6 +69,9 @@ module Nametbl : Hashtbl.S with type key = name
 
 (* Generic *)
 
+exception ConvergenceFailure of Diagnostic.t list
+val fail_convergence : string -> Location.t list -> 'a
+
 val const           : ?loc:Location.t -> Rt.value -> name
 val set_id          : name -> string -> unit
 val set_ty          : name -> Rt.ty  -> unit

@@ -111,14 +111,17 @@ let run passmgr capsule =
   try
     run' passmgr capsule
   with
-  | Exit ->
-    ()
-  | exn ->
-    prerr_endline "Convergence terminated by uncaught exception";
-    if not !verbose then begin
-      prerr_endline (Unicode.assert_utf8s (Printexc.to_string exn));
-      Printexc.print_backtrace stderr
-    end
+  | Exit
+  -> ()
+  | Ssa.ConvergenceFailure (diags)
+  -> (List.iter Diagnostic.print diags;
+      exit 1)
+  | exn
+  -> (prerr_endline "Convergence terminated by uncaught exception";
+      if not !verbose then begin
+        prerr_endline (Unicode.assert_utf8s (Printexc.to_string exn));
+        Printexc.print_backtrace stderr
+      end)
 
 let mark passmgr ?reason funcn =
   print_invalidate funcn.Ssa.id reason;

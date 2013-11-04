@@ -94,6 +94,11 @@ and Lambdatbl : Hashtbl.S with type key = Rt.lambda =
 
 include NameType
 
+exception ConvergenceFailure of Diagnostic.t list
+
+let fail_convergence message locations =
+  raise (ConvergenceFailure [Diagnostic.Error, message, locations])
+
 (* Variable naming convention:
    funcn:  function name, of type name
    func:   function, of type func

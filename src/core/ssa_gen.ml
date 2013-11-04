@@ -51,9 +51,9 @@ let append_const entry value =
   | Rt.Integer _ -> append_int entry value
   | _            -> Ssa.const value
 
-let load ~state entry name =
+let load ~state ?loc entry name =
   let append_load ty =
-    let instr = append entry ~ty ~opcode:(Ssa.LVarLoadInstr (state.frame, name)) in
+    let instr = append entry ?loc ~ty ~opcode:(Ssa.LVarLoadInstr (state.frame, name)) in
     Ssa.set_id instr ("lvar." ^ name);
     instr
   in
@@ -82,9 +82,9 @@ let load ~state entry name =
   in
   lookup_dyn state.frame_ty state.depth
 
-let store ~state entry name value =
-  ignore (append entry
-               ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
+let store ~state ?loc entry name value =
+  ignore (append entry ?loc
+                 ~opcode:(Ssa.LVarStoreInstr (state.frame, name, value)));
   value
 
 let send_args ~state entry args =
@@ -200,13 +200,13 @@ and ssa_of_expr ~state ~entry ~expr =
   -> ssa_of_type ~state ~entry ~expr
 
   (* Variable access. *)
-  | Syntax.Self (_)
-  -> entry, load entry "self"
-  | Syntax.Var (_, name)
-  -> entry, load entry name
-  | Syntax.IVar (_, name)
+  | Syntax.Self ((loc, _))
+  -> entry, load ~loc entry "self"
+  | Syntax.Var ((loc, _), name)
+  -> entry, load ~loc entry name
+  | Syntax.IVar ((loc, _), name)
   -> (let self = load entry "self" in
-      entry, append entry ~ty:(Rt.tvar_as_ty ())
+      entry, append entry ~loc ~ty:(Rt.tvar_as_ty ())
                           ~opcode:(Ssa.IVarLoadInstr (self, name)))
 
   (* Variable binding. *)

@@ -113,7 +113,9 @@ let run_on_function passmgr capsule caller =
               try lookup klass selector
               with Not_found ->
                 try lookup klass "method_missing"
-                with Not_found -> failwith ("no method " ^ (klass.Rt.k_name) ^ "#" ^ selector)
+                with Not_found ->
+                  Ssa.fail_convergence ("no method " ^ (klass.Rt.k_name) ^ "#" ^ selector)
+                                       [instr.location; recvn.location]
             in
             let lambda = imethod.Rt.im_body in
             let callee =
