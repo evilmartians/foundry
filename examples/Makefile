@@ -10,7 +10,7 @@ device := foundry_gamepad
 
 ### DO NOT MODIFY BELOW THIS LINE ###
 
-llvm   := -3.4
+llvm   :=
 cross  := arm-linux-gnueabi-
 root   := ..
 
