@@ -1,5 +1,3 @@
-module Llvm_machine = Llvm_target_machine
-
 let error message =
   prerr_endline ("foundry: error: " ^ message)
 
@@ -10,7 +8,7 @@ let error_and_exit message =
 let lltargets =
   Llvm_X86.initialize ();
   Llvm_ARM.initialize ();
-  Llvm_machine.targets ()
+  Llvm_target.Target.all ()
 
 let _ =
   let arch      = ref ""
@@ -53,7 +51,7 @@ let _ =
           prerr_endline "Foundry alpha";
           prerr_endline ("Targets: " ^
               (String.concat ", "
-                  (List.map Llvm_machine.target_name lltargets)));
+                  (List.map Llvm_target.Target.name lltargets)));
           exit 0),
         " Show version and configuration information";
     ]) (fun arg ->
@@ -94,20 +92,17 @@ let _ =
   let lltarget =
     try
       List.find (fun lltarget ->
-          (Llvm_machine.target_name lltarget) = !arch)
+          (Llvm_target.Target.name lltarget) = !arch)
         lltargets
     with Not_found ->
       error_and_exit ("unknown architecture " ^ !arch)
   in
   let llmachine =
-    Llvm_machine.create_machine ~triple:!triple
-        ~cpu:!cpu ~features:!features
-        ~level:Llvm_machine.CodeGenOptLevel.Default
-        ~reloc_mode:Llvm_machine.RelocMode.Default
-        ~code_model:Llvm_machine.CodeModel.Default
+    Llvm_target.TargetMachine.create ~triple:!triple ~cpu:!cpu ~features:!features
         lltarget
   in
-  let lllayoutstr = Llvm_machine.machine_data_layout llmachine in
+  let lllayout    = Llvm_target.TargetMachine.data_layout llmachine in
+  let lllayoutstr = Llvm_target.DataLayout.as_string lllayout in
 
   let env = Vm.env_create () in
   List.iter (fun filename ->
@@ -134,9 +129,8 @@ let _ =
   Llvm.set_target_triple !triple llmod;
   Llvm.set_data_layout lllayoutstr llmod;
 
-  let llpassmgr    = Llvm.PassManager.create () in
-  let lldatalayout = Llvm_target.DataLayout.create lllayoutstr in
-  Llvm_target.DataLayout.add lldatalayout llpassmgr;
+  let llpassmgr = Llvm.PassManager.create () in
+  Llvm_target.DataLayout.add_to_pass_manager llpassmgr lllayout;
 
   let llpmbuilder = Llvm_passmgr_builder.create () in
   Llvm_passmgr_builder.set_opt_level 2 llpmbuilder;
@@ -168,10 +162,10 @@ let _ =
 
   let llfiletype =
     if !emit_text then
-      Llvm_machine.CodeGenFileType.AssemblyFile
+      Llvm_target.CodeGenFileType.AssemblyFile
     else
-      Llvm_machine.CodeGenFileType.ObjectFile
+      Llvm_target.CodeGenFileType.ObjectFile
   in
-  let llbuf = Llvm_machine.emit_to_memory_buffer llmod llfiletype llmachine in
+  let llbuf = Llvm_target.TargetMachine.emit_to_memory_buffer llmod llfiletype llmachine in
   let chan  = Io.open_out !output in
   output_string chan (Llvm.MemoryBuffer.as_string llbuf)

@@ -8,5 +8,5 @@
 <foundry_gen.{ml,native}>: package(llvm), package(llvm.analysis), package(llvm.bitwriter)
 <foundry.{ml,native}>: package(llvm), package(llvm.analysis), package(llvm.bitwriter)
 <foundry.{ml,native}>: package(llvm.bitreader), package(llvm.linker), package(llvm.passmgr_builder)
-<foundry.{ml,native}>: package(llvm.target), package(llvm.target_machine)
+<foundry.{ml,native}>: package(llvm.target)
 <foundry.{ml,native}>: package(llvm_X86), package(llvm_ARM)
