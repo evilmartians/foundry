@@ -1,0 +1,18 @@
+Foundry
+=======
+
+Building
+--------
+
+    $ script/installdeps.sh
+    $ script/build.sh
+
+Testing
+-------
+
+    $ script/test.sh
+
+Compiling
+---------
+
+See the `examples` folder.
